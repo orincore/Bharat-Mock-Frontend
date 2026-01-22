@@ -59,3 +59,17 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
     </div>
   );
 }
+
+interface LoadingOverlayProps {
+  message?: string;
+  blur?: boolean;
+}
+
+export function LoadingOverlay({ message, blur = true }: LoadingOverlayProps) {
+  return (
+    <div className={`absolute inset-0 ${blur ? 'backdrop-blur-sm' : ''} bg-background/70 z-50 flex flex-col items-center justify-center`}>
+      <LoadingSpinner size="lg" />
+      {message && <p className="mt-3 text-sm text-muted-foreground animate-pulse">{message}</p>}
+    </div>
+  );
+}

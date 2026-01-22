@@ -1,5 +1,7 @@
+"use client";
+
 import { Exam } from '@/types';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Clock, FileText, Users, TrendingUp, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +11,8 @@ interface ExamCardProps {
 }
 
 export function ExamCard({ exam }: ExamCardProps) {
+  const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
+  
   const statusColors = {
     upcoming: 'bg-warning/10 text-warning border-warning/30',
     ongoing: 'bg-success/10 text-success border-success/30',
@@ -21,12 +25,15 @@ export function ExamCard({ exam }: ExamCardProps) {
     hard: 'bg-destructive/10 text-destructive',
   };
 
+  const difficultyKey = (exam.difficulty || 'medium') as keyof typeof difficultyColors;
+  const difficultyLabel = difficultyKey.charAt(0).toUpperCase() + difficultyKey.slice(1);
+
   return (
     <div className="card-interactive group overflow-hidden">
       {/* Image */}
       <div className="relative h-40 overflow-hidden">
         <img
-          src={exam.image}
+          src={exam.thumbnail_url || exam.logo_url || '/images/exam-placeholder.jpg'}
           alt={exam.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
@@ -36,8 +43,8 @@ export function ExamCard({ exam }: ExamCardProps) {
           <Badge className={statusColors[exam.status]}>
             {exam.status.charAt(0).toUpperCase() + exam.status.slice(1)}
           </Badge>
-          <Badge className={difficultyColors[exam.difficulty]}>
-            {exam.difficulty.charAt(0).toUpperCase() + exam.difficulty.slice(1)}
+          <Badge className={difficultyColors[difficultyKey]}>
+            {difficultyLabel}
           </Badge>
         </div>
         
@@ -65,13 +72,13 @@ export function ExamCard({ exam }: ExamCardProps) {
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <FileText className="h-4 w-4 text-primary" />
-            <span>{exam.totalQuestions} Qs</span>
+            <span>{exam.total_questions} Qs</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <TrendingUp className="h-4 w-4 text-primary" />
-            <span>{exam.totalMarks} Marks</span>
+            <span>{exam.total_marks} Marks</span>
           </div>
-          {exam.attempts && (
+          {exam.attempts !== undefined && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="h-4 w-4 text-primary" />
               <span>{exam.attempts.toLocaleString()}</span>
@@ -79,7 +86,7 @@ export function ExamCard({ exam }: ExamCardProps) {
           )}
         </div>
 
-        <Link to={`/exams/${exam.id}`}>
+        <Link href={examUrl}>
           <Button className="w-full group/btn">
             View Details
             <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />

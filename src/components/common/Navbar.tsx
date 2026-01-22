@@ -1,4 +1,8 @@
-import { Link, useLocation } from 'react-router-dom';
+"use client";
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { 
   GraduationCap, 
@@ -7,7 +11,6 @@ import {
   User, 
   LogOut,
   BookOpen,
-  Building2,
   FileText,
   Home
 } from 'lucide-react';
@@ -25,7 +28,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Exams', href: '/exams', icon: BookOpen },
-  { name: 'Colleges', href: '/colleges', icon: Building2 },
   { name: 'Courses', href: '/courses', icon: GraduationCap },
   { name: 'Articles', href: '/articles', icon: FileText },
 ];
@@ -33,25 +35,29 @@ const navigation = [
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
-  const location = useLocation();
+  const pathname = usePathname();
 
   const isActive = (href: string) => {
-    if (href === '/') return location.pathname === '/';
-    return location.pathname.startsWith(href);
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
   };
 
   return (
     <nav className="sticky top-0 z-50 glass-effect border-b border-border/50">
-      <div className="container-main">
+      <div className="w-full px-4 sm:px-6 lg:px-10">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md group-hover:shadow-lg transition-shadow">
-              <GraduationCap className="h-6 w-6" />
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative h-12 w-44 sm:w-48 flex items-center">
+              <Image
+                src="/logo.png"
+                alt="Bharat Mock Logo"
+                fill
+                sizes="(max-width: 768px) 180px, 200px"
+                className="object-contain"
+                priority
+              />
             </div>
-            <span className="font-display text-xl font-bold text-foreground">
-              Edu<span className="text-primary">Prep</span>
-            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -59,7 +65,7 @@ export function Navbar() {
             {navigation.map((item) => (
               <Link
                 key={item.name}
-                to={item.href}
+                href={item.href}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive(item.href)
                     ? 'bg-primary/10 text-primary'
@@ -74,54 +80,82 @@ export function Navbar() {
           {/* Auth Section */}
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated ? (
-              <DropdownMenu>
+              <>
+                {user?.role === 'admin' && (
+                  <Link href="/admin">
+                    <Button variant="outline" size="sm" className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground">
+                      Admin Dashboard
+                    </Button>
+                  </Link>
+                )}
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10 border-2 border-primary/20">
-                      <AvatarImage src={user?.avatar} alt={user?.name} />
-                      <AvatarFallback className="bg-primary text-primary-foreground">
+                  <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0">
+                    <Avatar
+                      className={`h-11 w-11 border-2 ${
+                        user?.role === 'admin'
+                          ? 'border-secondary/60 bg-secondary/15 text-secondary-foreground'
+                          : 'border-primary/60 bg-primary/10 text-primary-foreground'
+                      }`}
+                    >
+                      <AvatarImage src={user?.avatar_url} alt={user?.name} />
+                      <AvatarFallback>
                         {user?.name?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <div className="flex items-center gap-2 p-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.avatar} />
+                <DropdownMenuContent
+                  className="w-60 bg-white text-foreground border border-border/60 shadow-xl rounded-xl p-3"
+                  align="end"
+                  forceMount
+                >
+                  <div className="flex items-center gap-3 px-1 pb-3">
+                    <Avatar
+                      className={`h-9 w-9 border ${
+                        user?.role === 'admin'
+                          ? 'border-secondary/50 bg-secondary/15 text-secondary-foreground'
+                          : 'border-primary/50 bg-primary/10 text-primary-foreground'
+                      }`}
+                    >
+                      <AvatarImage src={user?.avatar_url} />
                       <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <p className="text-sm font-medium">{user?.name}</p>
+                      <p className="text-sm font-semibold">{user?.name}</p>
                       <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer">
+                  <DropdownMenuItem asChild className="rounded-lg">
+                    <Link href="/profile" className="cursor-pointer flex items-center">
                       <User className="mr-2 h-4 w-4" />
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/results" className="cursor-pointer">
+                  <DropdownMenuItem asChild className="rounded-lg">
+                    <Link href="/results" className="cursor-pointer flex items-center">
                       <FileText className="mr-2 h-4 w-4" />
                       My Results
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive">
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="cursor-pointer text-destructive rounded-lg"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <>
-                <Link to="/login">
+                <Link href="/login">
                   <Button variant="ghost">Log in</Button>
                 </Link>
-                <Link to="/register">
+                <Link href="/register">
                   <Button>Sign up</Button>
                 </Link>
               </>
@@ -149,7 +183,7 @@ export function Navbar() {
             {navigation.map((item) => (
               <Link
                 key={item.name}
-                to={item.href}
+                href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                   isActive(item.href)
                     ? 'bg-primary/10 text-primary'
@@ -166,7 +200,7 @@ export function Navbar() {
               {isAuthenticated ? (
                 <>
                   <Link
-                    to="/profile"
+                    href="/profile"
                     className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -187,14 +221,14 @@ export function Navbar() {
               ) : (
                 <>
                   <Link
-                    to="/login"
+                    href="/login"
                     className="block px-4 py-3 text-center rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Log in
                   </Link>
                   <Link
-                    to="/register"
+                    href="/register"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Button className="w-full">Sign up</Button>

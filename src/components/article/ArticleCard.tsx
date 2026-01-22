@@ -1,5 +1,7 @@
+"use client";
+
 import { Article } from '@/types';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Clock, Eye, ArrowRight, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,7 +20,7 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
 
   if (variant === 'featured') {
     return (
-      <Link to={`/articles/${article.slug}`} className="group">
+      <Link href={`/articles/${article.slug}`} className="group">
         <div className="card-interactive overflow-hidden">
           <div className="grid md:grid-cols-2 gap-0">
             <div className="relative h-64 md:h-full overflow-hidden">
@@ -78,7 +80,7 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
   }
 
   return (
-    <Link to={`/articles/${article.slug}`} className="group">
+    <Link href={`/articles/${article.slug}`} className="group">
       <div className="card-interactive overflow-hidden h-full flex flex-col">
         <div className="relative h-48 overflow-hidden">
           <img

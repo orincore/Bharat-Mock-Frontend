@@ -1,5 +1,7 @@
+"use client";
+
 import { College } from '@/types';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { MapPin, Star, Trophy, IndianRupee, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -93,7 +95,7 @@ export function CollegeCard({ college }: CollegeCardProps) {
           )}
         </div>
 
-        <Link to={`/colleges/${college.id}`}>
+        <Link href={`/colleges/${college.id}`}>
           <Button variant="outline" className="w-full group/btn">
             View Details
             <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />

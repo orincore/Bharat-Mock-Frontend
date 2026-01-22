@@ -1,8 +1,8 @@
-# Welcome to your Lovable project
+# Welcome to Bharat Mock
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**URL**: https://bharatmock.example
 
 ## How can I edit this code?
 

@@ -1,5 +1,8 @@
+"use client";
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@/types';
+import { Education, User } from '@/types';
+import { authService } from '@/lib/api/authService';
 
 interface AuthContextType {
   user: User | null;
@@ -14,93 +17,154 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const mockUser: User = {
-  id: 'user1',
-  email: 'student@example.com',
-  name: 'John Doe',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-  phone: '+91 9876543210',
-  dateOfBirth: '2000-01-15',
-  education: {
-    level: '12th Pass',
-    institution: 'Delhi Public School',
-    year: 2023,
-    percentage: 92.5
-  },
-  preferences: {
-    notifications: true,
-    newsletter: true,
-    examReminders: true
-  },
-  createdAt: '2023-06-01T00:00:00Z'
+const getStoredUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  const raw = localStorage.getItem('auth_user');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn('Failed to parse cached auth user:', error);
+    localStorage.removeItem('auth_user');
+    return null;
+  }
+};
+
+const persistUser = (userData: User | null) => {
+  if (typeof window === 'undefined') return;
+  if (userData) {
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+  } else {
+    localStorage.removeItem('auth_user');
+  }
+};
+
+const normalizeUser = (userData: any): User | null => {
+  if (!userData) return null;
+
+  const {
+    user_education,
+    user_preferences,
+    education,
+    preferences,
+    ...rest
+  } = userData;
+
+  const normalizedEducation: Education | undefined = (() => {
+    if (education) return education as Education;
+    if (Array.isArray(user_education)) return user_education[0] as Education | undefined;
+    return user_education as Education | undefined;
+  })();
+
+  const normalizedPreferences = (() => {
+    if (preferences) return preferences;
+    if (Array.isArray(user_preferences)) return user_preferences[0];
+    return user_preferences;
+  })();
+
+  return {
+    ...rest,
+    education: normalizedEducation,
+    preferences: normalizedPreferences,
+  } as User;
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    // Check for existing session (mock)
-    const checkAuth = async () => {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-      setIsLoading(false);
-    };
-    checkAuth();
+    const cached = getStoredUser();
+    if (cached) {
+      setUser(cached);
+    }
+    setIsHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          setUser(null);
+          persistUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        setIsLoading(true);
+        const userData = await authService.getProfile();
+        const normalized = normalizeUser(userData);
+        setUser(normalized);
+        persistUser(normalized);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+        persistUser(null);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [isHydrated]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock successful login
-    setUser(mockUser);
-    localStorage.setItem('user', JSON.stringify(mockUser));
+    try {
+      const response = await authService.login(email, password);
+      const normalized = normalizeUser(response.data.user);
+      setUser(normalized);
+      persistUser(normalized);
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
     setIsLoading(false);
   };
 
   const register = async (email: string, password: string, name: string) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newUser: User = {
-      ...mockUser,
-      id: `user_${Date.now()}`,
-      email,
-      name,
-      createdAt: new Date().toISOString()
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
+    try {
+      const response = await authService.register(email, password, name);
+      const normalized = normalizeUser(response.data.user);
+      setUser(normalized);
+      persistUser(normalized);
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
     setIsLoading(false);
   };
 
   const logout = async () => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    authService.logout();
+    persistUser(null);
     setUser(null);
-    localStorage.removeItem('user');
     setIsLoading(false);
   };
 
   const resetPassword = async (email: string) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // Mock password reset email sent
+    await authService.forgotPassword(email);
   };
 
   const updateProfile = async (data: Partial<User>) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (user) {
-      const updatedUser = { ...user, ...data };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+    try {
+      await authService.updateProfile(data);
+      const updatedUser = await authService.getProfile();
+      const normalized = normalizeUser(updatedUser);
+      setUser(normalized);
+      persistUser(normalized);
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
     }
     setIsLoading(false);
   };
