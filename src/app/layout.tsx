@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   title: "Bharat Mock",
   description: "Bharat Mock — India's smart exam preparation companion.",
   authors: [{ name: "Bharat Mock" }],
+  robots: {
+    index: false,
+    follow: false,
+  },
   icons: {
     icon: "/favicon.jpg",
     shortcut: "/favicon.jpg",
@@ -36,6 +40,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
+        <meta name="robots" content="noindex,nofollow" />
       </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
