@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FileText, Users, CheckCircle, Clock } from 'lucide-react';
 import { examService } from '@/lib/api/examService';
@@ -98,24 +99,24 @@ export default function AdminDashboard() {
             Quick Actions
           </h2>
           <div className="space-y-3">
-            <a
+            <Link
               href="/admin/exams/create"
               className="block px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-center font-medium"
             >
               Create New Exam
-            </a>
-            <a
+            </Link>
+            <Link
               href="/admin/exams"
               className="block px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors text-center font-medium"
             >
               Manage Exams
-            </a>
-            <a
+            </Link>
+            <Link
               href="/admin/users"
               className="block px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors text-center font-medium"
             >
               Manage Users
-            </a>
+            </Link>
           </div>
         </div>
 
