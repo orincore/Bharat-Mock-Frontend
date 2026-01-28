@@ -6,11 +6,15 @@ export const mockExams: Exam[] = [
     title: 'JEE Main 2024 - Mock Test',
     description: 'Practice for Joint Entrance Examination Main with this comprehensive mock test covering Physics, Chemistry, and Mathematics.',
     duration: 180,
+    total_marks: 300,
     totalMarks: 300,
+    total_questions: 90,
     totalQuestions: 90,
     category: 'Engineering',
     difficulty: 'hard',
     status: 'ongoing',
+    start_date: '2024-01-01',
+    end_date: '2024-12-31',
     startDate: '2024-01-01',
     endDate: '2024-12-31',
     syllabus: [
@@ -18,6 +22,11 @@ export const mockExams: Exam[] = [
       'Chemistry: Physical Chemistry, Organic Chemistry, Inorganic Chemistry',
       'Mathematics: Algebra, Calculus, Coordinate Geometry, Trigonometry'
     ],
+    pass_percentage: 40,
+    passPercentage: 40,
+    is_free: true,
+    price: 0,
+    image_url: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800',
     pattern: {
       sections: [
         { id: 'physics', name: 'Physics', totalQuestions: 30, marksPerQuestion: 4, duration: 60 },
@@ -27,20 +36,28 @@ export const mockExams: Exam[] = [
       negativeMarking: true,
       negativeMarkValue: 1
     },
+    negative_marking: true,
+    negative_mark_value: 1,
     image: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800',
     attempts: 15234,
-    passPercentage: 40
+    is_published: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-10T00:00:00Z'
   },
   {
     id: '2',
     title: 'NEET 2024 - Full Length Test',
     description: 'Complete mock test for National Eligibility cum Entrance Test covering Biology, Physics, and Chemistry.',
     duration: 200,
+    total_marks: 720,
     totalMarks: 720,
+    total_questions: 180,
     totalQuestions: 180,
     category: 'Medical',
     difficulty: 'hard',
     status: 'ongoing',
+    start_date: '2024-01-01',
+    end_date: '2024-12-31',
     startDate: '2024-01-01',
     endDate: '2024-12-31',
     syllabus: [
@@ -48,6 +65,11 @@ export const mockExams: Exam[] = [
       'Physics: Mechanics, Thermodynamics, Electromagnetism',
       'Chemistry: Physical, Organic, Inorganic Chemistry'
     ],
+    pass_percentage: 50,
+    passPercentage: 50,
+    is_free: true,
+    price: 0,
+    image_url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
     pattern: {
       sections: [
         { id: 'physics', name: 'Physics', totalQuestions: 45, marksPerQuestion: 4, duration: 50 },
@@ -57,20 +79,28 @@ export const mockExams: Exam[] = [
       negativeMarking: true,
       negativeMarkValue: 1
     },
+    negative_marking: true,
+    negative_mark_value: 1,
     image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
     attempts: 23456,
-    passPercentage: 50
+    is_published: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-10T00:00:00Z'
   },
   {
     id: '3',
     title: 'CAT 2024 - Practice Test',
     description: 'Prepare for Common Admission Test with this practice test covering VARC, DILR, and QA sections.',
     duration: 120,
+    total_marks: 198,
     totalMarks: 198,
+    total_questions: 66,
     totalQuestions: 66,
     category: 'Management',
     difficulty: 'hard',
     status: 'upcoming',
+    start_date: '2024-11-01',
+    end_date: '2024-11-30',
     startDate: '2024-11-01',
     endDate: '2024-11-30',
     syllabus: [
@@ -78,6 +108,11 @@ export const mockExams: Exam[] = [
       'DILR: Data Interpretation, Logical Reasoning',
       'QA: Arithmetic, Algebra, Number System, Geometry'
     ],
+    pass_percentage: 35,
+    passPercentage: 35,
+    is_free: true,
+    price: 0,
+    image_url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800',
     pattern: {
       sections: [
         { id: 'varc', name: 'VARC', totalQuestions: 24, marksPerQuestion: 3, duration: 40 },
@@ -87,20 +122,28 @@ export const mockExams: Exam[] = [
       negativeMarking: true,
       negativeMarkValue: 1
     },
+    negative_marking: true,
+    negative_mark_value: 1,
     image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800',
     attempts: 8765,
-    passPercentage: 35
+    is_published: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-10T00:00:00Z'
   },
   {
     id: '4',
     title: 'GATE 2024 - CS Mock Test',
     description: 'Graduate Aptitude Test in Engineering mock test for Computer Science and Information Technology.',
     duration: 180,
+    total_marks: 100,
     totalMarks: 100,
+    total_questions: 65,
     totalQuestions: 65,
     category: 'Engineering',
     difficulty: 'hard',
     status: 'ongoing',
+    start_date: '2024-01-01',
+    end_date: '2024-12-31',
     startDate: '2024-01-01',
     endDate: '2024-12-31',
     syllabus: [
@@ -111,6 +154,11 @@ export const mockExams: Exam[] = [
       'Compiler Design, Operating Systems',
       'Databases, Computer Networks'
     ],
+    pass_percentage: 25,
+    passPercentage: 25,
+    is_free: true,
+    price: 0,
+    image_url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
     pattern: {
       sections: [
         { id: 'ga', name: 'General Aptitude', totalQuestions: 10, marksPerQuestion: 1.5, duration: 20 },
@@ -119,20 +167,28 @@ export const mockExams: Exam[] = [
       negativeMarking: true,
       negativeMarkValue: 0.33
     },
+    negative_marking: true,
+    negative_mark_value: 0.33,
     image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
     attempts: 12345,
-    passPercentage: 25
+    is_published: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-10T00:00:00Z'
   },
   {
     id: '5',
     title: 'UPSC Prelims - GS Paper 1',
     description: 'Practice test for UPSC Civil Services Preliminary Examination General Studies Paper 1.',
     duration: 120,
+    total_marks: 200,
     totalMarks: 200,
+    total_questions: 100,
     totalQuestions: 100,
     category: 'Civil Services',
     difficulty: 'hard',
     status: 'upcoming',
+    start_date: '2024-06-01',
+    end_date: '2024-06-30',
     startDate: '2024-06-01',
     endDate: '2024-06-30',
     syllabus: [
@@ -143,6 +199,11 @@ export const mockExams: Exam[] = [
       'Environmental Ecology',
       'General Science'
     ],
+    pass_percentage: 33,
+    passPercentage: 33,
+    is_free: true,
+    price: 0,
+    image_url: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800',
     pattern: {
       sections: [
         { id: 'gs', name: 'General Studies', totalQuestions: 100, marksPerQuestion: 2, duration: 120 }
@@ -150,20 +211,28 @@ export const mockExams: Exam[] = [
       negativeMarking: true,
       negativeMarkValue: 0.66
     },
+    negative_marking: true,
+    negative_mark_value: 0.66,
     image: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800',
     attempts: 45678,
-    passPercentage: 33
+    is_published: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-10T00:00:00Z'
   },
   {
     id: '6',
     title: 'SSC CGL Tier 1 - Practice Set',
     description: 'Staff Selection Commission Combined Graduate Level Tier 1 practice test.',
     duration: 60,
+    total_marks: 200,
     totalMarks: 200,
+    total_questions: 100,
     totalQuestions: 100,
     category: 'Government Jobs',
     difficulty: 'medium',
     status: 'ongoing',
+    start_date: '2024-01-01',
+    end_date: '2024-12-31',
     startDate: '2024-01-01',
     endDate: '2024-12-31',
     syllabus: [
@@ -172,6 +241,11 @@ export const mockExams: Exam[] = [
       'Quantitative Aptitude',
       'English Comprehension'
     ],
+    pass_percentage: 40,
+    passPercentage: 40,
+    is_free: true,
+    price: 0,
+    image_url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800',
     pattern: {
       sections: [
         { id: 'reasoning', name: 'Reasoning', totalQuestions: 25, marksPerQuestion: 2, duration: 15 },
@@ -182,9 +256,13 @@ export const mockExams: Exam[] = [
       negativeMarking: true,
       negativeMarkValue: 0.5
     },
+    negative_marking: true,
+    negative_mark_value: 0.5,
     image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800',
     attempts: 34567,
-    passPercentage: 40
+    is_published: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-10T00:00:00Z'
   }
 ];
 

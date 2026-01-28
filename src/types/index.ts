@@ -5,7 +5,9 @@ export interface Exam {
   description: string;
   duration: number;
   total_marks: number;
+  totalMarks?: number;
   total_questions: number;
+  totalQuestions?: number;
   category: string;
   category_id?: string;
   subcategory?: string;
@@ -15,25 +17,51 @@ export interface Exam {
   status: 'upcoming' | 'ongoing' | 'completed' | 'anytime';
   start_date?: string | null;
   end_date?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   pass_percentage: number;
+  passPercentage?: number;
   is_free: boolean;
   price: number;
   image_url?: string;
+  image?: string;
   logo_url?: string;
   thumbnail_url?: string;
   negative_marking: boolean;
   negative_mark_value: number;
+  negativeMarking?: boolean;
+  negativeMarkValue?: number;
   is_published: boolean;
   created_at: string;
   updated_at: string;
   slug?: string;
   url_path?: string;
   syllabus?: string[];
+  pattern?: ExamPattern;
   attempts?: number;
   allow_anytime?: boolean;
   exam_type?: 'past_paper' | 'mock_test' | 'short_quiz';
   show_in_mock_tests?: boolean;
   supports_hindi?: boolean;
+}
+
+export interface ExamPattern {
+  sections: ExamPatternSection[];
+  negative_marking?: boolean;
+  negativeMarking?: boolean;
+  negative_mark_value?: number;
+  negativeMarkValue?: number;
+}
+
+export interface ExamPatternSection {
+  id: string;
+  name: string;
+  name_hi?: string;
+  total_questions?: number;
+  totalQuestions?: number;
+  marks_per_question?: number;
+  marksPerQuestion?: number;
+  duration?: number;
 }
 
 export interface ExamHistoryEntry {
@@ -69,44 +97,55 @@ export type QuestionType = 'single' | 'multiple' | 'truefalse' | 'numerical';
 
 export interface Question {
   id: string;
-  exam_id: string;
-  section_id: string;
+  exam_id?: string;
+  examId?: string;
+  section_id?: string;
+  sectionId?: string;
   type: QuestionType;
   text: string;
   text_hi?: string;
   marks: number;
-  negative_marks: number;
+  negative_marks?: number;
+  negativeMarks?: number;
   explanation?: string;
   explanation_hi?: string;
   image_url?: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty?: 'easy' | 'medium' | 'hard';
   question_order?: number;
   options?: Option[];
-  created_at: string;
-  updated_at: string;
+  correctAnswer?: string | string[] | number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Option {
-  id: string;
-  question_id: string;
-  option_text: string;
+  id?: string;
+  question_id?: string;
+  option_text?: string;
+  text?: string;
   option_text_hi?: string;
-  is_correct: boolean;
-  option_order: number;
+  is_correct?: boolean;
+  option_order?: number;
   image_url?: string;
   imageUrl?: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface UserAnswer {
   id: string;
   attempt_id: string;
+  attemptId?: string;
   question_id: string;
+  questionId?: string;
   answer: string | null;
   is_correct?: boolean;
+  isCorrect?: boolean;
   marks_obtained: number;
+  marksObtained?: number;
   time_taken: number;
+  timeTaken?: number;
   marked_for_review: boolean;
+  markedForReview?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -114,24 +153,33 @@ export interface UserAnswer {
 // Result Types
 export interface Result {
   id: string;
-  attempt_id: string;
-  exam_id: string;
-  user_id: string;
+  attempt_id?: string;
+  attemptId?: string;
+  exam_id?: string;
+  examId?: string;
+  user_id?: string;
+  userId?: string;
   score: number;
-  total_marks: number;
+  total_marks?: number;
+  totalMarks?: number;
   percentage: number;
-  correct_answers: number;
-  wrong_answers: number;
+  correct_answers?: number;
+  correctAnswers?: number;
+  wrong_answers?: number;
+  wrongAnswers?: number;
   unattempted: number;
-  time_taken: number;
+  time_taken?: number;
+  timeTaken?: number;
   rank?: number;
   total_participants?: number;
+  totalParticipants?: number;
   status: 'pass' | 'fail';
-  is_published: boolean;
-  created_at: string;
-  updated_at: string;
+  is_published?: boolean;
+  created_at?: string;
+  updated_at?: string;
   examTitle?: string;
   submittedAt?: string;
+  sectionWiseAnalysis?: any[];
 }
 
 export interface SectionAnalysis {
@@ -157,6 +205,7 @@ export interface College {
   type: 'government' | 'private' | 'deemed';
   ranking?: number;
   rating?: number;
+  image?: string;
   image_url?: string;
   logo_url?: string;
   established?: number;
@@ -167,7 +216,14 @@ export interface College {
   updated_at: string;
   accreditations?: string[];
   facilities?: string[];
-  fees?: CollegeFee[];
+  eligibility?: string[];
+  courses?: string[];
+  fees?: CollegeFee[] | CollegeFeeBreakdown;
+  fees_summary?: {
+    minFee: number;
+    maxFee: number;
+    currency?: string;
+  };
   cutoffs?: Cutoff[];
   placements?: Placement;
 }
@@ -177,30 +233,49 @@ export interface CollegeFee {
   college_id: string;
   course: string;
   fee: number;
-  currency: string;
+  currency?: string;
   created_at: string;
   updated_at: string;
 }
 
+export interface CollegeFeeBreakdown {
+  minFee?: number;
+  maxFee?: number;
+  currency?: string;
+  details?: CollegeFeeDetail[];
+}
+
+export interface CollegeFeeDetail {
+  program?: string;
+  course?: string;
+  fee: number;
+  duration?: string;
+  currency?: string;
+}
+
 export interface Cutoff {
-  id: string;
-  college_id: string;
+  id?: string;
+  college_id?: string;
   exam: string;
   year: number;
   category: string;
   rank: number;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface Placement {
-  id: string;
-  college_id: string;
+  id?: string;
+  college_id?: string;
   average_package?: number;
   highest_package?: number;
   placement_percentage?: number;
   top_recruiters?: string[];
-  created_at: string;
-  updated_at: string;
+  averagePackage?: number;
+  highestPackage?: number;
+  placementPercentage?: number;
+  topRecruiters?: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Course Types
@@ -211,13 +286,18 @@ export interface Course {
   level: 'undergraduate' | 'postgraduate' | 'diploma' | 'certificate';
   description?: string;
   average_salary?: number;
+  averageSalary?: number;
   image_url?: string;
+  image?: string;
   is_published: boolean;
   created_at: string;
   updated_at: string;
   eligibility?: string[];
   career_prospects?: string[];
+  careerProspects?: string[];
   top_colleges?: string[];
+  topColleges?: string[];
+  subjects?: string[];
 }
 
 // Article Types
@@ -229,10 +309,13 @@ export interface Article {
   content: string;
   author_id: string;
   category: string;
+  image?: string;
   image_url?: string;
+  readTime?: number;
   read_time?: number;
   views: number;
   is_published: boolean;
+  publishedAt?: string;
   published_at?: string;
   meta_title?: string;
   meta_description?: string;
@@ -245,6 +328,7 @@ export interface Article {
 export interface Author {
   id: string;
   name: string;
+  avatar?: string;
   avatar_url?: string;
   bio?: string;
   created_at: string;

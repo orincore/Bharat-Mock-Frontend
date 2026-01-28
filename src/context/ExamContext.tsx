@@ -1,12 +1,19 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { Question, UserAnswer, Exam } from '@/types';
+import { Question, Exam } from '@/types';
+
+type LocalUserAnswer = {
+  questionId: string;
+  answer: string | string[] | number | null;
+  markedForReview: boolean;
+  timeTaken: number;
+};
 
 interface ExamContextType {
   currentExam: Exam | null;
   questions: Question[];
-  userAnswers: UserAnswer[];
+  userAnswers: LocalUserAnswer[];
   currentQuestionIndex: number;
   currentSectionId: string | null;
   timeRemaining: number;
@@ -30,7 +37,7 @@ const ExamContext = createContext<ExamContextType | undefined>(undefined);
 export function ExamProvider({ children }: { children: ReactNode }) {
   const [currentExam, setCurrentExam] = useState<Exam | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
+  const [userAnswers, setUserAnswers] = useState<LocalUserAnswer[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentSectionId, setCurrentSectionId] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -41,8 +48,8 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     setUserAnswers(prev => {
       const existingIndex = prev.findIndex(ua => ua.questionId === questionId);
       const existing = prev[existingIndex];
-      
-      const newAnswer: UserAnswer = {
+
+      const newAnswer: LocalUserAnswer = {
         questionId,
         answer,
         markedForReview: existing?.markedForReview || false,

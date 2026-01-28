@@ -44,18 +44,24 @@ Full-length mock tests, revision, and exam strategy refinement.
 3. **Revision**: Regular revision is crucial for retention
 4. **Health**: Maintain good health with proper sleep and exercise
     `,
+    author_id: 'a1',
     author: {
       id: 'a1',
       name: 'Dr. Rajesh Kumar',
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-      bio: 'IIT Bombay alumnus with 15+ years of teaching experience'
+      bio: 'IIT Bombay alumnus with 15+ years of teaching experience',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z'
     },
     category: 'Exam Preparation',
     tags: ['JEE Main', 'Preparation Strategy', 'Engineering', '2024'],
     image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800',
     publishedAt: '2024-01-15',
     readTime: 8,
-    views: 15420
+    views: 15420,
+    is_published: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-10T00:00:00Z'
   },
   {
     id: '2',
@@ -97,18 +103,24 @@ Biology carries the highest weightage in NEET with 360 marks. Here's a detailed 
 3. Practice diagrams regularly
 4. Solve previous year questions
     `,
+    author_id: 'a2',
     author: {
       id: 'a2',
       name: 'Dr. Priya Sharma',
       avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-      bio: 'MBBS from AIIMS, NEET expert with 10+ years of experience'
+      bio: 'MBBS from AIIMS, NEET expert with 10+ years of experience',
+      created_at: '2024-01-05T00:00:00Z',
+      updated_at: '2024-01-05T00:00:00Z'
     },
     category: 'NEET Preparation',
     tags: ['NEET', 'Biology', 'Medical', 'Important Chapters'],
     image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
     publishedAt: '2024-01-20',
     readTime: 10,
-    views: 23456
+    views: 23456,
+    is_published: true,
+    created_at: '2024-01-05T00:00:00Z',
+    updated_at: '2024-01-12T00:00:00Z'
   },
   {
     id: '3',
@@ -144,18 +156,24 @@ CAT (Common Admission Test) is the gateway to top management institutes in India
 3. **Analyze Performance**: Regular analysis of mock tests
 4. **Time Management**: Practice solving questions quickly
     `,
+    author_id: 'a3',
     author: {
       id: 'a3',
       name: 'Amit Verma',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-      bio: 'IIM Ahmedabad alumnus, CAT 99.9 percentiler'
+      bio: 'IIM Ahmedabad alumnus, CAT 99.9 percentiler',
+      created_at: '2024-01-10T00:00:00Z',
+      updated_at: '2024-01-10T00:00:00Z'
     },
     category: 'MBA Preparation',
     tags: ['CAT', 'MBA', 'Management', 'IIM'],
     image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800',
     publishedAt: '2024-02-01',
     readTime: 12,
-    views: 12345
+    views: 12345,
+    is_published: true,
+    created_at: '2024-01-10T00:00:00Z',
+    updated_at: '2024-01-20T00:00:00Z'
   },
   {
     id: '4',
@@ -197,18 +215,24 @@ Choosing the right books is crucial for UPSC preparation. Here's a subject-wise 
 3. Take notes while reading
 4. Revise regularly
     `,
+    author_id: 'a4',
     author: {
       id: 'a4',
-      name: 'IAS Neha Gupta',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
-      bio: 'UPSC Topper 2022, AIR 15'
+      name: 'Anita Singh',
+      avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100',
+      bio: 'UPSC mentor with 12+ years of experience',
+      created_at: '2024-01-15T00:00:00Z',
+      updated_at: '2024-01-15T00:00:00Z'
     },
     category: 'UPSC Preparation',
     tags: ['UPSC', 'Civil Services', 'Books', 'Prelims'],
     image: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800',
     publishedAt: '2024-02-10',
     readTime: 15,
-    views: 34567
+    views: 34567,
+    is_published: true,
+    created_at: '2024-01-15T00:00:00Z',
+    updated_at: '2024-02-05T00:00:00Z'
   },
   {
     id: '5',
@@ -254,18 +278,24 @@ GATE CS has specific high-weightage topics. Here's your strategic preparation gu
 3. Solve previous year papers
 4. Take mock tests weekly
     `,
+    author_id: 'a5',
     author: {
       id: 'a5',
       name: 'Prof. Sanjay Mehta',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100',
-      bio: 'IIT Delhi Professor, GATE Paper Setter'
+      bio: 'IIT Delhi Professor, GATE Paper Setter',
+      created_at: '2024-01-18T00:00:00Z',
+      updated_at: '2024-01-18T00:00:00Z'
     },
     category: 'GATE Preparation',
     tags: ['GATE', 'Computer Science', 'Engineering', 'M.Tech'],
     image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
     publishedAt: '2024-02-15',
     readTime: 10,
-    views: 18765
+    views: 18765,
+    is_published: true,
+    created_at: '2024-01-18T00:00:00Z',
+    updated_at: '2024-02-12T00:00:00Z'
   },
   {
     id: '6',
@@ -305,17 +335,23 @@ Here's the complete ranking of India's best engineering institutions.
 3. Private institutions improving
 4. Focus on research increasing
     `,
+    author_id: 'a6',
     author: {
       id: 'a6',
       name: 'Education Desk',
-      bio: 'Expert education journalism team'
+      bio: 'Expert education journalism team',
+      created_at: '2024-01-25T00:00:00Z',
+      updated_at: '2024-01-25T00:00:00Z'
     },
     category: 'College Rankings',
     tags: ['Engineering', 'Colleges', 'Rankings', 'NIRF'],
     image: 'https://images.unsplash.com/photo-1562774053-701939374585?w=800',
     publishedAt: '2024-02-20',
     readTime: 8,
-    views: 45678
+    views: 45678,
+    is_published: true,
+    created_at: '2024-01-25T00:00:00Z',
+    updated_at: '2024-02-18T00:00:00Z'
   }
 ];
 

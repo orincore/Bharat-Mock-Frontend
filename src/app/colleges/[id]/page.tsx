@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { collegeService } from '@/lib/api/collegeService';
-import { College } from '@/types';
+import { College, CollegeFee, CollegeFeeBreakdown } from '@/types';
 
 export default function CollegeDetailPage() {
   const params = useParams();
@@ -62,6 +62,45 @@ export default function CollegeDetailPage() {
       </div>
     );
   }
+
+  const feeEntries = (() => {
+    const fees = college.fees;
+    if (!fees) {
+      return [] as Array<{
+        key: string;
+        course: string;
+        fee: number;
+        currency?: string;
+      }>;
+    }
+
+    if (Array.isArray(fees)) {
+      return fees.map((fee: CollegeFee, index) => ({
+        key: fee.id || `${college.id}-fee-${index}`,
+        course: fee.course,
+        fee: fee.fee,
+        currency: fee.currency || college.fees_summary?.currency || 'INR'
+      }));
+    }
+
+    const breakdown = fees as CollegeFeeBreakdown;
+    if (Array.isArray(breakdown.details)) {
+      return breakdown.details.map((detail, index) => ({
+        key: `${college.id}-fee-detail-${index}`,
+        course: detail.program || detail.course || 'Course',
+        fee: detail.fee,
+        currency:
+          detail.currency ||
+          breakdown.currency ||
+          college.fees_summary?.currency ||
+          'INR'
+      }));
+    }
+
+    return [];
+  })();
+
+  const hasFeeEntries = feeEntries.length > 0;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -199,15 +238,15 @@ export default function CollegeDetailPage() {
             )}
 
             {/* Fee Structure */}
-            {college.fees && college.fees.length > 0 && (
+            {hasFeeEntries && (
               <div className="bg-card rounded-xl border border-border p-6">
                 <h2 className="font-display text-2xl font-bold text-foreground mb-4">
                   Fee Structure
                 </h2>
                 <div className="space-y-3">
-                  {college.fees.map((fee) => (
+                  {feeEntries.map((fee) => (
                     <div 
-                      key={fee.id}
+                      key={fee.key}
                       className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
                     >
                       <span className="font-medium text-foreground">{fee.course}</span>

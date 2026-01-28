@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoadingPage } from '@/components/common/LoadingStates';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -15,7 +15,7 @@ export default function AuthCallbackPage() {
     if (token && refresh) {
       localStorage.setItem('auth_token', token);
       localStorage.setItem('refresh_token', refresh);
-      
+
       setTimeout(() => {
         router.push('/');
       }, 500);
@@ -25,4 +25,12 @@ export default function AuthCallbackPage() {
   }, [searchParams, router]);
 
   return <LoadingPage message="Completing authentication..." />;
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<LoadingPage message="Completing authentication..." />}>
+      <AuthCallbackContent />
+    </Suspense>
+  );
 }

@@ -12,11 +12,21 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) {
-  const formattedDate = new Date(article.publishedAt).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  const publishedAt = article.published_at || article.created_at;
+  const formattedDate = publishedAt
+    ? new Date(publishedAt).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+    : '—';
+
+  const coverImage = article.image_url || '/placeholder.svg';
+  const readTime = article.read_time ?? 0;
+  const authorName = article.author?.name || 'Editorial Team';
+  const authorAvatar = article.author?.avatar_url;
+  const authorInitial = authorName.charAt(0).toUpperCase();
+  const authorBio = article.author?.bio || 'Bharat Mock Expert';
 
   if (variant === 'featured') {
     return (
@@ -25,7 +35,7 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
           <div className="grid md:grid-cols-2 gap-0">
             <div className="relative h-64 md:h-full overflow-hidden">
               <img
-                src={article.image}
+                src={coverImage}
                 alt={article.title}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
@@ -52,7 +62,7 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  <span>{article.readTime} min read</span>
+                  <span>{readTime} min read</span>
                 </div>
                 {article.views && (
                   <div className="flex items-center gap-1">
@@ -64,12 +74,12 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
 
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={article.author.avatar} />
-                  <AvatarFallback>{article.author.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={authorAvatar} />
+                  <AvatarFallback>{authorInitial}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium text-foreground">{article.author.name}</p>
-                  <p className="text-xs text-muted-foreground">{article.author.bio}</p>
+                  <p className="font-medium text-foreground">{authorName}</p>
+                  <p className="text-xs text-muted-foreground">{authorBio}</p>
                 </div>
               </div>
             </div>
@@ -84,7 +94,7 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
       <div className="card-interactive overflow-hidden h-full flex flex-col">
         <div className="relative h-48 overflow-hidden">
           <img
-            src={article.image}
+            src={coverImage}
             alt={article.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
@@ -107,16 +117,16 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
           <div className="flex items-center justify-between pt-4 border-t border-border">
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={article.author.avatar} />
-                <AvatarFallback>{article.author.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={authorAvatar} />
+                <AvatarFallback>{authorInitial}</AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium text-foreground">{article.author.name}</span>
+              <span className="text-sm font-medium text-foreground">{authorName}</span>
             </div>
             
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span>{formattedDate}</span>
               <span>•</span>
-              <span>{article.readTime} min</span>
+              <span>{readTime} min</span>
             </div>
           </div>
         </div>

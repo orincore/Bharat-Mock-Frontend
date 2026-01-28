@@ -57,7 +57,7 @@ interface CreateExamData {
   difficulty?: string;
   difficulty_id?: string;
   slug?: string;
-  status: 'upcoming' | 'ongoing' | 'completed';
+  status: 'upcoming' | 'ongoing' | 'completed' | 'anytime';
   start_date: string;
   end_date: string;
   pass_percentage: number;

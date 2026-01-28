@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, Phone, Tag, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { taxonomyService, Category } from '@/lib/api/taxonomyService';
 import { authService } from '@/lib/api/authService';
 import { LoadingPage } from '@/components/common/LoadingStates';
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -306,5 +306,13 @@ export default function OnboardingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<LoadingPage message="Preparing your personalized setup..." />}>
+      <OnboardingContent />
+    </Suspense>
   );
 }

@@ -35,6 +35,8 @@ interface Question {
   requires_image?: boolean;
 }
 
+type ExamStatus = 'upcoming' | 'ongoing' | 'completed' | 'anytime';
+
 interface Section {
   id: string;
   name: string;
@@ -70,7 +72,7 @@ export default function EditExamPage() {
     difficulty: '',
     difficulty_id: '',
     slug: '',
-    status: 'upcoming' as 'upcoming' | 'ongoing' | 'completed',
+    status: 'upcoming' as ExamStatus,
     start_date: '',
     end_date: '',
     pass_percentage: 33,
@@ -123,7 +125,7 @@ export default function EditExamPage() {
         difficulty: exam.difficulty || '',
         difficulty_id: exam.difficulty_id || '',
         slug: exam.slug || '',
-        status: exam.status,
+        status: (exam.status as ExamStatus) ?? 'upcoming',
         start_date: exam.start_date?.split('T')[0] || '',
         end_date: exam.end_date?.split('T')[0] || '',
         pass_percentage: exam.pass_percentage,
