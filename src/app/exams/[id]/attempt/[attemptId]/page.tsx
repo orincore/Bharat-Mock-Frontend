@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   AlertCircle, Clock, ChevronLeft, ChevronRight, Flag, 
   CheckCircle2, Circle, AlertTriangle, FileText, X 
@@ -36,12 +36,15 @@ interface SectionWithQuestions {
 export default function ExamAttemptPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const examId = params?.id as string;
   const attemptId = params?.attemptId as string;
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [sections, setSections] = useState<SectionWithQuestions[]>([]);
   const [questions, setQuestions] = useState<QuestionWithStatus[]>([]);
+  const [allSections, setAllSections] = useState<SectionWithQuestions[]>([]);
+  const [allQuestions, setAllQuestions] = useState<QuestionWithStatus[]>([]);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | string[] | null>(null);
@@ -52,8 +55,8 @@ export default function ExamAttemptPage() {
   const [error, setError] = useState('');
   const [showInstructions, setShowInstructions] = useState(true);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
   const [languageSelectionMade, setLanguageSelectionMade] = useState(false);
 
@@ -63,6 +66,35 @@ export default function ExamAttemptPage() {
     if (typeof selectedAnswer === 'string') return selectedAnswer.trim().length > 0;
     return true;
   })();
+
+
+  const hasContentForLanguage = useCallback((question: QuestionWithStatus, language: 'en' | 'hi') => {
+    if (language === 'hi') {
+      return Boolean(
+        (question.text_hi && question.text_hi.trim()) ||
+        (question.explanation_hi && question.explanation_hi.trim()) ||
+        (question.options || []).some(opt => opt.option_text_hi && opt.option_text_hi.trim())
+      );
+    }
+    return Boolean(question.text && question.text.trim());
+  }, []);
+
+  const filterContentByLanguage = useCallback((language: 'en' | 'hi', sourceSections: SectionWithQuestions[], sourceQuestions: QuestionWithStatus[]) => {
+    const filteredQuestions = sourceQuestions.filter(question => hasContentForLanguage(question, language));
+
+    const filteredSections = sourceSections
+      .map(section => {
+        const sectionQuestions = filteredQuestions.filter(q => q.section_id === section.id);
+        return {
+          ...section,
+          totalQuestions: sectionQuestions.length,
+          questions: sectionQuestions
+        };
+      })
+      .filter(section => section.questions.length > 0);
+
+    return { filteredSections, filteredQuestions };
+  }, [hasContentForLanguage]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,10 +115,9 @@ export default function ExamAttemptPage() {
         }
 
         setExam(examData);
-        if (!examData.supports_hindi) {
-          setSelectedLanguage('en');
-          setLanguageSelectionMade(true);
-        }
+        const requestedLanguage = searchParams?.get('lang') === 'hi' ? 'hi' : 'en';
+        setSelectedLanguage(requestedLanguage);
+        setLanguageSelectionMade(true);
         setTimeRemaining((examData.duration || 0) * 60);
         
         const allQuestions: QuestionWithStatus[] = questionsResponse.questions.map((q: any) => ({
@@ -96,17 +127,32 @@ export default function ExamAttemptPage() {
             : (q.userAnswer?.marked_for_review ? 'marked' : 'not-visited')
         }));
 
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[ExamAttempt] Sample option payload:', allQuestions[0]?.options?.[0]);
-        }
-        
         const sectionsData: SectionWithQuestions[] = questionsResponse.sections.map((s: any) => ({
           ...s,
           questions: allQuestions.filter(q => q.section_id === s.id)
         }));
-        
-        setSections(sectionsData);
-        setQuestions(allQuestions);
+
+        setAllSections(sectionsData);
+        setAllQuestions(allQuestions);
+
+        const { filteredSections, filteredQuestions } = filterContentByLanguage(requestedLanguage, sectionsData, allQuestions);
+
+        if (filteredSections.length === 0) {
+          const fallback = filterContentByLanguage('en', sectionsData, allQuestions);
+          if (fallback.filteredSections.length === 0) {
+            setError('No questions available for the selected language.');
+            setIsLoading(false);
+            return;
+          }
+          setSections(fallback.filteredSections);
+          setQuestions(fallback.filteredQuestions);
+          setSelectedLanguage('en');
+        } else {
+          setSections(filteredSections);
+          setQuestions(filteredQuestions);
+        }
+        setCurrentSectionIndex(0);
+        setCurrentQuestionIndex(0);
       } catch (err: any) {
         setError(err.message || 'Failed to load exam');
       } finally {
@@ -115,33 +161,20 @@ export default function ExamAttemptPage() {
     };
 
     fetchData();
-  }, [examId, attemptId]);
+  }, [examId, attemptId, searchParams, filterContentByLanguage]);
 
   useEffect(() => {
-    if (showInstructions || isLoading || timeRemaining <= 0) return;
-
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          handleAutoSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [showInstructions, isLoading, timeRemaining]);
-
-  useEffect(() => {
-    const globalIndex = getGlobalQuestionIndex();
+    const visitedBeforeCurrentSection = sections
+      .slice(0, currentSectionIndex)
+      .reduce((sum, section) => sum + section.questions.length, 0);
+    const globalIndex = visitedBeforeCurrentSection + currentQuestionIndex;
     if (questions.length > globalIndex && !showInstructions) {
       const currentQuestion = questions[globalIndex];
       setSelectedAnswer(currentQuestion?.userAnswer?.answer || null);
       setMarkedForReview(currentQuestion?.userAnswer?.marked_for_review || false);
       setQuestionStartTime(Date.now());
     }
-  }, [currentQuestionIndex, currentSectionIndex, questions, showInstructions]);
+  }, [currentQuestionIndex, currentSectionIndex, questions, showInstructions, sections]);
 
   const refreshSections = useCallback((questionList: QuestionWithStatus[]) => {
     setSections(prevSections => prevSections.map(section => ({
@@ -235,21 +268,66 @@ export default function ExamAttemptPage() {
     setSelectedAnswer(null);
   };
 
-  const handleAutoSubmit = async () => {
-    await saveAnswer(selectedAnswer, markedForReview);
-    await handleSubmitExam();
-  };
+  const handleAutoSubmit = useCallback(async () => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      await saveAnswer(selectedAnswer, markedForReview);
+      await examService.submitExam(attemptId);
+      router.push(`/results/${attemptId}`);
+    } catch (error: any) {
+      setError('Failed to auto-submit exam');
+      setIsSubmitting(false);
+    }
+  }, [attemptId, isSubmitting, markedForReview, router, saveAnswer, selectedAnswer]);
 
-  const handleSubmitExam = async () => {
+  const handleSubmitExam = useCallback(async () => {
+    if (isSubmitting) return;
+    
     setIsSubmitting(true);
     try {
       await examService.submitExam(attemptId);
       router.push(`/results/${attemptId}`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit exam');
+    } catch (error: any) {
+      setError(error.message || 'Failed to submit exam');
       setIsSubmitting(false);
     }
-  };
+  }, [attemptId, isSubmitting, router]);
+
+  const handleLanguageSelect = useCallback((lang: 'en' | 'hi') => {
+    if (!allSections.length) return;
+
+    const { filteredSections, filteredQuestions } = filterContentByLanguage(lang, allSections, allQuestions);
+
+    if (filteredSections.length === 0) {
+      setError('Selected language is not available for this exam.');
+      return;
+    }
+
+    setSelectedLanguage(lang);
+    setSections(filteredSections);
+    setQuestions(filteredQuestions);
+    setCurrentSectionIndex(0);
+    setCurrentQuestionIndex(0);
+    setLanguageSelectionMade(true);
+  }, [allSections, allQuestions, filterContentByLanguage]);
+
+  useEffect(() => {
+    if (showInstructions || isLoading) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          handleAutoSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [showInstructions, isLoading, handleAutoSubmit]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -297,7 +375,10 @@ export default function ExamAttemptPage() {
 
   useEffect(() => {
     if (showInstructions || questions.length === 0) return;
-    const globalIndex = getGlobalQuestionIndex();
+    const visitedBeforeCurrentSection = sections
+      .slice(0, currentSectionIndex)
+      .reduce((sum, section) => sum + section.questions.length, 0);
+    const globalIndex = visitedBeforeCurrentSection + currentQuestionIndex;
     setQuestions(prev => {
       const current = prev[globalIndex];
       if (!current || current.status !== 'not-visited') return prev;
@@ -309,7 +390,7 @@ export default function ExamAttemptPage() {
       refreshSections(updated);
       return updated;
     });
-  }, [currentQuestionIndex, currentSectionIndex, showInstructions, refreshSections, sections.length, questions.length]);
+  }, [currentQuestionIndex, currentSectionIndex, showInstructions, refreshSections, sections]);
 
   if (isLoading) {
     return <LoadingPage message="Preparing your exam..." />;
@@ -329,13 +410,8 @@ export default function ExamAttemptPage() {
   }
 
   const supportsHindi = exam?.supports_hindi;
-  const handleLanguageSelect = (language: 'en' | 'hi') => {
-    setSelectedLanguage(language);
-    setLanguageSelectionMade(true);
-  };
 
   const handleStartExamFlow = () => {
-    if (supportsHindi && !languageSelectionMade) return;
     setShowInstructions(false);
   };
 
@@ -363,121 +439,151 @@ export default function ExamAttemptPage() {
   };
 
   if (showInstructions) {
+    const languageLabel = selectedLanguage === 'hi' ? 'हिंदी (Hindi)' : 'English';
     return (
-      <div className="min-h-screen bg-muted/30 py-12">
-        <div className="container-main max-w-4xl">
-          <div className="bg-card border border-border rounded-2xl p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <FileText className="h-8 w-8 text-primary" />
-              <h1 className="font-display text-3xl font-bold">Exam Instructions</h1>
+      <div className="min-h-screen bg-muted/30 py-10">
+        <div className="container-main space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-sm uppercase tracking-[0.4em] text-muted-foreground">Exam Instructions</p>
+              <h1 className="font-display text-3xl font-bold text-foreground">{exam?.title}</h1>
+              <p className="text-sm text-muted-foreground">Review the instructions below before you begin your attempt.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="px-4 py-2 rounded-full border border-border bg-card text-sm font-medium">
+                Selected Language: {languageLabel}
+              </span>
+              <span className="px-4 py-2 rounded-full border border-border bg-card text-sm font-medium">
+                Duration: {exam?.duration} min
+              </span>
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-8">
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <FileText className="h-8 w-8 text-primary" />
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Overview</p>
+                  <p className="text-lg font-semibold text-foreground">Exam Summary</p>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                <div className="p-4 rounded-xl bg-muted border border-border">
+                  <p className="text-muted-foreground text-xs">Total Questions</p>
+                  <p className="text-2xl font-semibold text-foreground">{exam?.total_questions}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-muted border border-border">
+                  <p className="text-muted-foreground text-xs">Total Marks</p>
+                  <p className="text-2xl font-semibold text-foreground">{exam?.total_marks}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-muted border border-border">
+                  <p className="text-muted-foreground text-xs">Negative Marking</p>
+                  <p className="text-lg font-semibold text-foreground">{exam?.negative_marking ? `Yes (-${exam?.negative_mark_value})` : 'No'}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-muted border border-border">
+                  <p className="text-muted-foreground text-xs">Attempt Mode</p>
+                  <p className="text-lg font-semibold text-foreground">Online</p>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="font-semibold text-lg mb-2 text-foreground">Navigation & Conduct</h2>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Use the palette to switch between sections or questions.</li>
+                  <li>• “Save & Next” stores your response and advances ahead.</li>
+                  <li>• “Mark for Review” keeps your answer (if any) but flags it.</li>
+                  <li>• “Clear Response” erases the current selection.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h2 className="font-semibold text-lg mb-2 text-foreground">Status Legend</h2>
+                <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                  {[{
+                    label: 'Answered',
+                    color: 'bg-green-100 border-green-300 text-green-900',
+                    icon: <CheckCircle2 className="h-4 w-4" />
+                  },{
+                    label: 'Not Answered',
+                    color: 'bg-orange-100 border-orange-300 text-orange-900',
+                    icon: <AlertTriangle className="h-4 w-4" />
+                  },{
+                    label: 'Marked for Review',
+                    color: 'bg-purple-100 border-purple-300 text-purple-900',
+                    icon: <Flag className="h-4 w-4" />
+                  },{
+                    label: 'Not Visited',
+                    color: 'bg-muted border-border text-muted-foreground',
+                    icon: <Circle className="h-4 w-4" />
+                  }].map(status => (
+                    <div key={status.label} className={`flex items-center gap-3 rounded-xl border ${status.color} px-3 py-2`}>
+                      <span className="flex items-center justify-center w-8 h-8 rounded-lg border border-current">
+                        {status.icon}
+                      </span>
+                      <span>{status.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 p-4 text-sm">
+                <strong>Important:</strong> The exam auto-submits when the timer reaches zero. Save responses regularly to avoid loss.
+              </div>
             </div>
 
             <div className="space-y-6">
               {supportsHindi && (
-                <div className="border border-primary/20 rounded-2xl p-4 bg-primary/5">
-                  <h2 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                    <span>Select Exam Language</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground uppercase tracking-wide">
-                      Required
-                    </span>
-                  </h2>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Choose your language before starting. This choice is locked for the entire attempt.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { value: 'en', label: 'English', helper: 'Recommended if you prefer English content' },
-                      { value: 'hi', label: 'हिंदी', helper: 'हिंदी में प्रश्न देखने के लिए चुनें' }
-                    ].map(lang => (
+                <div className="bg-card border border-border rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-foreground">Select Exam Language</p>
+                    <span className="text-[10px] uppercase tracking-[0.3em] bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Required</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-4">Your chosen language cannot be changed after you begin.</p>
+                  <div className="grid gap-3">
+                    {[{ value: 'en', label: 'English' }, { value: 'hi', label: 'हिंदी' }].map(option => (
                       <button
-                        key={lang.value}
+                        key={option.value}
                         type="button"
-                        onClick={() => handleLanguageSelect(lang.value as 'en' | 'hi')}
-                        className={`text-left rounded-xl border-2 p-4 transition-all ${
-                          selectedLanguage === lang.value
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/40'
+                        onClick={() => handleLanguageSelect(option.value as 'en' | 'hi')}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                          selectedLanguage === option.value
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border text-foreground hover:border-primary/40'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-semibold text-lg">{lang.label}</span>
-                          <span className={`w-3 h-3 rounded-full border ${
-                            selectedLanguage === lang.value ? 'bg-primary border-primary' : 'border-muted-foreground'
-                          }`} />
-                        </div>
-                        <p className="text-sm text-muted-foreground">{lang.helper}</p>
+                        <span>{option.label}</span>
+                        <span className={`w-3 h-3 rounded-full border ${selectedLanguage === option.value ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div>
-                <h2 className="font-semibold text-lg mb-2">General Instructions</h2>
-                <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-                  <li>Total Questions: <strong className="text-foreground">{exam?.total_questions}</strong></li>
-                  <li>Total Marks: <strong className="text-foreground">{exam?.total_marks}</strong></li>
-                  <li>Duration: <strong className="text-foreground">{exam?.duration} minutes</strong></li>
-                  <li>Negative Marking: <strong className="text-foreground">{exam?.negative_marking ? `Yes (-${exam.negative_mark_value} marks)` : 'No'}</strong></li>
+              <div className="bg-card border border-border rounded-2xl p-5">
+                <h2 className="font-semibold text-lg mb-3 text-foreground">Before You Begin</h2>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Ensure a stable internet connection.</li>
+                  <li>• Keep your admit card or candidate ID handy.</li>
+                  <li>• Avoid refreshing the page during the attempt.</li>
+                  <li>• Headphones, extra devices or text material are not permitted.</li>
                 </ul>
               </div>
 
-              <div>
-                <h2 className="font-semibold text-lg mb-2">Navigation</h2>
-                <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-                  <li>Click on question numbers to navigate between questions</li>
-                  <li>Use "Save & Next" to save your answer and move to the next question</li>
-                  <li>Use "Mark for Review" to flag questions you want to revisit</li>
-                  <li>Use "Clear Response" to remove your selected answer</li>
-                </ul>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button variant="outline" className="flex-1" size="lg" onClick={() => router.push(`/exams/${examId}`)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleStartExamFlow}
+                  className="flex-1"
+                  size="lg"
+                  disabled={supportsHindi && !languageSelectionMade}
+                >
+                  {supportsHindi && !languageSelectionMade ? 'Select language to start' : 'Start Exam'}
+                </Button>
               </div>
-
-              <div>
-                <h2 className="font-semibold text-lg mb-2">Question Status Legend</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-green-100 border-2 border-green-600 flex items-center justify-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    </div>
-                    <span className="text-sm">Answered</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-orange-100 border-2 border-orange-600 flex items-center justify-center">
-                      <AlertTriangle className="h-4 w-4 text-orange-600" />
-                    </div>
-                    <span className="text-sm">Not Answered</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-purple-100 border-2 border-purple-600 flex items-center justify-center">
-                      <Flag className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <span className="text-sm">Marked for Review</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-muted border-2 border-border flex items-center justify-center">
-                      <Circle className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <span className="text-sm">Not Visited</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  <strong>Important:</strong> The exam will auto-submit when the timer runs out. Make sure to save your answers regularly.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4 mt-8">
-              <Button variant="outline" onClick={() => router.push(`/exams/${examId}`)}>Cancel</Button>
-              <Button
-                onClick={handleStartExamFlow}
-                size="lg"
-                disabled={supportsHindi && !languageSelectionMade}
-              >
-                {supportsHindi && !languageSelectionMade ? 'Select language to start' : 'Start Exam'}
-              </Button>
             </div>
           </div>
         </div>

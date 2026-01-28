@@ -43,6 +43,7 @@ interface Exam {
   slug: string;
   url_path?: string;
   download_url?: string;
+  supports_hindi?: boolean;
 }
 
 export default function SubcategoryPage({ categorySlug, subcategorySlug }: SubcategoryPageProps) {
@@ -456,6 +457,12 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                                 {exam.difficulty}
                               </span>
                             )}
+                            {exam.supports_hindi && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">
+                                <span role="img" aria-label="Language">🌐</span>
+                                English + हिंदी
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -549,6 +556,12 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                           <span>Year: {paper.year}</span>
                           {paper.paper_type && (
                             <span className="px-2 py-1 bg-gray-100 rounded">{paper.paper_type}</span>
+                          )}
+                          {paper.exam?.supports_hindi && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 rounded">
+                              <span role="img" aria-label="Language">🌐</span>
+                              English + हिंदी
+                            </span>
                           )}
                         </div>
                       </div>

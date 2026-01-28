@@ -108,6 +108,22 @@ export interface SubcategoryQuestionPaper {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  exam?: {
+    id: string;
+    title: string;
+    slug?: string;
+    url_path?: string;
+    description?: string;
+    total_questions?: number;
+    duration?: number;
+    total_marks?: number;
+    difficulty?: string;
+    is_free?: boolean;
+    price?: number;
+    logo_url?: string;
+    thumbnail_url?: string;
+    supports_hindi?: boolean;
+  };
 }
 
 export interface SubcategoryFAQ {

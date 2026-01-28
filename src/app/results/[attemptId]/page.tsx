@@ -28,6 +28,7 @@ interface ResultData {
     total_questions: number;
   };
   created_at: string;
+  language?: 'en' | 'hi';
 }
 
 interface ReviewQuestion {
@@ -197,6 +198,7 @@ export default function ResultPage() {
   const examPassRequirement = result.exam?.pass_percentage ?? 0;
   const totalQuestions = result.exam?.total_questions 
     ?? (result.correct_answers + result.wrong_answers + result.unattempted);
+  const attemptLanguageLabel = result.language === 'hi' ? 'हिंदी' : 'English';
 
   const parseAnswerIds = (answer: string | string[] | null) => {
     if (!answer) return [];
@@ -299,12 +301,14 @@ export default function ResultPage() {
                 <p className="text-lg text-muted-foreground">
                   {isPassed ? 'You have passed the exam' : 'You can try again to improve your score'}
                 </p>
+                <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Attempt Language:</span>
+                  <span className="px-2 py-0.5 rounded-full bg-muted text-foreground border border-border">
+                    {attemptLanguageLabel}
+                  </span>
+                </div>
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Download Report
-            </Button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

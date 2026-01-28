@@ -43,6 +43,7 @@ interface StartExamResponse {
   data: {
     attemptId: string;
     startedAt: string;
+    language: string;
   };
   message: string;
 }
@@ -156,10 +157,10 @@ export const examService = {
     return response.data;
   },
 
-  async startExam(examId: string): Promise<{ attemptId: string; startedAt: string }> {
+  async startExam(examId: string, language: 'en' | 'hi' = 'en'): Promise<{ attemptId: string; startedAt: string; language: string }> {
     const response = await apiClient.post<StartExamResponse>(
       `/exams/${examId}/start`,
-      {},
+      { language },
       true
     );
     return response.data;
