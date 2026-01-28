@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 interface Category {
   id: string;
   name: string;

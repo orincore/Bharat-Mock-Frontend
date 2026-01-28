@@ -11,6 +11,8 @@ import { CSVImportDialog } from '@/components/admin/CSVImportDialog';
 import { ParsedSection } from '@/lib/utils/csvParser';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 interface Option {
   id: string;
   option_text: string;
