@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { adminService } from '@/lib/api/adminService';
@@ -80,6 +80,8 @@ export default function EditExamPage() {
     negative_mark_value: 0,
     is_published: false,
     allow_anytime: false,
+    exam_type: 'mock_test' as 'past_paper' | 'mock_test' | 'short_quiz',
+    show_in_mock_tests: false,
     syllabus: [] as string[]
   });
 
@@ -131,6 +133,8 @@ export default function EditExamPage() {
         negative_mark_value: exam.negative_mark_value,
         is_published: exam.is_published,
         allow_anytime: exam.allow_anytime ?? false,
+        exam_type: exam.exam_type || 'mock_test',
+        show_in_mock_tests: exam.show_in_mock_tests ?? false,
         syllabus: exam.syllabus || []
       });
 
@@ -269,9 +273,19 @@ export default function EditExamPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
+      if (name === 'allow_anytime') {
+        setFormData(prev => ({
+          ...prev,
+          allow_anytime: checked,
+          status: checked ? prev.status : (prev.status || 'upcoming'),
+          start_date: checked ? '' : prev.start_date,
+          end_date: checked ? '' : prev.end_date
+        }));
+        return;
+      }
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else if (type === 'number') {
       setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
@@ -588,6 +602,8 @@ export default function EditExamPage() {
 
   const pendingRequirements = useMemo(() => {
     const requirements: string[] = [];
+    const needsSchedule = !formData.allow_anytime;
+    const scheduleComplete = needsSchedule ? Boolean(formData.start_date && formData.end_date && formData.status) : true;
     const basicFieldsComplete = Boolean(
       formData.title.trim() &&
       formData.description.trim() &&
@@ -595,8 +611,7 @@ export default function EditExamPage() {
       formData.duration > 0 &&
       formData.total_marks > 0 &&
       formData.total_questions > 0 &&
-      formData.start_date &&
-      formData.end_date
+      scheduleComplete
     );
 
     if (!basicFieldsComplete) {
@@ -655,7 +670,17 @@ export default function EditExamPage() {
     };
 
     try {
-      await adminService.updateExam(examId, formData, logoFile || undefined, thumbnailFile || undefined);
+      const payload: any = { ...formData };
+      if (payload.exam_type !== 'past_paper') {
+        payload.show_in_mock_tests = false;
+      }
+      if (payload.allow_anytime) {
+        delete payload.status;
+        delete payload.start_date;
+        delete payload.end_date;
+      }
+
+      await adminService.updateExam(examId, payload, logoFile || undefined, thumbnailFile || undefined);
       advanceProgress('Exam updated');
       
       for (const section of sections) {
@@ -802,6 +827,12 @@ export default function EditExamPage() {
                 {uploadProgress.completed}/{uploadProgress.total}
               </span>
             </div>
+
+            {formData.allow_anytime && (
+              <div className="md:col-span-2 text-sm text-muted-foreground bg-muted/50 border border-dashed border-border rounded-lg p-3">
+                Users can attempt anytime once this exam is published. Scheduling fields are ignored while enabled.
+              </div>
+            )}
             <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary transition-all duration-300"
@@ -828,30 +859,127 @@ export default function EditExamPage() {
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                name="is_published"
-                checked={formData.is_published}
-                onChange={handleChange}
-                className="h-4 w-4 rounded border-border"
-              />
-              <label className="text-sm font-medium text-foreground">
-                Publish exam (visible to users)
-              </label>
+            <div className="md:col-span-2 grid gap-4 lg:grid-cols-2">
+              <div className={`rounded-2xl border ${formData.is_published ? 'border-primary/40 bg-primary/5' : 'border-border'} p-4 flex items-start gap-4`}>
+                <CheckCircle2 className="h-8 w-8 text-primary shrink-0 mt-1" />
+                <div className="flex-1 space-y-1">
+                  <p className="font-semibold text-foreground">Publish exam (visible to users)</p>
+                  <p className="text-sm text-muted-foreground">Toggle on to push this exam to the learner catalog once content is ready.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  name="is_published"
+                  checked={formData.is_published}
+                  onChange={handleChange}
+                  className="h-5 w-5 accent-primary"
+                />
+              </div>
+
+              <div className={`rounded-2xl border ${formData.allow_anytime ? 'border-secondary/40 bg-secondary/5' : 'border-border'} p-4 flex items-start gap-4`}>
+                <Clock3 className="h-8 w-8 text-secondary shrink-0 mt-1" />
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-foreground">Allow users to attempt anytime</p>
+                    <input
+                      type="checkbox"
+                      name="allow_anytime"
+                      checked={formData.allow_anytime}
+                      onChange={handleChange}
+                      className="h-5 w-5 accent-secondary"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Ignore schedule windows and keep this exam open 24/7.</p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 md:col-span-2">
-              <input
-                type="checkbox"
-                name="allow_anytime"
-                checked={formData.allow_anytime}
-                onChange={handleChange}
-                className="h-4 w-4 rounded border-border"
-              />
-              <label className="text-sm font-medium text-foreground">
-                Allow users to attempt anytime (ignore schedule window)
+            {formData.allow_anytime && (
+              <div className="md:col-span-2 text-sm text-muted-foreground bg-muted/50 border border-dashed border-border rounded-lg p-3">
+                Users can attempt anytime once this exam is published. Scheduling fields are ignored while enabled.
+              </div>
+            )}
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-foreground mb-3">
+                Exam Type *
               </label>
+              <div className="grid gap-3 lg:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, exam_type: 'past_paper' }))}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    formData.exam_type === 'past_paper'
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <FileQuestion className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Past Question Paper</p>
+                      <p className="text-xs text-muted-foreground mt-1">Previous year exam papers for practice</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, exam_type: 'mock_test' }))}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    formData.exam_type === 'mock_test'
+                      ? 'border-secondary bg-secondary/5 ring-2 ring-secondary/20'
+                      : 'border-border hover:border-secondary/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-6 w-6 text-secondary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Mock Test</p>
+                      <p className="text-xs text-muted-foreground mt-1">Full-length practice test with timer</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, exam_type: 'short_quiz' }))}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    formData.exam_type === 'short_quiz'
+                      ? 'border-accent bg-accent/5 ring-2 ring-accent/20'
+                      : 'border-border hover:border-accent/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="h-6 w-6 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Short Quiz</p>
+                      <p className="text-xs text-muted-foreground mt-1">Quick assessment with fewer questions</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {formData.exam_type === 'past_paper' && (
+                <div className="mt-4 p-4 rounded-xl border border-border bg-muted/30">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      name="show_in_mock_tests"
+                      checked={formData.show_in_mock_tests}
+                      onChange={handleChange}
+                      className="h-5 w-5 accent-primary mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <label className="text-sm font-medium text-foreground cursor-pointer">
+                        Also display in Mock Tests section
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enable this to show this past paper in both "Past Papers" and "Mock Tests" sections
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-2">
@@ -1005,22 +1133,24 @@ export default function EditExamPage() {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Status *
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="upcoming">Upcoming</option>
-                <option value="ongoing">Ongoing</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
+            {!formData.allow_anytime && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Status *
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  required={!formData.allow_anytime}
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="upcoming">Upcoming</option>
+                  <option value="ongoing">Ongoing</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -1080,31 +1210,35 @@ export default function EditExamPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Start Date *
-              </label>
-              <Input
-                type="date"
-                name="start_date"
-                value={formData.start_date}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            {!formData.allow_anytime && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Start Date *
+                  </label>
+                  <Input
+                    type="date"
+                    name="start_date"
+                    value={formData.start_date}
+                    onChange={handleChange}
+                    required={!formData.allow_anytime}
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                End Date *
-              </label>
-              <Input
-                type="date"
-                name="end_date"
-                value={formData.end_date}
-                onChange={handleChange}
-                required
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    End Date *
+                  </label>
+                  <Input
+                    type="date"
+                    name="end_date"
+                    value={formData.end_date}
+                    onChange={handleChange}
+                    required={!formData.allow_anytime}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
 

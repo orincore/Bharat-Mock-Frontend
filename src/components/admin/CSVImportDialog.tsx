@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { parseCSV, generateCSVTemplate, CSVParseResult, ParsedSection, ParsedQuestion, ParsedOption } from '@/lib/utils/csvParser';
 
 interface CSVImportDialogProps {
-  onImport: (sections: ParsedSection[]) => void;
+  onImport: (sections: ParsedSection[], language?: 'en' | 'hi') => void;
   onClose: () => void;
 }
 
@@ -12,6 +12,7 @@ export function CSVImportDialog({ onImport, onClose }: CSVImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [parseResult, setParseResult] = useState<CSVParseResult | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [importLanguage, setImportLanguage] = useState<'en' | 'hi'>('en');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -51,9 +52,22 @@ export function CSVImportDialog({ onImport, onClose }: CSVImportDialogProps) {
 
   const handleImport = () => {
     if (parseResult && parseResult.isValid) {
-      onImport(parseResult.sections);
+      onImport(parseResult.sections, importLanguage);
       onClose();
     }
+  };
+
+  const handleForceImport = () => {
+    if (!parseResult) return;
+
+    const confirmed = window.confirm(
+      'Some rows still have validation errors. Importing anyway may create incomplete questions. Continue?'
+    );
+
+    if (!confirmed) return;
+
+    onImport(parseResult.sections, importLanguage);
+    onClose();
   };
 
   return (
@@ -61,11 +75,25 @@ export function CSVImportDialog({ onImport, onClose }: CSVImportDialogProps) {
       <div className="bg-card border border-border rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h2 className="font-display text-2xl font-bold">Import Exam from CSV</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Upload a CSV file to bulk import questions and sections
               </p>
+              <div className="flex items-center gap-2 mt-3">
+                <label className="text-sm font-medium text-foreground">Import Language:</label>
+                <select
+                  value={importLanguage}
+                  onChange={(e) => setImportLanguage(e.target.value as 'en' | 'hi')}
+                  className="px-3 py-1.5 border border-border rounded-lg text-sm bg-background"
+                >
+                  <option value="en">English</option>
+                  <option value="hi">हिंदी (Hindi)</option>
+                </select>
+                <span className="text-xs text-muted-foreground">
+                  (CSV content will be imported as {importLanguage === 'en' ? 'English' : 'Hindi'} text)
+                </span>
+              </div>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <XCircle className="h-5 w-5" />
@@ -333,7 +361,7 @@ export function CSVImportDialog({ onImport, onClose }: CSVImportDialogProps) {
                   </span>
                 ) : (
                   <span className="text-red-600 dark:text-red-400 font-semibold">
-                    Fix errors before importing
+                    Validation errors detected. You can fix them or force import.
                   </span>
                 )}
               </div>
@@ -349,6 +377,16 @@ export function CSVImportDialog({ onImport, onClose }: CSVImportDialogProps) {
                   <Upload className="h-4 w-4 mr-2" />
                   Import {parseResult.sections.length} Section{parseResult.sections.length > 1 ? 's' : ''}
                 </Button>
+                {!parseResult.isValid && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleForceImport}
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Force Import Anyway
+                  </Button>
+                )}
               </div>
             </div>
           </div>

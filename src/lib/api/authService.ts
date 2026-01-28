@@ -71,6 +71,10 @@ export const authService = {
     }, true);
   },
 
+  async completeOnboarding(data: { phone: string; date_of_birth: string; interested_categories: string[] }): Promise<void> {
+    await apiClient.post('/auth/onboarding', data, true);
+  },
+
   logout(): void {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');

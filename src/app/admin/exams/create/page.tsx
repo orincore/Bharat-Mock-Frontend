@@ -1,8 +1,8 @@
-"use client";
+  "use client";
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { adminService } from '@/lib/api/adminService';
@@ -14,6 +14,7 @@ import Link from 'next/link';
 interface Option {
   id: string;
   option_text: string;
+  option_text_hi?: string;
   is_correct: boolean;
   option_order: number;
   image?: File | null;
@@ -25,9 +26,11 @@ interface Question {
   id: string;
   type: 'single' | 'multiple' | 'truefalse' | 'numerical';
   text: string;
+  text_hi?: string;
   marks: number;
   negative_marks: number;
   explanation: string;
+  explanation_hi?: string;
   difficulty: 'easy' | 'medium' | 'hard';
   image?: File | null;
   imagePreview?: string;
@@ -38,6 +41,8 @@ interface Question {
 interface Section {
   id: string;
   name: string;
+  name_hi?: string;
+  language: 'en' | 'hi';
   total_questions: number;
   marks_per_question: number;
   duration: number;
@@ -77,14 +82,22 @@ export default function CreateExamPage() {
     negative_mark_value: 0,
     is_published: false,
     allow_anytime: false,
+    exam_type: 'mock_test' as 'past_paper' | 'mock_test' | 'short_quiz',
+    show_in_mock_tests: false,
     syllabus: [] as string[]
   });
 
   const [sections, setSections] = useState<Section[]>([]);
+  const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
+  const sectionsForDisplay = useMemo(
+    () => sections.filter(section => section.language === selectedLanguage),
+    [sections, selectedLanguage]
+  );
 
   const derivedTotals = useMemo(() => {
-    const totalQuestions = sections.reduce((sum, section) => sum + section.questions.length, 0);
-    const totalMarks = sections.reduce(
+    const englishSections = sections.filter(section => section.language === 'en');
+    const totalQuestions = englishSections.reduce((sum, section) => sum + section.questions.length, 0);
+    const totalMarks = englishSections.reduce(
       (sum, section) => sum + section.questions.reduce((qSum, question) => qSum + (question.marks || 0), 0),
       0
     );
@@ -233,9 +246,19 @@ export default function CreateExamPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
+      if (name === 'allow_anytime') {
+        setFormData(prev => ({
+          ...prev,
+          allow_anytime: checked,
+          status: checked ? prev.status : (prev.status || 'upcoming'),
+          start_date: checked ? '' : prev.start_date,
+          end_date: checked ? '' : prev.end_date
+        }));
+        return;
+      }
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else if (type === 'number') {
       setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
@@ -275,13 +298,15 @@ export default function CreateExamPage() {
   };
 
   const addSection = () => {
+    const languageSections = sections.filter(section => section.language === selectedLanguage);
     const newSection: Section = {
       id: `section-${Date.now()}`,
-      name: `Section ${sections.length + 1}`,
+      name: `Section ${languageSections.length + 1}`,
       total_questions: 0,
       marks_per_question: 1,
       duration: 0,
       section_order: sections.length + 1,
+      language: selectedLanguage,
       questions: [],
       expanded: true
     };
@@ -496,7 +521,7 @@ export default function CreateExamPage() {
     }));
   };
 
-  const handleCSVImport = (parsedSections: ParsedSection[]) => {
+  const handleCSVImport = (parsedSections: ParsedSection[], language: 'en' | 'hi' = 'en') => {
     setSections(prevSections => {
       const maxSectionOrder = prevSections.reduce((max, section) => Math.max(max, section.section_order), 0);
 
@@ -504,7 +529,8 @@ export default function CreateExamPage() {
         const questions: Question[] = parsedSection.questions.map((parsedQuestion, qIdx) => {
           const options: Option[] = parsedQuestion.options.map((parsedOption, oIdx) => ({
             id: generateId(`opt-${idx}-${qIdx}-${oIdx}`),
-            option_text: parsedOption.option_text,
+            option_text: language === 'en' ? parsedOption.option_text : '',
+            option_text_hi: language === 'hi' ? parsedOption.option_text : undefined,
             is_correct: parsedOption.is_correct,
             option_order: parsedOption.option_order,
             requires_image: parsedOption.requires_image
@@ -513,10 +539,12 @@ export default function CreateExamPage() {
           return {
             id: generateId(`question-${idx}-${qIdx}`),
             type: parsedQuestion.type,
-            text: parsedQuestion.text,
+            text: language === 'en' ? parsedQuestion.text : '',
+            text_hi: language === 'hi' ? parsedQuestion.text : undefined,
             marks: parsedQuestion.marks,
             negative_marks: parsedQuestion.negative_marks,
-            explanation: parsedQuestion.explanation,
+            explanation: language === 'en' ? parsedQuestion.explanation : '',
+            explanation_hi: language === 'hi' ? parsedQuestion.explanation : undefined,
             difficulty: parsedQuestion.difficulty,
             options,
             requires_image: parsedQuestion.requires_image
@@ -525,7 +553,9 @@ export default function CreateExamPage() {
 
         return {
           id: generateId(`section-${idx}`),
-          name: parsedSection.name,
+          name: language === 'en' ? parsedSection.name : '',
+          name_hi: language === 'hi' ? parsedSection.name : undefined,
+          language,
           total_questions: parsedSection.questions.length,
           marks_per_question: parsedSection.marks_per_question,
           duration: parsedSection.duration,
@@ -538,6 +568,7 @@ export default function CreateExamPage() {
       return [...prevSections, ...convertedSections];
     });
 
+    setSelectedLanguage(language);
     setShowCSVImport(false);
   };
 
@@ -552,6 +583,8 @@ export default function CreateExamPage() {
 
   const pendingRequirements = useMemo(() => {
     const requirements: string[] = [];
+    const needsSchedule = !formData.allow_anytime;
+    const scheduleComplete = needsSchedule ? Boolean(formData.start_date && formData.end_date && formData.status) : true;
     const basicFieldsComplete = Boolean(
       formData.title.trim() &&
       formData.description.trim() &&
@@ -559,23 +592,24 @@ export default function CreateExamPage() {
       formData.duration > 0 &&
       formData.total_marks > 0 &&
       formData.total_questions > 0 &&
-      formData.start_date &&
-      formData.end_date
+      scheduleComplete
     );
 
     if (!basicFieldsComplete) {
       requirements.push('Fill in all basic exam details (title, description, duration, totals, dates, category).');
     }
 
-    if (sections.length === 0) {
-      requirements.push('Add at least one section with questions.');
+    const englishSections = sections.filter(section => section.language === 'en');
+
+    if (englishSections.length === 0) {
+      requirements.push('Add at least one English section with questions.');
     } else {
-      const invalidSection = sections.some(section => !section.name.trim() || section.questions.length === 0);
-      if (invalidSection) {
-        requirements.push('Every section needs a name and at least one question.');
+      const invalidEnglishSection = englishSections.some(section => !section.name.trim() || section.questions.length === 0);
+      if (invalidEnglishSection) {
+        requirements.push('Every English section needs a name and at least one question.');
       }
 
-      const hasInvalidQuestions = sections.some(section =>
+      const hasInvalidEnglishQuestions = englishSections.some(section =>
         section.questions.some(question => {
           if (!question.text.trim() || question.marks <= 0) return true;
           if (question.type === 'numerical') return false;
@@ -585,8 +619,8 @@ export default function CreateExamPage() {
         })
       );
 
-      if (hasInvalidQuestions) {
-        requirements.push('Ensure every question has text, marks, valid options, and at least one correct answer.');
+      if (hasInvalidEnglishQuestions) {
+        requirements.push('Ensure every English question has text, marks, valid options, and at least one correct answer.');
       }
     }
 
@@ -603,66 +637,57 @@ export default function CreateExamPage() {
     e.preventDefault();
     setLoading(true);
 
-    const sectionCount = sections.length;
-    const questionCount = sections.reduce((sum, section) => sum + section.questions.length, 0);
-    const optionCount = sections.reduce((sum, section) => sum + section.questions.reduce((qSum, question) => qSum + question.options.length, 0), 0);
-    const totalSteps = Math.max(1, 1 + sectionCount + questionCount + optionCount);
-
-    setUploadProgress({ total: totalSteps, completed: 0, current: 'Creating exam...' });
-
-    const advanceProgress = (current: string) => {
-      setUploadProgress(prev => ({
-        total: prev.total || totalSteps,
-        completed: Math.min(prev.completed + 1, prev.total || totalSteps),
-        current
-      }));
-    };
+    setUploadProgress({ total: 3, completed: 0, current: 'Preparing exam data...' });
 
     try {
-      const exam = await adminService.createExam(formData, logoFile || undefined, thumbnailFile || undefined);
-      advanceProgress('Exam created');
-      
-      for (const section of sections) {
-        const sectionData = await adminService.createSection({
-          exam_id: exam.id,
-          name: section.name,
-          total_questions: section.total_questions,
-          marks_per_question: section.marks_per_question,
-          duration: section.duration || undefined,
-          section_order: section.section_order
-        });
-        advanceProgress(`Section "${section.name}" saved`);
-
-        for (const question of section.questions) {
-          const questionData = await adminService.createQuestion(
-            {
-              exam_id: exam.id,
-              section_id: sectionData.id,
-              type: question.type,
-              text: question.text,
-              marks: question.marks,
-              negative_marks: question.negative_marks,
-              explanation: question.explanation,
-              difficulty: question.difficulty
-            },
-            question.image || undefined
-          );
-          advanceProgress(`Question "${question.text.slice(0, 40) || 'Untitled'}" saved`);
-
-          for (const option of question.options) {
-            await adminService.createOption(
-              {
-                question_id: questionData.id,
-                option_text: option.option_text,
-                is_correct: option.is_correct,
-                option_order: option.option_order
-              },
-              option.image || undefined
-            );
-            advanceProgress('Option saved');
-          }
-        }
+      const payload: any = { ...formData };
+      if (payload.exam_type !== 'past_paper') {
+        payload.show_in_mock_tests = false;
       }
+      if (payload.allow_anytime) {
+        delete payload.status;
+        delete payload.start_date;
+        delete payload.end_date;
+      }
+
+      setUploadProgress({ total: 3, completed: 1, current: 'Uploading exam content...' });
+
+      const sectionsPayload = sections.map(section => ({
+        name: section.name,
+        name_hi: section.name_hi || null,
+        total_questions: section.questions.length,
+        marks_per_question: section.marks_per_question,
+        duration: section.duration || null,
+        section_order: section.section_order,
+        questions: section.questions.map(question => ({
+          type: question.type,
+          text: question.text,
+          text_hi: question.text_hi || null,
+          marks: question.marks,
+          negative_marks: question.negative_marks,
+          explanation: question.explanation || null,
+          explanation_hi: question.explanation_hi || null,
+          difficulty: question.difficulty,
+          image_url: null,
+          question_order: null,
+          options: question.options.map(option => ({
+            option_text: option.option_text,
+            option_text_hi: option.option_text_hi || null,
+            is_correct: option.is_correct,
+            option_order: option.option_order,
+            image_url: null
+          }))
+        }))
+      }));
+
+      await adminService.bulkCreateExamWithContent(
+        payload,
+        sectionsPayload,
+        logoFile || undefined,
+        thumbnailFile || undefined
+      );
+
+      setUploadProgress({ total: 3, completed: 3, current: 'Exam created successfully!' });
 
       alert('Exam created successfully with all sections and questions!');
       router.push('/admin/exams');
@@ -745,30 +770,121 @@ export default function CreateExamPage() {
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                name="is_published"
-                checked={formData.is_published}
-                onChange={handleChange}
-                className="h-4 w-4 rounded border-border"
-              />
-              <label className="text-sm font-medium text-foreground">
-                Publish exam (visible to users)
-              </label>
+            <div className="md:col-span-2 grid gap-4 lg:grid-cols-2">
+              <div className={`rounded-2xl border ${formData.is_published ? 'border-primary/40 bg-primary/5' : 'border-border'} p-4 flex items-start gap-4`}>
+                <CheckCircle2 className="h-8 w-8 text-primary shrink-0 mt-1" />
+                <div className="flex-1 space-y-1">
+                  <p className="font-semibold text-foreground">Publish exam (visible to users)</p>
+                  <p className="text-sm text-muted-foreground">Toggle on to push this exam to the learner catalog once content is ready.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  name="is_published"
+                  checked={formData.is_published}
+                  onChange={handleChange}
+                  className="h-5 w-5 accent-primary"
+                />
+              </div>
+
+              <div className={`rounded-2xl border ${formData.allow_anytime ? 'border-secondary/40 bg-secondary/5' : 'border-border'} p-4 flex items-start gap-4`}>
+                <Clock3 className="h-8 w-8 text-secondary shrink-0 mt-1" />
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-foreground">Allow users to attempt anytime</p>
+                    <input
+                      type="checkbox"
+                      name="allow_anytime"
+                      checked={formData.allow_anytime}
+                      onChange={handleChange}
+                      className="h-5 w-5 accent-secondary"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Ignore schedule windows and keep this exam open 24/7.</p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 md:col-span-2">
-              <input
-                type="checkbox"
-                name="allow_anytime"
-                checked={formData.allow_anytime}
-                onChange={handleChange}
-                className="h-4 w-4 rounded border-border"
-              />
-              <label className="text-sm font-medium text-foreground">
-                Allow users to attempt anytime (ignore schedule window)
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-foreground mb-3">
+                Exam Type *
               </label>
+              <div className="grid gap-3 lg:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, exam_type: 'past_paper' }))}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    formData.exam_type === 'past_paper'
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <FileQuestion className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Past Question Paper</p>
+                      <p className="text-xs text-muted-foreground mt-1">Previous year exam papers for practice</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, exam_type: 'mock_test' }))}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    formData.exam_type === 'mock_test'
+                      ? 'border-secondary bg-secondary/5 ring-2 ring-secondary/20'
+                      : 'border-border hover:border-secondary/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-6 w-6 text-secondary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Mock Test</p>
+                      <p className="text-xs text-muted-foreground mt-1">Full-length practice test with timer</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, exam_type: 'short_quiz' }))}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    formData.exam_type === 'short_quiz'
+                      ? 'border-accent bg-accent/5 ring-2 ring-accent/20'
+                      : 'border-border hover:border-accent/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="h-6 w-6 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Short Quiz</p>
+                      <p className="text-xs text-muted-foreground mt-1">Quick assessment with fewer questions</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {formData.exam_type === 'past_paper' && (
+                <div className="mt-4 p-4 rounded-xl border border-border bg-muted/30">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      name="show_in_mock_tests"
+                      checked={formData.show_in_mock_tests}
+                      onChange={handleChange}
+                      className="h-5 w-5 accent-primary mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <label className="text-sm font-medium text-foreground cursor-pointer">
+                        Also display in Mock Tests section
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enable this to show this past paper in both "Past Papers" and "Mock Tests" sections
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-2">
@@ -922,22 +1038,24 @@ export default function CreateExamPage() {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Status *
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="upcoming">Upcoming</option>
-                <option value="ongoing">Ongoing</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
+            {!formData.allow_anytime && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Status *
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  required={!formData.allow_anytime}
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="upcoming">Upcoming</option>
+                  <option value="ongoing">Ongoing</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -997,31 +1115,35 @@ export default function CreateExamPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Start Date *
-              </label>
-              <Input
-                type="date"
-                name="start_date"
-                value={formData.start_date}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            {!formData.allow_anytime && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Start Date *
+                  </label>
+                  <Input
+                    type="date"
+                    name="start_date"
+                    value={formData.start_date}
+                    onChange={handleChange}
+                    required={!formData.allow_anytime}
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                End Date *
-              </label>
-              <Input
-                type="date"
-                name="end_date"
-                value={formData.end_date}
-                onChange={handleChange}
-                required
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    End Date *
+                  </label>
+                  <Input
+                    type="date"
+                    name="end_date"
+                    value={formData.end_date}
+                    onChange={handleChange}
+                    required={!formData.allow_anytime}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -1203,20 +1325,33 @@ export default function CreateExamPage() {
         {/* Sections and Questions Builder */}
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-xl font-bold text-foreground">Sections & Questions</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="font-display text-xl font-bold text-foreground">Sections & Questions</h2>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-muted-foreground">Language:</label>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'en' | 'hi')}
+                  className="px-3 py-1.5 border border-border rounded-lg text-sm bg-background"
+                >
+                  <option value="en">English</option>
+                  <option value="hi">हिंदी (Hindi)</option>
+                </select>
+              </div>
+            </div>
             <Button type="button" onClick={addSection} variant="outline">
               <Plus className="h-4 w-4 mr-2" />
               Add Section
             </Button>
           </div>
 
-          {sections.length === 0 ? (
+          {sectionsForDisplay.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p className="mb-4">No sections added yet. Click "Add Section" to create your first section.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {sections.map((section) => (
+              {sectionsForDisplay.map((section) => (
                 <div key={section.id} className="border border-border rounded-lg overflow-hidden">
                   <div className="bg-muted/30 p-4 flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">
@@ -1229,9 +1364,9 @@ export default function CreateExamPage() {
                         {section.expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </Button>
                       <Input
-                        value={section.name}
-                        onChange={(e) => updateSection(section.id, 'name', e.target.value)}
-                        placeholder="Section name"
+                        value={selectedLanguage === 'en' ? section.name : (section.name_hi || '')}
+                        onChange={(e) => updateSection(section.id, selectedLanguage === 'en' ? 'name' : 'name_hi', e.target.value)}
+                        placeholder={selectedLanguage === 'en' ? 'Section name' : 'अनुभाग का नाम'}
                         className="max-w-xs"
                       />
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1376,11 +1511,13 @@ export default function CreateExamPage() {
                                   </div>
 
                                   <div>
-                                    <label className="block text-sm font-medium mb-1">Question Text *</label>
+                                    <label className="block text-sm font-medium mb-1">
+                                      Question Text ({selectedLanguage === 'en' ? 'English' : 'Hindi'}) *
+                                    </label>
                                     <textarea
-                                      value={question.text}
-                                      onChange={(e) => updateQuestion(section.id, question.id, 'text', e.target.value)}
-                                      placeholder="Enter question text..."
+                                      value={selectedLanguage === 'en' ? question.text : (question.text_hi || '')}
+                                      onChange={(e) => updateQuestion(section.id, question.id, selectedLanguage === 'en' ? 'text' : 'text_hi', e.target.value)}
+                                      placeholder={selectedLanguage === 'en' ? 'Enter question text...' : 'प्रश्न पाठ दर्ज करें...'}
                                       rows={3}
                                       className="w-full px-3 py-2 border border-border rounded-lg text-sm"
                                     />
@@ -1462,9 +1599,9 @@ export default function CreateExamPage() {
                                               </div>
                                               <div className="flex-1 space-y-2">
                                                 <Input
-                                                  value={option.option_text}
-                                                  onChange={(e) => updateOption(section.id, question.id, option.id, 'option_text', e.target.value)}
-                                                  placeholder={`Option ${optIndex + 1}`}
+                                                  value={selectedLanguage === 'en' ? option.option_text : (option.option_text_hi || '')}
+                                                  onChange={(e) => updateOption(section.id, question.id, option.id, selectedLanguage === 'en' ? 'option_text' : 'option_text_hi', e.target.value)}
+                                                  placeholder={selectedLanguage === 'en' ? `Option ${optIndex + 1}` : `विकल्प ${optIndex + 1}`}
                                                   className="text-sm"
                                                 />
                                                 {optionNeedsImage && (
@@ -1530,11 +1667,13 @@ export default function CreateExamPage() {
                                   )}
 
                                   <div>
-                                    <label className="block text-sm font-medium mb-1">Explanation (Optional)</label>
+                                    <label className="block text-sm font-medium mb-1">
+                                      Explanation ({selectedLanguage === 'en' ? 'English' : 'Hindi'}) (Optional)
+                                    </label>
                                     <textarea
-                                      value={question.explanation}
-                                      onChange={(e) => updateQuestion(section.id, question.id, 'explanation', e.target.value)}
-                                      placeholder="Explain the correct answer..."
+                                      value={selectedLanguage === 'en' ? question.explanation : (question.explanation_hi || '')}
+                                      onChange={(e) => updateQuestion(section.id, question.id, selectedLanguage === 'en' ? 'explanation' : 'explanation_hi', e.target.value)}
+                                      placeholder={selectedLanguage === 'en' ? 'Explain the correct answer...' : 'सही उत्तर की व्याख्या करें...'}
                                       rows={2}
                                       className="w-full px-3 py-2 border border-border rounded-lg text-sm"
                                     />

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getExamUrl } from '@/lib/utils/examUrl';
 import Image from 'next/image';
 import { 
   ArrowRight, BookOpen, Users, Award, CheckCircle,
@@ -13,6 +14,7 @@ import { ExamCard } from '@/components/exam/ExamCard';
 import { ArticleCard } from '@/components/article/ArticleCard';
 import { examService } from '@/lib/api/examService';
 import { articleService } from '@/lib/api/articleService';
+import { taxonomyService, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { Exam, Article } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 
@@ -71,24 +73,67 @@ const faqs = [
 export default function Index() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, Subcategory[]>>({});
+  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [examsData, articlesData] = await Promise.all([
+        const [examsData, articlesData, categoriesData] = await Promise.all([
           examService.getFeaturedExams(),
           articleService.getFeaturedArticles(),
+          taxonomyService.getCategories()
         ]);
         setExams(examsData);
         setArticles(articlesData);
+        const visibleCategories = categoriesData
+          .filter((category) => category.is_active !== false)
+          .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        setCategories(visibleCategories);
+        if (visibleCategories.length > 0) {
+          setSelectedCategoryId(visibleCategories[0].id);
+        }
       } finally {
         setIsLoading(false);
+        setCategoriesLoading(false);
       }
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (selectedCategoryId && !subcategoryMap[selectedCategoryId]) {
+      fetchSubcategories(selectedCategoryId);
+    }
+  }, [selectedCategoryId, subcategoryMap]);
+
+  const fetchSubcategories = async (categoryId: string) => {
+    setSubcategoriesLoading(true);
+    try {
+      const data = await taxonomyService.getSubcategories(categoryId);
+      const filtered = (data || []).filter((sub) => sub.name && sub.slug);
+      setSubcategoryMap((prev) => ({
+        ...prev,
+        [categoryId]: filtered
+      }));
+    } catch (error) {
+      console.error('Failed to load subcategories:', error);
+    } finally {
+      setSubcategoriesLoading(false);
+    }
+  };
+
+  const selectedCategory = selectedCategoryId
+    ? categories.find((category) => category.id === selectedCategoryId)
+    : null;
+  const selectedCategorySubcategories = selectedCategoryId
+    ? subcategoryMap[selectedCategoryId] || []
+    : [];
 
   return (
     <div className="min-h-screen">
@@ -135,6 +180,131 @@ export default function Index() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="py-16 bg-background border-b border-border">
+        <div className="container-main">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-primary font-semibold mb-2">Choose your exam</p>
+              <h2 className="font-display text-4xl font-bold text-foreground mb-3">
+                Browse categories curated for every ambition
+              </h2>
+              <p className="text-muted-foreground max-w-2xl">
+                Discover structured preparation paths for UPSC, Banking, Railways, Defence, Engineering, and more—each with tailored exams, timelines, and resources inspired by the Prepp experience.
+              </p>
+            </div>
+            <Link href="/exams">
+              <Button variant="outline" className="w-full md:w-auto">
+                View all exams
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+
+          {categoriesLoading ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
+              <p className="text-muted-foreground">No categories available yet. Add them from the admin panel to showcase curated exam journeys here.</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategoryId(category.id)}
+                    className={`px-5 py-2 rounded-full border whitespace-nowrap text-sm font-medium transition-all ${
+                      selectedCategoryId === category.id
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : 'bg-card border-border hover:border-primary/40'
+                    }`}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-6">
+                {selectedCategory ? (
+                  <>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                      <div>
+                        <p className="text-sm uppercase tracking-wide text-muted-foreground">Explore tracks</p>
+                        <h3 className="font-display text-2xl font-bold text-foreground">
+                          {selectedCategory.name}
+                        </h3>
+                        {selectedCategory.description && (
+                          <p className="text-muted-foreground mt-1 max-w-2xl">
+                            {selectedCategory.description}
+                          </p>
+                        )}
+                      </div>
+                      <Link href={`/${selectedCategory.slug}`}>
+                        <Button variant="outline">
+                          Visit category
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+
+                    {subcategoriesLoading && !selectedCategorySubcategories.length ? (
+                      <div className="flex justify-center py-12">
+                        <LoadingSpinner />
+                      </div>
+                    ) : selectedCategorySubcategories.length === 0 ? (
+                      <div className="text-center py-12">
+                        <p className="text-muted-foreground">No subcategories available yet.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          {selectedCategorySubcategories.slice(0, 8).map((sub) => (
+                            <Link
+                              key={sub.id}
+                              href={`/${selectedCategory.slug}/${sub.slug}`}
+                              className="border border-border rounded-xl p-4 hover:border-primary/50 hover:shadow-md transition-all"
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                {selectedCategory.logo_url ? (
+                                  <img src={selectedCategory.logo_url} alt="" className="w-10 h-10 object-contain" />
+                                ) : (
+                                  <BookOpen className="h-5 w-5 text-primary" />
+                                )}
+                                <p className="font-semibold text-foreground">{sub.name}</p>
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
+                                {sub.description || 'Focused coverage, updates, and resources.'}
+                              </p>
+                            </Link>
+                          ))}
+                        </div>
+                        {selectedCategorySubcategories.length > 8 && (
+                          <div className="flex justify-center mt-6">
+                            <Link href={`/${selectedCategory.slug}`}>
+                              <Button variant="secondary">
+                                View more
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">Select a category to view subcategories.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

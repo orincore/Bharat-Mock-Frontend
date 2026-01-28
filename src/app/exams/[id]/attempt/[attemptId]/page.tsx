@@ -25,6 +25,7 @@ interface QuestionWithStatus extends Question {
 interface SectionWithQuestions {
   id: string;
   name: string;
+  name_hi?: string;
   totalQuestions: number;
   marksPerQuestion: number;
   duration?: number;
@@ -53,6 +54,8 @@ export default function ExamAttemptPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
+  const [languageSelectionMade, setLanguageSelectionMade] = useState(false);
 
   const hasSelectedAnswer = (() => {
     if (selectedAnswer === null || selectedAnswer === undefined) return false;
@@ -75,8 +78,16 @@ export default function ExamAttemptPage() {
           examService.getExamQuestions(examId, attemptId)
         ]);
         
+        if (!examData) {
+          throw new Error('Exam not found');
+        }
+
         setExam(examData);
-        setTimeRemaining(examData.duration * 60);
+        if (!examData.supports_hindi) {
+          setSelectedLanguage('en');
+          setLanguageSelectionMade(true);
+        }
+        setTimeRemaining((examData.duration || 0) * 60);
         
         const allQuestions: QuestionWithStatus[] = questionsResponse.questions.map((q: any) => ({
           ...q,
@@ -317,6 +328,40 @@ export default function ExamAttemptPage() {
     );
   }
 
+  const supportsHindi = exam?.supports_hindi;
+  const handleLanguageSelect = (language: 'en' | 'hi') => {
+    setSelectedLanguage(language);
+    setLanguageSelectionMade(true);
+  };
+
+  const handleStartExamFlow = () => {
+    if (supportsHindi && !languageSelectionMade) return;
+    setShowInstructions(false);
+  };
+
+  const getLocalizedSectionName = (section?: SectionWithQuestions) => {
+    if (!section) return '';
+    if (selectedLanguage === 'hi' && section.name_hi) {
+      return section.name_hi;
+    }
+    return section.name;
+  };
+
+  const getLocalizedQuestionText = (question?: QuestionWithStatus) => {
+    if (!question) return '';
+    if (selectedLanguage === 'hi' && question.text_hi) {
+      return question.text_hi;
+    }
+    return question.text;
+  };
+
+  const getLocalizedOptionText = (option: Question['options'][number]) => {
+    if (selectedLanguage === 'hi' && option.option_text_hi) {
+      return option.option_text_hi;
+    }
+    return option.option_text;
+  };
+
   if (showInstructions) {
     return (
       <div className="min-h-screen bg-muted/30 py-12">
@@ -328,6 +373,45 @@ export default function ExamAttemptPage() {
             </div>
 
             <div className="space-y-6">
+              {supportsHindi && (
+                <div className="border border-primary/20 rounded-2xl p-4 bg-primary/5">
+                  <h2 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    <span>Select Exam Language</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground uppercase tracking-wide">
+                      Required
+                    </span>
+                  </h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Choose your language before starting. This choice is locked for the entire attempt.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { value: 'en', label: 'English', helper: 'Recommended if you prefer English content' },
+                      { value: 'hi', label: 'हिंदी', helper: 'हिंदी में प्रश्न देखने के लिए चुनें' }
+                    ].map(lang => (
+                      <button
+                        key={lang.value}
+                        type="button"
+                        onClick={() => handleLanguageSelect(lang.value as 'en' | 'hi')}
+                        className={`text-left rounded-xl border-2 p-4 transition-all ${
+                          selectedLanguage === lang.value
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/40'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-lg">{lang.label}</span>
+                          <span className={`w-3 h-3 rounded-full border ${
+                            selectedLanguage === lang.value ? 'bg-primary border-primary' : 'border-muted-foreground'
+                          }`} />
+                        </div>
+                        <p className="text-sm text-muted-foreground">{lang.helper}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h2 className="font-semibold text-lg mb-2">General Instructions</h2>
                 <ul className="list-disc list-inside space-y-2 text-muted-foreground">
@@ -387,7 +471,13 @@ export default function ExamAttemptPage() {
 
             <div className="flex justify-end gap-4 mt-8">
               <Button variant="outline" onClick={() => router.push(`/exams/${examId}`)}>Cancel</Button>
-              <Button onClick={() => setShowInstructions(false)} size="lg">Start Exam</Button>
+              <Button
+                onClick={handleStartExamFlow}
+                size="lg"
+                disabled={supportsHindi && !languageSelectionMade}
+              >
+                {supportsHindi && !languageSelectionMade ? 'Select language to start' : 'Start Exam'}
+              </Button>
             </div>
           </div>
         </div>
@@ -413,10 +503,14 @@ export default function ExamAttemptPage() {
             <div>
               <h1 className="font-display text-xl font-bold">{exam?.title}</h1>
               <p className="text-sm text-muted-foreground">
-                {currentSection?.name} - Question {currentQuestionIndex + 1} of {currentSectionQuestions.length}
+                {getLocalizedSectionName(currentSection)} - Question {currentQuestionIndex + 1} of {currentSectionQuestions.length}
               </p>
             </div>
             <div className="flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm font-medium">
+                <span className="text-muted-foreground">Language:</span>
+                <span className="uppercase">{selectedLanguage === 'hi' ? 'हिंदी' : 'English'}</span>
+              </div>
               <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-lg font-bold ${
                 timeRemaining < 300 ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
               }`}>
@@ -450,7 +544,7 @@ export default function ExamAttemptPage() {
                       }`}
                     >
                       <div className="text-left">
-                        <p className="font-semibold text-sm">{section.name}</p>
+                        <p className="font-semibold text-sm">{getLocalizedSectionName(section)}</p>
                         <p className="text-xs opacity-80">
                           {sectionStats.answered}/{section.totalQuestions} answered
                         </p>
@@ -476,7 +570,7 @@ export default function ExamAttemptPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-lg leading-relaxed">{currentQuestion?.text}</p>
+                    <p className="text-lg leading-relaxed">{getLocalizedQuestionText(currentQuestion)}</p>
                   </div>
                 </div>
                 {currentQuestion?.image_url && (
@@ -517,7 +611,7 @@ export default function ExamAttemptPage() {
                           <span className="font-medium text-sm text-muted-foreground">
                             {String.fromCharCode(65 + idx)}.
                           </span>
-                          <span>{option.option_text}</span>
+                          <span>{getLocalizedOptionText(option)}</span>
                         </div>
                         {resolveOptionImage(option) && (
                           <img

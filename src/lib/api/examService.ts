@@ -87,9 +87,34 @@ export const examService = {
     };
   },
 
-  async getExamById(id: string): Promise<Exam | null> {
+  async getExamById(id: string, options?: { attemptId?: string }): Promise<Exam | null> {
     try {
-      const response = await apiClient.get<SingleExamResponse>(`/exams/${id}`);
+      const trimmedId = id?.trim();
+      if (!trimmedId) {
+        throw new Error('Invalid exam identifier');
+      }
+
+      const isUrlPath = trimmedId.includes('/');
+      const encodePathSegments = (value: string) =>
+        value
+          .split('/')
+          .filter(Boolean)
+          .map(segment => encodeURIComponent(segment))
+          .join('/');
+
+      const appendQuery = (base: string) => {
+        if (!options?.attemptId) return base;
+        const separator = base.includes('?') ? '&' : '?';
+        return `${base}${separator}attemptId=${encodeURIComponent(options.attemptId)}`;
+      };
+
+      const path = appendQuery(
+        isUrlPath
+          ? `/exams/path/${encodePathSegments(trimmedId)}`
+          : `/exams/${encodeURIComponent(trimmedId)}`
+      );
+
+      const response = await apiClient.get<SingleExamResponse>(path, true);
       return response.data;
     } catch (error) {
       return null;

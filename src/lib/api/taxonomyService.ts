@@ -5,6 +5,10 @@ export interface Category {
   name: string;
   slug: string;
   description?: string;
+  logo_url?: string | null;
+  icon?: string | null;
+  display_order?: number;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }

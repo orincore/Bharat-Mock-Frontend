@@ -12,9 +12,9 @@ export interface Exam {
   subcategory_id?: string;
   difficulty: 'easy' | 'medium' | 'hard';
   difficulty_id?: string;
-  status: 'upcoming' | 'ongoing' | 'completed';
-  start_date: string;
-  end_date: string;
+  status: 'upcoming' | 'ongoing' | 'completed' | 'anytime';
+  start_date?: string | null;
+  end_date?: string | null;
   pass_percentage: number;
   is_free: boolean;
   price: number;
@@ -31,6 +31,9 @@ export interface Exam {
   syllabus?: string[];
   attempts?: number;
   allow_anytime?: boolean;
+  exam_type?: 'past_paper' | 'mock_test' | 'short_quiz';
+  show_in_mock_tests?: boolean;
+  supports_hindi?: boolean;
 }
 
 export interface ExamHistoryEntry {
@@ -52,6 +55,7 @@ export interface Section {
   id: string;
   exam_id: string;
   name: string;
+  name_hi?: string;
   total_questions: number;
   marks_per_question: number;
   duration?: number;
@@ -69,9 +73,11 @@ export interface Question {
   section_id: string;
   type: QuestionType;
   text: string;
+  text_hi?: string;
   marks: number;
   negative_marks: number;
   explanation?: string;
+  explanation_hi?: string;
   image_url?: string;
   difficulty: 'easy' | 'medium' | 'hard';
   question_order?: number;
@@ -84,6 +90,7 @@ export interface Option {
   id: string;
   question_id: string;
   option_text: string;
+  option_text_hi?: string;
   is_correct: boolean;
   option_order: number;
   image_url?: string;
@@ -255,6 +262,9 @@ export interface User {
   role: 'user' | 'admin';
   is_verified: boolean;
   is_blocked: boolean;
+  is_onboarded?: boolean;
+  auth_provider?: 'email' | 'google';
+  password_hash?: string;
   created_at: string;
   updated_at: string;
   education?: Education;

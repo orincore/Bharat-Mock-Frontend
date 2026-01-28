@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/context/AuthContext';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import type { Education, User as UserType } from '@/types';
+import { resultService } from '@/lib/api/resultService';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -17,6 +19,9 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [stats, setStats] = useState({ examsTaken: 0, daysActive: 0, avgScore: 0 });
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -53,6 +58,26 @@ export default function ProfilePage() {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!isAuthenticated) return;
+      setIsStatsLoading(true);
+      setStatsError('');
+
+      try {
+        const data = await resultService.getUserStats();
+        setStats(data);
+      } catch (err: any) {
+        console.error('Failed to load stats:', err);
+        setStatsError(err.message || 'Unable to load exam statistics');
+      } finally {
+        setIsStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [isAuthenticated]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -159,9 +184,14 @@ export default function ProfilePage() {
             {/* Avatar Section */}
             <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-8">
               <div className="flex items-center gap-6">
-                <div className="h-24 w-24 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-3xl font-bold">
-                  {user?.name?.charAt(0) || 'U'}
-                </div>
+                <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
+                  {user?.avatar_url ? (
+                    <AvatarImage src={user.avatar_url} alt={user?.name || 'User avatar'} />
+                  ) : null}
+                  <AvatarFallback className="text-3xl font-bold">
+                    {user?.name?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <h2 className="font-display text-2xl font-bold text-foreground">
                     {user?.name}
@@ -387,10 +417,15 @@ export default function ProfilePage() {
                   <GraduationCap className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">0</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {isStatsLoading ? '—' : stats.examsTaken}
+                  </p>
                   <p className="text-sm text-muted-foreground">Exams Taken</p>
                 </div>
               </div>
+              {statsError && (
+                <p className="text-xs text-destructive">{statsError}</p>
+              )}
             </div>
 
             <div className="bg-card p-6 rounded-xl border border-border">
@@ -399,7 +434,9 @@ export default function ProfilePage() {
                   <Calendar className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">0</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {isStatsLoading ? '—' : stats.daysActive}
+                  </p>
                   <p className="text-sm text-muted-foreground">Days Active</p>
                 </div>
               </div>
@@ -411,7 +448,9 @@ export default function ProfilePage() {
                   <Mail className="h-5 w-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">0%</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {isStatsLoading ? '—' : `${stats.avgScore}%`}
+                  </p>
                   <p className="text-sm text-muted-foreground">Avg Score</p>
                 </div>
               </div>

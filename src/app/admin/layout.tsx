@@ -11,12 +11,14 @@ import {
   Users, 
   Settings,
   LogOut,
-  BookOpen
+  BookOpen,
+  FolderTree
 } from 'lucide-react';
 
 const adminNavItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Exams', href: '/admin/exams', icon: FileText },
+  { name: 'Categories', href: '/admin/categories', icon: FolderTree },
   { name: 'Users', href: '/admin/users', icon: Users },
 ];
 

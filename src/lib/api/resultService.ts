@@ -22,6 +22,15 @@ interface AnswerReviewResponse {
   data: any[];
 }
 
+interface UserStatsResponse {
+  success: boolean;
+  data: {
+    examsTaken: number;
+    daysActive: number;
+    avgScore: number;
+  };
+}
+
 export const resultService = {
   async getResults(page: number = 1, limit: number = 10): Promise<PaginatedResponse<Result>> {
     const response = await apiClient.get<ResultsResponse>(
@@ -52,6 +61,11 @@ export const resultService = {
       `/results/${resultId}/review`,
       true
     );
+    return response.data;
+  },
+
+  async getUserStats(): Promise<UserStatsResponse['data']> {
+    const response = await apiClient.get<UserStatsResponse>('/results/stats', true);
     return response.data;
   }
 };

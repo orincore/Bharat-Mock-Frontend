@@ -11,7 +11,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  completePasswordReset: (token: string, newPassword: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
@@ -150,8 +151,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   };
 
-  const resetPassword = async (email: string) => {
+  const requestPasswordReset = async (email: string) => {
     await authService.forgotPassword(email);
+  };
+
+  const completePasswordReset = async (token: string, newPassword: string) => {
+    await authService.resetPassword(token, newPassword);
   };
 
   const updateProfile = async (data: Partial<User>) => {
@@ -178,7 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
-        resetPassword,
+        requestPasswordReset,
+        completePasswordReset,
         updateProfile
       }}
     >

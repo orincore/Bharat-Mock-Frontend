@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ForgotPasswordPage() {
-  const { resetPassword } = useAuth();
+  const { requestPasswordReset } = useAuth();
   
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
     setError('');
 
     try {
-      await resetPassword(email);
+      await requestPasswordReset(email);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send reset email. Please try again.');
@@ -42,20 +42,27 @@ export default function ForgotPasswordPage() {
               Check Your Email
             </h2>
             <p className="mt-4 text-muted-foreground">
-              We've sent password reset instructions to <strong>{email}</strong>
+              We've sent a 6-digit verification code to <strong>{email}</strong>
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              If you don't see the email, check your spam folder.
+              Enter that code on the next screen to set a new password.
             </p>
           </div>
 
           <div className="bg-card p-8 rounded-xl border border-border shadow-sm">
-            <Link href="/login">
-              <Button variant="outline" className="w-full" size="lg">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Login
-              </Button>
-            </Link>
+            <div className="grid gap-3">
+              <Link href="/reset-password">
+                <Button className="w-full" size="lg">
+                  Enter Reset Code
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button variant="outline" className="w-full" size="lg">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Login
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

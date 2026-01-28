@@ -1,6 +1,49 @@
 import { apiClient } from './client';
 import { Exam, User, FilterOptions, PaginatedResponse } from '@/types';
 
+export interface AdminUserStats {
+  totalExamsTaken: number;
+  averageScore: number;
+  bestScore: number;
+  lastActive: string | null;
+  totalMarksEarned: number;
+  totalMarksPossible: number;
+}
+
+export interface AdminUserDetails {
+  user: User;
+  stats: AdminUserStats;
+  recentResults: Array<{
+    id: string;
+    score: number;
+    total_marks: number;
+    percentage: number;
+    status: string;
+    created_at: string;
+    exam_id: string;
+    exam: {
+      id: string;
+      title: string;
+      category?: string;
+      difficulty?: string;
+    } | null;
+  }>;
+  recentAttempts: Array<{
+    id: string;
+    exam_id: string;
+    started_at: string;
+    submitted_at: string | null;
+    time_taken: number | null;
+    is_submitted: boolean;
+    exam: {
+      id: string;
+      title: string;
+      category?: string;
+      difficulty?: string;
+    } | null;
+  }>;
+}
+
 interface CreateExamData {
   title: string;
   description: string;
@@ -174,6 +217,19 @@ export const adminService = {
     await apiClient.delete(`/admin/exams/${id}`, true);
   },
 
+  async bulkCreateExamWithContent(examData: any, sections: any[], logo?: File, thumbnail?: File): Promise<any> {
+    const formData = new FormData();
+    
+    formData.append('exam', JSON.stringify(examData));
+    formData.append('sections', JSON.stringify(sections));
+
+    if (logo) formData.append('logo', logo);
+    if (thumbnail) formData.append('thumbnail', thumbnail);
+
+    const response = await apiClient.postFormData<{ success: boolean; data: any }>('/admin/exams/bulk', formData, true);
+    return response.data;
+  },
+
   async createSection(data: CreateSectionData) {
     const response = await apiClient.post<{ success: boolean; data: any }>('/admin/sections', data, true);
     return response.data;
@@ -285,6 +341,11 @@ export const adminService = {
 
   async toggleUserBlock(userId: string): Promise<User> {
     const response = await apiClient.put<{ success: boolean; data: User }>(`/admin/users/${userId}/toggle-block`, {}, true);
+    return response.data;
+  },
+
+  async getUserDetails(userId: string): Promise<AdminUserDetails> {
+    const response = await apiClient.get<{ success: boolean; data: AdminUserDetails }>(`/admin/users/${userId}`, true);
     return response.data;
   }
 };
