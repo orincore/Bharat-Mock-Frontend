@@ -260,7 +260,6 @@ export default function PageEditorPage() {
 
       {/* Editor */}
       <BlockEditor
-        subcategoryId={subcategoryId}
         sections={sections}
         onSave={handleSave}
       />

@@ -31,7 +31,6 @@ interface Section {
 }
 
 interface BlockEditorProps {
-  subcategoryId: string;
   sections: Section[];
   onSave: (sections: Section[]) => void;
 }
@@ -57,7 +56,6 @@ const BLOCK_TYPES = [
 ];
 
 export const BlockEditor: React.FC<BlockEditorProps> = ({ 
-  subcategoryId, 
   sections: initialSections, 
   onSave 
 }) => {
@@ -65,7 +63,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [isPreview, setIsPreview] = useState(false);
   const [showBlockPicker, setShowBlockPicker] = useState<string | null>(null);
-  const [editingBlock, setEditingBlock] = useState<Block | null>(null);
+  const [openBlockEditor, setOpenBlockEditor] = useState<string | null>(null);
 
   useEffect(() => {
     setSections(initialSections.map(section => ({
@@ -113,7 +111,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         : s
     ));
     setShowBlockPicker(null);
-    setEditingBlock(newBlock);
+    setOpenBlockEditor(newBlock.id);
   };
 
   const updateBlock = (sectionId: string, blockId: string, updates: Partial<Block>) => {
@@ -227,13 +225,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
               <Plus className="w-4 h-4" />
               <span>Add Section</span>
             </button>
-            <button
-              onClick={handleSave}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center space-x-2"
-            >
-              <Save className="w-4 h-4" />
-              <span>Save Changes</span>
-            </button>
           </div>
         </div>
 
@@ -321,123 +312,114 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                         No blocks in this section. Click "Add Block" to add content.
                       </div>
                     ) : (
-                      section.blocks.map((block, blockIndex) => (
-                        <div
-                          key={block.id}
-                          className={`relative group mb-4 ${
-                            selectedBlock === block.id ? 'ring-2 ring-blue-500 rounded' : ''
-                          }`}
-                          onClick={() => {
-                            setSelectedBlock(block.id);
-                          }}
-                          onDoubleClick={() => {
-                            if (!isPreview) {
-                              setEditingBlock(block);
-                            }
-                          }}
-                        >
-                          {/* Block Controls */}
-                          {!isPreview && (
-                            <div className="absolute -left-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col space-y-1">
-                              <button
-                                onClick={() => moveBlock(section.id, block.id, 'up')}
-                                disabled={blockIndex === 0}
-                                className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
-                              >
-                                <GripVertical className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingBlock(block)}
-                                className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-                              >
-                                <Settings className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => deleteBlock(section.id, block.id)}
-                                className="p-1 bg-white border border-red-300 rounded hover:bg-red-50 text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingBlock(block)}
-                                className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                              >
-                                Edit
-                              </button>
-                            </div>
-                          )}
+                      section.blocks.map((block, blockIndex) => {
+                        const isSelected = selectedBlock === block.id;
+                        const isTableBlock = block.block_type === 'table';
+                        const isTableEditing = !isPreview && isTableBlock && openBlockEditor === block.id;
+                        const showSideEditor = !isTableBlock && !isPreview && openBlockEditor === block.id;
 
-                          {/* Block Content */}
-                          <BlockRenderer block={block} isEditing={!isPreview} />
-                        </div>
-                      ))
+                        return (
+                          <div
+                            key={block.id}
+                            className={`relative group mb-4 ${isSelected ? 'ring-2 ring-blue-500 rounded' : ''}`}
+                            onClick={() => setSelectedBlock(block.id)}
+                          >
+                            {/* Block Controls */}
+                            {!isPreview && (
+                              <div className="absolute -left-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col space-y-1">
+                                <button
+                                  onClick={() => moveBlock(section.id, block.id, 'up')}
+                                  disabled={blockIndex === 0}
+                                  className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
+                                >
+                                  <GripVertical className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => deleteBlock(section.id, block.id)}
+                                  className="p-1 bg-white border border-red-300 rounded hover:bg-red-50 text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                                {!isTableBlock && (
+                                  <button
+                                    onClick={() =>
+                                      setOpenBlockEditor((prev) => (prev === block.id ? null : block.id))
+                                    }
+                                    className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                  >
+                                    {showSideEditor ? 'Close' : 'Edit'}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Block Content */}
+                            {isTableBlock && !isPreview && (
+                              <div className="flex justify-end gap-2 mb-3">
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenBlockEditor((prev) => (prev === block.id ? null : prev))}
+                                  className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
+                                    !isTableEditing ? 'bg-white text-blue-600 border-blue-600' : 'text-gray-500 border-gray-200'
+                                  }`}
+                                >
+                                  Preview Table
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenBlockEditor(block.id)}
+                                  className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
+                                    isTableEditing ? 'bg-blue-600 text-white border-blue-600' : 'text-blue-600 border-blue-600'
+                                  }`}
+                                >
+                                  Edit Table
+                                </button>
+                              </div>
+                            )}
+
+                            {isTableBlock && isTableEditing && (
+                              <InlineTableEditor
+                                content={block.content}
+                                onChange={(updatedContent) =>
+                                  updateBlock(section.id, block.id, { content: updatedContent })
+                                }
+                              />
+                            )}
+
+                            <BlockRenderer block={block} isEditing={!isPreview} />
+
+                            {showSideEditor && (
+                              <div className="mt-4 border border-blue-200 bg-blue-50/40 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
+                                    <Settings className="w-4 h-4" />
+                                    Configure {block.block_type} block
+                                  </div>
+                                  <button
+                                    className="text-blue-600 text-sm font-medium"
+                                    onClick={() => setOpenBlockEditor(null)}
+                                  >
+                                    Done
+                                  </button>
+                                </div>
+                                <BlockContentEditor
+                                  blockType={block.block_type}
+                                  content={block.content}
+                                  onChange={(updatedContent) =>
+                                    updateBlock(section.id, block.id, { content: updatedContent })
+                                  }
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
               ))
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Block Settings Panel */}
-      {editingBlock && (
-        <BlockSettingsPanel
-          block={editingBlock}
-          onUpdate={(updates) => {
-            const section = sections.find(s => s.id === editingBlock.section_id);
-            if (section) {
-              updateBlock(section.id, editingBlock.id, updates);
-            }
-            setEditingBlock(null);
-          }}
-          onClose={() => setEditingBlock(null)}
-        />
-      )}
-    </div>
-  );
-};
-
-const BlockSettingsPanel: React.FC<{
-  block: Block;
-  onUpdate: (updates: Partial<Block>) => void;
-  onClose: () => void;
-}> = ({ block, onUpdate, onClose }) => {
-  const [content, setContent] = useState(block.content);
-
-  return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-white border-l border-gray-200 shadow-xl overflow-y-auto z-50">
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <h3 className="text-lg font-bold">Edit Block</h3>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-          ✕
-        </button>
-      </div>
-      <div className="p-4">
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Block Type</label>
-          <div className="px-3 py-2 bg-gray-100 rounded">{block.block_type}</div>
-        </div>
-        
-        <BlockContentEditor
-          blockType={block.block_type}
-          content={content}
-          onChange={setContent}
-        />
-
-        <div className="mt-6 flex space-x-2">
-          <button
-            onClick={() => onUpdate({ content })}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Save Changes
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-          >
-            Cancel
-          </button>
         </div>
       </div>
     </div>
@@ -489,7 +471,13 @@ const BlockContentEditor: React.FC<{
           />
         </div>
       );
-    
+
+    case 'list':
+      return <ListContentEditor content={content} onChange={onChange} />;
+
+    case 'table':
+      return <TableContentEditor content={content} onChange={onChange} />;
+
     case 'image':
       return (
         <>
@@ -523,6 +511,30 @@ const BlockContentEditor: React.FC<{
         </>
       );
     
+    case 'button':
+      return <ButtonContentEditor content={content} onChange={onChange} />;
+
+    case 'quote':
+      return <QuoteContentEditor content={content} onChange={onChange} />;
+
+    case 'code':
+      return <CodeContentEditor content={content} onChange={onChange} />;
+
+    case 'accordion':
+      return <AccordionContentEditor content={content} onChange={onChange} />;
+
+    case 'tabs':
+      return <TabsContentEditor content={content} onChange={onChange} />;
+
+    case 'alert':
+      return <AlertContentEditor content={content} onChange={onChange} />;
+
+    case 'video':
+      return <VideoContentEditor content={content} onChange={onChange} />;
+
+    case 'card':
+      return <CardContentEditor content={content} onChange={onChange} />;
+
     default:
       return (
         <div className="mb-4">
@@ -543,6 +555,666 @@ const BlockContentEditor: React.FC<{
       );
   }
 };
+
+const ListContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
+  const items: string[] = Array.isArray(content.items) && content.items.length ? content.items : [''];
+  const listType = content.type || 'unordered';
+
+  const handleItemChange = (index: number, value: string) => {
+    const next = [...items];
+    next[index] = value;
+    onChange({ ...content, items: next });
+  };
+
+  const addItem = () => onChange({ ...content, items: [...items, ''] });
+  const removeItem = (index: number) => {
+    if (items.length === 1) return;
+    onChange({ ...content, items: items.filter((_, i) => i !== index) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">List Type</label>
+        <select
+          value={listType}
+          onChange={(e) => onChange({ ...content, type: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="unordered">Bulleted</option>
+          <option value="ordered">Numbered</option>
+        </select>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium">Items</label>
+          <button type="button" onClick={addItem} className="text-blue-600 text-sm font-semibold">
+            + Add Item
+          </button>
+        </div>
+        {items.map((item, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <textarea
+              className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              rows={2}
+              value={item}
+              onChange={(e) => handleItemChange(index, e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => removeItem(index)}
+              className="px-2 py-2 text-red-600 hover:bg-red-50 rounded"
+              disabled={items.length === 1}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const TableContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
+  const headers: string[] = Array.isArray(content.headers) && content.headers.length ? content.headers : ['Column 1'];
+  const rows: string[][] = Array.isArray(content.rows) && content.rows.length ? content.rows : [headers.map(() => '')];
+  const hasHeader = content.hasHeader ?? true;
+  const striped = content.striped ?? true;
+
+  const update = (next: Partial<any>) => onChange({ ...content, ...next });
+
+  const handleHeaderChange = (index: number, value: string) => {
+    const nextHeaders = [...headers];
+    nextHeaders[index] = value;
+    update({ headers: nextHeaders });
+  };
+
+  const addColumn = () => {
+    const nextHeaders = [...headers, `Column ${headers.length + 1}`];
+    const nextRows = rows.map((row) => [...row, '']);
+    update({ headers: nextHeaders, rows: nextRows });
+  };
+
+  const removeColumn = (index: number) => {
+    if (headers.length === 1) return;
+    const nextHeaders = headers.filter((_, i) => i !== index);
+    const nextRows = rows.map((row) => row.filter((_, i) => i !== index));
+    update({ headers: nextHeaders, rows: nextRows });
+  };
+
+  const handleCellChange = (rowIndex: number, colIndex: number, value: string) => {
+    const nextRows = rows.map((row, rIdx) => {
+      if (rIdx !== rowIndex) return row;
+      const nextRow = [...row];
+      nextRow[colIndex] = value;
+      return nextRow;
+    });
+    update({ rows: nextRows });
+  };
+
+  const addRow = () => update({ rows: [...rows, headers.map(() => '')] });
+  const removeRow = (index: number) => {
+    if (rows.length === 1) return;
+    update({ rows: rows.filter((_, i) => i !== index) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium">Headers</label>
+          <button type="button" onClick={addColumn} className="text-blue-600 text-sm font-semibold">
+            + Add Column
+          </button>
+        </div>
+        <div className="space-y-2">
+          {headers.map((header, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={header}
+                onChange={(e) => handleHeaderChange(index, e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => removeColumn(index)}
+                className="px-2 py-2 text-red-600 hover:bg-red-50 rounded"
+                disabled={headers.length === 1}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium">Rows</label>
+          <button type="button" onClick={addRow} className="text-blue-600 text-sm font-semibold">
+            + Add Row
+          </button>
+        </div>
+        <div className="space-y-4">
+          {rows.map((row, rowIndex) => (
+            <div key={rowIndex} className="border border-gray-200 rounded-lg p-3 space-y-2">
+              <div className="flex justify-between items-center text-sm text-gray-500">
+                <span>Row {rowIndex + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => removeRow(rowIndex)}
+                  className="text-red-600"
+                  disabled={rows.length === 1}
+                >
+                  Remove Row
+                </button>
+              </div>
+              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${headers.length}, minmax(0, 1fr))` }}>
+                {headers.map((_, colIndex) => (
+                  <textarea
+                    key={colIndex}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    value={row[colIndex] || ''}
+                    onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={hasHeader}
+            onChange={(e) => update({ hasHeader: e.target.checked })}
+          />
+          Show header row
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={striped}
+            onChange={(e) => update({ striped: e.target.checked })}
+          />
+          Striped rows
+        </label>
+      </div>
+    </div>
+  );
+};
+
+const ButtonContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium mb-2">Label</label>
+      <input
+        type="text"
+        value={content.text || ''}
+        onChange={(e) => onChange({ ...content, text: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">URL</label>
+      <input
+        type="text"
+        value={content.url || ''}
+        onChange={(e) => onChange({ ...content, url: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Variant</label>
+        <select
+          value={content.variant || 'primary'}
+          onChange={(e) => onChange({ ...content, variant: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded"
+        >
+          <option value="primary">Primary</option>
+          <option value="secondary">Secondary</option>
+          <option value="outline">Outline</option>
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Size</label>
+        <select
+          value={content.size || 'medium'}
+          onChange={(e) => onChange({ ...content, size: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded"
+        >
+          <option value="small">Small</option>
+          <option value="medium">Medium</option>
+          <option value="large">Large</option>
+        </select>
+      </div>
+    </div>
+  </div>
+);
+
+const QuoteContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium mb-2">Quote</label>
+      <textarea
+        rows={4}
+        value={content.text || ''}
+        onChange={(e) => onChange({ ...content, text: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">Author</label>
+      <input
+        type="text"
+        value={content.author || ''}
+        onChange={(e) => onChange({ ...content, author: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  </div>
+);
+
+const CodeContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium mb-2">Language</label>
+      <select
+        value={content.language || 'javascript'}
+        onChange={(e) => onChange({ ...content, language: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      >
+        {['javascript', 'typescript', 'python', 'java', 'csharp', 'cpp', 'go', 'ruby', 'php', 'sql', 'bash'].map((lang) => (
+          <option key={lang} value={lang}>
+            {lang.toUpperCase()}
+          </option>
+        ))}
+      </select>
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">Code</label>
+      <textarea
+        rows={8}
+        value={content.code || ''}
+        onChange={(e) => onChange({ ...content, code: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  </div>
+);
+
+const AccordionContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
+  const items = Array.isArray(content.items) && content.items.length ? content.items : [{ title: 'Accordion Title', content: 'Accordion content' }];
+
+  const updateItems = (next: any[]) => onChange({ ...content, items: next });
+
+  const addItem = () => updateItems([...items, { title: `Item ${items.length + 1}`, content: '' }]);
+  const removeItem = (index: number) => {
+    if (items.length === 1) return;
+    updateItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleChange = (index: number, key: 'title' | 'content', value: string) => {
+    const next = [...items];
+    next[index] = { ...next[index], [key]: value };
+    updateItems(next);
+  };
+
+  return (
+    <div className="space-y-4">
+      <button type="button" onClick={addItem} className="text-blue-600 text-sm font-semibold">
+        + Add Accordion Item
+      </button>
+      {items.map((item, index) => (
+        <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">Item {index + 1}</p>
+            <button
+              type="button"
+              onClick={() => removeItem(index)}
+              className="text-red-600 text-sm"
+              disabled={items.length === 1}
+            >
+              Remove
+            </button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Title</label>
+            <input
+              type="text"
+              value={item.title || ''}
+              onChange={(e) => handleChange(index, 'title', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Content</label>
+            <textarea
+              rows={4}
+              value={item.content || ''}
+              onChange={(e) => handleChange(index, 'content', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const TabsContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
+  const tabs = Array.isArray(content.tabs) && content.tabs.length ? content.tabs : [{ title: 'Tab 1', content: '' }];
+
+  const updateTabs = (next: any[]) => onChange({ ...content, tabs: next });
+
+  const addTab = () => updateTabs([...tabs, { title: `Tab ${tabs.length + 1}`, content: '' }]);
+  const removeTab = (index: number) => {
+    if (tabs.length === 1) return;
+    updateTabs(tabs.filter((_, i) => i !== index));
+  };
+
+  const handleChange = (index: number, key: 'title' | 'content', value: string) => {
+    const next = [...tabs];
+    next[index] = { ...next[index], [key]: value };
+    updateTabs(next);
+  };
+
+  return (
+    <div className="space-y-4">
+      <button type="button" onClick={addTab} className="text-blue-600 text-sm font-semibold">
+        + Add Tab
+      </button>
+      {tabs.map((tab, index) => (
+        <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">Tab {index + 1}</p>
+            <button
+              type="button"
+              onClick={() => removeTab(index)}
+              className="text-red-600 text-sm"
+              disabled={tabs.length === 1}
+            >
+              Remove
+            </button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Title</label>
+            <input
+              type="text"
+              value={tab.title || ''}
+              onChange={(e) => handleChange(index, 'title', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Content</label>
+            <textarea
+              rows={4}
+              value={tab.content || ''}
+              onChange={(e) => handleChange(index, 'content', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const AlertContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium mb-2">Alert Type</label>
+      <select
+        value={content.type || 'info'}
+        onChange={(e) => onChange({ ...content, type: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      >
+        <option value="info">Info</option>
+        <option value="success">Success</option>
+        <option value="warning">Warning</option>
+        <option value="error">Error</option>
+      </select>
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">Content</label>
+      <textarea
+        rows={4}
+        value={content.text || ''}
+        onChange={(e) => onChange({ ...content, text: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      />
+    </div>
+  </div>
+);
+
+const InlineTableEditor = ({
+  content,
+  onChange
+}: {
+  content: any;
+  onChange: (content: any) => void;
+}) => {
+  const headers: string[] = Array.isArray(content.headers) ? content.headers : [];
+  const rows: string[][] = Array.isArray(content.rows) ? content.rows : [];
+  const hasHeader = content.hasHeader ?? true;
+  const striped = content.striped ?? false;
+
+  const update = (next: Partial<any>) => onChange({ ...content, ...next });
+
+  const addColumn = () => {
+    const nextHeaders = [...headers, `Column ${headers.length + 1}`];
+    const nextRows = rows.length ? rows.map((row) => [...row, '']) : [[...nextHeaders.map(() => '')]];
+    update({ headers: nextHeaders, rows: nextRows });
+  };
+
+  const removeColumn = (index: number) => {
+    if (headers.length <= 1) return;
+    const nextHeaders = headers.filter((_, i) => i !== index);
+    const nextRows = rows.map((row) => row.filter((_, i) => i !== index));
+    update({ headers: nextHeaders, rows: nextRows });
+  };
+
+  const addRow = () => {
+    if (!headers.length) return;
+    update({ rows: [...rows, headers.map(() => '')] });
+  };
+
+  const removeRow = (index: number) => {
+    if (rows.length <= 1) return;
+    update({ rows: rows.filter((_, i) => i !== index) });
+  };
+
+  const handleHeaderChange = (index: number, value: string) => {
+    const next = [...headers];
+    next[index] = value;
+    update({ headers: next });
+  };
+
+  const handleCellChange = (rowIndex: number, colIndex: number, value: string) => {
+    const nextRows = rows.map((row, rIdx) => {
+      if (rIdx !== rowIndex) return row;
+      const nextRow = [...row];
+      nextRow[colIndex] = value;
+      return nextRow;
+    });
+    update({ rows: nextRows });
+  };
+
+  const ensureStructure = () => {
+    if (!headers.length) {
+      update({ headers: ['Column 1'], rows: [['']] });
+    } else if (!rows.length) {
+      update({ rows: [headers.map(() => '')] });
+    }
+  };
+
+  React.useEffect(() => {
+    ensureStructure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!headers.length || !rows.length) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3">
+        <button type="button" onClick={addColumn} className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-full">
+          + Column
+        </button>
+        <button type="button" onClick={addRow} className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-full">
+          + Row
+        </button>
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={hasHeader} onChange={(e) => update({ hasHeader: e.target.checked })} />
+          Header Row
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={striped} onChange={(e) => update({ striped: e.target.checked })} />
+          Striped Rows
+        </label>
+      </div>
+
+      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+        <table className="min-w-full text-sm">
+          {hasHeader && (
+            <thead className="bg-gray-100">
+              <tr>
+                {headers.map((header, index) => (
+                  <th key={index} className="border border-gray-200 p-2 align-top">
+                    <div className="flex flex-col gap-2">
+                      <input
+                        value={header}
+                        onChange={(e) => handleHeaderChange(index, e.target.value)}
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeColumn(index)}
+                        className="text-xs text-red-600 hover:underline"
+                        disabled={headers.length <= 1}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-gray-50' : ''}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex} className="border border-gray-200 p-2">
+                    <textarea
+                      value={cell}
+                      onChange={(e) => handleCellChange(rowIndex, cellIndex, e.target.value)}
+                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                      rows={2}
+                    />
+                  </td>
+                ))}
+                <td className="p-2 align-top">
+                  <button
+                    type="button"
+                    onClick={() => removeRow(rowIndex)}
+                    className="text-xs text-red-600 hover:underline"
+                    disabled={rows.length <= 1}
+                  >
+                    Remove Row
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const VideoContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium mb-2">Embed / Video URL</label>
+      <input
+        type="text"
+        value={content.url || ''}
+        onChange={(e) => onChange({ ...content, url: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">Caption (optional)</label>
+      <input
+        type="text"
+        value={content.caption || ''}
+        onChange={(e) => onChange({ ...content, caption: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      />
+    </div>
+  </div>
+);
+
+const CardContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium mb-2">Title</label>
+      <input
+        type="text"
+        value={content.title || ''}
+        onChange={(e) => onChange({ ...content, title: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">Description</label>
+      <textarea
+        rows={4}
+        value={content.description || ''}
+        onChange={(e) => onChange({ ...content, description: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">Image URL</label>
+      <input
+        type="text"
+        value={content.image || ''}
+        onChange={(e) => onChange({ ...content, image: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      />
+    </div>
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Link Text</label>
+        <input
+          type="text"
+          value={(content.link && content.link.text) || ''}
+          onChange={(e) => onChange({ ...content, link: { ...(content.link || {}), text: e.target.value } })}
+          className="w-full px-3 py-2 border border-gray-300 rounded"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Link URL</label>
+        <input
+          type="text"
+          value={(content.link && content.link.url) || ''}
+          onChange={(e) => onChange({ ...content, link: { ...(content.link || {}), url: e.target.value } })}
+          className="w-full px-3 py-2 border border-gray-300 rounded"
+        />
+      </div>
+    </div>
+  </div>
+);
 
 const getDefaultBlockContent = (blockType: string): any => {
   const defaults: Record<string, any> = {

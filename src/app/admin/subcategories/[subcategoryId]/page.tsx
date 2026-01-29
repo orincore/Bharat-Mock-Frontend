@@ -79,6 +79,7 @@ export default function AdminSubcategoryEditorPage() {
 
   const [subcategoryInfo, setSubcategoryInfo] = useState<SubcategoryInfo | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
+  const [originalSections, setOriginalSections] = useState<Section[]>([]);
   const [seoData, setSeoData] = useState<SEOData>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -130,7 +131,9 @@ export default function AdminSubcategoryEditorPage() {
       }
       
       const data = await response.json();
-      setSections(data.sections || []);
+      const nextSections = data.sections || [];
+      setSections(nextSections);
+      setOriginalSections(nextSections);
       setSeoData(data.seo || {});
     } catch (error) {
       console.error('Error loading page content:', error);
@@ -158,92 +161,26 @@ export default function AdminSubcategoryEditorPage() {
         return;
       }
 
-      for (const section of updatedSections) {
-        const sectionPayload = {
-          section_key: section.section_key || section.title?.toLowerCase().replace(/\s+/g, '-') || `section-${Date.now()}`,
-          title: section.title,
-          subtitle: section.subtitle || null,
-          display_order: section.display_order ?? 0
-        };
+      const bulkPayload = {
+        sections: updatedSections.map((section) => ({
+          ...section,
+          blocks: section.blocks || []
+        }))
+      };
 
-        let sectionId = section.id;
+      const endpoint = buildApiUrl(`/page-content/${subcategoryId}/bulk-sync`);
+      debugLog('Bulk syncing page content', { endpoint, payloadSize: bulkPayload.sections.length });
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bulkPayload)
+      });
 
-        if (section.id?.startsWith('temp-') || !section.id) {
-          const endpoint = buildApiUrl(`/page-content/${subcategoryId}/sections`);
-          debugLog('Creating section', { endpoint, payload: sectionPayload });
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(sectionPayload)
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to create section');
-          }
-          
-          const created = await response.json();
-          sectionId = created.id;
-        } else {
-          const endpoint = buildApiUrl(`/page-content/sections/${section.id}`);
-          debugLog('Updating section', { endpoint, payload: sectionPayload });
-          const response = await fetch(endpoint, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(sectionPayload)
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to update section');
-          }
-        }
-
-        for (const block of section.blocks || []) {
-          const blockPayload = {
-            section_id: sectionId,
-            block_type: block.block_type,
-            content: block.content,
-            settings: block.settings || {},
-            display_order: block.display_order ?? 0
-          };
-
-          if (block.id?.startsWith('temp-') || !block.id) {
-            const endpoint = buildApiUrl(`/page-content/${subcategoryId}/blocks`);
-            debugLog('Creating block', { endpoint, payload: blockPayload });
-            const response = await fetch(endpoint, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify(blockPayload)
-            });
-            
-            if (!response.ok) {
-              throw new Error('Failed to create block');
-            }
-          } else {
-            const endpoint = buildApiUrl(`/page-content/blocks/${block.id}`);
-            debugLog('Updating block', { endpoint, payload: blockPayload });
-            const response = await fetch(endpoint, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify(blockPayload)
-            });
-            
-            if (!response.ok) {
-              throw new Error('Failed to update block');
-            }
-          }
-        }
+      if (!response.ok) {
+        throw new Error('Bulk sync failed');
       }
 
       const revisionEndpoint = buildApiUrl(`/page-content/${subcategoryId}/revisions`);
@@ -269,6 +206,7 @@ export default function AdminSubcategoryEditorPage() {
       });
 
       await loadPageContent();
+      setOriginalSections(updatedSections);
     } catch (error) {
       console.error('Error saving page content:', error);
       toast({
@@ -436,7 +374,6 @@ export default function AdminSubcategoryEditorPage() {
 
       {/* Block Editor */}
       <BlockEditor
-        subcategoryId={subcategoryId}
         sections={sections}
         onSave={handleSave}
       />

@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: '.next',
   images: {
     remotePatterns: [
       {
@@ -7,9 +8,6 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
       },
     ],
-  },
-  experimental: {
-    optimizePackageImports: ['lucide-react'],
   },
   skipTrailingSlashRedirect: true,
   async headers() {
