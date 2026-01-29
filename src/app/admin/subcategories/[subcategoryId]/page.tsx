@@ -11,7 +11,7 @@ import {
   Settings,
   Loader2
 } from 'lucide-react';
-import { BlockEditor } from '@/components/PageEditor/BlockEditor';
+import { BlockEditor, clearBlockEditorAutosave } from '@/components/PageEditor/BlockEditor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,6 +37,7 @@ interface SubcategoryInfo {
   id: string;
   name: string;
   slug: string;
+  category_slug?: string;
   description?: string;
   category?: {
     id: string;
@@ -107,8 +108,15 @@ export default function AdminSubcategoryEditorPage() {
         throw new Error('Failed to fetch subcategory info');
       }
       
-      const data = await response.json();
-      setSubcategoryInfo(data);
+      const raw = await response.json();
+      const payload = raw?.data ?? raw;
+      const normalized = {
+        ...payload,
+        category_slug: payload.category_slug || payload.category?.slug || subcategoryInfo?.category_slug || null
+      } as SubcategoryInfo;
+
+      setSubcategoryInfo(normalized);
+      return normalized;
     } catch (error) {
       console.error('Error loading subcategory info:', error);
       toast({
@@ -116,6 +124,7 @@ export default function AdminSubcategoryEditorPage() {
         description: 'Failed to load subcategory information',
         variant: 'destructive'
       });
+      return null;
     }
   };
 
@@ -205,6 +214,8 @@ export default function AdminSubcategoryEditorPage() {
         description: 'Page content saved successfully'
       });
 
+      clearBlockEditorAutosave(subcategoryId);
+
       await loadPageContent();
       setOriginalSections(updatedSections);
     } catch (error) {
@@ -264,17 +275,29 @@ export default function AdminSubcategoryEditorPage() {
     }
   };
 
-  const handlePreview = () => {
-    if (subcategoryInfo?.category?.slug && subcategoryInfo?.slug) {
-      const previewUrl = `/${subcategoryInfo.category.slug}/${subcategoryInfo.slug}`;
-      window.open(previewUrl, '_blank');
-    } else {
-      toast({
-        title: 'Preview Unavailable',
-        description: 'Cannot generate preview URL',
-        variant: 'destructive'
-      });
+  const handlePreview = async () => {
+    let categorySlug = subcategoryInfo?.category?.slug || subcategoryInfo?.category_slug;
+    let subcategorySlug = subcategoryInfo?.slug;
+
+    if (!categorySlug || !subcategorySlug) {
+      const refreshed = await loadSubcategoryInfo();
+      if (refreshed) {
+        categorySlug = refreshed.category?.slug || refreshed.category_slug;
+        subcategorySlug = refreshed.slug;
+      }
     }
+
+    if (categorySlug && subcategorySlug) {
+      const previewUrl = `/${categorySlug}/${subcategorySlug}`;
+      window.open(previewUrl, '_blank');
+      return;
+    }
+
+    toast({
+      title: 'Preview Unavailable',
+      description: 'Cannot generate preview URL',
+      variant: 'destructive'
+    });
   };
 
   const handleRefresh = () => {
@@ -376,6 +399,8 @@ export default function AdminSubcategoryEditorPage() {
       <BlockEditor
         sections={sections}
         onSave={handleSave}
+        autosaveKey={`subcategory:${subcategoryId}`}
+        onSectionsChange={(next) => setSections(next as Section[])}
       />
 
       {/* SEO Settings Panel */}

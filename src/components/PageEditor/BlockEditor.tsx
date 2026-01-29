@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Plus, 
   Trash2, 
   GripVertical, 
   Settings, 
-  Eye,
   Save,
   Undo,
   Redo
@@ -24,16 +23,479 @@ interface Block {
 
 interface Section {
   id: string;
+  section_key?: string;
   title: string;
   subtitle?: string;
   display_order: number;
   blocks: Block[];
 }
 
+const deepClone = (value: any) => {
+  if (!value || typeof value !== 'object') return value;
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (error) {
+    return value;
+  }
+};
+
+const normalizeSections = (source: Section[]): Section[] =>
+  source.map((section) => ({
+    ...section,
+    blocks: section.blocks || []
+  }));
+
+const snapshotSections = (source: Section[]): Section[] =>
+  normalizeSections(source).map((section) => ({
+    ...section,
+    blocks: section.blocks.map((block) => ({
+      ...block,
+      content: deepClone(block.content)
+    }))
+  }));
+
+const AUTOSAVE_PREFIX = 'block-editor-autosave:';
+
+const buildAutosaveStorageKey = (autosaveKey: string) => `${AUTOSAVE_PREFIX}${autosaveKey}`;
+
+export const clearBlockEditorAutosave = (autosaveKey?: string) => {
+  if (!autosaveKey || typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(buildAutosaveStorageKey(autosaveKey));
+  } catch (error) {
+    console.warn('Failed to clear autosave draft', error);
+  }
+};
+
 interface BlockEditorProps {
   sections: Section[];
   onSave: (sections: Section[]) => void;
+  autosaveKey?: string;
+  onSectionsChange?: (sections: Section[]) => void;
 }
+
+interface InlineRichTextEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  rows?: number;
+  className?: string;
+  label?: string;
+  helperText?: string;
+}
+
+const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
+  value,
+  onChange,
+  placeholder = 'Start typing...',
+  rows = 4,
+  className = '',
+  label,
+  helperText
+}) => {
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    code: false,
+    link: false
+  });
+
+  useEffect(() => {
+    if (editorRef.current) {
+      const sanitized = value || '';
+      if (editorRef.current.innerHTML !== sanitized) {
+        editorRef.current.innerHTML = sanitized;
+      }
+    }
+  }, [value]);
+
+  const handleInput = () => {
+    if (!editorRef.current) return;
+    const nextValue = editorRef.current.innerHTML.replace(/\u200B/g, '');
+    onChange(nextValue);
+    updateActiveFormats();
+  };
+
+  const isSelectionInside = () => {
+    if (typeof window === 'undefined' || !editorRef.current) return false;
+    const selection = window.getSelection();
+    const anchorNode = selection?.anchorNode;
+    if (!anchorNode) return false;
+    return editorRef.current.contains(anchorNode);
+  };
+
+  const findAncestorTag = (node: Node | null, tagName: string) => {
+    let current: Node | null = node;
+    while (current && editorRef.current && current !== editorRef.current) {
+      if ((current as HTMLElement).tagName === tagName) {
+        return true;
+      }
+      current = current.parentNode;
+    }
+    return false;
+  };
+
+  const updateActiveFormats = React.useCallback(() => {
+    if (typeof document === 'undefined') return;
+    if (!isSelectionInside()) {
+      setActiveFormats((prev) =>
+        prev.bold || prev.italic || prev.underline || prev.code || prev.link
+          ? { bold: false, italic: false, underline: false, code: false, link: false }
+          : prev
+      );
+      return;
+    }
+
+    const bold = document.queryCommandState('bold');
+    const italic = document.queryCommandState('italic');
+    const underline = document.queryCommandState('underline');
+    const selection = window.getSelection();
+    const anchorNode = selection?.anchorNode || null;
+    const code = findAncestorTag(anchorNode, 'CODE');
+    const link = findAncestorTag(anchorNode, 'A');
+
+    setActiveFormats({ bold, italic, underline, code, link });
+  }, []);
+
+  const exec = (command: string, arg?: string) => {
+    if (typeof document === 'undefined') return;
+    editorRef.current?.focus();
+    document.execCommand(command, false, arg);
+    handleInput();
+    updateActiveFormats();
+  };
+
+  const insertLink = () => {
+    if (typeof window === 'undefined') return;
+    const url = window.prompt('Enter URL');
+    if (!url) return;
+    exec('createLink', url);
+  };
+
+  const insertCode = () => {
+    if (typeof document === 'undefined') return;
+    const selection = window.getSelection();
+    const selectedText = selection?.toString() || 'code';
+    document.execCommand('insertHTML', false, `<code>${selectedText}</code>`);
+    handleInput();
+    updateActiveFormats();
+  };
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handleSelectionChange = () => updateActiveFormats();
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [updateActiveFormats]);
+
+  const buttons = [
+    { label: 'B', title: 'Bold', action: () => exec('bold'), key: 'bold' as const },
+    { label: 'I', title: 'Italic', action: () => exec('italic'), key: 'italic' as const },
+    { label: 'U', title: 'Underline', action: () => exec('underline'), key: 'underline' as const },
+    { label: '</>', title: 'Code', action: insertCode, key: 'code' as const },
+    { label: 'Link', title: 'Insert link', action: insertLink, key: 'link' as const },
+    { label: 'Clear', title: 'Remove formatting', action: () => exec('removeFormat'), key: undefined }
+  ];
+
+  const minHeight = Math.max(48, rows * 24);
+
+  return (
+    <div className="w-full space-y-2">
+      {label && <label className="block text-sm font-medium text-gray-700">{label}</label>}
+      <div className="border border-gray-200 rounded-xl bg-white">
+        <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-gray-100">
+          {buttons.map((button) => {
+            const isActive = button.key ? activeFormats[button.key] : false;
+            return (
+              <button
+                key={button.label}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={button.action}
+                className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${
+                  isActive ? 'bg-gray-200 text-blue-600' : ''
+                }`}
+                title={button.title}
+              >
+                {button.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="relative">
+          {(!value || value === '<p></p>' || value === '<br>') && (
+            <span className="absolute left-3 top-3 text-gray-400 text-sm pointer-events-none">{placeholder}</span>
+          )}
+          <div
+            ref={editorRef}
+            className={`px-3 py-3 focus:outline-none text-sm ${className}`}
+            style={{ minHeight }}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={handleInput}
+            onBlur={handleInput}
+            onKeyUp={updateActiveFormats}
+            onMouseUp={updateActiveFormats}
+            onFocus={updateActiveFormats}
+          />
+        </div>
+      </div>
+      {helperText && <p className="text-xs text-gray-500">{helperText}</p>}
+    </div>
+  );
+};
+
+interface InlineTextBlockEditorProps {
+  block: Block;
+  onContentChange: (content: any) => void;
+}
+
+const InlineTextBlockEditor: React.FC<InlineTextBlockEditorProps> = ({ block, onContentChange }) => {
+  const content = block.content || {};
+
+  if (block.block_type === 'heading') {
+    const level = content.level || 2;
+    const headingSizes: Record<number, string> = {
+      1: 'text-4xl',
+      2: 'text-3xl',
+      3: 'text-2xl',
+      4: 'text-xl',
+      5: 'text-lg',
+      6: 'text-base'
+    };
+
+    return (
+      <div className="border border-blue-100 bg-white rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold uppercase text-blue-600">Heading block</span>
+          <select
+            value={level}
+            onChange={(e) => onContentChange({ ...content, level: Number(e.target.value) })}
+            className="text-sm border border-gray-200 rounded-lg px-2 py-1"
+          >
+            {[1, 2, 3, 4, 5, 6].map((lvl) => (
+              <option key={lvl} value={lvl}>
+                H{lvl}
+              </option>
+            ))}
+          </select>
+        </div>
+        <InlineRichTextEditor
+          value={content.text || ''}
+          onChange={(value) => onContentChange({ ...content, text: value })}
+          placeholder="Heading text"
+          rows={level <= 3 ? 2 : 3}
+          className={`${headingSizes[level] || 'text-2xl'} font-semibold text-gray-900 leading-tight`}
+        />
+      </div>
+    );
+  }
+
+  if (block.block_type === 'paragraph') {
+    return (
+      <div className="border border-gray-200 bg-white rounded-xl p-4 shadow-sm">
+        <span className="text-xs font-semibold uppercase text-gray-500">Paragraph</span>
+        <InlineRichTextEditor
+          value={content.text || ''}
+          onChange={(value) => onContentChange({ ...content, text: value })}
+          placeholder="Add paragraph text"
+          rows={4}
+          className="text-base leading-relaxed text-gray-800"
+        />
+      </div>
+    );
+  }
+
+  if (block.block_type === 'list') {
+    const items: string[] = Array.isArray(content.items) && content.items.length ? content.items : [''];
+    const listType = content.type || 'unordered';
+
+    const updateItems = (nextItems: string[]) => onContentChange({ ...content, items: nextItems });
+    const handleItemChange = (index: number, value: string) => {
+      const next = [...items];
+      next[index] = value;
+      updateItems(next);
+    };
+
+    const removeItem = (index: number) => {
+      if (items.length === 1) return;
+      updateItems(items.filter((_, idx) => idx !== index));
+    };
+
+    const addItem = () => updateItems([...items, '']);
+
+    return (
+      <div className="border border-amber-100 bg-white rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold uppercase text-amber-700">
+            {listType === 'ordered' ? 'Numbered list' : 'Bulleted list'}
+          </span>
+          <div className="inline-flex rounded-full border border-amber-200 overflow-hidden text-sm">
+            <button
+              type="button"
+              onClick={() => onContentChange({ ...content, type: 'unordered' })}
+              className={`px-3 py-1 ${listType === 'unordered' ? 'bg-amber-500 text-white' : 'text-amber-700'}`}
+            >
+              Bullets
+            </button>
+            <button
+              type="button"
+              onClick={() => onContentChange({ ...content, type: 'ordered' })}
+              className={`px-3 py-1 ${listType === 'ordered' ? 'bg-amber-500 text-white' : 'text-amber-700'}`}
+            >
+              Numbers
+            </button>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {items.map((item, index) => (
+            <div key={index} className="flex gap-3 items-start bg-amber-50/60 border border-amber-100 rounded-lg p-3">
+              <span className="text-amber-700 mt-2 min-w-[16px] text-sm">
+                {listType === 'ordered' ? `${index + 1}.` : '•'}
+              </span>
+              <div className="flex-1">
+                <InlineRichTextEditor
+                  value={item}
+                  onChange={(value) => handleItemChange(index, value)}
+                  placeholder={`List item ${index + 1}`}
+                  rows={2}
+                  className="text-base leading-relaxed text-gray-800"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                className="text-amber-600 text-sm hover:underline disabled:text-gray-400"
+                disabled={items.length === 1}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addItem}
+          className="mt-3 text-sm font-semibold text-amber-700 hover:text-amber-900"
+        >
+          + Add item
+        </button>
+      </div>
+    );
+  }
+
+  if (block.block_type === 'quote') {
+    return (
+      <div className="border border-purple-100 bg-white rounded-xl p-4 shadow-sm">
+        <span className="text-xs font-semibold uppercase text-purple-700">Quote</span>
+        <InlineRichTextEditor
+          value={content.text || ''}
+          onChange={(value) => onContentChange({ ...content, text: value })}
+          placeholder="Quote text"
+          rows={3}
+          className="text-lg italic text-gray-800"
+        />
+        <div className="mt-3">
+          <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Author</label>
+          <input
+            type="text"
+            value={content.author || ''}
+            onChange={(e) => onContentChange({ ...content, author: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-200 rounded focus:ring-2 focus:ring-purple-200"
+            placeholder="Attribution"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (block.block_type === 'alert') {
+    return (
+      <div className="border border-rose-100 bg-white rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold uppercase text-rose-600">Alert</span>
+          <select
+            value={content.type || 'info'}
+            onChange={(e) => onContentChange({ ...content, type: e.target.value })}
+            className="text-sm border border-gray-200 rounded-lg px-2 py-1"
+          >
+            <option value="info">Info</option>
+            <option value="success">Success</option>
+            <option value="warning">Warning</option>
+            <option value="danger">Danger</option>
+          </select>
+        </div>
+        <InlineRichTextEditor
+          value={content.text || ''}
+          onChange={(value) => onContentChange({ ...content, text: value })}
+          placeholder="Alert message"
+          rows={3}
+          className="text-base leading-relaxed text-gray-800"
+        />
+      </div>
+    );
+  }
+
+  if (block.block_type === 'card') {
+    return (
+      <div className="border border-emerald-100 bg-white rounded-xl p-4 shadow-sm">
+        <span className="text-xs font-semibold uppercase text-emerald-600">Card</span>
+        <div className="mt-3 space-y-3">
+          <input
+            type="text"
+            value={content.title || ''}
+            onChange={(e) => onContentChange({ ...content, title: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-200 rounded"
+            placeholder="Card title"
+          />
+          <InlineRichTextEditor
+            value={content.description || ''}
+            onChange={(value) => onContentChange({ ...content, description: value })}
+            placeholder="Card description"
+            rows={3}
+            className="text-base leading-relaxed text-gray-800"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={content.image || ''}
+              onChange={(e) => onContentChange({ ...content, image: e.target.value })}
+              className="px-3 py-2 border border-gray-200 rounded"
+              placeholder="Image URL"
+            />
+            <input
+              type="text"
+              value={content.subtitle || ''}
+              onChange={(e) => onContentChange({ ...content, subtitle: e.target.value })}
+              className="px-3 py-2 border border-gray-200 rounded"
+              placeholder="Subtitle (optional)"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={content.link?.text || ''}
+              onChange={(e) => onContentChange({ ...content, link: { ...(content.link || {}), text: e.target.value } })}
+              className="px-3 py-2 border border-gray-200 rounded"
+              placeholder="Button text"
+            />
+            <input
+              type="text"
+              value={content.link?.url || ''}
+              onChange={(e) => onContentChange({ ...content, link: { ...(content.link || {}), url: e.target.value } })}
+              className="px-3 py-2 border border-gray-200 rounded"
+              placeholder="Button link"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <BlockRenderer block={block} isEditing={true} />;
+};
 
 const BLOCK_TYPES = [
   { type: 'heading', label: 'Heading', description: 'Add a heading' },
@@ -55,22 +517,127 @@ const BLOCK_TYPES = [
   { type: 'spacer', label: 'Spacer', description: 'Add vertical space' }
 ];
 
+const INLINE_EDITABLE_BLOCKS = new Set([
+  'heading',
+  'paragraph',
+  'list',
+  'quote',
+  'alert',
+  'card'
+]);
+
 export const BlockEditor: React.FC<BlockEditorProps> = ({ 
   sections: initialSections, 
-  onSave 
+  onSave,
+  autosaveKey,
+  onSectionsChange
 }) => {
-  const [sections, setSections] = useState<Section[]>(initialSections);
+  const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
+  const parentSectionsSignatureRef = useRef<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
-  const [isPreview, setIsPreview] = useState(false);
+  const isPreview = false;
   const [showBlockPicker, setShowBlockPicker] = useState<string | null>(null);
   const [openBlockEditor, setOpenBlockEditor] = useState<string | null>(null);
+  const historyRef = useRef<Section[][]>([snapshotSections(initialSections)]);
+  const historyIndexRef = useRef(0);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const syncingFromParentRef = useRef(false);
+  const suppressHistoryRef = useRef(false);
+
+  const parentSectionsSignature = useMemo(() => {
+    try {
+      return JSON.stringify(initialSections);
+    } catch (error) {
+      return null;
+    }
+  }, [initialSections]);
 
   useEffect(() => {
-    setSections(initialSections.map(section => ({
-      ...section,
-      blocks: section.blocks || []
-    })));
-  }, [initialSections]);
+    if (!parentSectionsSignature || parentSectionsSignatureRef.current === parentSectionsSignature) {
+      return;
+    }
+    parentSectionsSignatureRef.current = parentSectionsSignature;
+    syncingFromParentRef.current = true;
+    const normalized = normalizeSections(initialSections);
+    setSections(normalized);
+    historyRef.current = [snapshotSections(normalized)];
+    historyIndexRef.current = 0;
+    setHistoryIndex(0);
+  }, [parentSectionsSignature, initialSections]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !autosaveKey) return;
+    try {
+      const stored = localStorage.getItem(buildAutosaveStorageKey(autosaveKey));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.sections) {
+          setSections(parsed.sections);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load autosave draft', error);
+    }
+  }, [autosaveKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !autosaveKey) return;
+    try {
+      const payload = {
+        sections,
+        updatedAt: Date.now()
+      };
+      localStorage.setItem(buildAutosaveStorageKey(autosaveKey), JSON.stringify(payload));
+    } catch (error) {
+      console.warn('Failed to persist autosave draft', error);
+    }
+  }, [sections, autosaveKey]);
+
+  useEffect(() => {
+    if (syncingFromParentRef.current) {
+      syncingFromParentRef.current = false;
+      suppressHistoryRef.current = false;
+      onSectionsChange?.(sections);
+      return;
+    }
+
+    if (!suppressHistoryRef.current) {
+      const base = historyRef.current.slice(0, historyIndexRef.current + 1);
+      const nextSnapshot = snapshotSections(sections);
+      const updated = [...base, nextSnapshot];
+      if (updated.length > 50) {
+        updated.shift();
+      }
+      historyRef.current = updated;
+      historyIndexRef.current = updated.length - 1;
+      setHistoryIndex(historyIndexRef.current);
+    } else {
+      suppressHistoryRef.current = false;
+    }
+
+    onSectionsChange?.(sections);
+  }, [sections, onSectionsChange]);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < historyRef.current.length - 1;
+
+  const handleUndo = () => {
+    if (!canUndo) return;
+    const nextIndex = historyIndex - 1;
+    historyIndexRef.current = nextIndex;
+    setHistoryIndex(nextIndex);
+    suppressHistoryRef.current = true;
+    setSections(historyRef.current[nextIndex]);
+  };
+
+  const handleRedo = () => {
+    if (!canRedo) return;
+    const nextIndex = historyIndex + 1;
+    historyIndexRef.current = nextIndex;
+    setHistoryIndex(nextIndex);
+    suppressHistoryRef.current = true;
+    setSections(historyRef.current[nextIndex]);
+  };
 
   const addSection = () => {
     const newSection: Section = {
@@ -200,21 +767,21 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         {/* Toolbar */}
         <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <button className="p-2 hover:bg-gray-100 rounded" title="Undo">
+            <button
+              className={`p-2 rounded ${canUndo ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'}`}
+              title="Undo"
+              onClick={handleUndo}
+              disabled={!canUndo}
+            >
               <Undo className="w-5 h-5" />
             </button>
-            <button className="p-2 hover:bg-gray-100 rounded" title="Redo">
-              <Redo className="w-5 h-5" />
-            </button>
-            <div className="w-px h-6 bg-gray-300 mx-2" />
             <button
-              onClick={() => setIsPreview(!isPreview)}
-              className={`px-4 py-2 rounded flex items-center space-x-2 ${
-                isPreview ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
-              }`}
+              className={`p-2 rounded ${canRedo ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'}`}
+              title="Redo"
+              onClick={handleRedo}
+              disabled={!canRedo}
             >
-              <Eye className="w-4 h-4" />
-              <span>{isPreview ? 'Edit' : 'Preview'}</span>
+              <Redo className="w-5 h-5" />
             </button>
           </div>
           <div className="flex items-center space-x-2">
@@ -308,7 +875,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                   {/* Section Blocks */}
                   <div className="p-6">
                     {section.blocks.length === 0 ? (
-                      <div className="text-center py-8 text-gray-400">
+                      <div className="text-center py-12 text-gray-400">
                         No blocks in this section. Click "Add Block" to add content.
                       </div>
                     ) : (
@@ -316,7 +883,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                         const isSelected = selectedBlock === block.id;
                         const isTableBlock = block.block_type === 'table';
                         const isTableEditing = !isPreview && isTableBlock && openBlockEditor === block.id;
-                        const showSideEditor = !isTableBlock && !isPreview && openBlockEditor === block.id;
+                        const isInlineEditable = INLINE_EDITABLE_BLOCKS.has(block.block_type);
+                        const showSideEditor = !isTableBlock && !isInlineEditable && !isPreview && openBlockEditor === block.id;
 
                         return (
                           <div
@@ -340,7 +908,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
-                                {!isTableBlock && (
+                                {!isTableBlock && !isInlineEditable && (
                                   <button
                                     onClick={() =>
                                       setOpenBlockEditor((prev) => (prev === block.id ? null : block.id))
@@ -386,7 +954,16 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                               />
                             )}
 
-                            <BlockRenderer block={block} isEditing={!isPreview} />
+                            {!isPreview && isInlineEditable ? (
+                              <InlineTextBlockEditor
+                                block={block}
+                                onContentChange={(nextContent) =>
+                                  updateBlock(section.id, block.id, { content: nextContent })
+                                }
+                              />
+                            ) : (
+                              <BlockRenderer block={block} isEditing={!isPreview} />
+                            )}
 
                             {showSideEditor && (
                               <div className="mt-4 border border-blue-200 bg-blue-50/40 rounded-lg p-4">
@@ -435,15 +1012,13 @@ const BlockContentEditor: React.FC<{
     case 'heading':
       return (
         <>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Text</label>
-            <input
-              type="text"
-              value={content.text || ''}
-              onChange={(e) => onChange({ ...content, text: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <RichTextField
+            label="Text"
+            value={content.text || ''}
+            onChange={(value) => onChange({ ...content, text: value })}
+            rows={2}
+            helper="Supports inline HTML like <strong>, <em>, <u>, and links"
+          />
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Level</label>
             <select
@@ -461,15 +1036,13 @@ const BlockContentEditor: React.FC<{
     
     case 'paragraph':
       return (
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Text</label>
-          <textarea
-            value={content.text || ''}
-            onChange={(e) => onChange({ ...content, text: e.target.value })}
-            rows={6}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        <RichTextField
+          label="Text"
+          value={content.text || ''}
+          rows={8}
+          onChange={(value) => onChange({ ...content, text: value })}
+          helper="Use the toolbar to insert bold, italic, underline, or links without typing HTML manually."
+        />
       );
 
     case 'list':
@@ -593,21 +1166,24 @@ const ListContentEditor = ({ content, onChange }: { content: any; onChange: (con
           </button>
         </div>
         {items.map((item, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <textarea
-              className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              rows={2}
+          <div key={index} className="border border-gray-200 rounded-lg p-3">
+            <RichTextField
+              label={`Item ${index + 1}`}
               value={item}
-              onChange={(e) => handleItemChange(index, e.target.value)}
+              rows={3}
+              helper="Supports inline formatting (bold, italic, links)"
+              onChange={(value) => handleItemChange(index, value)}
             />
-            <button
-              type="button"
-              onClick={() => removeItem(index)}
-              className="px-2 py-2 text-red-600 hover:bg-red-50 rounded"
-              disabled={items.length === 1}
-            >
-              Remove
-            </button>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                className="text-sm text-red-600 hover:underline disabled:text-gray-400"
+                disabled={items.length === 1}
+              >
+                Remove
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -799,15 +1375,13 @@ const ButtonContentEditor = ({ content, onChange }: { content: any; onChange: (c
 
 const QuoteContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
   <div className="space-y-4">
-    <div>
-      <label className="block text-sm font-medium mb-2">Quote</label>
-      <textarea
-        rows={4}
-        value={content.text || ''}
-        onChange={(e) => onChange({ ...content, text: e.target.value })}
-        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-      />
-    </div>
+    <RichTextField
+      label="Quote"
+      value={content.text || ''}
+      rows={4}
+      helper="Use inline formatting to emphasize parts of the quote"
+      onChange={(value) => onChange({ ...content, text: value })}
+    />
     <div>
       <label className="block text-sm font-medium mb-2">Author</label>
       <input
@@ -978,15 +1552,16 @@ const AlertContentEditor = ({ content, onChange }: { content: any; onChange: (co
         <option value="info">Info</option>
         <option value="success">Success</option>
         <option value="warning">Warning</option>
-        <option value="error">Error</option>
+        <option value="danger">Danger</option>
       </select>
     </div>
     <div>
-      <label className="block text-sm font-medium mb-2">Content</label>
-      <textarea
-        rows={4}
+      <label className="block text-sm font-medium mb-2">Text</label>
+      <InlineRichTextEditor
+        label="Text"
         value={content.text || ''}
-        onChange={(e) => onChange({ ...content, text: e.target.value })}
+        rows={4}
+        onChange={(value) => onChange({ ...content, text: value })}
         className="w-full px-3 py-2 border border-gray-300 rounded"
       />
     </div>
@@ -1175,15 +1750,13 @@ const CardContentEditor = ({ content, onChange }: { content: any; onChange: (con
         className="w-full px-3 py-2 border border-gray-300 rounded"
       />
     </div>
-    <div>
-      <label className="block text-sm font-medium mb-2">Description</label>
-      <textarea
-        rows={4}
-        value={content.description || ''}
-        onChange={(e) => onChange({ ...content, description: e.target.value })}
-        className="w-full px-3 py-2 border border-gray-300 rounded"
-      />
-    </div>
+    <RichTextField
+      label="Description"
+      value={content.description || ''}
+      rows={4}
+      helper="Supports inline formatting for highlights or links"
+      onChange={(value) => onChange({ ...content, description: value })}
+    />
     <div>
       <label className="block text-sm font-medium mb-2">Image URL</label>
       <input
@@ -1215,6 +1788,94 @@ const CardContentEditor = ({ content, onChange }: { content: any; onChange: (con
     </div>
   </div>
 );
+
+interface RichTextFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  rows?: number;
+  helper?: string;
+}
+
+const RichTextField: React.FC<RichTextFieldProps> = ({ label, value, onChange, rows = 6, helper }) => {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const selectionRef = useRef({ start: 0, end: 0 });
+
+  const updateSelection = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    selectionRef.current = {
+      start: textarea.selectionStart ?? 0,
+      end: textarea.selectionEnd ?? 0
+    };
+  };
+
+  const applyFormat = (prefix: string, suffix: string, placeholder = 'Text') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const { start, end } = selectionRef.current;
+    const actualStart = Math.max(0, Math.min(start, end));
+    const actualEnd = Math.max(actualStart, Math.max(start, end));
+    const selected = value.slice(actualStart, actualEnd) || placeholder;
+    const nextValue = `${value.slice(0, actualStart)}${prefix}${selected}${suffix}${value.slice(actualEnd)}`;
+    const cursorStart = actualStart + prefix.length;
+    const cursorEnd = cursorStart + selected.length;
+    onChange(nextValue);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(cursorStart, cursorEnd);
+      selectionRef.current = { start: cursorStart, end: cursorEnd };
+    });
+  };
+
+  const handleLink = () => {
+    const url = window.prompt('Enter URL');
+    if (!url) return;
+    applyFormat(`<a href="${url}" target="_blank" rel="noopener noreferrer">`, '</a>', 'Link text');
+  };
+
+  const toolbarButtons = [
+    { label: 'B', title: 'Bold', action: () => applyFormat('<strong>', '</strong>') },
+    { label: 'I', title: 'Italic', action: () => applyFormat('<em>', '</em>') },
+    { label: 'U', title: 'Underline', action: () => applyFormat('<u>', '</u>') },
+    { label: '</>', title: 'Code', action: () => applyFormat('<code>', '</code>') },
+    { label: 'Link', title: 'Insert link', action: handleLink }
+  ];
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <div className="flex items-center gap-1">
+          {toolbarButtons.map((button) => (
+            <button
+              key={button.label}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={button.action}
+              className="px-2 py-1 text-xs font-semibold border border-gray-200 rounded hover:bg-gray-100"
+              title={button.title}
+            >
+              {button.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onSelect={updateSelection}
+        onKeyUp={updateSelection}
+        onMouseUp={updateSelection}
+        onBlur={updateSelection}
+        rows={rows}
+        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 font-medium"
+      />
+      {helper && <p className="mt-2 text-xs text-gray-500">{helper}</p>}
+    </div>
+  );
+};
 
 const getDefaultBlockContent = (blockType: string): any => {
   const defaults: Record<string, any> = {
