@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  GripVertical, 
-  Settings, 
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  Settings,
   Save,
   Undo,
-  Redo
+  Redo,
+  ChevronDown
 } from 'lucide-react';
 import { BlockRenderer, getBlockIcon } from './BlockRenderer';
 
@@ -28,7 +29,82 @@ interface Section {
   subtitle?: string;
   display_order: number;
   blocks: Block[];
+  is_sidebar?: boolean;
 }
+
+const TEXT_COLOR_OPTIONS = [
+  { label: 'Default', value: '#111827' },
+  { label: 'Blue', value: '#1d4ed8' },
+  { label: 'Green', value: '#15803d' },
+  { label: 'Orange', value: '#d97706' },
+  { label: 'Red', value: '#b91c1c' },
+  { label: 'Purple', value: '#7c3aed' }
+];
+
+const HIGHLIGHT_COLOR_OPTIONS = [
+  { label: 'None', value: '' },
+  { label: 'Lemon', value: '#fef3c7' },
+  { label: 'Sun', value: '#fde68a' },
+  { label: 'Mint', value: '#d1fae5' },
+  { label: 'Sky', value: '#bae6fd' },
+  { label: 'Blush', value: '#fecdd3' }
+];
+
+const FONT_OPTIONS = [
+  { label: 'Default', value: 'inherit' },
+  { label: 'Inter', value: 'Inter, sans-serif' },
+  { label: 'Roboto', value: 'Roboto, sans-serif' },
+  { label: 'Nunito', value: 'Nunito, sans-serif' },
+  { label: 'Source Serif Pro', value: '"Source Serif Pro", serif' },
+  { label: 'Playfair Display', value: '"Playfair Display", serif' },
+  { label: 'Space Mono', value: '"Space Mono", monospace' },
+  { label: 'Open Sans', value: '"Open Sans", sans-serif' },
+  { label: 'Lato', value: 'Lato, sans-serif' },
+  { label: 'Poppins', value: 'Poppins, sans-serif' },
+  { label: 'Merriweather', value: 'Merriweather, serif' },
+  { label: 'Lora', value: 'Lora, serif' },
+  { label: 'Montserrat', value: 'Montserrat, sans-serif' },
+  { label: 'Work Sans', value: '"Work Sans", sans-serif' },
+  { label: 'Fira Sans', value: '"Fira Sans", sans-serif' },
+  { label: 'Karla', value: 'Karla, sans-serif' },
+  { label: 'DM Sans', value: '"DM Sans", sans-serif' },
+  { label: 'DM Serif Text', value: '"DM Serif Text", serif' },
+  { label: 'Crimson Text', value: '"Crimson Text", serif' },
+  { label: 'IBM Plex Sans', value: '"IBM Plex Sans", sans-serif' },
+  { label: 'IBM Plex Serif', value: '"IBM Plex Serif", serif' },
+  { label: 'PT Sans', value: '"PT Sans", sans-serif' },
+  { label: 'PT Serif', value: '"PT Serif", serif' },
+  { label: 'Cabin', value: 'Cabin, sans-serif' },
+  { label: 'Manrope', value: 'Manrope, sans-serif' },
+  { label: 'Quicksand', value: 'Quicksand, sans-serif' },
+  { label: 'Barlow', value: 'Barlow, sans-serif' },
+  { label: 'Mulish', value: 'Mulish, sans-serif' },
+  { label: 'Raleway', value: 'Raleway, sans-serif' },
+  { label: 'Rubik', value: 'Rubik, sans-serif' },
+  { label: 'Titillium Web', value: '"Titillium Web", sans-serif' },
+  { label: 'Noto Serif', value: '"Noto Serif", serif' },
+  { label: 'Noto Sans', value: '"Noto Sans", sans-serif' },
+  { label: 'Catamaran', value: 'Catamaran, sans-serif' },
+  { label: 'Hind', value: 'Hind, sans-serif' },
+  { label: 'Heebo', value: 'Heebo, sans-serif' },
+  { label: 'Josefin Sans', value: '"Josefin Sans", sans-serif' },
+  { label: 'Archivo', value: 'Archivo, sans-serif' },
+  { label: 'Bitter', value: 'Bitter, serif' },
+  { label: 'Caladea', value: 'Caladea, serif' },
+  { label: 'Cormorant Garamond', value: '"Cormorant Garamond", serif' },
+  { label: 'EB Garamond', value: '"EB Garamond", serif' },
+  { label: 'Spectral', value: 'Spectral, serif' },
+  { label: 'Gentium Book Plus', value: '"Gentium Book Plus", serif' },
+  { label: 'Tinos', value: 'Tinos, serif' },
+  { label: 'Assistant', value: 'Assistant, sans-serif' },
+  { label: 'Overpass', value: 'Overpass, sans-serif' },
+  { label: 'Spartan', value: 'League Spartan, sans-serif' },
+  { label: 'Urbanist', value: 'Urbanist, sans-serif' },
+  { label: 'Sora', value: 'Sora, sans-serif' },
+  { label: 'Lexend', value: 'Lexend, sans-serif' },
+  { label: 'Newsreader', value: 'Newsreader, serif' },
+  { label: 'Zilla Slab', value: '"Zilla Slab", serif' }
+];
 
 const deepClone = (value: any) => {
   if (!value || typeof value !== 'object') return value;
@@ -39,10 +115,92 @@ const deepClone = (value: any) => {
   }
 };
 
+const AdBannerContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Image URL</label>
+        <input
+          type="text"
+          value={content.imageUrl || ''}
+          onChange={(e) => onChange({ ...content, imageUrl: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Destination Link</label>
+        <input
+          type="text"
+          value={content.linkUrl || ''}
+          onChange={(e) => onChange({ ...content, linkUrl: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Headline</label>
+        <input
+          type="text"
+          value={content.headline || ''}
+          onChange={(e) => onChange({ ...content, headline: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Description</label>
+        <textarea
+          value={content.description || ''}
+          onChange={(e) => onChange({ ...content, description: e.target.value })}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">CTA Label</label>
+          <input
+            type="text"
+            value={content.ctaLabel || ''}
+            onChange={(e) => onChange({ ...content, ctaLabel: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">CTA Link</label>
+          <input
+            type="text"
+            value={content.ctaUrl || ''}
+            onChange={(e) => onChange({ ...content, ctaUrl: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Background Color</label>
+        <input
+          type="text"
+          value={content.backgroundColor || '#0f172a'}
+          onChange={(e) => onChange({ ...content, backgroundColor: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Badge Text</label>
+        <input
+          type="text"
+          value={content.badgeText || ''}
+          onChange={(e) => onChange({ ...content, badgeText: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+    </div>
+  );
+};
+
 const normalizeSections = (source: Section[]): Section[] =>
   source.map((section) => ({
     ...section,
-    blocks: section.blocks || []
+    blocks: section.blocks || [],
+    is_sidebar: section.is_sidebar ?? false
   }));
 
 const snapshotSections = (source: Section[]): Section[] =>
@@ -99,7 +257,10 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     italic: false,
     underline: false,
     code: false,
-    link: false
+    link: false,
+    color: TEXT_COLOR_OPTIONS[0].value,
+    highlight: '',
+    font: FONT_OPTIONS[0].value
   });
 
   useEffect(() => {
@@ -141,8 +302,17 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     if (typeof document === 'undefined') return;
     if (!isSelectionInside()) {
       setActiveFormats((prev) =>
-        prev.bold || prev.italic || prev.underline || prev.code || prev.link
-          ? { bold: false, italic: false, underline: false, code: false, link: false }
+        prev.bold || prev.italic || prev.underline || prev.code || prev.link || prev.color !== TEXT_COLOR_OPTIONS[0].value || prev.highlight || prev.font !== FONT_OPTIONS[0].value
+          ? {
+              bold: false,
+              italic: false,
+              underline: false,
+              code: false,
+              link: false,
+              color: TEXT_COLOR_OPTIONS[0].value,
+              highlight: '',
+              font: FONT_OPTIONS[0].value
+            }
           : prev
       );
       return;
@@ -155,8 +325,18 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     const anchorNode = selection?.anchorNode || null;
     const code = findAncestorTag(anchorNode, 'CODE');
     const link = findAncestorTag(anchorNode, 'A');
+    const anchorElement = (anchorNode as HTMLElement)?.nodeType === Node.ELEMENT_NODE
+      ? (anchorNode as HTMLElement)
+      : (anchorNode?.parentElement || null);
+    const computedStyle = anchorElement ? window.getComputedStyle(anchorElement) : null;
+    const color = computedStyle?.color || TEXT_COLOR_OPTIONS[0].value;
+    const backgroundColor = computedStyle?.backgroundColor;
+    const highlight = backgroundColor && backgroundColor !== 'rgba(0, 0, 0, 0)' && backgroundColor !== 'transparent'
+      ? backgroundColor
+      : '';
+    const font = computedStyle?.fontFamily || FONT_OPTIONS[0].value;
 
-    setActiveFormats({ bold, italic, underline, code, link });
+    setActiveFormats({ bold, italic, underline, code, link, color, highlight, font });
   }, []);
 
   const exec = (command: string, arg?: string) => {
@@ -183,6 +363,34 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     updateActiveFormats();
   };
 
+  const applyTextColor = (color: string) => {
+    if (typeof document === 'undefined') return;
+    const appliedColor = color || TEXT_COLOR_OPTIONS[0].value;
+    editorRef.current?.focus();
+    document.execCommand('foreColor', false, appliedColor);
+    handleInput();
+    updateActiveFormats();
+  };
+
+  const applyHighlightColor = (color: string) => {
+    if (typeof document === 'undefined') return;
+    editorRef.current?.focus();
+    const command = document.queryCommandSupported('hiliteColor') ? 'hiliteColor' : 'backColor';
+    const value = color || 'transparent';
+    document.execCommand(command, false, value);
+    handleInput();
+    updateActiveFormats();
+  };
+
+  const applyFontFamily = (fontFamily: string) => {
+    if (typeof document === 'undefined') return;
+    const targetFont = fontFamily === 'inherit' ? 'inherit' : fontFamily;
+    editorRef.current?.focus();
+    document.execCommand('fontName', false, targetFont);
+    handleInput();
+    updateActiveFormats();
+  };
+
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const handleSelectionChange = () => updateActiveFormats();
@@ -205,24 +413,84 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     <div className="w-full space-y-2">
       {label && <label className="block text-sm font-medium text-gray-700">{label}</label>}
       <div className="border border-gray-200 rounded-xl bg-white">
-        <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-gray-100">
-          {buttons.map((button) => {
-            const isActive = button.key ? activeFormats[button.key] : false;
-            return (
-              <button
-                key={button.label}
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={button.action}
-                className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${
-                  isActive ? 'bg-gray-200 text-blue-600' : ''
-                }`}
-                title={button.title}
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-gray-100">
+          <div className="flex flex-wrap gap-1">
+            {buttons.map((button) => {
+              const isActive = button.key ? activeFormats[button.key] : false;
+              return (
+                <button
+                  key={button.label}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={button.action}
+                  className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${
+                    isActive ? 'bg-gray-200 text-blue-600' : ''
+                  }`}
+                  title={button.title}
+                >
+                  {button.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <label className="flex items-center gap-1 text-xs text-gray-500">
+              Font
+              <select
+                value={activeFormats.font}
+                onChange={(event) => applyFontFamily(event.target.value)}
+                className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
               >
-                {button.label}
-              </button>
-            );
-          })}
+                {FONT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-1 text-xs text-gray-500">
+              Text
+              <select
+                value={activeFormats.color}
+                onChange={(event) => applyTextColor(event.target.value)}
+                className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+              >
+                {TEXT_COLOR_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="color"
+                value={activeFormats.color}
+                onChange={(event) => applyTextColor(event.target.value)}
+                className="w-8 h-6 border border-gray-200 rounded"
+                title="Custom text color"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-gray-500">
+              Highlight
+              <select
+                value={activeFormats.highlight}
+                onChange={(event) => applyHighlightColor(event.target.value)}
+                className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+              >
+                {HIGHLIGHT_COLOR_OPTIONS.map((option) => (
+                  <option key={option.value || 'none'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="color"
+                value={activeFormats.highlight || '#ffffff'}
+                onChange={(event) => applyHighlightColor(event.target.value)}
+                className="w-8 h-6 border border-gray-200 rounded"
+                title="Custom highlight color"
+              />
+            </label>
+          </div>
         </div>
         <div className="relative">
           {(!value || value === '<p></p>' || value === '<br>') && (
@@ -514,7 +782,8 @@ const BLOCK_TYPES = [
   { type: 'alert', label: 'Alert', description: 'Alert or notice box' },
   { type: 'video', label: 'Video', description: 'Embed video' },
   { type: 'html', label: 'HTML', description: 'Custom HTML' },
-  { type: 'spacer', label: 'Spacer', description: 'Add vertical space' }
+  { type: 'spacer', label: 'Spacer', description: 'Add vertical space' },
+  { type: 'adBanner', label: 'Ad Banner', description: 'Display an ad image with link' }
 ];
 
 const INLINE_EDITABLE_BLOCKS = new Set([
@@ -543,27 +812,24 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [historyIndex, setHistoryIndex] = useState(0);
   const syncingFromParentRef = useRef(false);
   const suppressHistoryRef = useRef(false);
-
-  const parentSectionsSignature = useMemo(() => {
-    try {
-      return JSON.stringify(initialSections);
-    } catch (error) {
-      return null;
-    }
-  }, [initialSections]);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [draggingSectionId, setDraggingSectionId] = useState<string | null>(null);
+  const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
+  const [draggingBlock, setDraggingBlock] = useState<{ sectionId: string; blockId: string } | null>(null);
+  const [dragOverBlock, setDragOverBlock] = useState<{ sectionId: string; blockId: string } | null>(null);
 
   useEffect(() => {
-    if (!parentSectionsSignature || parentSectionsSignatureRef.current === parentSectionsSignature) {
+    if (!parentSectionsSignatureRef.current || parentSectionsSignatureRef.current === JSON.stringify(initialSections)) {
       return;
     }
-    parentSectionsSignatureRef.current = parentSectionsSignature;
+    parentSectionsSignatureRef.current = JSON.stringify(initialSections);
     syncingFromParentRef.current = true;
     const normalized = normalizeSections(initialSections);
     setSections(normalized);
     historyRef.current = [snapshotSections(normalized)];
     historyIndexRef.current = 0;
     setHistoryIndex(0);
-  }, [parentSectionsSignature, initialSections]);
+  }, [initialSections]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !autosaveKey) return;
@@ -592,6 +858,18 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       console.warn('Failed to persist autosave draft', error);
     }
   }, [sections, autosaveKey]);
+
+  useEffect(() => {
+    setCollapsedSections((prev) => {
+      const next = new Set<string>();
+      sections.forEach((section) => {
+        if (prev.has(section.id)) {
+          next.add(section.id);
+        }
+      });
+      return next;
+    });
+  }, [sections]);
 
   useEffect(() => {
     if (syncingFromParentRef.current) {
@@ -639,14 +917,86 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     setSections(historyRef.current[nextIndex]);
   };
 
+  const toggleSectionCollapse = (sectionId: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSectionSidebar = (sectionId: string) => {
+    setSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId
+          ? { ...section, is_sidebar: !(section.is_sidebar ?? false) }
+          : section
+      )
+    );
+  };
+
   const addSection = () => {
     const newSection: Section = {
       id: `temp-${Date.now()}`,
       title: 'New Section',
       display_order: sections.length,
-      blocks: []
+      blocks: [],
+      is_sidebar: false
     };
     setSections([...sections, newSection]);
+  };
+
+  const reorderSections = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    setSections((prev) => {
+      const next = [...prev];
+      const sourceIndex = next.findIndex((section) => section.id === sourceId);
+      let targetIndex = next.findIndex((section) => section.id === targetId);
+      if (sourceIndex === -1 || targetIndex === -1) {
+        return prev;
+      }
+
+      const [moved] = next.splice(sourceIndex, 1);
+      if (sourceIndex < targetIndex) {
+        targetIndex -= 1;
+      }
+      next.splice(targetIndex, 0, moved);
+      return next.map((section, index) => ({
+        ...section,
+        display_order: index
+      }));
+    });
+  };
+
+  const handleSectionDragStart = (event: React.DragEvent<HTMLDivElement>, sectionId: string) => {
+    if (isPreview) return;
+    setDraggingSectionId(sectionId);
+    setDragOverSectionId(null);
+    event.dataTransfer.setData('text/plain', sectionId);
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleSectionDragOver = (event: React.DragEvent<HTMLDivElement>, sectionId: string) => {
+    if (!draggingSectionId || draggingSectionId === sectionId) return;
+    event.preventDefault();
+    setDragOverSectionId(sectionId);
+  };
+
+  const handleSectionDrop = (event: React.DragEvent<HTMLDivElement>, sectionId: string) => {
+    if (!draggingSectionId) return;
+    event.preventDefault();
+    reorderSections(draggingSectionId, sectionId);
+    setDraggingSectionId(null);
+    setDragOverSectionId(null);
+  };
+
+  const handleSectionDragEnd = () => {
+    setDraggingSectionId(null);
+    setDragOverSectionId(null);
   };
 
   const updateSection = (sectionId: string, updates: Partial<Section>) => {
@@ -728,40 +1078,76 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     ));
   };
 
+  const reorderBlocks = (sectionId: string, sourceBlockId: string, targetBlockId: string) => {
+    setSections((prev) =>
+      prev.map((section) => {
+        if (section.id !== sectionId) return section;
+        const nextBlocks = [...section.blocks];
+        const sourceIndex = nextBlocks.findIndex((block) => block.id === sourceBlockId);
+        let targetIndex = nextBlocks.findIndex((block) => block.id === targetBlockId);
+        if (sourceIndex === -1 || targetIndex === -1) {
+          return section;
+        }
+        const [moved] = nextBlocks.splice(sourceIndex, 1);
+        if (sourceIndex < targetIndex) {
+          targetIndex -= 1;
+        }
+        nextBlocks.splice(targetIndex, 0, moved);
+        nextBlocks.forEach((block, index) => {
+          block.display_order = index;
+        });
+        return { ...section, blocks: nextBlocks };
+      })
+    );
+  };
+
+  const handleBlockDragStart = (
+    event: React.DragEvent<HTMLDivElement>,
+    sectionId: string,
+    blockId: string
+  ) => {
+    if (isPreview) return;
+    setDraggingBlock({ sectionId, blockId });
+    setDragOverBlock(null);
+    event.dataTransfer.setData('text/plain', blockId);
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleBlockDragOver = (
+    event: React.DragEvent<HTMLDivElement>,
+    sectionId: string,
+    blockId: string
+  ) => {
+    if (!draggingBlock || draggingBlock.sectionId !== sectionId || draggingBlock.blockId === blockId) {
+      return;
+    }
+    event.preventDefault();
+    setDragOverBlock({ sectionId, blockId });
+  };
+
+  const handleBlockDrop = (
+    event: React.DragEvent<HTMLDivElement>,
+    sectionId: string,
+    blockId: string
+  ) => {
+    if (!draggingBlock || draggingBlock.sectionId !== sectionId) return;
+    event.preventDefault();
+    reorderBlocks(sectionId, draggingBlock.blockId, blockId);
+    setDraggingBlock(null);
+    setDragOverBlock(null);
+  };
+
+  const handleBlockDragEnd = () => {
+    setDraggingBlock(null);
+    setDragOverBlock(null);
+  };
+
   const handleSave = () => {
     onSave(sections);
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar - Block Picker */}
-      <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">Content Blocks</h2>
-          <p className="text-sm text-gray-600 mt-1">Drag or click to add</p>
-        </div>
-        <div className="p-4 space-y-2">
-          {BLOCK_TYPES.map(blockType => {
-            const Icon = getBlockIcon(blockType.type);
-            return (
-              <button
-                key={blockType.type}
-                className="w-full p-3 text-left border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
-                title={blockType.description}
-              >
-                <div className="flex items-center">
-                  <Icon className="w-5 h-5 text-gray-600 group-hover:text-blue-600 mr-3" />
-                  <div>
-                    <div className="font-medium text-sm text-gray-900">{blockType.label}</div>
-                    <div className="text-xs text-gray-500">{blockType.description}</div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
@@ -810,19 +1196,58 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
               </div>
             ) : (
               sections.map((section, sectionIndex) => (
-                <div key={section.id} className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200">
+                <div
+                  key={section.id}
+                  className={`mb-8 bg-white rounded-lg shadow-sm border transition-colors ${
+                    dragOverSectionId === section.id ? 'border-blue-400 shadow-md' : 'border-gray-200'
+                  } ${draggingSectionId === section.id ? 'opacity-70' : ''}`}
+                  draggable={!isPreview}
+                  onDragStart={(event) => handleSectionDragStart(event, section.id)}
+                  onDragOver={(event) => handleSectionDragOver(event, section.id)}
+                  onDrop={(event) => handleSectionDrop(event, section.id)}
+                  onDragEnd={handleSectionDragEnd}
+                >
                   {/* Section Header */}
                   {!isPreview && (
                     <div className="p-4 border-b border-gray-200 bg-gray-50">
                       <div className="flex items-center justify-between">
-                        <input
-                          type="text"
-                          value={section.title}
-                          onChange={(e) => updateSection(section.id, { title: e.target.value })}
-                          className="text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2"
-                          placeholder="Section Title"
-                        />
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleSectionCollapse(section.id)}
+                            className="p-2 rounded-full hover:bg-white border border-gray-200"
+                            aria-label={collapsedSections.has(section.id) ? 'Expand section' : 'Collapse section'}
+                          >
+                            <ChevronDown
+                              className={`w-4 h-4 transition-transform ${collapsedSections.has(section.id) ? '' : 'rotate-180'}`}
+                            />
+                          </button>
+                          <input
+                            type="text"
+                            value={section.title}
+                            onChange={(e) => updateSection(section.id, { title: e.target.value })}
+                            className="text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2"
+                            placeholder="Section Title"
+                          />
+                          <span
+                            className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                              section.is_sidebar ? 'border-amber-400 text-amber-600 bg-amber-50' : 'border-blue-300 text-blue-600 bg-blue-50'
+                            }`}
+                          >
+                            {section.is_sidebar ? 'Sidebar' : 'Main content'}
+                          </span>
+                        </div>
                         <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => toggleSectionSidebar(section.id)}
+                            className={`px-3 py-1 rounded text-sm border ${
+                              section.is_sidebar
+                                ? 'border-amber-500 text-amber-600 bg-amber-50'
+                                : 'border-gray-200 text-gray-700'
+                            }`}
+                          >
+                            {section.is_sidebar ? 'Use as main' : 'Use as sidebar'}
+                          </button>
                           <button
                             onClick={() => setShowBlockPicker(showBlockPicker === section.id ? null : section.id)}
                             className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
@@ -838,7 +1263,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                           </button>
                         </div>
                       </div>
-                      {section.subtitle !== undefined && (
+                      {section.subtitle !== undefined && !collapsedSections.has(section.id) && (
                         <input
                           type="text"
                           value={section.subtitle ?? ''}
@@ -851,7 +1276,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                   )}
 
                   {/* Block Picker Dropdown */}
-                  {showBlockPicker === section.id && !isPreview && (
+                  {showBlockPicker === section.id && !isPreview && !collapsedSections.has(section.id) && (
                     <div className="p-4 bg-blue-50 border-b border-blue-200">
                       <p className="text-sm font-semibold mb-3">Choose a block type:</p>
                       <div className="grid grid-cols-3 gap-2">
@@ -873,126 +1298,147 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                   )}
 
                   {/* Section Blocks */}
-                  <div className="p-6">
-                    {section.blocks.length === 0 ? (
-                      <div className="text-center py-12 text-gray-400">
-                        No blocks in this section. Click "Add Block" to add content.
-                      </div>
-                    ) : (
-                      section.blocks.map((block, blockIndex) => {
-                        const isSelected = selectedBlock === block.id;
-                        const isTableBlock = block.block_type === 'table';
-                        const isTableEditing = !isPreview && isTableBlock && openBlockEditor === block.id;
-                        const isInlineEditable = INLINE_EDITABLE_BLOCKS.has(block.block_type);
-                        const showSideEditor = !isTableBlock && !isInlineEditable && !isPreview && openBlockEditor === block.id;
+                  {collapsedSections.has(section.id) ? (
+                    <div className="p-6 text-sm text-gray-500 italic">Section collapsed. Expand to edit blocks.</div>
+                  ) : (
+                    <div className="p-6">
+                      {section.blocks.length === 0 ? (
+                        <div className="text-center py-12 text-gray-400">
+                          No blocks in this section. Click "Add Block" to add content.
+                        </div>
+                      ) : (
+                        section.blocks.map((block, blockIndex) => {
+                          const isSelected = selectedBlock === block.id;
+                          const isTableBlock = block.block_type === 'table';
+                          const isTableEditing = !isPreview && isTableBlock && openBlockEditor === block.id;
+                          const isInlineEditable = INLINE_EDITABLE_BLOCKS.has(block.block_type);
+                          const showSideEditor = !isTableBlock && !isInlineEditable && !isPreview && openBlockEditor === block.id;
 
-                        return (
-                          <div
-                            key={block.id}
-                            className={`relative group mb-4 ${isSelected ? 'ring-2 ring-blue-500 rounded' : ''}`}
-                            onClick={() => setSelectedBlock(block.id)}
-                          >
-                            {/* Block Controls */}
-                            {!isPreview && (
-                              <div className="absolute -left-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col space-y-1">
-                                <button
-                                  onClick={() => moveBlock(section.id, block.id, 'up')}
-                                  disabled={blockIndex === 0}
-                                  className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
-                                >
-                                  <GripVertical className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => deleteBlock(section.id, block.id)}
-                                  className="p-1 bg-white border border-red-300 rounded hover:bg-red-50 text-red-600"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                                {!isTableBlock && !isInlineEditable && (
+                          return (
+                            <div
+                              key={block.id}
+                              className={`relative group mb-4 rounded border transition-colors ${
+                                isSelected ? 'ring-2 ring-blue-500' : 'border-transparent'
+                              } ${
+                                dragOverBlock &&
+                                dragOverBlock.sectionId === section.id &&
+                                dragOverBlock.blockId === block.id
+                                  ? 'border-blue-300' : ''
+                              } ${
+                                draggingBlock &&
+                                draggingBlock.sectionId === section.id &&
+                                draggingBlock.blockId === block.id
+                                  ? 'opacity-70' : ''
+                              }`}
+                              onClick={() => setSelectedBlock(block.id)}
+                              draggable={!isPreview}
+                              onDragStart={(event) => handleBlockDragStart(event, section.id, block.id)}
+                              onDragOver={(event) => handleBlockDragOver(event, section.id, block.id)}
+                              onDrop={(event) => handleBlockDrop(event, section.id, block.id)}
+                              onDragEnd={handleBlockDragEnd}
+                            >
+                              {/* Block Controls */}
+                              {!isPreview && (
+                                <div className="absolute -left-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col space-y-1">
                                   <button
-                                    onClick={() =>
-                                      setOpenBlockEditor((prev) => (prev === block.id ? null : block.id))
-                                    }
-                                    className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                    onClick={() => moveBlock(section.id, block.id, 'up')}
+                                    disabled={blockIndex === 0}
+                                    className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
                                   >
-                                    {showSideEditor ? 'Close' : 'Edit'}
+                                    <GripVertical className="w-4 h-4" />
                                   </button>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Block Content */}
-                            {isTableBlock && !isPreview && (
-                              <div className="flex justify-end gap-2 mb-3">
-                                <button
-                                  type="button"
-                                  onClick={() => setOpenBlockEditor((prev) => (prev === block.id ? null : prev))}
-                                  className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
-                                    !isTableEditing ? 'bg-white text-blue-600 border-blue-600' : 'text-gray-500 border-gray-200'
-                                  }`}
-                                >
-                                  Preview Table
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setOpenBlockEditor(block.id)}
-                                  className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
-                                    isTableEditing ? 'bg-blue-600 text-white border-blue-600' : 'text-blue-600 border-blue-600'
-                                  }`}
-                                >
-                                  Edit Table
-                                </button>
-                              </div>
-                            )}
-
-                            {isTableBlock && isTableEditing && (
-                              <InlineTableEditor
-                                content={block.content}
-                                onChange={(updatedContent) =>
-                                  updateBlock(section.id, block.id, { content: updatedContent })
-                                }
-                              />
-                            )}
-
-                            {!isPreview && isInlineEditable ? (
-                              <InlineTextBlockEditor
-                                block={block}
-                                onContentChange={(nextContent) =>
-                                  updateBlock(section.id, block.id, { content: nextContent })
-                                }
-                              />
-                            ) : (
-                              <BlockRenderer block={block} isEditing={!isPreview} />
-                            )}
-
-                            {showSideEditor && (
-                              <div className="mt-4 border border-blue-200 bg-blue-50/40 rounded-lg p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
-                                    <Settings className="w-4 h-4" />
-                                    Configure {block.block_type} block
-                                  </div>
                                   <button
-                                    className="text-blue-600 text-sm font-medium"
-                                    onClick={() => setOpenBlockEditor(null)}
+                                    onClick={() => deleteBlock(section.id, block.id)}
+                                    className="p-1 bg-white border border-red-300 rounded hover:bg-red-50 text-red-600"
                                   >
-                                    Done
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                  {!isTableBlock && !isInlineEditable && (
+                                    <button
+                                      onClick={() =>
+                                        setOpenBlockEditor((prev) => (prev === block.id ? null : block.id))
+                                      }
+                                      className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                    >
+                                      {showSideEditor ? 'Close' : 'Edit'}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Block Content */}
+                              {isTableBlock && !isPreview && (
+                                <div className="flex justify-end gap-2 mb-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenBlockEditor((prev) => (prev === block.id ? null : prev))}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
+                                      !isTableEditing ? 'bg-white text-blue-600 border-blue-600' : 'text-gray-500 border-gray-200'
+                                    }`}
+                                  >
+                                    Preview Table
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenBlockEditor(block.id)}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
+                                      isTableEditing ? 'bg-blue-600 text-white border-blue-600' : 'text-blue-600 border-blue-600'
+                                    }`}
+                                  >
+                                    Edit Table
                                   </button>
                                 </div>
-                                <BlockContentEditor
-                                  blockType={block.block_type}
+                              )}
+
+                              {isTableBlock && isTableEditing && (
+                                <InlineTableEditor
                                   content={block.content}
                                   onChange={(updatedContent) =>
                                     updateBlock(section.id, block.id, { content: updatedContent })
                                   }
                                 />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                              )}
+
+                              {!isPreview && isInlineEditable ? (
+                                <InlineTextBlockEditor
+                                  block={block}
+                                  onContentChange={(nextContent) =>
+                                    updateBlock(section.id, block.id, { content: nextContent })
+                                  }
+                                />
+                              ) : (
+                                <BlockRenderer block={block} isEditing={!isPreview} />
+                              )}
+
+                              {showSideEditor && (
+                                <div className="mt-4 border border-blue-200 bg-blue-50/40 rounded-lg p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
+                                      <Settings className="w-4 h-4" />
+                                      Configure {block.block_type} block
+                                    </div>
+                                    <button
+                                      className="text-blue-600 text-sm font-medium"
+                                      onClick={() => setOpenBlockEditor(null)}
+                                    >
+                                      Done
+                                    </button>
+                                  </div>
+                                  <BlockContentEditor
+                                    blockType={block.block_type}
+                                    content={block.content}
+                                    onChange={(updatedContent) =>
+                                      updateBlock(section.id, block.id, { content: updatedContent })
+                                    }
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -1108,6 +1554,9 @@ const BlockContentEditor: React.FC<{
     case 'card':
       return <CardContentEditor content={content} onChange={onChange} />;
 
+    case 'adBanner':
+      return <AdBannerContentEditor content={content} onChange={onChange} />;
+
     default:
       return (
         <div className="mb-4">
@@ -1207,7 +1656,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
 
   const addColumn = () => {
     const nextHeaders = [...headers, `Column ${headers.length + 1}`];
-    const nextRows = rows.map((row) => [...row, '']);
+    const nextRows = rows.length ? rows.map((row) => [...row, '']) : [[...nextHeaders.map(() => '')]];
     update({ headers: nextHeaders, rows: nextRows });
   };
 

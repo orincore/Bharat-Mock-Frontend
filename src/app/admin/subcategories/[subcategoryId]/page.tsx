@@ -56,6 +56,7 @@ interface SEOData {
   og_image_url?: string;
   canonical_url?: string;
   robots_meta?: string;
+  structured_data?: string;
 }
 
 export default function AdminSubcategoryEditorPage() {
@@ -85,6 +86,7 @@ export default function AdminSubcategoryEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSEOPanel, setShowSEOPanel] = useState(false);
+  const [uploadingOgImage, setUploadingOgImage] = useState(false);
 
   useEffect(() => {
     if (subcategoryId) {
@@ -227,6 +229,61 @@ export default function AdminSubcategoryEditorPage() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSeoChange = (field: keyof SEOData, value: string) => {
+    setSeoData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleOgImageFile = async (file: File) => {
+    try {
+      setUploadingOgImage(true);
+      const token = getAuthToken();
+      if (!token) {
+        toast({
+          title: 'Authentication Error',
+          description: 'Please log in to upload images',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `seo/${subcategoryId}`);
+
+      const uploadResponse = await fetch(
+        buildApiUrl(`/page-content/${subcategoryId}/media`),
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        }
+      );
+
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const uploadData = await uploadResponse.json();
+      if (!uploadData?.file_url) {
+        throw new Error('Upload did not return a URL');
+      }
+
+      handleSeoChange('og_image_url', uploadData.file_url);
+      toast({ title: 'Image uploaded', description: 'OG image updated successfully' });
+    } catch (error) {
+      console.error('Failed to upload OG image:', error);
+      toast({
+        title: 'Upload failed',
+        description: error instanceof Error ? error.message : 'Could not upload image',
+        variant: 'destructive'
+      });
+    } finally {
+      setUploadingOgImage(false);
     }
   };
 
@@ -408,7 +465,10 @@ export default function AdminSubcategoryEditorPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-gray-900">SEO Settings</h2>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">SEO Settings</h2>
+                <p className="text-sm text-gray-500">Optimize metadata for Google Search and social platforms.</p>
+              </div>
               <button
                 onClick={() => setShowSEOPanel(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
@@ -417,121 +477,181 @@ export default function AdminSubcategoryEditorPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Title
-                </label>
-                <input
-                  type="text"
-                  value={seoData.meta_title || ''}
-                  onChange={(e) => setSeoData({ ...seoData, meta_title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter meta title (50-60 characters)"
-                  maxLength={60}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {seoData.meta_title?.length || 0}/60 characters
-                </p>
-              </div>
+            <div className="p-6 space-y-8">
+              <section className="space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <label className="flex items-center justify-between text-sm font-medium text-gray-700">
+                      <span>Meta Title</span>
+                      <span className={`text-xs ${seoData.meta_title && seoData.meta_title.length > 60 ? 'text-red-500' : 'text-gray-500'}`}>
+                        {seoData.meta_title?.length || 0}/60
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={seoData.meta_title || ''}
+                      onChange={(e) => handleSeoChange('meta_title', e.target.value)}
+                      className={`mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        seoData.meta_title && seoData.meta_title.length > 60 ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter a compelling title (50-60 characters)"
+                      maxLength={70}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Adds the HTML &lt;title&gt; tag and Google headline.</p>
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Description
-                </label>
-                <textarea
-                  value={seoData.meta_description || ''}
-                  onChange={(e) => setSeoData({ ...seoData, meta_description: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter meta description (150-160 characters)"
-                  maxLength={160}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {seoData.meta_description?.length || 0}/160 characters
-                </p>
-              </div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <label className="flex items-center justify-between text-sm font-medium text-gray-700">
+                      <span>Meta Description</span>
+                      <span className={`text-xs ${seoData.meta_description && seoData.meta_description.length > 160 ? 'text-red-500' : 'text-gray-500'}`}>
+                        {seoData.meta_description?.length || 0}/160
+                      </span>
+                    </label>
+                    <textarea
+                      value={seoData.meta_description || ''}
+                      onChange={(e) => handleSeoChange('meta_description', e.target.value)}
+                      rows={3}
+                      className={`mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        seoData.meta_description && seoData.meta_description.length > 160 ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Explain the page in 150-160 characters"
+                      maxLength={200}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Displayed beneath the title in search results.</p>
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Keywords
-                </label>
-                <input
-                  type="text"
-                  value={seoData.meta_keywords || ''}
-                  onChange={(e) => setSeoData({ ...seoData, meta_keywords: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="keyword1, keyword2, keyword3"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Keywords</label>
+                  <input
+                    type="text"
+                    value={seoData.meta_keywords || ''}
+                    onChange={(e) => handleSeoChange('meta_keywords', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="keyword1, keyword2, keyword3"
+                  />
+                </div>
+              </section>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Open Graph Title
-                </label>
-                <input
-                  type="text"
-                  value={seoData.og_title || ''}
-                  onChange={(e) => setSeoData({ ...seoData, og_title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Title for social media sharing"
-                />
-              </div>
+              <section className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
+                <p className="text-xs uppercase font-semibold text-gray-500 mb-3">Search Preview</p>
+                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">google.com › {subcategoryInfo?.slug || 'subcategory'}</p>
+                    <p className="text-lg text-blue-700 font-semibold leading-tight">{seoData.meta_title || subcategoryInfo?.name || 'Meta title preview'}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {seoData.meta_description || 'Meta description preview will appear here once you add it.'}
+                    </p>
+                  </div>
+                  {seoData.og_image_url && (
+                    <div className="w-full md:w-40 flex-shrink-0">
+                      <img
+                        src={seoData.og_image_url}
+                        alt="OG preview"
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                      />
+                      <p className="mt-1 text-[11px] text-gray-500 text-center">Social thumbnail</p>
+                    </div>
+                  )}
+                </div>
+              </section>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Open Graph Description
-                </label>
-                <textarea
-                  value={seoData.og_description || ''}
-                  onChange={(e) => setSeoData({ ...seoData, og_description: e.target.value })}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Description for social media sharing"
-                />
-              </div>
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Open Graph Title</label>
+                    <input
+                      type="text"
+                      value={seoData.og_title || ''}
+                      onChange={(e) => handleSeoChange('og_title', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Title for Facebook / LinkedIn"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Open Graph Description</label>
+                    <textarea
+                      value={seoData.og_description || ''}
+                      onChange={(e) => handleSeoChange('og_description', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Short description for social sharing"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Open Graph Image URL</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={seoData.og_image_url || ''}
+                        onChange={(e) => handleSeoChange('og_image_url', e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="https://example.com/og-image.jpg"
+                      />
+                      <label className={`inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 cursor-pointer ${uploadingOgImage ? 'opacity-60 pointer-events-none' : ''}`}>
+                        {uploadingOgImage ? 'Uploading…' : 'Upload'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingOgImage}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (!file) return;
+                            void handleOgImageFile(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {seoData.og_image_url && (
+                      <div className="mt-3 border border-dashed border-gray-300 rounded-lg p-2 bg-white">
+                        <img src={seoData.og_image_url} alt="OG preview" className="w-full h-32 object-cover rounded" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Canonical URL</label>
+                    <input
+                      type="url"
+                      value={seoData.canonical_url || ''}
+                      onChange={(e) => handleSeoChange('canonical_url', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="https://bharatmock.com/ssc/cgl"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Helps avoid duplicate-content penalties.</p>
+                  </div>
+                </div>
+              </section>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Open Graph Image URL
-                </label>
-                <input
-                  type="url"
-                  value={seoData.og_image_url || ''}
-                  onChange={(e) => setSeoData({ ...seoData, og_image_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Canonical URL
-                </label>
-                <input
-                  type="url"
-                  value={seoData.canonical_url || ''}
-                  onChange={(e) => setSeoData({ ...seoData, canonical_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="https://example.com/canonical-url"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Robots Meta Tag
-                </label>
-                <select
-                  value={seoData.robots_meta || 'index,follow'}
-                  onChange={(e) => setSeoData({ ...seoData, robots_meta: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="index,follow">Index, Follow</option>
-                  <option value="noindex,follow">No Index, Follow</option>
-                  <option value="index,nofollow">Index, No Follow</option>
-                  <option value="noindex,nofollow">No Index, No Follow</option>
-                </select>
-              </div>
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Robots Meta Tag</label>
+                  <select
+                    value={seoData.robots_meta || 'index,follow'}
+                    onChange={(e) => handleSeoChange('robots_meta', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="index,follow">Index, Follow</option>
+                    <option value="noindex,follow">No Index, Follow</option>
+                    <option value="index,nofollow">Index, No Follow</option>
+                    <option value="noindex,nofollow">No Index, No Follow</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Structured Data Notes</label>
+                  <textarea
+                    value={seoData.structured_data || ''}
+                    onChange={(e) => handleSeoChange('structured_data' as keyof SEOData, e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Add reminders for schema markup (e.g., FAQ, Breadcrumbs)"
+                  />
+                </div>
+              </section>
             </div>
 
             <div className="p-6 border-t border-gray-200 flex justify-end space-x-2 sticky bottom-0 bg-white">

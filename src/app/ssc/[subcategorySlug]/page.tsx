@@ -29,6 +29,7 @@ interface Section {
   display_order: number;
   is_collapsible?: boolean;
   is_expanded?: boolean;
+  is_sidebar?: boolean;
   blocks: Block[];
 }
 
@@ -240,6 +241,9 @@ export default function SSCSubcategoryPage() {
     return <DefaultSSCPage title={heroTitle ?? "SSC"} subtitle={heroSubtitle} />;
   }
 
+  const sidebarSections = pageContent.sections.filter((section) => section.is_sidebar);
+  const mainSections = pageContent.sections.filter((section) => !section.is_sidebar);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {pageContent.seo && (
@@ -280,7 +284,7 @@ export default function SSCSubcategoryPage() {
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex overflow-x-auto py-4 space-x-6">
-            {pageContent.sections.map((section) => (
+            {mainSections.map((section) => (
               <a
                 key={section.id}
                 href={`#${section.section_key}`}
@@ -322,7 +326,7 @@ export default function SSCSubcategoryPage() {
                   </div>
                 ))}
 
-                {pageContent.sections.map((section) => (
+                {mainSections.map((section) => (
                   <section
                     key={section.id}
                     id={section.section_key}
@@ -412,37 +416,53 @@ export default function SSCSubcategoryPage() {
                   <p className="text-sm text-gray-600">No question papers available yet.</p>
                 ) : (
                   <div className="space-y-4">
-                    {questionPapers.map((paper: any) => (
-                      <div key={paper.id} className="border rounded-xl p-4">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                          <div>
-                            <p className="text-sm text-gray-500">{paper.year || '—'}</p>
-                            <h3 className="text-lg font-semibold text-gray-900">{paper.title || paper.exam?.title}</h3>
-                            {paper.description && <p className="text-sm text-gray-600 mt-1">{paper.description}</p>}
-                          </div>
-                          <div className="flex gap-3">
-                            {paper.exam?.url_path && (
-                              <Link
-                                href={paper.exam.url_path}
-                                className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
-                              >
-                                Attempt Online
-                              </Link>
-                            )}
-                            {(paper.download_url || paper.file_url) && (
-                              <a
-                                href={paper.download_url || paper.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
-                              >
-                                Download PDF
-                              </a>
-                            )}
+                    {questionPapers.map((paper: any) => {
+                      const paperExamId = paper.exam_id || paper.exam?.id;
+                      const isDownloading = paperExamId && downloadingExamId === paperExamId;
+
+                      return (
+                        <div key={paper.id} className="border rounded-xl p-4">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                              <p className="text-sm text-gray-500">{paper.year || '—'}</p>
+                              <h3 className="text-lg font-semibold text-gray-900">{paper.title || paper.exam?.title}</h3>
+                              {paper.description && <p className="text-sm text-gray-600 mt-1">{paper.description}</p>}
+                            </div>
+                            <div className="flex flex-wrap gap-3">
+                              {paper.exam?.url_path && (
+                                <Link
+                                  href={paper.exam.url_path}
+                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
+                                >
+                                  Attempt Online
+                                </Link>
+                              )}
+                              {paperExamId && (
+                                <button
+                                  onClick={() => handleDownloadExamPDF(paperExamId)}
+                                  disabled={isDownloading}
+                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <Download className="w-4 h-4 mr-2" />
+                                  {isDownloading ? 'Preparing…' : 'Download PDF'}
+                                </button>
+                              )}
+                              {!paperExamId && (paper.download_url || paper.file_url) && (
+                                <a
+                                  href={paper.download_url || paper.file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
+                                >
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Download PDF
+                                </a>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -451,8 +471,35 @@ export default function SSCSubcategoryPage() {
 
           <aside className="lg:col-span-1">
             <div className="sticky top-24 space-y-6">
-              <LatestUpdates />
-              <KeyStats subcategoryInfo={subcategoryInfo} />
+              {sidebarSections.length > 0 ? (
+                sidebarSections.map((section) => (
+                    <section
+                      key={section.id}
+                      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                      style={{
+                        backgroundColor: section.background_color || 'white',
+                        color: section.text_color || 'inherit'
+                      }}
+                    >
+                      <div className="p-4 border-b border-gray-200 bg-gray-50">
+                        <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
+                        {section.subtitle && <p className="mt-1 text-sm text-gray-600">{section.subtitle}</p>}
+                      </div>
+                      <div className="p-4 space-y-4">
+                        {section.blocks.map((block) => (
+                          <div key={block.id}>
+                            <BlockRenderer block={block} />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ))
+              ) : (
+                <div className="space-y-6">
+                  <LatestUpdates />
+                  <KeyStats subcategoryInfo={subcategoryInfo} />
+                </div>
+              )}
             </div>
           </aside>
         </div>

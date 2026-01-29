@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +12,9 @@ import {
   Settings,
   LogOut,
   BookOpen,
-  FolderTree
+  FolderTree,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const adminNavItems = [
@@ -29,6 +31,7 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [navCollapsed, setNavCollapsed] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
@@ -56,19 +59,33 @@ export default function AdminLayout({
     <div className="min-h-screen bg-muted/30">
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 bg-card border-r border-border min-h-screen sticky top-0">
-          <div className="p-6">
-            <Link href="/admin" className="flex items-center gap-2 mb-8">
-              <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-secondary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-display text-lg font-bold text-foreground">Admin Panel</h1>
-                <p className="text-xs text-muted-foreground">Bharat Mock</p>
-              </div>
-            </Link>
+        <aside
+          className={`${navCollapsed ? 'w-20' : 'w-64'} bg-card border-r border-border min-h-screen sticky top-0 transition-all duration-200 relative`}
+        >
+          <button
+            type="button"
+            onClick={() => setNavCollapsed((prev) => !prev)}
+            className="absolute -right-3 top-12 z-10 p-2 rounded-full border border-border bg-card shadow hover:bg-muted transition-colors"
+            aria-label={navCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {navCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+          <div className="p-4 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-6">
+              <Link href="/admin" className="flex items-center gap-2">
+                <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
+                  <BookOpen className="h-6 w-6 text-secondary-foreground" />
+                </div>
+                {!navCollapsed && (
+                  <div>
+                    <h1 className="font-display text-lg font-bold text-foreground">Admin Panel</h1>
+                    <p className="text-xs text-muted-foreground">Bharat Mock</p>
+                  </div>
+                )}
+              </Link>
+            </div>
 
-            <nav className="space-y-1">
+            <nav className="space-y-1 flex-1">
               {adminNavItems.map((item) => (
                 <Link
                   key={item.name}
@@ -76,25 +93,25 @@ export default function AdminLayout({
                   className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   <item.icon className="h-5 w-5" />
-                  {item.name}
+                  {!navCollapsed && <span>{item.name}</span>}
                 </Link>
               ))}
             </nav>
 
-            <div className="mt-8 pt-8 border-t border-border">
+            <div className="pt-6 border-t border-border space-y-2">
               <Link
                 href="/"
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors mb-2"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
                 <LayoutDashboard className="h-5 w-5" />
-                Back to Site
+                {!navCollapsed && <span>Back to Site</span>}
               </Link>
               <button
                 onClick={logout}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full"
               >
                 <LogOut className="h-5 w-5" />
-                Logout
+                {!navCollapsed && <span>Logout</span>}
               </button>
             </div>
           </div>

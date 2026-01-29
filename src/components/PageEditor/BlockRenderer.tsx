@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { 
-  Heading, 
-  FileText, 
-  List, 
-  Table, 
-  Image as ImageIcon, 
+import {
+  Heading,
+  FileText,
+  List,
+  Table,
+  Image as ImageIcon,
   BarChart3,
   Quote,
   Code,
@@ -17,7 +17,8 @@ import {
   Square,
   AlertCircle,
   Video,
-  FileCode
+  FileCode,
+  Megaphone
 } from 'lucide-react';
 
 interface Block {
@@ -83,6 +84,8 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
         return <ColumnsBlock content={content} settings={settings} />;
       case 'spacer':
         return <SpacerBlock settings={settings} />;
+      case 'adBanner':
+        return <AdBannerBlock content={content} settings={settings} />;
       default:
         return <div className="p-4 bg-gray-100 rounded">Unknown block type: {block_type}</div>;
     }
@@ -95,22 +98,29 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
   );
 };
 
-const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
-  const { text, level = 2, alignment = 'left', color } = content;
+const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
+  const { text = '', level = 2, alignment = 'left', color } = content;
   const Tag = `h${level}` as keyof JSX.IntrinsicElements;
-  
-  const className = `
-    ${level === 1 ? 'text-4xl font-bold' : ''}
-    ${level === 2 ? 'text-3xl font-bold' : ''}
-    ${level === 3 ? 'text-2xl font-semibold' : ''}
-    ${level === 4 ? 'text-xl font-semibold' : ''}
-    ${level === 5 ? 'text-lg font-medium' : ''}
-    ${level === 6 ? 'text-base font-medium' : ''}
-    text-${alignment}
-    mb-4
-  `;
 
-  return <Tag className={className} style={{ color }}>{text}</Tag>;
+  const baseClasses = [
+    level === 1 ? 'text-4xl font-bold' : '',
+    level === 2 ? 'text-3xl font-bold' : '',
+    level === 3 ? 'text-2xl font-semibold' : '',
+    level === 4 ? 'text-xl font-semibold' : '',
+    level === 5 ? 'text-lg font-medium' : '',
+    level === 6 ? 'text-base font-medium' : '',
+    'mb-4'
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <Tag
+      className={baseClasses}
+      style={{ color: color || undefined, textAlign: alignment as any }}
+      dangerouslySetInnerHTML={{ __html: text }}
+    />
+  );
 };
 
 const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
@@ -402,6 +412,55 @@ const SpacerBlock: React.FC<{ settings?: any }> = ({ settings }) => {
   return <div style={{ height }} />;
 };
 
+const AdBannerBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
+  const {
+    imageUrl,
+    linkUrl,
+    headline,
+    description,
+    ctaLabel = 'Learn More',
+    ctaUrl,
+    backgroundColor = '#0f172a',
+    badgeText
+  } = content || {};
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden shadow-md border border-slate-900/10 bg-slate-900 text-white"
+      style={{ backgroundColor }}
+    >
+      {badgeText && (
+        <div className="px-4 pt-4">
+          <span className="inline-flex items-center text-xs font-semibold tracking-wide uppercase px-2 py-1 rounded-full bg-white/20">
+            {badgeText}
+          </span>
+        </div>
+      )}
+      {imageUrl && (
+        <div className="p-4">
+          <div className="rounded-xl overflow-hidden bg-white/10 border border-white/10">
+            <img src={imageUrl} alt={headline || 'Ad banner'} className="w-full object-cover" />
+          </div>
+        </div>
+      )}
+      <div className="p-4 space-y-3">
+        {headline && <h3 className="text-xl font-bold leading-tight">{headline}</h3>}
+        {description && <p className="text-sm text-white/80">{description}</p>}
+        {(ctaUrl || linkUrl) && (
+          <a
+            href={ctaUrl || linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-white/90 text-slate-900 font-semibold hover:bg-white"
+          >
+            {ctaLabel}
+          </a>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const getBlockIcon = (blockType: string) => {
   const icons: Record<string, any> = {
     heading: Heading,
@@ -422,7 +481,8 @@ export const getBlockIcon = (blockType: string) => {
     embed: FileCode,
     html: FileCode,
     columns: Columns,
-    spacer: Minus
+    spacer: Minus,
+    adBanner: Megaphone
   };
   
   return icons[blockType] || FileText;
