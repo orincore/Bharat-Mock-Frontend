@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Upload, Image, Video, File, X, Search, Grid, List } from 'lucide-react';
+import { Upload, Image as ImageIcon, Video, File, X, Search, Grid, List } from 'lucide-react';
 
 interface MediaItem {
   id: string;
@@ -264,7 +264,7 @@ const MediaCard: React.FC<{
   const getIcon = () => {
     switch (item.file_type) {
       case 'image':
-        return <Image className="w-8 h-8 text-blue-600" />;
+        return <ImageIcon className="w-8 h-8 text-blue-600" />;
       case 'video':
         return <Video className="w-8 h-8 text-purple-600" />;
       default:
@@ -283,7 +283,7 @@ const MediaCard: React.FC<{
         {item.file_type === 'image' ? (
           <img
             src={item.file_url}
-            alt={item.alt_text || item.file_name}
+            alt={item.alt_text || item.file_name || 'Selected media preview'}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -315,7 +315,7 @@ const MediaListItem: React.FC<{
   const getIcon = () => {
     switch (item.file_type) {
       case 'image':
-        return <Image className="w-5 h-5 text-blue-600" />;
+        return <ImageIcon className="w-5 h-5 text-blue-600" />;
       case 'video':
         return <Video className="w-5 h-5 text-purple-600" />;
       default:
@@ -334,7 +334,7 @@ const MediaListItem: React.FC<{
         {item.file_type === 'image' ? (
           <img
             src={item.file_url}
-            alt={item.alt_text || item.file_name}
+            alt={item.alt_text || item.file_name || 'Selected media preview'}
             className="w-full h-full object-cover rounded"
           />
         ) : (
