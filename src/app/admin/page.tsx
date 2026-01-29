@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { FileText, Users, CheckCircle, Clock } from 'lucide-react';
 import { examService } from '@/lib/api/examService';
 import { adminService } from '@/lib/api/adminService';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -78,19 +79,25 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat) => (
-          <div key={stat.title} className="bg-card rounded-xl border border-border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`h-12 w-12 rounded-lg ${stat.color} flex items-center justify-center`}>
-                <stat.icon className="h-6 w-6" />
+        {loading
+          ? Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="bg-card rounded-xl border border-border p-6">
+                <Skeleton className="h-12 w-12 rounded-lg mb-4" />
+                <Skeleton className="h-8 w-20 mb-2" />
+                <Skeleton className="h-4 w-28" />
               </div>
-            </div>
-            <p className="text-3xl font-bold text-foreground mb-1">
-              {loading ? '...' : stat.value}
-            </p>
-            <p className="text-sm text-muted-foreground">{stat.title}</p>
-          </div>
-        ))}
+            ))
+          : statCards.map((stat) => (
+              <div key={stat.title} className="bg-card rounded-xl border border-border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`h-12 w-12 rounded-lg ${stat.color} flex items-center justify-center`}>
+                    <stat.icon className="h-6 w-6" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-foreground mb-1">{stat.value}</p>
+                <p className="text-sm text-muted-foreground">{stat.title}</p>
+              </div>
+            ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -98,26 +105,34 @@ export default function AdminDashboard() {
           <h2 className="font-display text-xl font-bold text-foreground mb-4">
             Quick Actions
           </h2>
-          <div className="space-y-3">
-            <Link
-              href="/admin/exams/create"
-              className="block px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-center font-medium"
-            >
-              Create New Exam
-            </Link>
-            <Link
-              href="/admin/exams"
-              className="block px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors text-center font-medium"
-            >
-              Manage Exams
-            </Link>
-            <Link
-              href="/admin/users"
-              className="block px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors text-center font-medium"
-            >
-              Manage Users
-            </Link>
-          </div>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, idx) => (
+                <Skeleton key={idx} className="h-12 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Link
+                href="/admin/exams/new"
+                className="block px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-center font-medium"
+              >
+                Create New Exam
+              </Link>
+              <Link
+                href="/admin/exams"
+                className="block px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors text-center font-medium"
+              >
+                Manage Exams
+              </Link>
+              <Link
+                href="/admin/users"
+                className="block px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors text-center font-medium"
+              >
+                Manage Users
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="bg-card rounded-xl border border-border p-6">

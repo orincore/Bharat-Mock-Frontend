@@ -230,6 +230,19 @@ export const adminService = {
     return response.data;
   },
 
+  async updateExamWithContent(id: string, examData: any, sections: any[], logo?: File, thumbnail?: File): Promise<any> {
+    const formData = new FormData();
+
+    formData.append('exam', JSON.stringify(examData));
+    formData.append('sections', JSON.stringify(sections));
+
+    if (logo) formData.append('logo', logo);
+    if (thumbnail) formData.append('thumbnail', thumbnail);
+
+    const response = await apiClient.putFormData<{ success: boolean; data: any }>(`/admin/exams/${id}/content`, formData, true);
+    return response.data;
+  },
+
   async createSection(data: CreateSectionData) {
     const response = await apiClient.post<{ success: boolean; data: any }>('/admin/sections', data, true);
     return response.data;

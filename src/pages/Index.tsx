@@ -10,6 +10,7 @@ import {
   ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ExamCard } from '@/components/exam/ExamCard';
 import { ArticleCard } from '@/components/article/ArticleCard';
 import { examService } from '@/lib/api/examService';
@@ -80,6 +81,8 @@ export default function Index() {
   const [subcategoryMap, setSubcategoryMap] = useState<Record<string, Subcategory[]>>({});
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  const isCategorySectionLoading = categoriesLoading || subcategoriesLoading;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -196,17 +199,51 @@ export default function Index() {
                 Discover structured preparation paths for UPSC, Banking, Railways, Defence, Engineering, and more—each with tailored exams, timelines, and resources inspired by the Prepp experience.
               </p>
             </div>
-            <Link href="/exams">
-              <Button variant="outline" className="w-full md:w-auto">
-                View all exams
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+            <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto">
+              {isCategorySectionLoading && (
+                <div className="inline-flex items-center gap-2" aria-live="polite" aria-busy="true">
+                  <Skeleton className="h-4 w-32 rounded-full" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                  <span className="sr-only">Loading curated tracks…</span>
+                </div>
+              )}
+              <Link href="/exams" className="w-full md:w-auto">
+                <Button variant="outline" className="w-full md:w-auto">
+                  View all exams
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {categoriesLoading ? (
-            <div className="flex justify-center py-12">
-              <LoadingSpinner />
+            <div className="space-y-8" aria-live="polite" aria-busy="true">
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton key={index} className="h-10 w-28 rounded-full" />
+                ))}
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-72" />
+                </div>
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <div key={index} className="border border-border rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : categories.length === 0 ? (
             <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
@@ -254,8 +291,17 @@ export default function Index() {
                     </div>
 
                     {subcategoriesLoading && !selectedCategorySubcategories.length ? (
-                      <div className="flex justify-center py-12">
-                        <LoadingSpinner />
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-live="polite" aria-busy="true">
+                        {Array.from({ length: 8 }).map((_, index) => (
+                          <div key={index} className="border border-border rounded-xl p-4 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="h-10 w-10 rounded-full" />
+                              <Skeleton className="h-4 w-24" />
+                            </div>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                          </div>
+                        ))}
                       </div>
                     ) : selectedCategorySubcategories.length === 0 ? (
                       <div className="text-center py-12">
@@ -393,7 +439,22 @@ export default function Index() {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12"><LoadingSpinner size="lg" /></div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6" aria-live="polite" aria-busy="true">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="card-interactive overflow-hidden h-full flex flex-col border border-border rounded-xl p-5 space-y-4">
+                  <Skeleton className="h-40 w-full rounded-lg" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-border">
+                    <Skeleton className="h-8 w-24 rounded-full" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {exams.map((exam) => (
@@ -444,12 +505,12 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Latest Articles */}
+      {/* Latest Blogs */}
       <section className="section-padding bg-muted/30">
         <div className="container-main">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="font-display text-3xl font-bold text-foreground mb-2">Latest Articles</h2>
+              <h2 className="font-display text-3xl font-bold text-foreground mb-2">Latest Blogs</h2>
               <p className="text-muted-foreground">Expert tips and preparation strategies</p>
             </div>
             <Link href="/articles">

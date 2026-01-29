@@ -12,7 +12,8 @@ import {
   LogOut,
   BookOpen,
   FileText,
-  Home
+  Home,
+  Flame
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -27,9 +28,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
+  { name: 'Live Tests', href: '/live-tests', icon: Flame },
   { name: 'Exams', href: '/exams', icon: BookOpen },
   { name: 'Courses', href: '/courses', icon: GraduationCap },
-  { name: 'Articles', href: '/articles', icon: FileText },
+  { name: 'Blogs', href: '/articles', icon: FileText },
 ];
 
 export function Navbar() {

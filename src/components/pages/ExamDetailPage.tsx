@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -54,6 +54,71 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const formatCalendarDate = (date: Date) =>
+    date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+  const escapeICSValue = (value: string) =>
+    (value || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+
+  const calendarWindow = useMemo(() => {
+    if (!exam?.start_date) return null;
+    const start = new Date(exam.start_date);
+    const durationMinutes = Number(exam.duration) || 60;
+    const end = exam.end_date ? new Date(exam.end_date) : new Date(start.getTime() + durationMinutes * 60000);
+    return { start, end };
+  }, [exam?.start_date, exam?.end_date, exam?.duration]);
+
+  const googleCalendarUrl = useMemo(() => {
+    if (!calendarWindow || !exam) return '';
+    const start = formatCalendarDate(calendarWindow.start);
+    const end = formatCalendarDate(calendarWindow.end);
+    const base = 'https://www.google.com/calendar/render?action=TEMPLATE';
+    const params = new URLSearchParams({
+      text: exam.title,
+      dates: `${start}/${end}`,
+      details: exam.description || 'Mock test scheduled via Bharat Mock',
+      location: 'Bharat Mock portal'
+    });
+    return `${base}&${params.toString()}`;
+  }, [calendarWindow, exam]);
+
+  const handleAddToCalendar = () => {
+    if (!calendarWindow || !exam) {
+      alert('Schedule window not available yet.');
+      return;
+    }
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Bharat Mock//Exam Scheduler//EN',
+      'BEGIN:VEVENT',
+      `UID:${exam.id}@bharatmock.com`,
+      `DTSTAMP:${formatCalendarDate(new Date())}`,
+      `DTSTART:${formatCalendarDate(calendarWindow.start)}`,
+      `DTEND:${formatCalendarDate(calendarWindow.end)}`,
+      `SUMMARY:${escapeICSValue(exam.title)}`,
+      `DESCRIPTION:${escapeICSValue(exam.description || 'Scheduled via Bharat Mock')}`,
+      'LOCATION:Online',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${exam.slug || exam.id}-bharat-mock.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const handleLanguageSelect = (lang: 'en' | 'hi') => {
@@ -113,9 +178,13 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
   const isOngoing = exam?.status === 'ongoing';
   const isCompleted = exam?.status === 'completed';
   const isAnytime = exam?.status === 'anytime' || exam?.allow_anytime;
-  const statusLabel = (isAnytime || isUpcoming)
-    ? 'Anytime'
-    : (exam?.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Upcoming');
+  const statusLabel = (() => {
+    if (isAnytime) return 'Anytime';
+    if (isOngoing) return 'Live Now';
+    if (isCompleted) return 'Completed';
+    if (isUpcoming) return 'Upcoming';
+    return exam?.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Upcoming';
+  })();
   const canStartExam = isOngoing || isAnytime;
 
   return (
@@ -239,7 +308,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 </div>
               )}
 
-              <div>
+              <div className="space-y-3">
                 {canStartExam ? (
                   <Button 
                     onClick={handleStartExam}
@@ -261,6 +330,24 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 ) : (
                   <Button disabled className="w-full bg-white/10 text-white" size="lg">
                     Examination Closed
+                  </Button>
+                )}
+                <Button
+                  onClick={handleAddToCalendar}
+                  disabled={!calendarWindow}
+                  className="w-full bg-amber-400 text-slate-900 hover:bg-amber-300 disabled:bg-slate-400 disabled:text-slate-700 border-none"
+                >
+                  <Calendar className="h-5 w-5 mr-2" /> Add to Calendar
+                </Button>
+                {calendarWindow && googleCalendarUrl && (
+                  <Button
+                    variant="ghost"
+                    asChild
+                    className="w-full text-white/80 hover:text-white"
+                  >
+                    <a href={googleCalendarUrl} target="_blank" rel="noreferrer">
+                      Sync via Google Calendar
+                    </a>
                   </Button>
                 )}
               </div>

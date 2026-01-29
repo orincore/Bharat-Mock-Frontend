@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2, Image as ImageIcon, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LoadingSpinner } from '@/components/common/LoadingStates';
+import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -71,8 +71,24 @@ export default function AdminCategoriesPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner />
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="border-b border-border bg-muted/50 px-6 py-4">
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="divide-y divide-border">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="grid grid-cols-6 gap-4 px-6 py-4">
+                <Skeleton className="h-12 w-12 rounded" />
+                <div className="col-span-2 space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-8 w-28 justify-self-end" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : categories.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-12 text-center">

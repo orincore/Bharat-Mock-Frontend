@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import { Exam } from '@/types';
 import Link from 'next/link';
 import { Clock, FileText, Users, TrendingUp, ArrowRight } from 'lucide-react';
@@ -9,6 +10,28 @@ import { Button } from '@/components/ui/button';
 interface ExamCardProps {
   exam: Exam;
 }
+
+export const getCountdownLabel = (startDate?: string | null) => {
+  if (!startDate) return null;
+  const target = new Date(startDate);
+  if (Number.isNaN(target.getTime())) return null;
+  const diff = target.getTime() - Date.now();
+  if (diff <= 0) return 'Live now';
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const parts = [
+    days > 0 ? `${days}d` : null,
+    hours > 0 || days > 0 ? `${hours}h` : null,
+    `${minutes}m`,
+    `${seconds}s`
+  ].filter(Boolean);
+
+  return parts.join(' ');
+};
 
 export function ExamCard({ exam }: ExamCardProps) {
   const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
@@ -27,6 +50,19 @@ export function ExamCard({ exam }: ExamCardProps) {
 
   const difficultyKey = (exam.difficulty || 'medium') as keyof typeof difficultyColors;
   const difficultyLabel = difficultyKey.charAt(0).toUpperCase() + difficultyKey.slice(1);
+
+  const [countdown, setCountdown] = useState<string | null>(() => getCountdownLabel(exam.start_date));
+
+  useEffect(() => {
+    if (exam.status !== 'upcoming' || !exam.start_date) {
+      setCountdown(null);
+      return;
+    }
+    const updateCountdown = () => setCountdown(getCountdownLabel(exam.start_date));
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [exam.start_date, exam.status]);
 
   return (
     <div className="card-interactive group overflow-hidden">
@@ -53,6 +89,13 @@ export function ExamCard({ exam }: ExamCardProps) {
             {exam.category}
           </span>
         </div>
+        {countdown && exam.status === 'upcoming' && (
+          <div className="absolute bottom-3 right-3">
+            <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-secondary text-secondary-foreground shadow">
+              Starts in {countdown}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -85,6 +128,13 @@ export function ExamCard({ exam }: ExamCardProps) {
             </div>
           )}
         </div>
+
+        {countdown && exam.status === 'upcoming' && (
+          <div className="mb-4 flex items-center gap-2 text-xs font-semibold text-secondary">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Starts in {countdown}</span>
+          </div>
+        )}
 
         <Link href={examUrl}>
           <Button className="w-full group/btn">

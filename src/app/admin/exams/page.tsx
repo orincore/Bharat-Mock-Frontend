@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { adminService } from '@/lib/api/adminService';
 import { Exam } from '@/types';
-import { LoadingSpinner } from '@/components/common/LoadingStates';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
@@ -65,7 +65,7 @@ export default function AdminExamsPage() {
             Create, edit, and manage all exams
           </p>
         </div>
-        <Link href="/admin/exams/create">
+        <Link href="/admin/exams/new">
           <Button className="bg-secondary hover:bg-secondary/90">
             <Plus className="h-4 w-4 mr-2" />
             Create Exam
@@ -91,13 +91,27 @@ export default function AdminExamsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner />
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="border-b border-border bg-muted/50 px-6 py-4">
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="divide-y divide-border">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="px-6 py-4 grid grid-cols-7 gap-4">
+                <Skeleton className="h-4 w-full col-span-2" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-8 w-20 justify-self-end" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : exams.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-12 text-center">
           <p className="text-muted-foreground mb-4">No exams found</p>
-          <Link href="/admin/exams/create">
+          <Link href="/admin/exams/new">
             <Button>Create Your First Exam</Button>
           </Link>
         </div>
@@ -110,6 +124,7 @@ export default function AdminExamsPage() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Title</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Category</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Exam Type</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Questions</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Duration</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Published</th>
@@ -139,6 +154,11 @@ export default function AdminExamsPage() {
                         {exam.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 bg-foreground/5 text-foreground text-xs font-medium rounded capitalize">
+                        {exam.exam_type?.replace('_', ' ') || '—'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {exam.total_questions}
                     </td>
@@ -154,7 +174,7 @@ export default function AdminExamsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        <Link href={`/admin/exams/${exam.id}/edit`}>
+                        <Link href={`/admin/exams/${exam.id}`}>
                           <Button variant="ghost" size="sm">
                             <Edit className="h-4 w-4" />
                           </Button>

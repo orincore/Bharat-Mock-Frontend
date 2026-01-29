@@ -6,23 +6,33 @@ import { Search, Filter, BookOpen, Clock, Award, ChevronRight } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ExamCard } from '@/components/exam/ExamCard';
-import { LoadingSpinner, LoadingOverlay } from '@/components/common/LoadingStates';
+import { Skeleton } from '@/components/ui/skeleton';
+import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { examService } from '@/lib/api/examService';
-import { taxonomyService, Difficulty } from '@/lib/api/taxonomyService';
+import { taxonomyService, Difficulty, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { Exam } from '@/types';
+
+const DEFAULT_STATUS = 'anytime';
 
 export default function ExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
+  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [difficultiesLoading, setDifficultiesLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   
   const [filters, setFilters] = useState({
     search: '',
     category: '',
+    subcategory: '',
     difficulty: '',
-    status: ''
+    status: DEFAULT_STATUS
   });
   
   const [pagination, setPagination] = useState({
@@ -38,24 +48,55 @@ export default function ExamsPage() {
   }, []);
 
   useEffect(() => {
+    if (selectedCategoryId) {
+      fetchSubcategories(selectedCategoryId);
+    } else {
+      setSubcategories([]);
+      setSelectedSubcategoryId('');
+    }
+  }, [selectedCategoryId]);
+
+  useEffect(() => {
     fetchExams();
   }, [filters, pagination.page]);
 
   const fetchCategories = async () => {
+    setCategoriesLoading(true);
     try {
-      const data = await examService.getExamCategories();
-      setCategories(data);
+      const data = await taxonomyService.getCategories();
+      const sorted = data
+        .filter(category => category.is_active !== false)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      setCategories(sorted);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  const fetchSubcategories = async (categoryId: string) => {
+    setSubcategoriesLoading(true);
+    try {
+      const data = await taxonomyService.getSubcategories(categoryId);
+      setSubcategories(data.filter(sub => sub.name));
+    } catch (err) {
+      console.error('Failed to fetch subcategories:', err);
+      setSubcategories([]);
+    } finally {
+      setSubcategoriesLoading(false);
     }
   };
 
   const fetchDifficulties = async () => {
+    setDifficultiesLoading(true);
     try {
       const response = await taxonomyService.getDifficulties();
       setDifficultyOptions(response);
     } catch (err) {
       console.error('Failed to fetch difficulties:', err);
+    } finally {
+      setDifficultiesLoading(false);
     }
   };
 
@@ -94,15 +135,42 @@ export default function ExamsPage() {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
+  const handleCategorySelect = (value: string) => {
+    setSelectedCategoryId(value);
+    const selectedCategory = categories.find(category => category.id === value);
+    handleFilterChange('category', selectedCategory ? selectedCategory.name : '');
+    setSelectedSubcategoryId('');
+    handleFilterChange('subcategory', '');
+  };
+
+  const handleSubcategorySelect = (value: string) => {
+    setSelectedSubcategoryId(value);
+    const selectedSubcategory = subcategories.find(sub => sub.id === value);
+    handleFilterChange('subcategory', selectedSubcategory ? selectedSubcategory.name : '');
+  };
+
   const clearFilters = () => {
     setFilters({
       search: '',
       category: '',
+      subcategory: '',
       difficulty: '',
-      status: ''
+      status: DEFAULT_STATUS
     });
+    setSelectedCategoryId('');
+    setSelectedSubcategoryId('');
+    setSubcategories([]);
     setPagination(prev => ({ ...prev, page: 1 }));
   };
+
+  const isFilterDataLoading = categoriesLoading || difficultiesLoading;
+  const hasCustomFilters = Boolean(
+    filters.search ||
+    filters.category ||
+    filters.subcategory ||
+    filters.difficulty ||
+    filters.status !== DEFAULT_STATUS
+  );
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -138,9 +206,6 @@ export default function ExamsPage() {
       </section>
 
       <div className="relative w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 py-12">
-        {isLoading && (
-          <LoadingOverlay message="Loading exams..." />
-        )}
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
           <aside className="lg:w-64 xl:w-72 flex-shrink-0">
@@ -150,83 +215,110 @@ export default function ExamsPage() {
                   <Filter className="h-5 w-5 text-primary" />
                   Filters
                 </h3>
-                {(filters.category || filters.difficulty || filters.status) && (
+                {hasCustomFilters && (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
                     Clear
                   </Button>
                 )}
               </div>
 
-              <div className="space-y-6">
-                {/* Category Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Category
-                  </label>
-                  <select
-                    value={filters.category}
-                    onChange={(e) => handleFilterChange('category', e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">All Categories</option>
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {isFilterDataLoading ? (
+                <div className="space-y-6" aria-live="polite" aria-busy="true">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full rounded-lg" />
+                    </div>
+                  ))}
 
-                {/* Difficulty Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Difficulty
-                  </label>
-                  <select
-                    value={filters.difficulty}
-                    onChange={(e) => handleFilterChange('difficulty', e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">All Levels</option>
-                    {difficultyOptions.map((difficulty) => (
-                      <option key={difficulty.id} value={difficulty.name}>
-                        {difficulty.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Status Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Status
-                  </label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">All Status</option>
-                    <option value="upcoming">Upcoming</option>
-                    <option value="ongoing">Ongoing</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="mt-8 pt-6 border-t border-border">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Total Exams</span>
-                    <span className="font-semibold text-foreground">{pagination.total}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Categories</span>
-                    <span className="font-semibold text-foreground">{categories.length}</span>
+                  <div className="mt-8 pt-6 border-t border-border space-y-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-28" />
                   </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="space-y-6">
+                    {/* Category Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Category
+                      </label>
+                      <select
+                        value={selectedCategoryId}
+                        onChange={(e) => handleCategorySelect(e.target.value)}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">All Categories</option>
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Subcategory Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Sub-category
+                      </label>
+                      {subcategoriesLoading ? (
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                      ) : (
+                        <select
+                          value={selectedSubcategoryId}
+                          onChange={(e) => handleSubcategorySelect(e.target.value)}
+                          disabled={!selectedCategoryId || subcategories.length === 0}
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          <option value="">{selectedCategoryId ? 'All Sub-categories' : 'Select category first'}</option>
+                          {subcategories.map((subcategory) => (
+                            <option key={subcategory.id} value={subcategory.id}>
+                              {subcategory.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Difficulty Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Tier
+                      </label>
+                      <select
+                        value={filters.difficulty}
+                        onChange={(e) => handleFilterChange('difficulty', e.target.value)}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">All Tiers</option>
+                        {difficultyOptions.map((difficulty) => (
+                          <option key={difficulty.id} value={difficulty.name}>
+                            {difficulty.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    
+                  </div>
+
+                  {/* Stats */}
+                  <div className="mt-8 pt-6 border-t border-border">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Total Exams</span>
+                        <span className="font-semibold text-foreground">{pagination.total}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Categories</span>
+                        <span className="font-semibold text-foreground">{categories.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </aside>
 
@@ -236,7 +328,7 @@ export default function ExamsPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="font-display text-2xl font-bold text-foreground">
-                  {filters.category || filters.difficulty || filters.status ? 'Filtered Results' : 'All Exams'}
+                  {hasCustomFilters ? 'Filtered Results' : 'Anytime Exams'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Showing {exams.length} of {pagination.total} exams
@@ -246,8 +338,21 @@ export default function ExamsPage() {
 
             {/* Loading State */}
             {isLoading && (
-              <div className="flex justify-center py-12">
-                <LoadingSpinner />
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-live="polite" aria-busy="true">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="card-interactive overflow-hidden h-full flex flex-col border border-border rounded-xl p-5 space-y-4">
+                    <Skeleton className="h-32 w-full rounded-lg" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-border">
+                      <Skeleton className="h-8 w-24 rounded-full" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

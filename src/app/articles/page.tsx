@@ -101,7 +101,7 @@ export default function ArticlesPage() {
         <div className="container-main">
           <div className="max-w-3xl">
             <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
-              Latest Articles
+              Latest Blogs
             </h1>
             <p className="text-lg text-background/80 mb-8">
               Stay updated with exam tips, study guides, and educational insights
@@ -113,7 +113,7 @@ export default function ArticlesPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search articles..."
+                  placeholder="Search blogs..."
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                   className="pl-10 bg-background"
@@ -146,7 +146,7 @@ export default function ArticlesPage() {
                         : 'text-muted-foreground hover:bg-muted'
                     }`}
                   >
-                    All Articles
+                    All Blogs
                   </button>
                   {categories.map((category) => (
                     <button
@@ -191,10 +191,10 @@ export default function ArticlesPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="font-display text-2xl font-bold text-foreground">
-                  {filters.category || filters.search ? 'Filtered Results' : 'All Articles'}
+                  {filters.category || filters.search ? 'Filtered Results' : 'All Blogs'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Showing {articles.length} of {pagination.total} articles
+                  Showing {articles.length} of {pagination.total} blogs
                 </p>
               </div>
               {(filters.category || filters.search) && (
@@ -226,7 +226,7 @@ export default function ArticlesPage() {
               <div className="bg-card rounded-xl border border-border p-12 text-center">
                 <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                  No articles found
+                  No blogs found
                 </h3>
                 <p className="text-muted-foreground mb-6">
                   Try adjusting your filters or search query

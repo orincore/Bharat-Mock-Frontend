@@ -388,6 +388,7 @@ export interface PaginatedResponse<T> {
 export interface FilterOptions {
   search?: string;
   category?: string;
+  subcategory?: string;
   status?: string;
   difficulty?: string;
   location?: string;

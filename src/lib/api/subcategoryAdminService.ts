@@ -188,5 +188,89 @@ export const subcategoryAdminService = {
       return data;
     }
     return [];
+  },
+
+  async getHighlights(subcategoryId: string) {
+    const data = await authFetch(`/subcategories/${subcategoryId}/highlights`);
+    return data.data;
+  },
+
+  async upsertHighlight(subcategoryId: string, payload: any, highlightId?: string) {
+    const url = highlightId
+      ? `/subcategories/${subcategoryId}/highlights/${highlightId}`
+      : `/subcategories/${subcategoryId}/highlights`;
+    return authFetch(url, {
+      method: highlightId ? 'PUT' : 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async deleteHighlight(subcategoryId: string, highlightId: string) {
+    return authFetch(`/subcategories/${subcategoryId}/highlights/${highlightId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async getExamStats(subcategoryId: string) {
+    const data = await authFetch(`/subcategories/${subcategoryId}/exam-stats`);
+    return data.data;
+  },
+
+  async upsertExamStat(subcategoryId: string, payload: any, statId?: string) {
+    const url = statId
+      ? `/subcategories/${subcategoryId}/exam-stats/${statId}`
+      : `/subcategories/${subcategoryId}/exam-stats`;
+    return authFetch(url, {
+      method: statId ? 'PUT' : 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async deleteExamStat(subcategoryId: string, statId: string) {
+    return authFetch(`/subcategories/${subcategoryId}/exam-stats/${statId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async getSections(subcategoryId: string) {
+    const data = await authFetch(`/subcategories/${subcategoryId}/sections`);
+    return data.data;
+  },
+
+  async upsertSection(subcategoryId: string, payload: any, sectionId?: string) {
+    const url = sectionId
+      ? `/subcategories/${subcategoryId}/sections/${sectionId}`
+      : `/subcategories/${subcategoryId}/sections`;
+    return authFetch(url, {
+      method: sectionId ? 'PUT' : 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async deleteSection(subcategoryId: string, sectionId: string) {
+    return authFetch(`/subcategories/${subcategoryId}/sections/${sectionId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async getTables(subcategoryId: string) {
+    const data = await authFetch(`/subcategories/${subcategoryId}/tables`);
+    return data.data;
+  },
+
+  async upsertTable(subcategoryId: string, payload: any, tableId?: string) {
+    const url = tableId
+      ? `/subcategories/${subcategoryId}/tables/${tableId}`
+      : `/subcategories/${subcategoryId}/tables`;
+    return authFetch(url, {
+      method: tableId ? 'PUT' : 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async deleteTable(subcategoryId: string, tableId: string) {
+    return authFetch(`/subcategories/${subcategoryId}/tables/${tableId}`, {
+      method: 'DELETE'
+    });
   }
 };

@@ -41,7 +41,7 @@ export default function ArticleDetailPage() {
   };
 
   if (isLoading) {
-    return <LoadingPage message="Loading article..." />;
+    return <LoadingPage message="Loading blog..." />;
   }
 
   if (error || !article) {
@@ -50,12 +50,12 @@ export default function ArticleDetailPage() {
         <div className="container-main">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="font-display text-2xl font-bold text-foreground mb-2">
-              {error || 'Article not found'}
+              {error || 'Blog not found'}
             </h2>
             <Link href="/articles">
               <Button>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Articles
+                Back to Blogs
               </Button>
             </Link>
           </div>
@@ -71,7 +71,7 @@ export default function ArticleDetailPage() {
         <div className="container-main max-w-4xl">
           <Link href="/articles" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Articles
+            Back to Blogs
           </Link>
 
           <div className="mb-6">
@@ -203,7 +203,7 @@ export default function ArticleDetailPage() {
                 {/* Share */}
                 <div className="bg-card rounded-xl border border-border p-6">
                   <h3 className="font-display text-lg font-bold text-foreground mb-4">
-                    Share Article
+                    Share Blog
                   </h3>
                   <div className="flex flex-col gap-2">
                     <Button variant="outline" size="sm" className="w-full justify-start">
@@ -224,7 +224,7 @@ export default function ArticleDetailPage() {
                 {/* Article Info */}
                 <div className="bg-card rounded-xl border border-border p-6">
                   <h3 className="font-display text-lg font-bold text-foreground mb-4">
-                    Article Info
+                    Blog Info
                   </h3>
                   <div className="space-y-3 text-sm">
                     <div className="flex items-center justify-between">
@@ -258,7 +258,7 @@ export default function ArticleDetailPage() {
                     Stay Updated
                   </h3>
                   <p className="text-sm opacity-90 mb-4">
-                    Get the latest articles and exam tips delivered to your inbox.
+                    Get the latest blogs and exam tips delivered to your inbox.
                   </p>
                   <Button variant="secondary" className="w-full">
                     Subscribe
@@ -268,11 +268,11 @@ export default function ArticleDetailPage() {
             </div>
           </div>
 
-          {/* Related Articles */}
+          {/* Related Blogs */}
           {relatedArticles.length > 0 && (
             <div className="mt-16">
               <h2 className="font-display text-3xl font-bold text-foreground mb-8">
-                Related Articles
+                Related Blogs
               </h2>
               <div className="grid md:grid-cols-3 gap-6">
                 {relatedArticles.map((relatedArticle) => (

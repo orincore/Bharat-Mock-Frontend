@@ -286,6 +286,16 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
         {activeTab === 'overview' && (
           <div className="space-y-8">
 
+            {heroDescription && (
+              <div className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
+                <h2 className="text-2xl font-bold mb-4">About the Exam</h2>
+                <div
+                  className="text-gray-600 leading-relaxed prose max-w-none"
+                  dangerouslySetInnerHTML={{ __html: heroDescription }}
+                />
+              </div>
+            )}
+
             {overviewStats.length > 0 && (
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 {overviewStats.map((stat, index) => (
