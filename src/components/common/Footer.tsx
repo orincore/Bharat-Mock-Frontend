@@ -13,9 +13,9 @@ const footerLinks = {
     { name: 'UPSC', href: '/exams?category=civil-services' },
   ],
   resources: [
-    { name: 'Articles', href: '/articles' },
+    { name: 'Articles', href: '/blogs' },
     { name: 'Courses', href: '/courses' },
-    { name: 'Study Material', href: '/articles' },
+    { name: 'Study Material', href: '/blogs' },
     { name: 'Previous Papers', href: '/exams' },
   ],
   company: [

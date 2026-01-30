@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion } from 'lucide-react';
+import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion, Save, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { adminService } from '@/lib/api/adminService';
@@ -176,8 +176,33 @@ export default function ExamFormPage() {
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [showCSVImport, setShowCSVImport] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ total: 0, completed: 0, current: '' });
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string[]}>({});
+  const [computedErrors, setComputedErrors] = useState<{[key: string]: string[]}>({});
+  const [draftSaving, setDraftSaving] = useState(false);
 
   const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const ignoreImageRequirement = (sectionId: string, questionId: string, optionId?: string) => {
+    setSections(prevSections => prevSections.map(section => {
+      if (section.id !== sectionId) return section;
+      return {
+        ...section,
+        questions: section.questions.map(question => {
+          if (question.id !== questionId) return question;
+          if (optionId) {
+            return {
+              ...question,
+              options: question.options.map(option =>
+                option.id === optionId ? { ...option, requires_image: false } : option
+              )
+            };
+          } else {
+            return { ...question, requires_image: false };
+          }
+        })
+      };
+    }));
+  };
 
   const totals = useMemo(() => {
     const totalQuestions = sections.reduce((sum, section) => sum + section.questions.length, 0);
@@ -715,55 +740,233 @@ export default function ExamFormPage() {
 
   const pendingRequirements = useMemo(() => {
     const requirements: string[] = [];
+    const errors: {[key: string]: string[]} = {};
     const needsSchedule = !formData.allow_anytime;
     const scheduleComplete = needsSchedule ? Boolean(formData.start_date && formData.end_date && formData.status) : true;
-    const basicFieldsComplete = Boolean(
-      formData.title.trim() &&
-      formData.description.trim() &&
-      formData.category_id &&
-      formData.duration > 0 &&
-      formData.total_marks > 0 &&
-      formData.total_questions > 0 &&
-      scheduleComplete
-    );
-
-    if (!basicFieldsComplete) {
-      requirements.push('Fill in all basic exam details (title, description, duration, totals, dates, category).');
-    }
+    
+    if (!formData.title.trim()) requirements.push('❌ Exam title is required');
+    if (!formData.description.trim()) requirements.push('❌ Exam description is required');
+    if (!formData.category_id) requirements.push('❌ Category must be selected');
+    if (formData.duration <= 0) requirements.push('❌ Duration must be greater than 0 minutes');
+    if (!scheduleComplete) requirements.push('❌ Start date, end date, and status are required (or enable "Allow anytime")');
 
     const englishSections = sections.filter(section => section.language === 'en');
 
     if (englishSections.length === 0) {
-      requirements.push('Add at least one English section with questions.');
+      requirements.push('❌ Add at least one English section with questions');
     } else {
-      const invalidEnglishSection = englishSections.some(section => !section.name.trim() || section.questions.length === 0);
-      if (invalidEnglishSection) {
-        requirements.push('Every English section needs a name and at least one question.');
+      let totalErrors = 0;
+      const MAX_ERRORS_TO_SHOW = 50;
+      
+      for (let sIdx = 0; sIdx < englishSections.length; sIdx++) {
+        const section = englishSections[sIdx];
+        const sectionKey = `section-${section.id}`;
+        
+        if (!section.name.trim()) {
+          if (totalErrors < MAX_ERRORS_TO_SHOW) {
+            requirements.push(`❌ Section ${sIdx + 1}: Section name is required`);
+          }
+          if (!errors[sectionKey]) errors[sectionKey] = [];
+          errors[sectionKey].push('Section name is required');
+          totalErrors++;
+        }
+        
+        if (section.questions.length === 0) {
+          if (totalErrors < MAX_ERRORS_TO_SHOW) {
+            requirements.push(`❌ Section ${sIdx + 1} (${section.name || 'Unnamed'}): Must have at least one question`);
+          }
+          if (!errors[sectionKey]) errors[sectionKey] = [];
+          errors[sectionKey].push('Must have at least one question');
+          totalErrors++;
+        }
+
+        for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
+          const question = section.questions[qIdx];
+          const questionKey = `question-${section.id}-${question.id}`;
+          const questionLabel = `Section ${sIdx + 1}, Question ${qIdx + 1}`;
+          let hasError = false;
+          
+          if (!question.text.trim()) {
+            if (totalErrors < MAX_ERRORS_TO_SHOW) {
+              requirements.push(`❌ ${questionLabel}: Question text is required`);
+            }
+            if (!errors[questionKey]) errors[questionKey] = [];
+            errors[questionKey].push('Question text is required');
+            hasError = true;
+          }
+          
+          if (question.marks <= 0) {
+            if (totalErrors < MAX_ERRORS_TO_SHOW) {
+              requirements.push(`❌ ${questionLabel}: Marks must be greater than 0`);
+            }
+            if (!errors[questionKey]) errors[questionKey] = [];
+            errors[questionKey].push('Marks must be greater than 0');
+            hasError = true;
+          }
+
+          if (question.type !== 'numerical') {
+            if (question.options.length < 2) {
+              if (totalErrors < MAX_ERRORS_TO_SHOW) {
+                requirements.push(`❌ ${questionLabel}: Must have at least 2 answer options`);
+              }
+              if (!errors[questionKey]) errors[questionKey] = [];
+              errors[questionKey].push('Must have at least 2 answer options');
+              hasError = true;
+            }
+            
+            let emptyCount = 0;
+            for (const opt of question.options) {
+              if (!opt.option_text.trim()) emptyCount++;
+            }
+            
+            if (emptyCount > 0) {
+              if (totalErrors < MAX_ERRORS_TO_SHOW) {
+                requirements.push(`❌ ${questionLabel}: ${emptyCount} option(s) have empty text`);
+              }
+              if (!errors[questionKey]) errors[questionKey] = [];
+              errors[questionKey].push(`${emptyCount} option(s) have empty text`);
+              hasError = true;
+            }
+            
+            let correctCount = 0;
+            for (const opt of question.options) {
+              if (opt.is_correct) correctCount++;
+            }
+            
+            if (correctCount === 0) {
+              if (totalErrors < MAX_ERRORS_TO_SHOW) {
+                requirements.push(`❌ ${questionLabel}: Must select at least one correct answer`);
+              }
+              if (!errors[questionKey]) errors[questionKey] = [];
+              errors[questionKey].push('Must select at least one correct answer');
+              hasError = true;
+            }
+          }
+
+          if (question.requires_image && !question.image && !question.imagePreview) {
+            if (totalErrors < MAX_ERRORS_TO_SHOW) {
+              requirements.push(`❌ ${questionLabel}: Image upload required (imported from CSV)`);
+            }
+            if (!errors[questionKey]) errors[questionKey] = [];
+            errors[questionKey].push('Image upload required (or click "Ignore Image")');
+            hasError = true;
+          }
+
+          for (let oIdx = 0; oIdx < question.options.length; oIdx++) {
+            const option = question.options[oIdx];
+            if (option.requires_image && !option.image && !option.imagePreview) {
+              if (totalErrors < MAX_ERRORS_TO_SHOW) {
+                requirements.push(`❌ ${questionLabel}, Option ${String.fromCharCode(65 + oIdx)}: Image upload required (imported from CSV)`);
+              }
+              if (!errors[questionKey]) errors[questionKey] = [];
+              errors[questionKey].push(`Option ${String.fromCharCode(65 + oIdx)}: Image required (or click "Ignore Image")`);
+              hasError = true;
+            }
+          }
+          
+          if (hasError) totalErrors++;
+        }
       }
-
-      const hasInvalidEnglishQuestions = englishSections.some(section =>
-        section.questions.some(question => {
-          if (!question.text.trim() || question.marks <= 0) return true;
-          if (question.type === 'numerical') return false;
-          const lackOptions = question.options.length < 2 || question.options.some(option => !option.option_text.trim());
-          const noCorrect = !question.options.some(option => option.is_correct);
-          return lackOptions || noCorrect;
-        })
-      );
-
-      if (hasInvalidEnglishQuestions) {
-        requirements.push('Ensure every English question has text, marks, valid options, and at least one correct answer.');
+      
+      if (totalErrors > MAX_ERRORS_TO_SHOW) {
+        requirements.push(`❌ ... and ${totalErrors - MAX_ERRORS_TO_SHOW} more errors`);
       }
     }
 
-    if (hasPendingImageRequirements) {
-      requirements.push('Upload images for all questions/options marked as "Image required" or remove those items.');
-    }
-
+    setComputedErrors(errors);
     return requirements;
-  }, [formData, sections, hasPendingImageRequirements]);
+  }, [formData, sections]);
+
+  useEffect(() => {
+    setValidationErrors(computedErrors);
+  }, [computedErrors]);
 
   const canSubmit = pendingRequirements.length === 0 && !loading;
+  const canSaveDraft = totals.totalQuestions > 0 && !loading && !draftSaving;
+
+  const handleSaveDraft = async () => {
+    if (draftSaving || loading) return;
+    setDraftSaving(true);
+
+    try {
+      const normalizeDate = (value: string) => {
+        if (!value) return null;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+      };
+
+      const payload: any = {
+        ...formData,
+        is_published: false,
+        start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
+        end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date)
+      };
+      if (payload.exam_type !== 'past_paper') {
+        payload.show_in_mock_tests = false;
+      }
+      if (payload.allow_anytime) {
+        delete payload.status;
+        delete payload.start_date;
+        delete payload.end_date;
+      }
+
+      const sectionsPayload = sections.map(section => ({
+        name: section.name,
+        name_hi: section.name_hi || null,
+        total_questions: section.questions.length,
+        marks_per_question: section.marks_per_question,
+        duration: section.duration || null,
+        section_order: section.section_order,
+        questions: section.questions.map(question => ({
+          type: question.type,
+          text: question.text,
+          text_hi: question.text_hi || null,
+          marks: question.marks,
+          negative_marks: question.negative_marks,
+          explanation: question.explanation || null,
+          explanation_hi: question.explanation_hi || null,
+          difficulty: question.difficulty,
+          image_url: null,
+          question_order: null,
+          options: question.options.map(option => ({
+            option_text: option.option_text,
+            option_text_hi: option.option_text_hi || null,
+            is_correct: option.is_correct,
+            option_order: option.option_order,
+            image_url: null
+          }))
+        }))
+      }));
+
+      if (isEditMode && examId) {
+        await adminService.updateExamWithContent(
+          examId,
+          payload,
+          sectionsPayload,
+          logoFile || undefined,
+          thumbnailFile || undefined
+        );
+        alert('Draft saved successfully!');
+      } else {
+        const draftResponse = await adminService.saveDraftExam(
+          payload,
+          sectionsPayload,
+          logoFile || undefined,
+          thumbnailFile || undefined
+        );
+        alert('Draft saved successfully! You can continue editing.');
+        const createdExamId = draftResponse?.exam?.id;
+        if (createdExamId) {
+          router.replace(`/admin/exams/${createdExamId}`);
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to save draft:', error);
+      alert(error.message || 'Failed to save draft. Please try again.');
+    } finally {
+      setDraftSaving(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1593,18 +1796,32 @@ export default function ExamFormPage() {
                           <div className="space-y-6">
                             {section.questions.map((question, qIndex) => {
                               const questionNeedsImage = Boolean(question.requires_image && !question.image && !question.imagePreview);
+                              const questionKey = `question-${section.id}-${question.id}`;
+                              const hasErrors = validationErrors[questionKey] && validationErrors[questionKey].length > 0;
+                              const questionColors = ['bg-blue-50/50 border-blue-200', 'bg-green-50/50 border-green-200', 'bg-purple-50/50 border-purple-200', 'bg-amber-50/50 border-amber-200', 'bg-pink-50/50 border-pink-200'];
+                              const colorClass = questionColors[qIndex % questionColors.length];
                               return (
                                 <div
                                   key={question.id}
-                                  className={`border rounded-lg p-4 ${
-                                    questionNeedsImage
+                                  className={`border-2 rounded-xl p-5 transition-all ${
+                                    hasErrors
+                                      ? 'border-red-500 bg-red-50/60 dark:bg-red-950/20 shadow-lg shadow-red-100'
+                                      : questionNeedsImage
                                       ? 'border-orange-400 bg-orange-50/40 dark:bg-orange-950/10'
-                                      : 'border-border bg-background'
+                                      : `${colorClass} dark:bg-slate-800/50 dark:border-slate-700`
                                   }`}
                                 >
                                   <div className="flex items-start justify-between mb-4">
-                                    <span className="font-semibold text-sm">Question {qIndex + 1}</span>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-base bg-white dark:bg-slate-900 px-3 py-1 rounded-lg border-2 border-current">Q{qIndex + 1}</span>
+                                      {hasErrors && (
+                                        <span className="flex items-center gap-1 text-xs font-bold text-red-700 bg-red-100 px-2 py-1 rounded-full animate-pulse">
+                                          <XCircle className="h-3 w-3" />
+                                          Has Errors
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
                                       {questionNeedsImage && (
                                         <span className="flex items-center gap-1 text-xs font-semibold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
                                           <ImageIcon className="h-3 w-3" />
@@ -1622,6 +1839,16 @@ export default function ExamFormPage() {
                                       </Button>
                                     </div>
                                   </div>
+                                  {hasErrors && (
+                                    <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-600 rounded">
+                                      <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">⚠️ Issues to fix:</p>
+                                      <ul className="text-xs text-red-700 dark:text-red-300 space-y-0.5 list-disc list-inside">
+                                        {validationErrors[questionKey].map((error, idx) => (
+                                          <li key={idx}>{error}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
 
                                   <div className="space-y-4">
                                   <div className="grid grid-cols-2 gap-4">
@@ -1693,9 +1920,23 @@ export default function ExamFormPage() {
                                       <label className="block text-sm font-medium mb-2">
                                         Question Image {question.requires_image ? '*' : '(Optional)'}
                                       </label>
-                                      {questionNeedsImage && (
-                                        <span className="text-xs font-semibold text-orange-600">Upload required</span>
-                                      )}
+                                      <div className="flex items-center gap-2">
+                                        {questionNeedsImage && (
+                                          <span className="text-xs font-semibold text-orange-600">Upload required</span>
+                                        )}
+                                        {question.requires_image && (
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => ignoreImageRequirement(section.id, question.id)}
+                                            className="text-xs h-7 px-2"
+                                          >
+                                            <XCircle className="h-3 w-3 mr-1" />
+                                            Ignore Image
+                                          </Button>
+                                        )}
+                                      </div>
                                     </div>
                                     {question.imagePreview ? (
                                       <div className="flex items-center gap-4">
@@ -1770,9 +2011,21 @@ export default function ExamFormPage() {
                                                   className="text-sm"
                                                 />
                                                 {optionNeedsImage && (
-                                                  <div className="text-xs font-semibold text-orange-600 flex items-center gap-1">
-                                                    <ImageIcon className="h-3 w-3" />
-                                                    Image required
+                                                  <div className="flex items-center justify-between">
+                                                    <div className="text-xs font-semibold text-orange-600 flex items-center gap-1">
+                                                      <ImageIcon className="h-3 w-3" />
+                                                      Image required
+                                                    </div>
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      onClick={() => ignoreImageRequirement(section.id, question.id, option.id)}
+                                                      className="text-xs h-6 px-2 text-orange-700 hover:text-orange-900"
+                                                    >
+                                                      <XCircle className="h-3 w-3 mr-1" />
+                                                      Ignore
+                                                    </Button>
                                                   </div>
                                                 )}
                                                 {option.imagePreview ? (
@@ -1847,6 +2100,17 @@ export default function ExamFormPage() {
                               </div>
                               );
                             })}
+                            <div className="mt-4 flex justify-center">
+                              <Button
+                                type="button"
+                                onClick={() => addQuestion(section.id)}
+                                variant="outline"
+                                className="w-full max-w-md border-2 border-dashed border-primary/50 hover:border-primary hover:bg-primary/5"
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Another Question
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1858,37 +2122,69 @@ export default function ExamFormPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4">
           {pendingRequirements.length > 0 && (
-            <div className="bg-muted/50 border border-border rounded-lg p-4 text-sm text-muted-foreground sm:max-w-md">
-              <p className="font-semibold text-destructive mb-2">Complete the following to enable exam creation:</p>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                {pendingRequirements.map((req, idx) => (
-                  <li key={idx}>{req}</li>
-                ))}
-              </ul>
+            <div className="bg-red-50 dark:bg-red-950/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <XCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-red-800 dark:text-red-200 mb-3 text-base">
+                    ⚠️ Complete the following to publish exam:
+                  </p>
+                  <div className="bg-white dark:bg-slate-900 rounded-lg p-3 max-h-60 overflow-y-auto">
+                    <ul className="space-y-2 text-sm">
+                      {pendingRequirements.map((req, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-red-700 dark:text-red-300">
+                          <span className="shrink-0 mt-0.5">•</span>
+                          <span>{req}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-3 italic">
+                    💡 Tip: You can save as draft to continue editing later
+                  </p>
+                </div>
+              </div>
             </div>
           )}
-          <div className="flex items-center justify-end gap-4">
+          <div className="flex items-center justify-between gap-4">
             <Link href="/admin/exams">
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={loading}>
                 Cancel
               </Button>
             </Link>
-            <Button
-              type="submit"
-              disabled={!canSubmit}
-              title={!canSubmit && pendingRequirements.length > 0 ? pendingRequirements[0] : undefined}
-              className={`bg-secondary hover:bg-secondary/90 ${!canSubmit ? 'opacity-60 cursor-not-allowed' : ''}`}
-            >
-              {loading
-                ? isEditMode
-                  ? 'Updating...'
-                  : 'Creating...'
-                : isEditMode
-                  ? 'Update Exam'
-                  : 'Create Exam'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={!canSaveDraft}
+                title={!canSaveDraft ? (draftSaving ? 'Saving draft...' : 'Add at least one question to save draft') : undefined}
+                variant="outline"
+                className={`border-blue-500 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950 ${(!canSaveDraft && !draftSaving) ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {draftSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {draftSaving ? 'Saving...' : 'Save Draft'}
+              </Button>
+              <Button
+                type="submit"
+                disabled={!canSubmit}
+                title={!canSubmit && pendingRequirements.length > 0 ? 'Please fix all validation errors first' : undefined}
+                className={`bg-secondary hover:bg-secondary/90 ${!canSubmit ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {loading
+                  ? isEditMode
+                    ? 'Updating...'
+                    : 'Creating...'
+                  : isEditMode
+                    ? 'Update Exam'
+                    : 'Create Exam'}
+              </Button>
+            </div>
           </div>
         </div>
       </form>

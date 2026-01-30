@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArticleCard } from '@/components/article/ArticleCard';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
-import { articleService } from '@/lib/api/articleService';
-import { Article } from '@/types';
+import { blogService, Blog } from '@/lib/api/blogService';
 
-export default function ArticlesPage() {
-  const [articles, setArticles] = useState<Article[]>([]);
+export default function BlogsPage() {
+  const [articles, setArticles] = useState<Blog[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [popularTags, setPopularTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,7 +39,7 @@ export default function ArticlesPage() {
 
   const fetchCategories = async () => {
     try {
-      const data = await articleService.getCategories();
+      const data = await blogService.getCategories();
       setCategories(data);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
@@ -49,7 +48,7 @@ export default function ArticlesPage() {
 
   const fetchPopularTags = async () => {
     try {
-      const data = await articleService.getPopularTags();
+      const data = await blogService.getPopularTags();
       setPopularTags(data);
     } catch (err) {
       console.error('Failed to fetch tags:', err);
@@ -61,7 +60,7 @@ export default function ArticlesPage() {
     setError('');
     
     try {
-      const response = await articleService.getArticles({
+      const response = await blogService.getBlogs({
         ...filters,
         page: pagination.page,
         limit: pagination.limit
@@ -70,11 +69,11 @@ export default function ArticlesPage() {
       setArticles(response.data);
       setPagination(prev => ({
         ...prev,
-        total: response.total,
-        totalPages: response.totalPages
+        total: response.pagination.total,
+        totalPages: response.pagination.totalPages
       }));
     } catch (err: any) {
-      setError(err.message || 'Failed to load articles');
+      setError(err.message || 'Failed to load blogs');
     } finally {
       setIsLoading(false);
     }

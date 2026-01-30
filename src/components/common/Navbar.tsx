@@ -31,7 +31,7 @@ const navigation = [
   { name: 'Live Tests', href: '/live-tests', icon: Flame },
   { name: 'Exams', href: '/exams', icon: BookOpen },
   { name: 'Courses', href: '/courses', icon: GraduationCap },
-  { name: 'Blogs', href: '/articles', icon: FileText },
+  { name: 'Blogs', href: '/blogs', icon: FileText },
 ];
 
 export function Navbar() {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { adminService } from '@/lib/api/adminService';
@@ -167,9 +167,15 @@ export default function AdminExamsPage() {
                     </td>
                     <td className="px-6 py-4">
                       {exam.is_published ? (
-                        <Eye className="h-4 w-4 text-success" />
+                        <div className="flex items-center gap-2">
+                          <Eye className="h-4 w-4 text-success" />
+                          <span className="text-xs font-medium text-success">Published</span>
+                        </div>
                       ) : (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-orange-500" />
+                          <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-xs font-semibold rounded-full">Draft</span>
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4">

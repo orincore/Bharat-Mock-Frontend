@@ -6,15 +6,16 @@ import Link from 'next/link';
 import { ArrowLeft, Calendar, Clock, Eye, Tag, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
-import { articleService } from '@/lib/api/articleService';
-import { Article } from '@/types';
+import { blogService, Blog, BlogSection } from '@/lib/api/blogService';
+import { BlockRenderer } from '@/components/PageEditor/BlockRenderer';
 
-export default function ArticleDetailPage() {
+export default function BlogDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  const [article, setArticle] = useState<Article | null>(null);
-  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
+  const [article, setArticle] = useState<Blog | null>(null);
+  const [sections, setSections] = useState<BlogSection[]>([]);
+  const [relatedArticles, setRelatedArticles] = useState<Blog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -27,14 +28,24 @@ export default function ArticleDetailPage() {
     setError('');
 
     try {
-      const data = await articleService.getArticleBySlug(slug);
+      const data = await blogService.getBlogBySlug(slug);
+      if (!data) {
+        setError('Blog not found');
+        return;
+      }
       setArticle(data);
       
-      // Optionally fetch related articles
-      // const related = await articleService.getRelatedArticles(data.id);
-      // setRelatedArticles(related);
+      // Fetch blog content (sections and blocks)
+      const content = await blogService.getBlogContent(data.id);
+      setSections(content);
+      
+      // Optionally fetch related blogs by category
+      if (data.category) {
+        const related = await blogService.getBlogs({ category: data.category, limit: 3 });
+        setRelatedArticles(related.data.filter(b => b.id !== data.id));
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load article');
+      setError(err.message || 'Failed to load blog');
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +63,7 @@ export default function ArticleDetailPage() {
             <h2 className="font-display text-2xl font-bold text-foreground mb-2">
               {error || 'Blog not found'}
             </h2>
-            <Link href="/articles">
+            <Link href="/blogs">
               <Button>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Blogs
@@ -69,7 +80,7 @@ export default function ArticleDetailPage() {
       {/* Header */}
       <section className="bg-background py-12 border-b border-border">
         <div className="container-main max-w-4xl">
-          <Link href="/articles" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
+          <Link href="/blogs" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Blogs
           </Link>
@@ -91,10 +102,10 @@ export default function ArticleDetailPage() {
           )}
 
           <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-            {article.author && (
+            {article.author?.raw_user_meta_data?.name && (
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                <span>{article.author.name}</span>
+                <span>{article.author.raw_user_meta_data.name}</span>
               </div>
             )}
             {article.published_at && (
@@ -115,18 +126,18 @@ export default function ArticleDetailPage() {
             )}
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
-              <span>{article.views.toLocaleString()} views</span>
+              <span>{article.view_count?.toLocaleString() || 0} views</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* Featured Image */}
-      {article.image_url && (
+      {article.featured_image_url && (
         <section className="bg-background border-b border-border">
           <div className="container-main max-w-4xl py-8">
             <img 
-              src={article.image_url}
+              src={article.featured_image_url}
               alt={article.title}
               className="w-full h-auto max-h-[500px] object-cover rounded-xl"
             />
@@ -140,20 +151,38 @@ export default function ArticleDetailPage() {
           <div className="grid lg:grid-cols-4 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-3">
-              <div className="bg-card rounded-xl border border-border p-8 md:p-12">
-                <div 
-                  className="prose prose-lg max-w-none
-                    prose-headings:font-display prose-headings:font-bold
-                    prose-h2:text-3xl prose-h2:mt-8 prose-h2:mb-4
-                    prose-h3:text-2xl prose-h3:mt-6 prose-h3:mb-3
-                    prose-p:text-foreground prose-p:leading-relaxed prose-p:mb-4
-                    prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-                    prose-strong:text-foreground prose-strong:font-semibold
-                    prose-ul:my-4 prose-li:text-foreground
-                    prose-img:rounded-lg prose-img:my-6"
-                  dangerouslySetInnerHTML={{ __html: article.content }}
-                />
-              </div>
+              {sections.length > 0 ? (
+                <div className="space-y-8">
+                  {sections.map((section) => (
+                    <section
+                      key={section.id}
+                      className="bg-card rounded-xl border border-border p-8 md:p-12"
+                      style={{
+                        backgroundColor: section.background_color || undefined,
+                        color: section.text_color || undefined
+                      }}
+                    >
+                      {section.title && (
+                        <h2 className="text-2xl font-bold mb-4">{section.title}</h2>
+                      )}
+                      {section.subtitle && (
+                        <p className="text-muted-foreground mb-6">{section.subtitle}</p>
+                      )}
+                      <div className="space-y-6">
+                        {section.blocks.map((block) => (
+                          <div key={block.id}>
+                            <BlockRenderer block={block} />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-card rounded-xl border border-border p-8 md:p-12">
+                  <p className="text-muted-foreground text-center">No content available yet.</p>
+                </div>
+              )}
 
               {/* Tags */}
               {article.tags && article.tags.length > 0 && (
@@ -163,7 +192,7 @@ export default function ArticleDetailPage() {
                     {article.tags.map((tag, index) => (
                       <Link 
                         key={index}
-                        href={`/articles?search=${tag}`}
+                        href={`/blogs?search=${tag}`}
                         className="px-3 py-1 bg-muted hover:bg-primary/10 text-sm rounded-full transition-colors"
                       >
                         #{tag}
@@ -174,22 +203,22 @@ export default function ArticleDetailPage() {
               )}
 
               {/* Author Bio */}
-              {article.author && article.author.bio && (
+              {article.author?.raw_user_meta_data?.bio && (
                 <div className="mt-8 bg-card rounded-xl border border-border p-6">
                   <div className="flex items-start gap-4">
-                    {article.author.avatar_url && (
+                    {article.author.raw_user_meta_data.avatar_url && (
                       <img 
-                        src={article.author.avatar_url}
-                        alt={article.author.name}
+                        src={article.author.raw_user_meta_data.avatar_url}
+                        alt={article.author.raw_user_meta_data.name || 'Author'}
                         className="w-16 h-16 rounded-full object-cover"
                       />
                     )}
                     <div className="flex-1">
                       <h3 className="font-display text-lg font-bold text-foreground mb-2">
-                        About {article.author.name}
+                        About {article.author.raw_user_meta_data.name || 'Author'}
                       </h3>
                       <p className="text-muted-foreground text-sm">
-                        {article.author.bio}
+                        {article.author.raw_user_meta_data.bio}
                       </p>
                     </div>
                   </div>
@@ -247,7 +276,7 @@ export default function ArticleDetailPage() {
                     )}
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Views</span>
-                      <span className="font-semibold text-foreground">{article.views.toLocaleString()}</span>
+                      <span className="font-semibold text-foreground">{article.view_count?.toLocaleString() || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -278,12 +307,12 @@ export default function ArticleDetailPage() {
                 {relatedArticles.map((relatedArticle) => (
                   <Link 
                     key={relatedArticle.id}
-                    href={`/articles/${relatedArticle.slug}`}
+                    href={`/blogs/${relatedArticle.slug}`}
                     className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow"
                   >
-                    {relatedArticle.image_url && (
+                    {relatedArticle.featured_image_url && (
                       <img 
-                        src={relatedArticle.image_url}
+                        src={relatedArticle.featured_image_url}
                         alt={relatedArticle.title}
                         className="w-full h-48 object-cover"
                       />

@@ -13,6 +13,7 @@ import {
   LogOut,
   BookOpen,
   FolderTree,
+  PenSquare,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -21,6 +22,7 @@ const adminNavItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Exams', href: '/admin/exams', icon: FileText },
   { name: 'Categories', href: '/admin/categories', icon: FolderTree },
+  { name: 'Blogs', href: '/admin/blogs', icon: PenSquare },
   { name: 'Users', href: '/admin/users', icon: Users },
 ];
 

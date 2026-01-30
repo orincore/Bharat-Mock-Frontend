@@ -513,7 +513,7 @@ export default function Index() {
               <h2 className="font-display text-3xl font-bold text-foreground mb-2">Latest Blogs</h2>
               <p className="text-muted-foreground">Expert tips and preparation strategies</p>
             </div>
-            <Link href="/articles">
+            <Link href="/blogs">
               <Button variant="outline">
                 View All <ArrowRight className="h-4 w-4" />
               </Button>
