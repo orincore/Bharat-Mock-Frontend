@@ -217,11 +217,15 @@ const UPDATE_EXAM_MUTATION = gql`
     $id: ID!
     $input: ExamInput!
     $sections: [SectionInput!]
+    $logo: Upload
+    $thumbnail: Upload
   ) {
     updateExam(
       id: $id
       input: $input
       sections: $sections
+      logo: $logo
+      thumbnail: $thumbnail
     ) {
       exam {
         id
@@ -236,8 +240,10 @@ const CREATE_EXAM_MUTATION = gql`
   mutation CreateExam(
     $input: ExamInput!
     $sections: [SectionInput!]
+    $logo: Upload
+    $thumbnail: Upload
   ) {
-    createExam(input: $input, sections: $sections) {
+    createExam(input: $input, sections: $sections, logo: $logo, thumbnail: $thumbnail) {
       exam {
         id
         title
@@ -273,14 +279,19 @@ export const graphqlExamService = {
     logo?: File | null;
     thumbnail?: File | null;
   }) {
-    const { id, input, sections = [] } = params;
+    const { id, input, sections = [], logo, thumbnail } = params;
+    const variables: Record<string, any> = {
+      id,
+      input,
+      sections
+    };
+
+    if (logo) variables.logo = logo;
+    if (thumbnail) variables.thumbnail = thumbnail;
+
     return apolloClient.mutate<UpdateExamResponse>({
       mutation: UPDATE_EXAM_MUTATION,
-      variables: {
-        id,
-        input,
-        sections
-      }
+      variables
     });
   },
 
@@ -290,13 +301,18 @@ export const graphqlExamService = {
     logo?: File | null;
     thumbnail?: File | null;
   }) {
-    const { input, sections = [] } = params;
+    const { input, sections = [], logo, thumbnail } = params;
+    const variables: Record<string, any> = {
+      input,
+      sections
+    };
+
+    if (logo) variables.logo = logo;
+    if (thumbnail) variables.thumbnail = thumbnail;
+
     const { data } = await apolloClient.mutate<CreateExamResponse>({
       mutation: CREATE_EXAM_MUTATION,
-      variables: {
-        input,
-        sections
-      }
+      variables
     });
     return data?.createExam?.exam;
   },

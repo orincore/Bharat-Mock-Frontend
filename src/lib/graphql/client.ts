@@ -1,9 +1,10 @@
-import { ApolloClient, InMemoryCache, createHttpLink, DefaultOptions } from '@apollo/client';
+import { ApolloClient, InMemoryCache, DefaultOptions } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
+import UploadHttpLink from 'apollo-upload-client/UploadHttpLink.mjs';
 
 const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:8000/api/graphql';
 
-const httpLink = createHttpLink({
+const uploadLink = new UploadHttpLink({
   uri: GRAPHQL_URL,
   fetchOptions: {
     credentials: 'include'
@@ -19,7 +20,8 @@ const authLink = setContext((_, { headers }) => {
   return {
     headers: {
       ...headers,
-      ...(token && { Authorization: `Bearer ${token}` })
+      authorization: token ? `Bearer ${token}` : '',
+      'apollo-require-preflight': 'true'
     }
   };
 });
@@ -37,7 +39,7 @@ const defaultOptions: DefaultOptions = {
 };
 
 export const apolloClient = new ApolloClient({
-  link: authLink.concat(httpLink),
+  link: authLink.concat(uploadLink),
   cache: new InMemoryCache(),
   defaultOptions
 });

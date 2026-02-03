@@ -1139,6 +1139,10 @@ export default function ExamFormPage() {
 
       setUploadProgress({ total: 3, completed: 1, current: 'Saving exam via GraphQL...' });
 
+      if (logoFile || thumbnailFile) {
+        setUploadProgress(prev => ({ ...prev, completed: 2, current: 'Uploading media files...' }));
+      }
+
       // Use GraphQL for instant updates instead of REST
       const sectionsPayload = sections.map((section, sectionIdx) => ({
         id: section.id,
@@ -1176,7 +1180,9 @@ export default function ExamFormPage() {
         await graphqlExamService.updateExam({
           id: examId,
           input: payload,
-          sections: sectionsPayload
+          sections: sectionsPayload,
+          logo: logoFile || undefined,
+          thumbnail: thumbnailFile || undefined
         });
         
         // Clear draft after successful update
@@ -1189,11 +1195,16 @@ export default function ExamFormPage() {
       } else {
         const result = await graphqlExamService.createExam({
           input: payload,
-          sections: sectionsPayload
+          sections: sectionsPayload,
+          logo: logoFile || undefined,
+          thumbnail: thumbnailFile || undefined
         });
         setUploadProgress({ total: 3, completed: 3, current: 'Exam created successfully!' });
         alert('Exam created successfully with all sections and questions!');
       }
+
+      setLogoFile(null);
+      setThumbnailFile(null);
       router.push('/admin/exams');
     } catch (error: any) {
       console.error(`Failed to ${isEditMode ? 'update' : 'create'} exam:`, error);
