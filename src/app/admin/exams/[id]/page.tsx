@@ -401,8 +401,8 @@ export default function ExamFormPage() {
   };
 
   const handleQuestionImagePaste = (sectionId: string, questionId: string, file: File) => {
-    if (!questionId || isTempQuestionId(questionId)) {
-      setToastMessage('Please save the question before adding images.');
+    if (!questionId) {
+      setToastMessage('Question ID missing. Please try again.');
       setToastType('error');
       setShowToast(true);
       return;
@@ -411,8 +411,8 @@ export default function ExamFormPage() {
   };
 
   const handleOptionImagePaste = (sectionId: string, questionId: string, optionId: string, file: File) => {
-    if (!optionId || isTempOptionId(optionId)) {
-      setToastMessage('Please save the option before adding images.');
+    if (!optionId) {
+      setToastMessage('Option ID missing. Please try again.');
       setToastType('error');
       setShowToast(true);
       return;
