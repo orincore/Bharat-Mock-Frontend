@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAutosave } from '@/hooks/useAutosave';
 import { ToastNotification } from '@/components/ui/toast-notification';
+import { InlineRichTextEditor } from '@/components/PageEditor/BlockEditor';
 
 interface Option {
   id: string;
@@ -88,10 +89,6 @@ type ApiQuestion = {
 type ApiOption = {
   id: string;
   option_text: string;
-  option_text_hi?: string | null;
-  is_correct: boolean;
-  option_order: number;
-  image_url?: string | null;
 };
 
 export default function ExamFormPage() {
@@ -252,6 +249,8 @@ export default function ExamFormPage() {
   });
 
   const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const isTempQuestionId = (id: string) => id.startsWith('question-');
+  const isTempOptionId = (id: string) => id.startsWith('opt-');
 
   const ignoreImageRequirement = (sectionId: string, questionId: string, optionId?: string) => {
     setSections(prevSections => prevSections.map(section => {
@@ -399,6 +398,26 @@ export default function ExamFormPage() {
     } finally {
       setInitialLoading(false);
     }
+  };
+
+  const handleQuestionImagePaste = (sectionId: string, questionId: string, file: File) => {
+    if (!questionId || isTempQuestionId(questionId)) {
+      setToastMessage('Please save the question before adding images.');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+    handleQuestionImageChange(sectionId, questionId, file);
+  };
+
+  const handleOptionImagePaste = (sectionId: string, questionId: string, optionId: string, file: File) => {
+    if (!optionId || isTempOptionId(optionId)) {
+      setToastMessage('Please save the option before adding images.');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+    handleOptionImageChange(sectionId, questionId, optionId, file);
   };
 
   useEffect(() => {
@@ -615,6 +634,10 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     saveDraftField('sections', updatedSections);
+    const updatedSection = updatedSections.find(s => s.id === sectionId);
+    if (updatedSection) {
+      saveDraftField(`sections.${sectionId}.total_questions`, updatedSection.total_questions);
+    }
   };
 
   const removeQuestion = (sectionId: string, questionId: string) => {
@@ -626,6 +649,10 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     saveDraftField('sections', updatedSections);
+    const updatedSection = updatedSections.find(s => s.id === sectionId);
+    if (updatedSection) {
+      saveDraftField(`sections.${sectionId}.total_questions`, updatedSection.total_questions);
+    }
   };
 
   const updateQuestion = (sectionId: string, questionId: string, field: keyof Question, value: any) => {
@@ -917,38 +944,62 @@ export default function ExamFormPage() {
     if (formData.duration <= 0) requirements.push('❌ Duration must be greater than 0 minutes');
     if (!scheduleComplete) requirements.push('❌ Start date, end date, and status are required (or enable "Allow anytime")');
 
-    const englishSections = sections.filter(section => section.language === 'en');
+    const MAX_ERRORS_TO_SHOW = 50;
+    let totalErrors = 0;
 
-    if (englishSections.length === 0) {
-      requirements.push('❌ Add at least one English section with questions');
-    } else {
-      let totalErrors = 0;
-      const MAX_ERRORS_TO_SHOW = 50;
-      
-      const hasQuestionContent = (question: Question) => {
-        return Boolean(question.text?.trim()) || Boolean(question.image || question.imagePreview || question.image_url);
-      };
+    const hasQuestionContent = (question: Question, language: 'en' | 'hi') => {
+      const textValue = language === 'hi' ? question.text_hi : question.text;
+      const explanationValue = language === 'hi' ? question.explanation_hi : question.explanation;
+      return Boolean(textValue?.trim()) || Boolean(explanationValue?.trim()) || Boolean(question.image || question.imagePreview || question.image_url);
+    };
 
-      const hasOptionContent = (option: Option) => {
-        return Boolean(option.option_text?.trim()) || Boolean(option.image || option.imagePreview || option.image_url);
-      };
+    const hasOptionContent = (option: Option, language: 'en' | 'hi') => {
+      const textValue = language === 'hi' ? option.option_text_hi : option.option_text;
+      return Boolean(textValue?.trim()) || Boolean(option.image || option.imagePreview || option.image_url);
+    };
 
-      for (let sIdx = 0; sIdx < englishSections.length; sIdx++) {
-        const section = englishSections[sIdx];
+    const sectionNameForLanguage = (section: Section, language: 'en' | 'hi') => {
+      if (language === 'hi') {
+        return section.name_hi || '';
+      }
+      return section.name;
+    };
+
+    const languageConfigs: Array<{ language: 'en' | 'hi'; label: string; requireAtLeastOne: boolean }> = [
+      { language: 'en', label: 'English', requireAtLeastOne: true },
+      { language: 'hi', label: 'Hindi', requireAtLeastOne: false }
+    ];
+
+    for (const config of languageConfigs) {
+      const languageSections = sections.filter(section => section.language === config.language);
+
+      if (config.requireAtLeastOne && languageSections.length === 0) {
+        requirements.push(`❌ Add at least one ${config.label} section with questions`);
+        continue;
+      }
+
+      if (languageSections.length === 0) {
+        continue;
+      }
+
+      for (let sIdx = 0; sIdx < languageSections.length; sIdx++) {
+        const section = languageSections[sIdx];
         const sectionKey = `section-${section.id}`;
-        
-        if (!section.name.trim()) {
+        const sectionLabel = `${config.label} Section ${sIdx + 1}`;
+        const sectionName = sectionNameForLanguage(section, config.language);
+
+        if (!sectionName.trim()) {
           if (totalErrors < MAX_ERRORS_TO_SHOW) {
-            requirements.push(`❌ Section ${sIdx + 1}: Section name is required`);
+            requirements.push(`❌ ${sectionLabel}: Section name (${config.label}) is required`);
           }
           if (!errors[sectionKey]) errors[sectionKey] = [];
-          errors[sectionKey].push('Section name is required');
+          errors[sectionKey].push(`Section name (${config.label}) is required`);
           totalErrors++;
         }
-        
+
         if (section.questions.length === 0) {
           if (totalErrors < MAX_ERRORS_TO_SHOW) {
-            requirements.push(`❌ Section ${sIdx + 1} (${section.name || 'Unnamed'}): Must have at least one question`);
+            requirements.push(`❌ ${sectionLabel} (${sectionName || 'Unnamed'}): Must have at least one question`);
           }
           if (!errors[sectionKey]) errors[sectionKey] = [];
           errors[sectionKey].push('Must have at least one question');
@@ -958,18 +1009,18 @@ export default function ExamFormPage() {
         for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
           const question = section.questions[qIdx];
           const questionKey = `question-${section.id}-${question.id}`;
-          const questionLabel = `Section ${sIdx + 1}, Question ${qIdx + 1}`;
+          const questionLabel = `${sectionLabel}, Question ${qIdx + 1}`;
           let hasError = false;
-          
-          if (!hasQuestionContent(question)) {
+
+          if (!hasQuestionContent(question, config.language)) {
             if (totalErrors < MAX_ERRORS_TO_SHOW) {
-              requirements.push(`❌ ${questionLabel}: Provide text or attach an image for the question`);
+              requirements.push(`❌ ${questionLabel}: Provide ${config.label} text or attach an image for the question`);
             }
             if (!errors[questionKey]) errors[questionKey] = [];
-            errors[questionKey].push('Provide text or attach an image for the question');
+            errors[questionKey].push(`Provide ${config.label} text or attach an image for the question`);
             hasError = true;
           }
-          
+
           if (question.marks <= 0) {
             if (totalErrors < MAX_ERRORS_TO_SHOW) {
               requirements.push(`❌ ${questionLabel}: Marks must be greater than 0`);
@@ -988,26 +1039,26 @@ export default function ExamFormPage() {
               errors[questionKey].push('Must have at least 2 answer options');
               hasError = true;
             }
-            
+
             let missingContentCount = 0;
             for (const opt of question.options) {
-              if (!hasOptionContent(opt)) missingContentCount++;
+              if (!hasOptionContent(opt, config.language)) missingContentCount++;
             }
-            
+
             if (missingContentCount > 0) {
               if (totalErrors < MAX_ERRORS_TO_SHOW) {
-                requirements.push(`❌ ${questionLabel}: ${missingContentCount} option(s) need text or an image`);
+                requirements.push(`❌ ${questionLabel}: ${missingContentCount} option(s) need ${config.label} text or an image`);
               }
               if (!errors[questionKey]) errors[questionKey] = [];
-              errors[questionKey].push(`${missingContentCount} option(s) need text or an image`);
+              errors[questionKey].push(`${missingContentCount} option(s) need ${config.label} text or an image`);
               hasError = true;
             }
-            
+
             let correctCount = 0;
             for (const opt of question.options) {
               if (opt.is_correct) correctCount++;
             }
-            
+
             if (correctCount === 0) {
               if (totalErrors < MAX_ERRORS_TO_SHOW) {
                 requirements.push(`❌ ${questionLabel}: Must select at least one correct answer`);
@@ -1038,14 +1089,14 @@ export default function ExamFormPage() {
               hasError = true;
             }
           }
-          
+
           if (hasError) totalErrors++;
         }
       }
-      
-      if (totalErrors > MAX_ERRORS_TO_SHOW) {
-        requirements.push(`❌ ... and ${totalErrors - MAX_ERRORS_TO_SHOW} more errors`);
-      }
+    }
+
+    if (totalErrors > MAX_ERRORS_TO_SHOW) {
+      requirements.push(`❌ ... and ${totalErrors - MAX_ERRORS_TO_SHOW} more errors`);
     }
 
     setComputedErrors(errors);
@@ -2037,15 +2088,13 @@ export default function ExamFormPage() {
                                   </div>
 
                                   <div>
-                                    <label className="block text-sm font-medium mb-1">
-                                      Question Text ({selectedLanguage === 'en' ? 'English' : 'Hindi'}) *
-                                    </label>
-                                    <textarea
-                                      value={selectedLanguage === 'en' ? question.text : (question.text_hi || '')}
-                                      onChange={(e) => updateQuestion(section.id, question.id, selectedLanguage === 'en' ? 'text' : 'text_hi', e.target.value)}
+                                    <InlineRichTextEditor
+                                      label={`Question Text (${selectedLanguage === 'en' ? 'English' : 'Hindi'}) *`}
+                                      value={(selectedLanguage === 'en' ? question.text : question.text_hi) || ''}
+                                      onChange={(content) => updateQuestion(section.id, question.id, selectedLanguage === 'en' ? 'text' : 'text_hi', content)}
                                       placeholder={selectedLanguage === 'en' ? 'Enter question text...' : 'प्रश्न पाठ दर्ज करें...'}
-                                      rows={3}
-                                      className="w-full px-3 py-2 border border-border rounded-lg text-sm"
+                                      rows={4}
+                                      onImagePaste={(file) => handleQuestionImagePaste(section.id, question.id, file)}
                                     />
                                   </div>
 
@@ -2138,11 +2187,13 @@ export default function ExamFormPage() {
                                                 <span className="text-sm font-medium">{String.fromCharCode(65 + optIndex)}.</span>
                                               </div>
                                               <div className="flex-1 space-y-2">
-                                                <Input
-                                                  value={selectedLanguage === 'en' ? option.option_text : (option.option_text_hi || '')}
-                                                  onChange={(e) => updateOption(section.id, question.id, option.id, selectedLanguage === 'en' ? 'option_text' : 'option_text_hi', e.target.value)}
+                                                <InlineRichTextEditor
+                                                  value={(selectedLanguage === 'en' ? option.option_text : option.option_text_hi) || ''}
+                                                  onChange={(content) => updateOption(section.id, question.id, option.id, selectedLanguage === 'en' ? 'option_text' : 'option_text_hi', content)}
                                                   placeholder={selectedLanguage === 'en' ? `Option ${optIndex + 1}` : `विकल्प ${optIndex + 1}`}
-                                                  className="text-sm"
+                                                  rows={2}
+                                                  variant="compact"
+                                                  onImagePaste={(file) => handleOptionImagePaste(section.id, question.id, option.id, file)}
                                                 />
                                                 {optionNeedsImage && (
                                                   <div className="flex items-center justify-between">
@@ -2219,15 +2270,13 @@ export default function ExamFormPage() {
                                   )}
 
                                   <div>
-                                    <label className="block text-sm font-medium mb-1">
-                                      Explanation ({selectedLanguage === 'en' ? 'English' : 'Hindi'}) (Optional)
-                                    </label>
-                                    <textarea
-                                      value={selectedLanguage === 'en' ? question.explanation : (question.explanation_hi || '')}
-                                      onChange={(e) => updateQuestion(section.id, question.id, selectedLanguage === 'en' ? 'explanation' : 'explanation_hi', e.target.value)}
+                                    <InlineRichTextEditor
+                                      label={`Explanation (${selectedLanguage === 'en' ? 'English' : 'Hindi'}) (Optional)`}
+                                      value={(selectedLanguage === 'en' ? question.explanation : question.explanation_hi) || ''}
+                                      onChange={(content) => updateQuestion(section.id, question.id, selectedLanguage === 'en' ? 'explanation' : 'explanation_hi', content)}
                                       placeholder={selectedLanguage === 'en' ? 'Explain the correct answer...' : 'सही उत्तर की व्याख्या करें...'}
-                                      rows={2}
-                                      className="w-full px-3 py-2 border border-border rounded-lg text-sm"
+                                      rows={3}
+                                      variant="compact"
                                     />
                                   </div>
                                 </div>

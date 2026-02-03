@@ -240,16 +240,20 @@ interface InlineRichTextEditorProps {
   className?: string;
   label?: string;
   helperText?: string;
+  variant?: 'full' | 'compact';
+  onImagePaste?: (file: File) => void | Promise<void>;
 }
 
-const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
+export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   value,
   onChange,
   placeholder = 'Start typing...',
   rows = 4,
   className = '',
   label,
-  helperText
+  helperText,
+  variant = 'full',
+  onImagePaste
 }) => {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [activeFormats, setActiveFormats] = useState({
@@ -260,7 +264,9 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     link: false,
     color: TEXT_COLOR_OPTIONS[0].value,
     highlight: '',
-    font: FONT_OPTIONS[0].value
+    font: FONT_OPTIONS[0].value,
+    bulletList: false,
+    numberedList: false
   });
 
   useEffect(() => {
@@ -301,20 +307,18 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   const updateActiveFormats = React.useCallback(() => {
     if (typeof document === 'undefined') return;
     if (!isSelectionInside()) {
-      setActiveFormats((prev) =>
-        prev.bold || prev.italic || prev.underline || prev.code || prev.link || prev.color !== TEXT_COLOR_OPTIONS[0].value || prev.highlight || prev.font !== FONT_OPTIONS[0].value
-          ? {
-              bold: false,
-              italic: false,
-              underline: false,
-              code: false,
-              link: false,
-              color: TEXT_COLOR_OPTIONS[0].value,
-              highlight: '',
-              font: FONT_OPTIONS[0].value
-            }
-          : prev
-      );
+      setActiveFormats({
+        bold: false,
+        italic: false,
+        underline: false,
+        code: false,
+        link: false,
+        color: TEXT_COLOR_OPTIONS[0].value,
+        highlight: '',
+        font: FONT_OPTIONS[0].value,
+        bulletList: false,
+        numberedList: false
+      });
       return;
     }
 
@@ -325,6 +329,8 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     const anchorNode = selection?.anchorNode || null;
     const code = findAncestorTag(anchorNode, 'CODE');
     const link = findAncestorTag(anchorNode, 'A');
+    const bulletList = findAncestorTag(anchorNode, 'UL');
+    const numberedList = findAncestorTag(anchorNode, 'OL');
     const anchorElement = (anchorNode as HTMLElement)?.nodeType === Node.ELEMENT_NODE
       ? (anchorNode as HTMLElement)
       : (anchorNode?.parentElement || null);
@@ -334,9 +340,19 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     const highlight = backgroundColor && backgroundColor !== 'rgba(0, 0, 0, 0)' && backgroundColor !== 'transparent'
       ? backgroundColor
       : '';
-    const font = computedStyle?.fontFamily || FONT_OPTIONS[0].value;
 
-    setActiveFormats({ bold, italic, underline, code, link, color, highlight, font });
+    setActiveFormats({
+      bold,
+      italic,
+      underline,
+      code,
+      link,
+      color,
+      highlight,
+      font: computedStyle?.fontFamily || FONT_OPTIONS[0].value,
+      bulletList,
+      numberedList
+    });
   }, []);
 
   const exec = (command: string, arg?: string) => {
@@ -361,6 +377,45 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     document.execCommand('insertHTML', false, `<code>${selectedText}</code>`);
     handleInput();
     updateActiveFormats();
+  };
+
+  const insertLineBreak = () => {
+    if (typeof document === 'undefined') return;
+    editorRef.current?.focus();
+    if (document.queryCommandSupported('insertLineBreak')) {
+      document.execCommand('insertLineBreak');
+    } else if (document.queryCommandSupported('insertParagraph')) {
+      document.execCommand('insertParagraph');
+    } else {
+      document.execCommand('insertHTML', false, '<br /><span data-inline-break></span>');
+    }
+    handleInput();
+    updateActiveFormats();
+  };
+
+  const handleEditorKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter') {
+      const isListActive = activeFormats.bulletList || activeFormats.numberedList;
+      if (!event.shiftKey && isListActive) {
+        return; // allow normal list item behavior
+      }
+      event.preventDefault();
+      if (event.shiftKey) {
+        insertLineBreak();
+      }
+    }
+  };
+
+  const handleEditorPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!onImagePaste || !event.clipboardData) return;
+    const items = Array.from(event.clipboardData.items || []);
+    const imageItem = items.find((item) => item.type.startsWith('image/'));
+    if (!imageItem) return;
+    const file = imageItem.getAsFile();
+    if (file) {
+      event.preventDefault();
+      onImagePaste(file);
+    }
   };
 
   const applyTextColor = (color: string) => {
@@ -404,6 +459,9 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     { label: 'U', title: 'Underline', action: () => exec('underline'), key: 'underline' as const },
     { label: '</>', title: 'Code', action: insertCode, key: 'code' as const },
     { label: 'Link', title: 'Insert link', action: insertLink, key: 'link' as const },
+    { label: '•', title: 'Bulleted list', action: () => exec('insertUnorderedList'), key: 'bulletList' as const },
+    { label: '1.', title: 'Numbered list', action: () => exec('insertOrderedList'), key: 'numberedList' as const },
+    { label: '↵', title: 'Insert line break', action: insertLineBreak },
     { label: 'Clear', title: 'Remove formatting', action: () => exec('removeFormat'), key: undefined }
   ];
 
@@ -433,64 +491,66 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
               );
             })}
           </div>
-          <div className="flex items-center gap-2 ml-auto">
-            <label className="flex items-center gap-1 text-xs text-gray-500">
-              Font
-              <select
-                value={activeFormats.font}
-                onChange={(event) => applyFontFamily(event.target.value)}
-                className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
-              >
-                {FONT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-1 text-xs text-gray-500">
-              Text
-              <select
-                value={activeFormats.color}
-                onChange={(event) => applyTextColor(event.target.value)}
-                className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
-              >
-                {TEXT_COLOR_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="color"
-                value={activeFormats.color}
-                onChange={(event) => applyTextColor(event.target.value)}
-                className="w-8 h-6 border border-gray-200 rounded"
-                title="Custom text color"
-              />
-            </label>
-            <label className="flex items-center gap-1 text-xs text-gray-500">
-              Highlight
-              <select
-                value={activeFormats.highlight}
-                onChange={(event) => applyHighlightColor(event.target.value)}
-                className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
-              >
-                {HIGHLIGHT_COLOR_OPTIONS.map((option) => (
-                  <option key={option.value || 'none'} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="color"
-                value={activeFormats.highlight || '#ffffff'}
-                onChange={(event) => applyHighlightColor(event.target.value)}
-                className="w-8 h-6 border border-gray-200 rounded"
-                title="Custom highlight color"
-              />
-            </label>
-          </div>
+          {variant === 'full' && (
+            <div className="flex items-center gap-2 ml-auto">
+              <label className="flex items-center gap-1 text-xs text-gray-500">
+                Font
+                <select
+                  value={activeFormats.font}
+                  onChange={(event) => applyFontFamily(event.target.value)}
+                  className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+                >
+                  {FONT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1 text-xs text-gray-500">
+                Text
+                <select
+                  value={activeFormats.color}
+                  onChange={(event) => applyTextColor(event.target.value)}
+                  className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+                >
+                  {TEXT_COLOR_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="color"
+                  value={activeFormats.color}
+                  onChange={(event) => applyTextColor(event.target.value)}
+                  className="w-8 h-6 border border-gray-200 rounded"
+                  title="Custom text color"
+                />
+              </label>
+              <label className="flex items-center gap-1 text-xs text-gray-500">
+                Highlight
+                <select
+                  value={activeFormats.highlight}
+                  onChange={(event) => applyHighlightColor(event.target.value)}
+                  className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+                >
+                  {HIGHLIGHT_COLOR_OPTIONS.map((option) => (
+                    <option key={option.value || 'none'} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="color"
+                  value={activeFormats.highlight || '#ffffff'}
+                  onChange={(event) => applyHighlightColor(event.target.value)}
+                  className="w-8 h-6 border border-gray-200 rounded"
+                  title="Custom highlight color"
+                />
+              </label>
+            </div>
+          )}
         </div>
         <div className="relative">
           {(!value || value === '<p></p>' || value === '<br>') && (
@@ -498,7 +558,7 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
           )}
           <div
             ref={editorRef}
-            className={`px-3 py-3 focus:outline-none text-sm ${className}`}
+            className={`px-3 py-3 focus:outline-none text-sm rich-text-editor ${className}`}
             style={{ minHeight }}
             contentEditable
             suppressContentEditableWarning
@@ -507,10 +567,16 @@ const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
             onKeyUp={updateActiveFormats}
             onMouseUp={updateActiveFormats}
             onFocus={updateActiveFormats}
+            onKeyDown={handleEditorKeyDown}
+            onPaste={handleEditorPaste}
           />
         </div>
       </div>
-      {helperText && <p className="text-xs text-gray-500">{helperText}</p>}
+      <div className="text-xs text-gray-500 space-y-1">
+        {helperText && <p>{helperText}</p>}
+        <p>Tip: Press Shift + Enter to add a new line (press Enter normally inside lists).</p>
+        {onImagePaste && <p>Tip: Paste images (Ctrl/⌘ + V) to auto-upload.</p>}
+      </div>
     </div>
   );
 };

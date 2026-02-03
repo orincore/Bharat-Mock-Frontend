@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
+import DOMPurify from 'isomorphic-dompurify';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   AlertCircle, Clock, ChevronLeft, ChevronRight, Flag, 
@@ -12,6 +13,15 @@ import { examService } from '@/lib/api/examService';
 import { Exam, Question, Section } from '@/types';
 
 type QuestionStatus = 'not-visited' | 'not-answered' | 'answered' | 'marked' | 'answered-marked';
+
+const RICH_TEXT_SANITIZE_CONFIG = {
+  USE_PROFILES: { html: true },
+  ADD_TAGS: ['font', 'code'],
+  ADD_ATTR: ['style', 'class', 'color', 'face', 'size', 'target', 'rel', 'data-inline-break'],
+};
+
+const sanitizeRichText = (html?: string) =>
+  DOMPurify.sanitize(html || '', RICH_TEXT_SANITIZE_CONFIG);
 
 interface QuestionWithStatus extends Question {
   userAnswer?: {
@@ -26,6 +36,7 @@ interface SectionWithQuestions {
   id: string;
   name: string;
   name_hi?: string;
+  language?: 'en' | 'hi' | null;
   totalQuestions: number;
   marksPerQuestion: number;
   duration?: number;
@@ -60,13 +71,6 @@ export default function ExamAttemptPage() {
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
   const [languageSelectionMade, setLanguageSelectionMade] = useState(false);
 
-  const hasSelectedAnswer = (() => {
-    if (selectedAnswer === null || selectedAnswer === undefined) return false;
-    if (Array.isArray(selectedAnswer)) return selectedAnswer.length > 0;
-    if (typeof selectedAnswer === 'string') return selectedAnswer.trim().length > 0;
-    return true;
-  })();
-
 
   const orderValue = (question: Question | QuestionWithStatus) => (
     typeof question.question_number === 'number'
@@ -84,16 +88,30 @@ export default function ExamAttemptPage() {
       return Boolean(
         (question.text_hi && question.text_hi.trim()) ||
         (question.explanation_hi && question.explanation_hi.trim()) ||
-        (question.options || []).some(opt => opt.option_text_hi && opt.option_text_hi.trim())
+        (question.image_url && question.image_url.trim()) ||
+        (question.options || []).some(opt => (opt.option_text_hi && opt.option_text_hi.trim()) || (opt.image_url && opt.image_url.trim()))
       );
     }
-    return Boolean(question.text && question.text.trim());
+    return Boolean(
+      (question.text && question.text.trim()) ||
+      (question.image_url && question.image_url.trim()) ||
+      (question.options || []).some(opt => (opt.option_text && opt.option_text.trim()) || (opt.image_url && opt.image_url.trim()))
+    );
   }, []);
 
   const filterContentByLanguage = useCallback((language: 'en' | 'hi', sourceSections: SectionWithQuestions[], sourceQuestions: QuestionWithStatus[]) => {
-    const filteredQuestions = sourceQuestions.filter(question => hasContentForLanguage(question, language));
+    const sectionsForLanguage = sourceSections.filter(section => (section.language || 'en') === language);
+    const allowedSectionIds = new Set(sectionsForLanguage.map(section => section.id));
 
-    const filteredSections = sourceSections
+    const filteredQuestions = sourceQuestions.filter(question => {
+      const sectionId = question.section_id || question.sectionId;
+      if (!sectionId || !allowedSectionIds.has(sectionId)) {
+        return false;
+      }
+      return hasContentForLanguage(question, language);
+    });
+
+    const filteredSections = sectionsForLanguage
       .map(section => {
         const sectionQuestions = sortQuestionsByNumber(filteredQuestions.filter(q => q.section_id === section.id));
         return {
@@ -132,15 +150,41 @@ export default function ExamAttemptPage() {
         setTimeRemaining((examData.duration || 0) * 60);
         
         const normalizedQuestions = sortQuestionsByNumber(questionsResponse.questions);
-        const allQuestions: QuestionWithStatus[] = normalizedQuestions.map((q: any) => ({
-          ...q,
-          status: q.userAnswer?.answer 
-            ? (q.userAnswer.marked_for_review ? 'answered-marked' : 'answered')
-            : (q.userAnswer?.marked_for_review ? 'marked' : 'not-visited')
-        }));
+        const allQuestions: QuestionWithStatus[] = normalizedQuestions.map((q: any) => {
+          const hasAnswer = hasAnswerValue(q.userAnswer?.answer);
+          const isMarked = q.userAnswer?.marked_for_review || false;
+          
+          // Debug logging for status assignment
+          if (q.question_number === 1) {
+            console.log('Question 1 status debug:', {
+              questionId: q.id,
+              userAnswer: q.userAnswer?.answer,
+              hasAnswer,
+              isMarked,
+              userAnswerObject: q.userAnswer
+            });
+          }
+          
+          let status: QuestionStatus;
+          if (hasAnswer && isMarked) {
+            status = 'answered-marked';
+          } else if (hasAnswer) {
+            status = 'answered';
+          } else if (isMarked) {
+            status = 'marked';
+          } else {
+            status = 'not-visited';
+          }
+          
+          return {
+            ...q,
+            status
+          };
+        });
 
         const sectionsData: SectionWithQuestions[] = questionsResponse.sections.map((s: any) => ({
           ...s,
+          language: s.language || s.language_code || 'en',
           questions: sortQuestionsByNumber(allQuestions.filter(q => q.section_id === s.id))
         }));
 
@@ -188,6 +232,18 @@ export default function ExamAttemptPage() {
     }
   }, [currentQuestionIndex, currentSectionIndex, questions, showInstructions, sections]);
 
+  const hasAnswerValue = useCallback((value: string | string[] | null | undefined) => {
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
+    return Boolean(value);
+  }, []);
+
+  const hasSelectedAnswer = hasAnswerValue(selectedAnswer);
+
   const refreshSections = useCallback((questionList: QuestionWithStatus[]) => {
     setSections(prevSections => prevSections.map(section => ({
       ...section,
@@ -195,7 +251,17 @@ export default function ExamAttemptPage() {
     })));
   }, []);
 
-  const saveAnswer = useCallback(async (answer: string | string[] | null, marked: boolean) => {
+  const deriveStatus = useCallback((value: string | string[] | null | undefined, marked: boolean): QuestionStatus => {
+    if (hasAnswerValue(value)) {
+      return marked ? 'answered-marked' : 'answered';
+    }
+    if (marked) {
+      return 'marked';
+    }
+    return 'not-answered';
+  }, [hasAnswerValue]);
+
+  const saveAnswer = useCallback(async (answer: string | string[] | null, marked: boolean, skipStateUpdate = false) => {
     const globalIndex = getGlobalQuestionIndex();
     const targetQuestion = questions[globalIndex];
     if (!targetQuestion) return;
@@ -211,27 +277,24 @@ export default function ExamAttemptPage() {
         timeTaken
       });
 
-      setQuestions(prev => {
-        const updated = prev.map((q, idx) => {
-          if (idx === globalIndex) {
-            let newStatus: QuestionStatus = 'not-answered';
-            if (answer) {
-              newStatus = marked ? 'answered-marked' : 'answered';
-            } else if (marked) {
-              newStatus = 'marked';
+      // Only update state if not skipped (to avoid duplicate updates)
+      if (!skipStateUpdate) {
+        setQuestions(prev => {
+          const updated = prev.map((q, idx) => {
+            if (idx === globalIndex) {
+              const newStatus = deriveStatus(answer, marked);
+              return {
+                ...q,
+                userAnswer: { answer, marked_for_review: marked, time_taken: timeTaken },
+                status: newStatus
+              };
             }
-            
-            return {
-              ...q,
-              userAnswer: { answer, marked_for_review: marked, time_taken: timeTaken },
-              status: newStatus
-            };
-          }
-          return q;
+            return q;
+          });
+          refreshSections(updated);
+          return updated;
         });
-        refreshSections(updated);
-        return updated;
-      });
+      }
     } catch (err: any) {
       console.error('Failed to save answer:', err);
     } finally {
@@ -241,7 +304,8 @@ export default function ExamAttemptPage() {
 
   const handleAnswerChange = (optionId: string) => {
     const currentQuestion = getCurrentSectionQuestions()[currentQuestionIndex];
-    
+    if (!currentQuestion) return;
+
     if (currentQuestion.type === 'multiple') {
       const currentAnswers = Array.isArray(selectedAnswer) ? selectedAnswer : [];
       const newAnswers = currentAnswers.includes(optionId)
@@ -254,7 +318,33 @@ export default function ExamAttemptPage() {
   };
 
   const handleSaveAndNext = async () => {
-    await saveAnswer(selectedAnswer, markedForReview);
+    const globalIndex = getGlobalQuestionIndex();
+    const targetQuestion = questions[globalIndex];
+    if (!targetQuestion) return;
+    
+    // Update the question status immediately before saving
+    const newStatus = deriveStatus(selectedAnswer, markedForReview);
+    const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
+    
+    // Update local state first
+    setQuestions(prev => {
+      const updated = prev.map((q, idx) => {
+        if (idx === globalIndex) {
+          return {
+            ...q,
+            userAnswer: { answer: selectedAnswer, marked_for_review: markedForReview, time_taken: timeTaken },
+            status: newStatus
+          };
+        }
+        return q;
+      });
+      refreshSections(updated);
+      return updated;
+    });
+    
+    // Then save to backend (skip state update since we already did it)
+    await saveAnswer(selectedAnswer, markedForReview, true);
+    
     const sectionQuestions = sections[currentSectionIndex]?.questions || [];
 
     if (currentQuestionIndex < sectionQuestions.length - 1) {
@@ -372,8 +462,17 @@ export default function ExamAttemptPage() {
     };
   };
 
+  const getSectionQuestions = (section?: SectionWithQuestions) => {
+    if (!section) return [];
+    const sectionQuestions = questions.filter(q => q.section_id === section.id);
+    if (sectionQuestions.length > 0) {
+      return sortQuestionsByNumber(sectionQuestions);
+    }
+    return section.questions || [];
+  };
+
   const getCurrentSection = () => sections[currentSectionIndex];
-  const getCurrentSectionQuestions = () => getCurrentSection()?.questions || [];
+  const getCurrentSectionQuestions = () => getSectionQuestions(getCurrentSection());
   const getGlobalQuestionIndex = () => {
     let index = 0;
     for (let i = 0; i < currentSectionIndex; i++) {
@@ -440,14 +539,14 @@ export default function ExamAttemptPage() {
     if (selectedLanguage === 'hi' && question.text_hi) {
       return question.text_hi;
     }
-    return question.text;
+    return question.text || '';
   };
 
   const getLocalizedOptionText = (option: Question['options'][number]) => {
     if (selectedLanguage === 'hi' && option.option_text_hi) {
       return option.option_text_hi;
     }
-    return option.option_text;
+    return option.option_text || '';
   };
 
   if (showInstructions) {
@@ -646,7 +745,8 @@ export default function ExamAttemptPage() {
             <div className="bg-card border border-border rounded-xl p-4 mb-4">
               <div className="flex items-center gap-2 overflow-x-auto pb-2">
                 {sections.map((section, idx) => {
-                  const sectionStats = getQuestionCounts(section.questions);
+                  const sectionQuestions = getSectionQuestions(section);
+                  const sectionStats = getQuestionCounts(sectionQuestions);
                   return (
                     <button
                       key={section.id}
@@ -688,7 +788,10 @@ export default function ExamAttemptPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-lg leading-relaxed">{getLocalizedQuestionText(currentQuestion)}</p>
+                    <div
+                      className="text-lg leading-relaxed rich-text-content"
+                      dangerouslySetInnerHTML={{ __html: sanitizeRichText(getLocalizedQuestionText(currentQuestion)) }}
+                    />
                   </div>
                 </div>
                 {currentQuestion?.image_url && (
@@ -725,11 +828,14 @@ export default function ExamAttemptPage() {
                         className="mt-1"
                       />
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-start gap-2 mb-2">
                           <span className="font-medium text-sm text-muted-foreground">
                             {String.fromCharCode(65 + idx)}.
                           </span>
-                          <span>{getLocalizedOptionText(option)}</span>
+                          <div
+                            className="flex-1 rich-text-content"
+                            dangerouslySetInnerHTML={{ __html: sanitizeRichText(getLocalizedOptionText(option)) }}
+                          />
                         </div>
                         {resolveOptionImage(option) && (
                           <img
@@ -824,6 +930,7 @@ export default function ExamAttemptPage() {
                   };
 
                   const globalIdx = sections.slice(0, currentSectionIndex).reduce((sum, s) => sum + s.questions.length, 0) + idx;
+                  const paletteStatus = questions[globalIdx]?.status || q.status;
                   
                   return (
                     <button
@@ -836,7 +943,7 @@ export default function ExamAttemptPage() {
                         idx === currentQuestionIndex
                           ? 'ring-2 ring-primary ring-offset-2'
                           : ''
-                      } ${statusColors[q.status]}`}
+                      } ${statusColors[paletteStatus]}`}
                     >
                       {q.question_number ?? (idx + 1)}
                     </button>

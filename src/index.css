@@ -213,3 +213,45 @@
     text-wrap: balance;
   }
 }
+
+.rich-text-editor,
+.rich-text-content {
+  line-height: 1.6;
+  font-size: 0.95rem;
+  color: inherit;
+}
+
+.rich-text-editor ul,
+.rich-text-editor ol,
+.rich-text-content ul,
+.rich-text-content ol {
+  margin: 0.5rem 0 0.75rem 1.5rem;
+  padding-left: 0;
+}
+
+.rich-text-editor ul,
+.rich-text-content ul {
+  list-style-type: disc;
+}
+
+.rich-text-editor ol,
+.rich-text-content ol {
+  list-style-type: decimal;
+}
+
+.rich-text-editor li,
+.rich-text-content li {
+  margin-bottom: 0.35rem;
+}
+
+.rich-text-editor code,
+.rich-text-content code {
+  font-family: 'Space Mono', 'IBM Plex Mono', 'Source Code Pro', monospace;
+  background-color: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  font-size: 0.92em;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  white-space: pre-wrap;
+}
