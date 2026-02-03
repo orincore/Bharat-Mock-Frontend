@@ -112,6 +112,7 @@ export interface Question {
   image_url?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
   question_order?: number;
+  question_number?: number;
   options?: Option[];
   correctAnswer?: string | string[] | number;
   created_at?: string;

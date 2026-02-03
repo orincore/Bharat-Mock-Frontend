@@ -1,16 +1,18 @@
   "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion, Save, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { adminService } from '@/lib/api/adminService';
+import { graphqlExamService, GraphQLExamSection } from '@/lib/services/graphqlExamService';
 import { taxonomyService, Category, Subcategory, Difficulty } from '@/lib/api/taxonomyService';
 import { CSVImportDialog } from '@/components/admin/CSVImportDialog';
 import { ParsedSection } from '@/lib/utils/csvParser';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAutosave } from '@/hooks/useAutosave';
+import { ToastNotification } from '@/components/ui/toast-notification';
 
 interface Option {
   id: string;
@@ -21,6 +23,7 @@ interface Option {
   image?: File | null;
   imagePreview?: string;
   requires_image?: boolean;
+  image_url?: string | null;
 }
 
 interface Question {
@@ -30,13 +33,16 @@ interface Question {
   text_hi?: string;
   marks: number;
   negative_marks: number;
-  explanation: string;
+  explanation?: string;
   explanation_hi?: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  image_url?: string | null;
   image?: File | null;
   imagePreview?: string;
-  options: Option[];
   requires_image?: boolean;
+  question_order?: number | null;
+  question_number?: number | null;
+  options: Option[];
 }
 
 interface Section {
@@ -75,6 +81,7 @@ type ApiQuestion = {
   difficulty: string;
   image_url?: string | null;
   question_order?: number | null;
+  question_number?: number | null;
   options: ApiOption[];
 };
 
@@ -178,7 +185,71 @@ export default function ExamFormPage() {
   const [uploadProgress, setUploadProgress] = useState({ total: 0, completed: 0, current: '' });
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string[]}>({});
   const [computedErrors, setComputedErrors] = useState<{[key: string]: string[]}>({});
-  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftSaving] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'loading'>('success');
+  const [questionSaveStatus, setQuestionSaveStatus] = useState<Record<string, boolean>>({});
+  const questionStatusTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+
+  const markQuestionSaved = useCallback((questionId: string) => {
+    if (!questionId) return;
+    setQuestionSaveStatus(prev => ({ ...prev, [questionId]: true }));
+
+    if (questionStatusTimeouts.current[questionId]) {
+      clearTimeout(questionStatusTimeouts.current[questionId]);
+    }
+
+    questionStatusTimeouts.current[questionId] = setTimeout(() => {
+      setQuestionSaveStatus(prev => {
+        const next = { ...prev };
+        delete next[questionId];
+        return next;
+      });
+      delete questionStatusTimeouts.current[questionId];
+    }, 4000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      Object.values(questionStatusTimeouts.current).forEach(timeout => clearTimeout(timeout));
+      questionStatusTimeouts.current = {};
+    };
+  }, []);
+
+  const extractQuestionIdFromFieldPath = useCallback((fieldPath: string) => {
+    if (!fieldPath) return null;
+    const parts = fieldPath.split('.');
+    const questionIndex = parts.indexOf('questions');
+    if (questionIndex !== -1 && parts.length > questionIndex + 1) {
+      return parts[questionIndex + 1];
+    }
+    return null;
+  }, []);
+
+  // Initialize autosave hook with enhanced status
+  const { saveDraftField, clearDraft, loadDraftFields, status: autosaveStatus, lastSaved } = useAutosave({
+    examId,
+    draftKey: `exam-${examId || 'new'}`,
+    debounceMs: 1500,
+    onSave: (fieldPath) => {
+      console.log(`Auto-saved: ${fieldPath}`);
+      setToastMessage(`Last draft saved on ${new Date().toLocaleString()}`);
+      setToastType('success');
+      setShowToast(true);
+
+      const questionId = extractQuestionIdFromFieldPath(fieldPath);
+      if (questionId) {
+        markQuestionSaved(questionId);
+      }
+    },
+    onError: (error) => {
+      console.error('Autosave error:', error);
+      setToastMessage('Failed to save draft');
+      setToastType('error');
+      setShowToast(true);
+    }
+  });
 
   const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -224,45 +295,59 @@ export default function ExamFormPage() {
     if (!examId) return;
     setInitialLoading(true);
     try {
-      const [exam, sectionsData] = await Promise.all([
-        adminService.getExamById(examId),
-        adminService.getExamSectionsAndQuestions(examId)
-      ]);
+      const { exam, sections: structure } = await graphqlExamService.fetchExamDetail(examId);
 
-      setFormData({
-        title: exam.title || '',
-        description: exam.description || '',
-        duration: exam.duration || 180,
-        total_marks: exam.total_marks || 100,
-        total_questions: exam.total_questions || 50,
-        category: exam.category || '',
-        category_id: exam.category_id || '',
-        subcategory: exam.subcategory || '',
-        subcategory_id: exam.subcategory_id || '',
-        difficulty: exam.difficulty || '',
-        difficulty_id: exam.difficulty_id || '',
-        slug: exam.slug || '',
-        status: (exam.status || 'upcoming') as 'upcoming' | 'ongoing' | 'completed' | 'anytime',
-        start_date: exam.start_date ? new Date(exam.start_date).toISOString().slice(0, 10) : '',
-        end_date: exam.end_date ? new Date(exam.end_date).toISOString().slice(0, 10) : '',
-        pass_percentage: exam.pass_percentage || 33,
-        is_free: exam.is_free ?? true,
-        price: exam.price || 0,
-        negative_marking: exam.negative_marking ?? false,
-        negative_mark_value: exam.negative_mark_value || 0,
-        is_published: exam.is_published ?? false,
-        allow_anytime: exam.allow_anytime ?? false,
-        exam_type: (exam.exam_type || 'mock_test') as 'past_paper' | 'mock_test' | 'short_quiz',
-        show_in_mock_tests: exam.show_in_mock_tests ?? false,
-        syllabus: exam.syllabus || []
+      if (exam) {
+        setFormData({
+          title: exam.title || '',
+          description: exam.description || '',
+          duration: exam.duration || 180,
+          total_marks: exam.total_marks || 100,
+          total_questions: exam.total_questions || 50,
+          category: exam.category || '',
+          category_id: exam.category_id || '',
+          subcategory: exam.subcategory || '',
+          subcategory_id: exam.subcategory_id || '',
+          difficulty: exam.difficulty || '',
+          difficulty_id: exam.difficulty_id || '',
+          slug: exam.slug || '',
+          status: (exam.status || 'upcoming') as 'upcoming' | 'ongoing' | 'completed' | 'anytime',
+          start_date: exam.start_date ? new Date(exam.start_date).toISOString().slice(0, 10) : '',
+          end_date: exam.end_date ? new Date(exam.end_date).toISOString().slice(0, 10) : '',
+          pass_percentage: exam.pass_percentage || 33,
+          is_free: exam.is_free ?? true,
+          price: exam.price || 0,
+          negative_marking: exam.negative_marking ?? false,
+          negative_mark_value: exam.negative_mark_value || 0,
+          is_published: exam.is_published ?? false,
+          allow_anytime: exam.allow_anytime ?? false,
+          exam_type: (exam.exam_type || 'mock_test') as 'past_paper' | 'mock_test' | 'short_quiz',
+          show_in_mock_tests: exam.show_in_mock_tests ?? false,
+          syllabus: exam.syllabus || []
+        });
+
+        if (exam.logo_url) setLogoPreview(exam.logo_url);
+        if (exam.thumbnail_url) setThumbnailPreview(exam.thumbnail_url);
+      }
+
+      const apiSections = (structure || []) as GraphQLExamSection[];
+      const sortedApiSections = [...apiSections].sort((a, b) => {
+        const orderA = typeof a.section_order === 'number' ? a.section_order : Number.MAX_SAFE_INTEGER;
+        const orderB = typeof b.section_order === 'number' ? b.section_order : Number.MAX_SAFE_INTEGER;
+        return orderA - orderB;
       });
 
-      if (exam.logo_url) setLogoPreview(exam.logo_url);
-      if (exam.thumbnail_url) setThumbnailPreview(exam.thumbnail_url);
-
-      const apiSections = (sectionsData.sections || []) as ApiSection[];
-      const loadedSections: Section[] = apiSections.map(section => {
+      const loadedSections: Section[] = sortedApiSections.map(section => {
         const hasHindi = Boolean(section.name_hi);
+        const sortedQuestions = [...(section.questions || [])].sort((a, b) => {
+          const orderA = typeof a.question_number === 'number' ? a.question_number
+            : typeof a.question_order === 'number' ? a.question_order
+            : Number.MAX_SAFE_INTEGER;
+          const orderB = typeof b.question_number === 'number' ? b.question_number
+            : typeof b.question_order === 'number' ? b.question_order
+            : Number.MAX_SAFE_INTEGER;
+          return orderA - orderB;
+        });
         return {
           id: section.id,
           name: section.name,
@@ -273,26 +358,37 @@ export default function ExamFormPage() {
           duration: section.duration || 0,
           section_order: section.section_order,
           expanded: false,
-          questions: (section.questions || []).map(q => ({
-            id: q.id,
-            type: q.type as 'single' | 'multiple' | 'truefalse' | 'numerical',
-            text: q.text,
-            text_hi: q.text_hi || '',
-            marks: q.marks,
-            negative_marks: q.negative_marks,
-            explanation: q.explanation || '',
-            explanation_hi: q.explanation_hi || '',
-            difficulty: q.difficulty as 'easy' | 'medium' | 'hard',
-            imagePreview: q.image_url || undefined,
-            options: (q.options || []).map(opt => ({
-              id: opt.id,
-              option_text: opt.option_text,
-              option_text_hi: opt.option_text_hi || '',
-              is_correct: opt.is_correct,
-              option_order: opt.option_order,
-              imagePreview: opt.image_url || undefined
-            }))
-          }))
+          questions: sortedQuestions.map(q => {
+            const sortedOptions = [...(q.options || [])].sort((a, b) => {
+              const orderA = typeof a.option_order === 'number' ? a.option_order : Number.MAX_SAFE_INTEGER;
+              const orderB = typeof b.option_order === 'number' ? b.option_order : Number.MAX_SAFE_INTEGER;
+              return orderA - orderB;
+            });
+            return {
+              id: q.id,
+              type: q.type as 'single' | 'multiple' | 'truefalse' | 'numerical',
+              text: q.text,
+              text_hi: q.text_hi || '',
+              marks: q.marks,
+              negative_marks: q.negative_marks,
+              explanation: q.explanation || '',
+              explanation_hi: q.explanation_hi || '',
+              difficulty: q.difficulty as 'easy' | 'medium' | 'hard',
+              image_url: q.image_url || null,
+              imagePreview: q.image_url || undefined,
+              question_order: q.question_order,
+              question_number: q.question_number,
+              options: sortedOptions.map(opt => ({
+                id: opt.id,
+                option_text: opt.option_text,
+                option_text_hi: opt.option_text_hi || '',
+                is_correct: opt.is_correct,
+                option_order: opt.option_order,
+                image_url: opt.image_url || null,
+                imagePreview: opt.image_url || undefined
+              }))
+            };
+          })
         };
       });
 
@@ -397,32 +493,33 @@ export default function ExamFormPage() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
 
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       if (name === 'allow_anytime') {
-        setFormData(prev => ({
-          ...prev,
+        const newData = {
           allow_anytime: checked,
           status: checked
-            ? 'anytime'
-            : prev.status === 'anytime'
-              ? 'upcoming'
-              : (prev.status || 'upcoming'),
-          start_date: checked ? '' : prev.start_date,
-          end_date: checked ? '' : prev.end_date
-        }));
+            ? ('anytime' as const)
+            : formData.status === 'anytime'
+              ? ('upcoming' as const)
+              : (formData.status || 'upcoming' as const),
+          start_date: checked ? '' : formData.start_date,
+          end_date: checked ? '' : formData.end_date
+        };
+        setFormData(prev => ({ ...prev, ...newData }));
+        saveDraftField(`formData.${name}`, newData);
         return;
       }
       setFormData(prev => ({ ...prev, [name]: checked }));
-    } else if (type === 'number') {
-      setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
+      saveDraftField(`formData.${name}`, checked);
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
+      saveDraftField(`formData.${name}`, value);
     }
-  };
+  }, [formData, saveDraftField]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'thumbnail') => {
     const file = e.target.files?.[0];
@@ -467,15 +564,21 @@ export default function ExamFormPage() {
       questions: [],
       expanded: true
     };
-    setSections([...sections, newSection]);
+    const updatedSections = [...sections, newSection];
+    setSections(updatedSections);
+    saveDraftField('sections', updatedSections);
   };
 
   const removeSection = (sectionId: string) => {
-    setSections(sections.filter(s => s.id !== sectionId));
+    const updatedSections = sections.filter(s => s.id !== sectionId);
+    setSections(updatedSections);
+    saveDraftField('sections', updatedSections);
   };
 
   const updateSection = (sectionId: string, field: keyof Section, value: any) => {
-    setSections(sections.map(s => s.id === sectionId ? { ...s, [field]: value } : s));
+    const updatedSections = sections.map(s => s.id === sectionId ? { ...s, [field]: value } : s);
+    setSections(updatedSections);
+    saveDraftField(`sections.${sectionId}.${field}`, value);
   };
 
   const toggleSection = (sectionId: string) => {
@@ -491,6 +594,7 @@ export default function ExamFormPage() {
       negative_marks: 0,
       explanation: '',
       difficulty: 'medium',
+      question_number: 0,
       options: [
         { id: `opt-1-${Date.now()}`, option_text: '', is_correct: false, option_order: 1 },
         { id: `opt-2-${Date.now()}`, option_text: '', is_correct: false, option_order: 2 },
@@ -498,25 +602,34 @@ export default function ExamFormPage() {
         { id: `opt-4-${Date.now()}`, option_text: '', is_correct: false, option_order: 4 }
       ]
     };
-    setSections(sections.map(s => {
+    const updatedSections = sections.map(s => {
       if (s.id === sectionId) {
-        return { ...s, questions: [...s.questions, newQuestion], total_questions: s.questions.length + 1 };
+        const nextQuestionNumber = (s.questions.length ? Math.max(...s.questions.map(q => q.question_number || 0)) : 0) + 1;
+        return {
+          ...s,
+          questions: [...s.questions, { ...newQuestion, question_number: nextQuestionNumber }],
+          total_questions: s.questions.length + 1
+        };
       }
       return s;
-    }));
+    });
+    setSections(updatedSections);
+    saveDraftField('sections', updatedSections);
   };
 
   const removeQuestion = (sectionId: string, questionId: string) => {
-    setSections(sections.map(s => {
+    const updatedSections = sections.map(s => {
       if (s.id === sectionId) {
         return { ...s, questions: s.questions.filter(q => q.id !== questionId), total_questions: s.questions.length - 1 };
       }
       return s;
-    }));
+    });
+    setSections(updatedSections);
+    saveDraftField('sections', updatedSections);
   };
 
   const updateQuestion = (sectionId: string, questionId: string, field: keyof Question, value: any) => {
-    setSections(sections.map(s => {
+    const updatedSections = sections.map(s => {
       if (s.id === sectionId) {
         return {
           ...s,
@@ -524,11 +637,13 @@ export default function ExamFormPage() {
         };
       }
       return s;
-    }));
+    });
+    setSections(updatedSections);
+    saveDraftField(`sections.${sectionId}.questions.${questionId}.${field}`, value);
   };
 
   const updateOption = (sectionId: string, questionId: string, optionId: string, field: keyof Option, value: any) => {
-    setSections(sections.map(s => {
+    const updatedSections = sections.map(s => {
       if (s.id === sectionId) {
         return {
           ...s,
@@ -536,7 +651,7 @@ export default function ExamFormPage() {
             if (q.id === questionId) {
               return {
                 ...q,
-                options: q.options.map(opt => opt.id === optionId ? { ...opt, [field]: value } : opt)
+                options: q.options.map(o => o.id === optionId ? { ...o, [field]: value } : o)
               };
             }
             return q;
@@ -544,7 +659,9 @@ export default function ExamFormPage() {
         };
       }
       return s;
-    }));
+    });
+    setSections(updatedSections);
+    saveDraftField(`sections.${sectionId}.questions.${questionId}.options.${optionId}.${field}`, value);
   };
 
   const setCorrectAnswer = (sectionId: string, questionId: string, optionId: string, questionType: string) => {
@@ -616,17 +733,42 @@ export default function ExamFormPage() {
     }));
   };
 
-  const handleQuestionImageChange = (sectionId: string, questionId: string, file: File) => {
-    const preview = URL.createObjectURL(file);
-    setSections(prevSections => prevSections.map(section => {
-      if (section.id !== sectionId) return section;
-      return {
-        ...section,
-        questions: section.questions.map(question =>
-          question.id === questionId ? { ...question, image: file, imagePreview: preview } : question
-        )
-      };
-    }));
+  const handleQuestionImageChange = async (sectionId: string, questionId: string, file: File) => {
+    try {
+      setToastMessage('Uploading image...');
+      setToastType('loading');
+      setShowToast(true);
+
+      // Upload image immediately via GraphQL
+      const imageUrl = await graphqlExamService.uploadQuestionImage(questionId, file);
+
+      if (imageUrl) {
+        // Update UI with the uploaded image URL
+        const updatedSections = sections.map(section => {
+          if (section.id !== sectionId) return section;
+          return {
+            ...section,
+            questions: section.questions.map(question =>
+              question.id === questionId ? { ...question, image_url: imageUrl, imagePreview: imageUrl } : question
+            )
+          };
+        });
+        
+        setSections(updatedSections);
+        saveDraftField('sections', updatedSections);
+        
+        setToastMessage('Image uploaded successfully');
+        setToastType('success');
+        setShowToast(true);
+      } else {
+        throw new Error('Image upload failed');
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      setToastMessage('Image upload failed');
+      setToastType('error');
+      setShowToast(true);
+    }
   };
 
   const clearQuestionImage = (sectionId: string, questionId: string) => {
@@ -641,23 +783,48 @@ export default function ExamFormPage() {
     }));
   };
 
-  const handleOptionImageChange = (sectionId: string, questionId: string, optionId: string, file: File) => {
-    const preview = URL.createObjectURL(file);
-    setSections(prevSections => prevSections.map(section => {
-      if (section.id !== sectionId) return section;
-      return {
-        ...section,
-        questions: section.questions.map(question => {
-          if (question.id !== questionId) return question;
+  const handleOptionImageChange = async (sectionId: string, questionId: string, optionId: string, file: File) => {
+    try {
+      setToastMessage('Uploading option image...');
+      setToastType('loading');
+      setShowToast(true);
+
+      // Upload image immediately via GraphQL
+      const imageUrl = await graphqlExamService.uploadOptionImage(optionId, file);
+
+      if (imageUrl) {
+        // Update UI with the uploaded image URL
+        const updatedSections = sections.map(section => {
+          if (section.id !== sectionId) return section;
           return {
-            ...question,
-            options: question.options.map(option =>
-              option.id === optionId ? { ...option, image: file, imagePreview: preview } : option
-            )
+            ...section,
+            questions: section.questions.map(question => {
+              if (question.id !== questionId) return question;
+              return {
+                ...question,
+                options: question.options.map(option =>
+                  option.id === optionId ? { ...option, image_url: imageUrl, imagePreview: imageUrl } : option
+                )
+              };
+            })
           };
-        })
-      };
-    }));
+        });
+        
+        setSections(updatedSections);
+        saveDraftField('sections', updatedSections);
+        
+        setToastMessage('Option image uploaded successfully');
+        setToastType('success');
+        setShowToast(true);
+      } else {
+        throw new Error('Option image upload failed');
+      }
+    } catch (error) {
+      console.error('Option image upload error:', error);
+      setToastMessage('Option image upload failed');
+      setToastType('error');
+      setShowToast(true);
+    }
   };
 
   const clearOptionImage = (sectionId: string, questionId: string, optionId: string) => {
@@ -758,6 +925,14 @@ export default function ExamFormPage() {
       let totalErrors = 0;
       const MAX_ERRORS_TO_SHOW = 50;
       
+      const hasQuestionContent = (question: Question) => {
+        return Boolean(question.text?.trim()) || Boolean(question.image || question.imagePreview || question.image_url);
+      };
+
+      const hasOptionContent = (option: Option) => {
+        return Boolean(option.option_text?.trim()) || Boolean(option.image || option.imagePreview || option.image_url);
+      };
+
       for (let sIdx = 0; sIdx < englishSections.length; sIdx++) {
         const section = englishSections[sIdx];
         const sectionKey = `section-${section.id}`;
@@ -786,12 +961,12 @@ export default function ExamFormPage() {
           const questionLabel = `Section ${sIdx + 1}, Question ${qIdx + 1}`;
           let hasError = false;
           
-          if (!question.text.trim()) {
+          if (!hasQuestionContent(question)) {
             if (totalErrors < MAX_ERRORS_TO_SHOW) {
-              requirements.push(`❌ ${questionLabel}: Question text is required`);
+              requirements.push(`❌ ${questionLabel}: Provide text or attach an image for the question`);
             }
             if (!errors[questionKey]) errors[questionKey] = [];
-            errors[questionKey].push('Question text is required');
+            errors[questionKey].push('Provide text or attach an image for the question');
             hasError = true;
           }
           
@@ -814,17 +989,17 @@ export default function ExamFormPage() {
               hasError = true;
             }
             
-            let emptyCount = 0;
+            let missingContentCount = 0;
             for (const opt of question.options) {
-              if (!opt.option_text.trim()) emptyCount++;
+              if (!hasOptionContent(opt)) missingContentCount++;
             }
             
-            if (emptyCount > 0) {
+            if (missingContentCount > 0) {
               if (totalErrors < MAX_ERRORS_TO_SHOW) {
-                requirements.push(`❌ ${questionLabel}: ${emptyCount} option(s) have empty text`);
+                requirements.push(`❌ ${questionLabel}: ${missingContentCount} option(s) need text or an image`);
               }
               if (!errors[questionKey]) errors[questionKey] = [];
-              errors[questionKey].push(`${emptyCount} option(s) have empty text`);
+              errors[questionKey].push(`${missingContentCount} option(s) need text or an image`);
               hasError = true;
             }
             
@@ -882,91 +1057,7 @@ export default function ExamFormPage() {
   }, [computedErrors]);
 
   const canSubmit = pendingRequirements.length === 0 && !loading;
-  const canSaveDraft = totals.totalQuestions > 0 && !loading && !draftSaving;
-
-  const handleSaveDraft = async () => {
-    if (draftSaving || loading) return;
-    setDraftSaving(true);
-
-    try {
-      const normalizeDate = (value: string) => {
-        if (!value) return null;
-        const parsed = new Date(value);
-        return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-      };
-
-      const payload: any = {
-        ...formData,
-        is_published: false,
-        start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
-        end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date)
-      };
-      if (payload.exam_type !== 'past_paper') {
-        payload.show_in_mock_tests = false;
-      }
-      if (payload.allow_anytime) {
-        delete payload.status;
-        delete payload.start_date;
-        delete payload.end_date;
-      }
-
-      const sectionsPayload = sections.map(section => ({
-        name: section.name,
-        name_hi: section.name_hi || null,
-        total_questions: section.questions.length,
-        marks_per_question: section.marks_per_question,
-        duration: section.duration || null,
-        section_order: section.section_order,
-        questions: section.questions.map(question => ({
-          type: question.type,
-          text: question.text,
-          text_hi: question.text_hi || null,
-          marks: question.marks,
-          negative_marks: question.negative_marks,
-          explanation: question.explanation || null,
-          explanation_hi: question.explanation_hi || null,
-          difficulty: question.difficulty,
-          image_url: null,
-          question_order: null,
-          options: question.options.map(option => ({
-            option_text: option.option_text,
-            option_text_hi: option.option_text_hi || null,
-            is_correct: option.is_correct,
-            option_order: option.option_order,
-            image_url: null
-          }))
-        }))
-      }));
-
-      if (isEditMode && examId) {
-        await adminService.updateExamWithContent(
-          examId,
-          payload,
-          sectionsPayload,
-          logoFile || undefined,
-          thumbnailFile || undefined
-        );
-        alert('Draft saved successfully!');
-      } else {
-        const draftResponse = await adminService.saveDraftExam(
-          payload,
-          sectionsPayload,
-          logoFile || undefined,
-          thumbnailFile || undefined
-        );
-        alert('Draft saved successfully! You can continue editing.');
-        const createdExamId = draftResponse?.exam?.id;
-        if (createdExamId) {
-          router.replace(`/admin/exams/${createdExamId}`);
-        }
-      }
-    } catch (error: any) {
-      console.error('Failed to save draft:', error);
-      alert(error.message || 'Failed to save draft. Please try again.');
-    } finally {
-      setDraftSaving(false);
-    }
-  };
+  const canSaveDraft = false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -995,16 +1086,19 @@ export default function ExamFormPage() {
         delete payload.end_date;
       }
 
-      setUploadProgress({ total: 3, completed: 1, current: 'Uploading exam content...' });
+      setUploadProgress({ total: 3, completed: 1, current: 'Saving exam via GraphQL...' });
 
-      const sectionsPayload = sections.map(section => ({
+      // Use GraphQL for instant updates instead of REST
+      const sectionsPayload = sections.map((section, sectionIdx) => ({
+        id: section.id,
         name: section.name,
         name_hi: section.name_hi || null,
         total_questions: section.questions.length,
         marks_per_question: section.marks_per_question,
         duration: section.duration || null,
-        section_order: section.section_order,
-        questions: section.questions.map(question => ({
+        section_order: section.section_order ?? sectionIdx + 1,
+        questions: section.questions.map((question, questionIdx) => ({
+          id: question.id,
           type: question.type,
           text: question.text,
           text_hi: question.text_hi || null,
@@ -1013,29 +1107,39 @@ export default function ExamFormPage() {
           explanation: question.explanation || null,
           explanation_hi: question.explanation_hi || null,
           difficulty: question.difficulty,
-          image_url: null,
-          question_order: null,
-          options: question.options.map(option => ({
+          image_url: question.image_url || null,
+          question_order: question.question_order ?? questionIdx + 1,
+          question_number: question.question_number ?? questionIdx + 1,
+          options: question.options.map((option, optionIdx) => ({
+            id: option.id,
             option_text: option.option_text,
             option_text_hi: option.option_text_hi || null,
             is_correct: option.is_correct,
-            option_order: option.option_order,
-            image_url: null
+            option_order: option.option_order ?? optionIdx + 1,
+            image_url: option.image_url || null
           }))
         }))
       }));
 
       if (isEditMode && examId) {
-        await adminService.updateExam(examId, payload, logoFile || undefined, thumbnailFile || undefined);
+        await graphqlExamService.updateExam({
+          id: examId,
+          input: payload,
+          sections: sectionsPayload
+        });
+        
+        // Clear draft after successful update
+        await clearDraft();
+        
         setUploadProgress({ total: 3, completed: 3, current: 'Exam updated successfully!' });
-        alert('Exam updated successfully!');
+        setToastMessage('Exam updated successfully!');
+        setToastType('success');
+        setShowToast(true);
       } else {
-        await adminService.bulkCreateExamWithContent(
-          payload,
-          sectionsPayload,
-          logoFile || undefined,
-          thumbnailFile || undefined
-        );
+        const result = await graphqlExamService.createExam({
+          input: payload,
+          sections: sectionsPayload
+        });
         setUploadProgress({ total: 3, completed: 3, current: 'Exam created successfully!' });
         alert('Exam created successfully with all sections and questions!');
       }
@@ -1090,6 +1194,30 @@ export default function ExamFormPage() {
             <p className="text-muted-foreground">
               {isEditMode ? 'Update exam details and content' : 'Fill in the details to create a new exam'}
             </p>
+            {autosaveStatus !== 'idle' && (
+              <div className="text-xs mt-1 flex items-center gap-1">
+                {autosaveStatus === 'saving' && (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                    <span className="text-blue-600">Saving...</span>
+                  </>
+                )}
+                {autosaveStatus === 'saved' && (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-green-600" />
+                    <span className="text-green-600">
+                      Saved as draft {lastSaved && `at ${lastSaved.toLocaleTimeString()}`}
+                    </span>
+                  </>
+                )}
+                {autosaveStatus === 'error' && (
+                  <>
+                    <XCircle className="h-3 w-3 text-red-600" />
+                    <span className="text-red-600">Save failed</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <Button
             type="button"
@@ -1822,6 +1950,12 @@ export default function ExamFormPage() {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                      {questionSaveStatus[question.id] && (
+                                        <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                          <CheckCircle2 className="h-3 w-3" />
+                                          Question data saved
+                                        </span>
+                                      )}
                                       {questionNeedsImage && (
                                         <span className="flex items-center gap-1 text-xs font-semibold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
                                           <ImageIcon className="h-3 w-3" />
@@ -2156,38 +2290,32 @@ export default function ExamFormPage() {
             </Link>
             <div className="flex items-center gap-3">
               <Button
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={!canSaveDraft}
-                title={!canSaveDraft ? (draftSaving ? 'Saving draft...' : 'Add at least one question to save draft') : undefined}
-                variant="outline"
-                className={`border-blue-500 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950 ${(!canSaveDraft && !draftSaving) ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                {draftSaving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                {draftSaving ? 'Saving...' : 'Save Draft'}
-              </Button>
-              <Button
                 type="submit"
                 disabled={!canSubmit}
-                title={!canSubmit && pendingRequirements.length > 0 ? 'Please fix all validation errors first' : undefined}
-                className={`bg-secondary hover:bg-secondary/90 ${!canSubmit ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className="bg-primary text-white hover:bg-primary/90"
               >
-                {loading
-                  ? isEditMode
-                    ? 'Updating...'
-                    : 'Creating...'
-                  : isEditMode
-                    ? 'Update Exam'
-                    : 'Create Exam'}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditMode ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  isEditMode ? 'Update Exam' : 'Create Exam'
+                )}
               </Button>
             </div>
           </div>
         </div>
       </form>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <ToastNotification
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 }

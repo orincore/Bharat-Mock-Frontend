@@ -183,11 +183,16 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
 
 const ImageBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
   const { url, alt = '', caption, width = '100%', alignment = 'center' } = content;
+  const safeUrl = typeof url === 'string' ? url.trim() : '';
+
+  if (!safeUrl) {
+    return null;
+  }
   
   return (
     <figure className={`mb-6 text-${alignment}`}>
       <img 
-        src={url} 
+        src={safeUrl} 
         alt={alt} 
         className="rounded-lg shadow-md mx-auto"
         style={{ width, maxWidth: '100%' }}

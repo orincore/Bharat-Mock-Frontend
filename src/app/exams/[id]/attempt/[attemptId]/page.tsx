@@ -68,6 +68,17 @@ export default function ExamAttemptPage() {
   })();
 
 
+  const orderValue = (question: Question | QuestionWithStatus) => (
+    typeof question.question_number === 'number'
+      ? question.question_number
+      : typeof question.question_order === 'number'
+        ? question.question_order
+        : Number.MAX_SAFE_INTEGER
+  );
+
+  const sortQuestionsByNumber = <T extends Question | QuestionWithStatus>(items: T[]): T[] =>
+    [...items].sort((a, b) => orderValue(a) - orderValue(b));
+
   const hasContentForLanguage = useCallback((question: QuestionWithStatus, language: 'en' | 'hi') => {
     if (language === 'hi') {
       return Boolean(
@@ -84,7 +95,7 @@ export default function ExamAttemptPage() {
 
     const filteredSections = sourceSections
       .map(section => {
-        const sectionQuestions = filteredQuestions.filter(q => q.section_id === section.id);
+        const sectionQuestions = sortQuestionsByNumber(filteredQuestions.filter(q => q.section_id === section.id));
         return {
           ...section,
           totalQuestions: sectionQuestions.length,
@@ -120,7 +131,8 @@ export default function ExamAttemptPage() {
         setLanguageSelectionMade(true);
         setTimeRemaining((examData.duration || 0) * 60);
         
-        const allQuestions: QuestionWithStatus[] = questionsResponse.questions.map((q: any) => ({
+        const normalizedQuestions = sortQuestionsByNumber(questionsResponse.questions);
+        const allQuestions: QuestionWithStatus[] = normalizedQuestions.map((q: any) => ({
           ...q,
           status: q.userAnswer?.answer 
             ? (q.userAnswer.marked_for_review ? 'answered-marked' : 'answered')
@@ -129,7 +141,7 @@ export default function ExamAttemptPage() {
 
         const sectionsData: SectionWithQuestions[] = questionsResponse.sections.map((s: any) => ({
           ...s,
-          questions: allQuestions.filter(q => q.section_id === s.id)
+          questions: sortQuestionsByNumber(allQuestions.filter(q => q.section_id === s.id))
         }));
 
         setAllSections(sectionsData);
@@ -609,7 +621,7 @@ export default function ExamAttemptPage() {
             <div>
               <h1 className="font-display text-xl font-bold">{exam?.title}</h1>
               <p className="text-sm text-muted-foreground">
-                {getLocalizedSectionName(currentSection)} - Question {currentQuestionIndex + 1} of {currentSectionQuestions.length}
+                {getLocalizedSectionName(currentSection)} - Question {currentQuestion?.question_number ?? (currentQuestionIndex + 1)} of {currentSectionQuestions.length}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -666,7 +678,7 @@ export default function ExamAttemptPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1}</span>
+                      <span className="text-sm font-medium text-muted-foreground">Question {currentQuestion?.question_number ?? (currentQuestionIndex + 1)}</span>
                       <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
                         {currentQuestion?.marks} {currentQuestion?.marks === 1 ? 'Mark' : 'Marks'}
                       </span>
@@ -826,7 +838,7 @@ export default function ExamAttemptPage() {
                           : ''
                       } ${statusColors[q.status]}`}
                     >
-                      {idx + 1}
+                      {q.question_number ?? (idx + 1)}
                     </button>
                   );
                 })}
