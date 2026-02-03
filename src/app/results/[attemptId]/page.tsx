@@ -7,6 +7,7 @@ import {
   Award, Clock, CheckCircle2, XCircle, AlertCircle, 
   TrendingUp, Target, BarChart3, ArrowLeft, Download 
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
 
@@ -30,6 +31,26 @@ interface ResultData {
   created_at: string;
   language?: 'en' | 'hi';
 }
+
+const RICH_TEXT_SANITIZE_CONFIG = {
+  USE_PROFILES: { html: true },
+  ADD_TAGS: ['font', 'code'],
+  ADD_ATTR: ['style', 'class', 'color', 'face', 'size', 'target', 'rel', 'data-inline-break']
+};
+
+const sanitizeRichText = (html?: string) => DOMPurify.sanitize(html || '', RICH_TEXT_SANITIZE_CONFIG);
+
+const createRichTextMarkup = (html?: string) => ({ __html: sanitizeRichText(html) });
+
+const stripHtmlTags = (html?: string) => {
+  if (!html) return '';
+  if (typeof window === 'undefined') {
+    return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return (div.textContent || div.innerText || '').trim();
+};
 
 interface ReviewQuestion {
   id: string;
@@ -225,7 +246,7 @@ export default function ResultPage() {
       return 'border-green-500 bg-green-50';
     }
 
-    if (isSelected && !question.isCorrect) {
+    if (isSelected && !isCorrect) {
       return 'border-destructive bg-destructive/5';
     }
 
@@ -240,8 +261,26 @@ export default function ResultPage() {
       return 'Not Answered';
     }
 
+    const resolveAnswerLabel = (id: string) => {
+      const normalizedId = String(id);
+      const optionIndex = question.options.findIndex(opt => String(opt.id) === normalizedId);
+      if (optionIndex !== -1) {
+        const option = question.options[optionIndex];
+        const localizedText = option.option_text || (option as any).option_text_hi || '';
+        const plain = stripHtmlTags(localizedText);
+        const optionLetter = String.fromCharCode(65 + optionIndex);
+        const hasImage = Boolean(resolveOptionImage(option));
+        if (hasImage) {
+          const imageLabel = `Image Option ${optionLetter}`;
+          return plain ? `${plain} ${imageLabel}` : imageLabel;
+        }
+        return plain || `Option ${optionLetter}`;
+      }
+      return stripHtmlTags(normalizedId) || normalizedId;
+    };
+
     const optionText = (ids: string[]) => ids
-      .map(id => question.options.find(opt => opt.id === id)?.option_text || id)
+      .map(resolveAnswerLabel)
       .join(', ');
 
     return question.isCorrect
@@ -530,7 +569,10 @@ export default function ResultPage() {
                           <div className="flex items-start justify-between gap-4 mb-3">
                             <div>
                               <p className="text-sm text-muted-foreground mb-1">Question {idx + 1}</p>
-                              <p className="font-medium text-base">{question.text}</p>
+                              <div
+                                className="font-medium text-base rich-text-content"
+                                dangerouslySetInnerHTML={createRichTextMarkup(question.text)}
+                              />
                             </div>
                             <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusColor}`}>
                               {statusBadge}
@@ -551,11 +593,14 @@ export default function ResultPage() {
                                 key={option.id}
                                 className={`p-4 rounded-lg border space-y-2 ${getOptionClass(option.id, question)}`}
                               >
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-start gap-3">
                                   <span className="text-sm font-medium text-muted-foreground">
                                     {String.fromCharCode(65 + idx)}.
                                   </span>
-                                  <span>{option.option_text}</span>
+                                  <div
+                                    className="flex-1 rich-text-content text-sm"
+                                    dangerouslySetInnerHTML={createRichTextMarkup(option.option_text)}
+                                  />
                                 </div>
                                 {resolveOptionImage(option) && (
                                   <img
@@ -578,7 +623,10 @@ export default function ResultPage() {
                           {question.explanation && (
                             <details className="mt-3">
                               <summary className="text-sm font-semibold cursor-pointer">View Explanation</summary>
-                              <p className="text-sm text-muted-foreground mt-2">{question.explanation}</p>
+                              <div
+                                className="text-sm text-muted-foreground mt-2 rich-text-content"
+                                dangerouslySetInnerHTML={createRichTextMarkup(question.explanation)}
+                              />
                             </details>
                           )}
                         </div>
