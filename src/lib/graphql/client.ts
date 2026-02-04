@@ -2,7 +2,10 @@ import { ApolloClient, InMemoryCache, DefaultOptions } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import UploadHttpLink from 'apollo-upload-client/UploadHttpLink.mjs';
 
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:8000/api/graphql';
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://api.bharatmock.com/api/graphql'
+    : 'http://localhost:8000/api/graphql');
 
 const uploadLink = new UploadHttpLink({
   uri: GRAPHQL_URL,
