@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAutosave } from '@/hooks/useAutosave';
 import { ToastNotification } from '@/components/ui/toast-notification';
 import { InlineRichTextEditor } from '@/components/PageEditor/BlockEditor';
+import { adminService } from '@/lib/api/adminService';
 
 interface Option {
   id: string;
@@ -94,8 +95,9 @@ type ApiOption = {
 export default function ExamFormPage() {
   const router = useRouter();
   const params = useParams();
-  const examId = params?.id === 'new' ? null : (params?.id as string | null);
-  const isEditMode = !!examId;
+  const routeExamId = params?.id === 'new' ? null : (params?.id as string | null);
+  const [persistedExamId, setPersistedExamId] = useState<string | null>(routeExamId);
+  const isEditMode = !!persistedExamId;
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditMode);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -139,6 +141,9 @@ export default function ExamFormPage() {
     () => sections.filter(section => section.language === selectedLanguage),
     [sections, selectedLanguage]
   );
+
+  const examId = persistedExamId;
+  const [creatingDraft, setCreatingDraft] = useState(false);
 
   const derivedTotals = useMemo(() => {
     const englishSections = sections.filter(section => section.language === 'en');
@@ -187,7 +192,7 @@ export default function ExamFormPage() {
   const [draftSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error' | 'loading'>('success');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'loading' | 'warning'>('success');
   const [questionSaveStatus, setQuestionSaveStatus] = useState<Record<string, boolean>>({});
   const questionStatusTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -227,9 +232,10 @@ export default function ExamFormPage() {
   }, []);
 
   // Initialize autosave hook with enhanced status
+  const draftKey = persistedExamId ? `exam-${persistedExamId}` : 'exam-new';
   const { saveDraftField, clearDraft, loadDraftFields, status: autosaveStatus, lastSaved } = useAutosave({
-    examId,
-    draftKey: `exam-${examId || 'new'}`,
+    examId: persistedExamId,
+    draftKey,
     debounceMs: 1500,
     onSave: (fieldPath) => {
       console.log(`Auto-saved: ${fieldPath}`);
@@ -295,6 +301,114 @@ export default function ExamFormPage() {
       loadDraftData();
     }
   }, []);
+
+  const serializeSectionsForDraft = useCallback(() => {
+    return sections.map((section, sectionIdx) => ({
+      id: section.id,
+      name: section.name,
+      name_hi: section.name_hi || null,
+      total_questions: section.questions.length,
+      marks_per_question: section.marks_per_question,
+      duration: section.duration || null,
+      section_order: section.section_order ?? sectionIdx + 1,
+      questions: section.questions.map((question, questionIdx) => ({
+        id: question.id,
+        type: question.type,
+        text: question.text,
+        text_hi: question.text_hi || null,
+        marks: question.marks,
+        negative_marks: question.negative_marks,
+        explanation: question.explanation || null,
+        explanation_hi: question.explanation_hi || null,
+        difficulty: question.difficulty,
+        question_order: question.question_order ?? questionIdx + 1,
+        question_number: question.question_number ?? questionIdx + 1,
+        options: question.options.map((option, optionIdx) => ({
+          id: option.id,
+          option_text: option.option_text,
+          option_text_hi: option.option_text_hi || null,
+          is_correct: option.is_correct,
+          option_order: option.option_order ?? optionIdx + 1
+        }))
+      }))
+    }));
+  }, [sections]);
+
+  const getMissingBasicFields = useCallback(() => {
+    const missing: string[] = [];
+    if (!formData.title.trim()) missing.push('title');
+    if (!formData.description.trim()) missing.push('description');
+    if (!formData.category_id) missing.push('category');
+    if (formData.duration <= 0) missing.push('duration');
+    if (!formData.allow_anytime) {
+      if (!formData.status) missing.push('status');
+      if (!formData.start_date) missing.push('start date');
+      if (!formData.end_date) missing.push('end date');
+    }
+    return missing;
+  }, [formData]);
+
+  const basicsComplete = useMemo(() => getMissingBasicFields().length === 0, [getMissingBasicFields]);
+
+  const ensureDraftExam = useCallback(async () => {
+    if (creatingDraft || persistedExamId) return;
+    const trimmedTitle = formData.title.trim();
+    if (!trimmedTitle) return;
+
+    const missingBasics = getMissingBasicFields();
+    if (missingBasics.length > 0) {
+      setToastMessage(`Add required basics (${missingBasics.join(', ')}) before we auto-save a draft.`);
+      setToastType('warning');
+      setShowToast(true);
+      return;
+    }
+
+    const normalizeDate = (value?: string | null) => {
+      if (!value) return null;
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    };
+
+    try {
+      setCreatingDraft(true);
+      const examPayload = {
+        ...formData,
+        title: trimmedTitle,
+        is_published: false,
+        status: formData.allow_anytime ? 'anytime' : formData.status,
+        start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
+        end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date)
+      };
+
+      const sanitizedSections = serializeSectionsForDraft();
+      const draftResponse = await adminService.saveDraftExam(examPayload, sanitizedSections);
+      const newExamId = draftResponse?.exam?.id;
+      if (newExamId) {
+        setPersistedExamId(newExamId);
+        if (draftResponse.exam?.slug && !formData.slug) {
+          setFormData(prev => ({ ...prev, slug: draftResponse.exam.slug }));
+        }
+        setToastMessage('Draft created automatically. Continue editing.');
+        setToastType('success');
+        setShowToast(true);
+        setHasUnsavedChanges(false);
+        hasUnsavedChangesRef.current = false;
+      }
+    } catch (error) {
+      console.error('Failed to auto-create exam draft:', error);
+      setToastMessage('Failed to auto-create exam draft');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setCreatingDraft(false);
+    }
+  }, [creatingDraft, persistedExamId, formData, getMissingBasicFields, serializeSectionsForDraft]);
+
+  useEffect(() => {
+    if (!persistedExamId && basicsComplete) {
+      ensureDraftExam();
+    }
+  }, [basicsComplete, ensureDraftExam, persistedExamId]);
 
   const loadDraftData = async () => {
     try {
@@ -620,6 +734,10 @@ export default function ExamFormPage() {
       saveDraftField(`formData.${name}`, value);
     }
   }, [formData, saveDraftField]);
+
+  const handleTitleBlur = useCallback(() => {
+    ensureDraftExam();
+  }, [ensureDraftExam]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'thumbnail') => {
     const file = e.target.files?.[0];
@@ -1506,9 +1624,20 @@ export default function ExamFormPage() {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
+                onBlur={handleTitleBlur}
                 placeholder="e.g., JEE Main Mock Test 2026"
                 required
               />
+              {!persistedExamId && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Tip: fill in description, category, duration, and schedule basics before clicking away to trigger auto draft.
+                </p>
+              )}
+              {creatingDraft && !persistedExamId && (
+                <p className="mt-2 text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Preparing draft...
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2 grid gap-4 lg:grid-cols-2">

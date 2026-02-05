@@ -83,6 +83,18 @@ class ApiClient {
     });
   }
 
+  async patch<T>(
+    endpoint: string,
+    body?: any,
+    requiresAuth = false
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+      requiresAuth,
+    });
+  }
+
   async delete<T>(endpoint: string, requiresAuth = false): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE', requiresAuth });
   }

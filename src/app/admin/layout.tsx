@@ -15,7 +15,8 @@ import {
   FolderTree,
   PenSquare,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CreditCard
 } from 'lucide-react';
 
 const adminNavItems = [
@@ -23,6 +24,7 @@ const adminNavItems = [
   { name: 'Exams', href: '/admin/exams', icon: FileText },
   { name: 'Categories', href: '/admin/categories', icon: FolderTree },
   { name: 'Blogs', href: '/admin/blogs', icon: PenSquare },
+  { name: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
   { name: 'Users', href: '/admin/users', icon: Users },
 ];
 

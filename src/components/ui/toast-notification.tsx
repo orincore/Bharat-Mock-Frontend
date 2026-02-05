@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, AlertTriangle } from 'lucide-react';
 
 interface ToastNotificationProps {
   message: string;
-  type: 'success' | 'error' | 'loading';
+  type: 'success' | 'error' | 'loading' | 'warning';
   duration?: number;
   onClose?: () => void;
 }
@@ -34,6 +34,8 @@ export function ToastNotification({ message, type, duration = 3000, onClose }: T
         return <XCircle className="h-4 w-4 text-red-600" />;
       case 'loading':
         return <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />;
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-amber-600" />;
     }
   };
 
@@ -45,6 +47,8 @@ export function ToastNotification({ message, type, duration = 3000, onClose }: T
         return 'bg-red-50 border-red-200';
       case 'loading':
         return 'bg-blue-50 border-blue-200';
+      case 'warning':
+        return 'bg-amber-50 border-amber-200';
     }
   };
 
