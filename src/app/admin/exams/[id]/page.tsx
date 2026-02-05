@@ -548,6 +548,11 @@ export default function ExamFormPage() {
     };
   }, []);
 
+  const isClientGeneratedId = (id: string | null | undefined) => {
+    if (!id) return true;
+    return id.startsWith('question-') || id.startsWith('opt-') || id.startsWith('temp-');
+  };
+
   const handleChange = useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = event.target;
     setHasUnsavedChanges(true);
@@ -811,30 +816,62 @@ export default function ExamFormPage() {
   };
 
   const handleQuestionImageChange = async (sectionId: string, questionId: string, file: File) => {
+    if (!questionId) {
+      setToastMessage('Question ID missing. Please try again.');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    const isLocalOnly = isClientGeneratedId(questionId);
+
+    if (isLocalOnly) {
+      const previewUrl = URL.createObjectURL(file);
+      const updatedSections = sections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          questions: section.questions.map(question =>
+            question.id === questionId
+              ? { ...question, image: file, imagePreview: previewUrl }
+              : question
+          )
+        };
+      });
+
+      setSections(updatedSections);
+      saveDraftField('sections', updatedSections);
+      setHasUnsavedChanges(true);
+      setToastMessage('Image attached. It will upload once the question is saved.');
+      setToastType('success');
+      setShowToast(true);
+      return;
+    }
+
     try {
       setToastMessage('Uploading image...');
       setToastType('loading');
       setShowToast(true);
 
-      // Upload image immediately via GraphQL
       const imageUrl = await graphqlExamService.uploadQuestionImage(questionId, file);
 
       if (imageUrl) {
-        // Update UI with the uploaded image URL
         const updatedSections = sections.map(section => {
           if (section.id !== sectionId) return section;
           return {
             ...section,
             questions: section.questions.map(question =>
-              question.id === questionId ? { ...question, image_url: imageUrl, imagePreview: imageUrl } : question
+              question.id === questionId
+                ? { ...question, image: null, image_url: imageUrl, imagePreview: imageUrl }
+                : question
             )
           };
         });
-        
+
         setSections(updatedSections);
         saveDraftField('sections', updatedSections);
         setHasUnsavedChanges(true);
-        
+
         setToastMessage('Image uploaded successfully');
         setToastType('success');
         setShowToast(true);
@@ -870,12 +907,49 @@ export default function ExamFormPage() {
   };
 
   const handleOptionImageChange = async (sectionId: string, questionId: string, optionId: string, file: File) => {
+    if (!optionId) {
+      setToastMessage('Option ID missing. Please try again.');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    const isLocalOnly = isClientGeneratedId(optionId);
+
+    if (isLocalOnly) {
+      const previewUrl = URL.createObjectURL(file);
+      const updatedSections = sections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          questions: section.questions.map(question => {
+            if (question.id !== questionId) return question;
+            return {
+              ...question,
+              options: question.options.map(option =>
+                option.id === optionId
+                  ? { ...option, image: file, imagePreview: previewUrl }
+                  : option
+              )
+            };
+          })
+        };
+      });
+
+      setSections(updatedSections);
+      saveDraftField('sections', updatedSections);
+      setHasUnsavedChanges(true);
+      setToastMessage('Image attached. It will upload once the option is saved.');
+      setToastType('success');
+      setShowToast(true);
+      return;
+    }
+
     try {
       setToastMessage('Uploading option image...');
       setToastType('loading');
       setShowToast(true);
 
-      // Upload image immediately via GraphQL
       const imageUrl = await graphqlExamService.uploadOptionImage(optionId, file);
 
       if (imageUrl) {
@@ -936,6 +1010,7 @@ export default function ExamFormPage() {
       saveDraftField('sections', updatedSections);
       return updatedSections;
     });
+    setHasUnsavedChanges(true);
   };
 
   const handleCSVImport = (parsedSections: ParsedSection[], language: 'en' | 'hi' = 'en') => {
