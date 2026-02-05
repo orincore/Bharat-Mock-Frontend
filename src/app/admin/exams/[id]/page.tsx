@@ -195,6 +195,8 @@ export default function ExamFormPage() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'loading' | 'warning'>('success');
   const [questionSaveStatus, setQuestionSaveStatus] = useState<Record<string, boolean>>({});
   const questionStatusTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const pendingNavigationRef = useRef<() => void>(() => {});
 
   const markQuestionSaved = useCallback((questionId: string) => {
     if (!questionId) return;
@@ -682,23 +684,55 @@ export default function ExamFormPage() {
 
     const handlePopState = () => {
       if (!hasUnsavedChangesRef.current) return;
-      const confirmLeave = window.confirm('You have unsaved changes. Do you really want to leave this page?');
-      if (!confirmLeave) {
-        window.history.pushState(null, '', window.location.href);
-      } else {
+      window.history.pushState(null, '', window.location.href);
+      setShowLeaveModal(true);
+      pendingNavigationRef.current = () => {
         setHasUnsavedChanges(false);
+        hasUnsavedChangesRef.current = false;
+        window.history.back();
+      };
+    };
+
+    const interceptLinkClicks = (event: MouseEvent) => {
+      if (!hasUnsavedChangesRef.current) return;
+      const target = event.target as HTMLElement;
+      const anchor = target.closest('a');
+      if (anchor && anchor.href && !anchor.target) {
+        event.preventDefault();
+        setShowLeaveModal(true);
+        const href = anchor.href;
+        pendingNavigationRef.current = () => {
+          setHasUnsavedChanges(false);
+          hasUnsavedChangesRef.current = false;
+          window.location.href = href;
+        };
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('popstate', handlePopState);
+    document.addEventListener('click', interceptLinkClicks);
     window.history.pushState(null, '', window.location.href);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('click', interceptLinkClicks);
     };
   }, []);
+
+  const handleSaveDraftAndLeave = useCallback(async () => {
+    setShowLeaveModal(false);
+    try {
+      await ensureDraftExam();
+      pendingNavigationRef.current?.();
+    } catch (error) {
+      console.error('Failed to save draft before leaving:', error);
+      setToastMessage('Failed to save draft before leaving.');
+      setToastType('error');
+      setShowToast(true);
+    }
+  }, [ensureDraftExam]);
 
   const isClientGeneratedId = (id: string | null | undefined) => {
     if (!id) return true;
@@ -802,7 +836,7 @@ export default function ExamFormPage() {
     const updatedSections = sections.map(s => s.id === sectionId ? { ...s, [field]: value } : s);
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField(`sections.${sectionId}.${field}`, value);
+    saveDraftField('sections', updatedSections);
   };
 
   const toggleSection = (sectionId: string) => {
@@ -874,7 +908,7 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField(`sections.${sectionId}.questions.${questionId}.${field}`, value);
+    saveDraftField('sections', updatedSections);
   };
 
   const updateOption = (sectionId: string, questionId: string, optionId: string, field: keyof Option, value: any) => {
@@ -897,11 +931,11 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField(`sections.${sectionId}.questions.${questionId}.options.${optionId}.${field}`, value);
+    saveDraftField('sections', updatedSections);
   };
 
   const setCorrectAnswer = (sectionId: string, questionId: string, optionId: string, questionType: string) => {
-    setSections(sections.map(s => {
+    const updatedSections = sections.map(s => {
       if (s.id === sectionId) {
         return {
           ...s,
@@ -912,26 +946,27 @@ export default function ExamFormPage() {
                   ...q,
                   options: q.options.map(opt => ({ ...opt, is_correct: opt.id === optionId }))
                 };
-              } else {
-                return {
-                  ...q,
-                  options: q.options.map(opt => 
-                    opt.id === optionId ? { ...opt, is_correct: !opt.is_correct } : opt
-                  )
-                };
               }
+              return {
+                ...q,
+                options: q.options.map(opt =>
+                  opt.id === optionId ? { ...opt, is_correct: !opt.is_correct } : opt
+                )
+              };
             }
             return q;
           })
         };
       }
       return s;
-    }));
+    });
+    setSections(updatedSections);
     setHasUnsavedChanges(true);
+    saveDraftField('sections', updatedSections);
   };
 
   const addOption = (sectionId: string, questionId: string) => {
-    setSections(sections.map(s => {
+    const updatedSections = sections.map(s => {
       if (s.id === sectionId) {
         return {
           ...s,
@@ -950,11 +985,14 @@ export default function ExamFormPage() {
         };
       }
       return s;
-    }));
+    });
+    setSections(updatedSections);
+    setHasUnsavedChanges(true);
+    saveDraftField('sections', updatedSections);
   };
 
   const removeOption = (sectionId: string, questionId: string, optionId: string) => {
-    setSections(sections.map(s => {
+    const updatedSections = sections.map(s => {
       if (s.id === sectionId) {
         return {
           ...s,
@@ -967,8 +1005,10 @@ export default function ExamFormPage() {
         };
       }
       return s;
-    }));
+    });
+    setSections(updatedSections);
     setHasUnsavedChanges(true);
+    saveDraftField('sections', updatedSections);
   };
 
   const handleQuestionImageChange = async (sectionId: string, questionId: string, file: File) => {
