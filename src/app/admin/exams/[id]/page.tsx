@@ -290,8 +290,30 @@ export default function ExamFormPage() {
     fetchTaxonomies();
     if (isEditMode && examId) {
       loadExamData();
+    } else {
+      // For new exams, load any existing draft data
+      loadDraftData();
     }
   }, []);
+
+  const loadDraftData = async () => {
+    try {
+      const draftFields = await loadDraftFields();
+      if (draftFields.length > 0) {
+        // Apply draft data to form state
+        draftFields.forEach(field => {
+          if (field.field_path === 'formData') {
+            setFormData(prev => ({ ...prev, ...field.payload }));
+          } else if (field.field_path === 'sections') {
+            setSections(field.payload);
+          }
+        });
+        setHasUnsavedChanges(true);
+      }
+    } catch (error) {
+      console.error('Failed to load draft data:', error);
+    }
+  };
 
   const loadExamData = async () => {
     if (!examId) return;
@@ -395,8 +417,24 @@ export default function ExamFormPage() {
       });
 
       setSections(loadedSections);
-      setHasUnsavedChanges(false);
-      hasUnsavedChangesRef.current = false;
+      
+      // After loading exam data, check for any draft changes
+      const draftFields = await loadDraftFields();
+      if (draftFields.length > 0) {
+        // Apply draft data to form state
+        draftFields.forEach(field => {
+          if (field.field_path === 'formData') {
+            setFormData(prev => ({ ...prev, ...field.payload }));
+          } else if (field.field_path === 'sections') {
+            setSections(field.payload);
+          }
+        });
+        setHasUnsavedChanges(true);
+        hasUnsavedChangesRef.current = true;
+      } else {
+        setHasUnsavedChanges(false);
+        hasUnsavedChangesRef.current = false;
+      }
     } catch (error) {
       console.error('Failed to load exam data:', error);
       alert('Failed to load exam data');
@@ -1333,6 +1371,8 @@ export default function ExamFormPage() {
         setToastMessage('Exam updated successfully!');
         setToastType('success');
         setShowToast(true);
+        setHasUnsavedChanges(false);
+        hasUnsavedChangesRef.current = false;
       } else {
         const result = await graphqlExamService.createExam({
           input: payload,
