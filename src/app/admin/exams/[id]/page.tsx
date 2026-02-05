@@ -195,8 +195,6 @@ export default function ExamFormPage() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'loading' | 'warning'>('success');
   const [questionSaveStatus, setQuestionSaveStatus] = useState<Record<string, boolean>>({});
   const questionStatusTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const pendingNavigationRef = useRef<() => void>(() => {});
 
   const markQuestionSaved = useCallback((questionId: string) => {
     if (!questionId) return;
@@ -241,9 +239,17 @@ export default function ExamFormPage() {
     debounceMs: 1500,
     onSave: (fieldPath) => {
       console.log(`Auto-saved: ${fieldPath}`);
-      setToastMessage(`Last draft saved on ${new Date().toLocaleString()}`);
-      setToastType('success');
+      const isBasicInfoField = fieldPath?.startsWith('formData');
+      if (isBasicInfoField) {
+        setToastMessage('Basic Information updated locally. Click “Update Exam/Publish Exam” to persist these details.');
+        setToastType('warning');
+      } else {
+        setToastMessage(`Last draft saved on ${new Date().toLocaleString()}`);
+        setToastType('success');
+      }
       setShowToast(true);
+      setHasUnsavedChanges(false);
+      hasUnsavedChangesRef.current = false;
 
       const questionId = extractQuestionIdFromFieldPath(fieldPath);
       if (questionId) {
@@ -684,55 +690,23 @@ export default function ExamFormPage() {
 
     const handlePopState = () => {
       if (!hasUnsavedChangesRef.current) return;
-      window.history.pushState(null, '', window.location.href);
-      setShowLeaveModal(true);
-      pendingNavigationRef.current = () => {
+      const confirmLeave = window.confirm('You have unsaved changes. Do you really want to leave this page?');
+      if (!confirmLeave) {
+        window.history.pushState(null, '', window.location.href);
+      } else {
         setHasUnsavedChanges(false);
-        hasUnsavedChangesRef.current = false;
-        window.history.back();
-      };
-    };
-
-    const interceptLinkClicks = (event: MouseEvent) => {
-      if (!hasUnsavedChangesRef.current) return;
-      const target = event.target as HTMLElement;
-      const anchor = target.closest('a');
-      if (anchor && anchor.href && !anchor.target) {
-        event.preventDefault();
-        setShowLeaveModal(true);
-        const href = anchor.href;
-        pendingNavigationRef.current = () => {
-          setHasUnsavedChanges(false);
-          hasUnsavedChangesRef.current = false;
-          window.location.href = href;
-        };
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('popstate', handlePopState);
-    document.addEventListener('click', interceptLinkClicks);
     window.history.pushState(null, '', window.location.href);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
-      document.removeEventListener('click', interceptLinkClicks);
     };
   }, []);
-
-  const handleSaveDraftAndLeave = useCallback(async () => {
-    setShowLeaveModal(false);
-    try {
-      await ensureDraftExam();
-      pendingNavigationRef.current?.();
-    } catch (error) {
-      console.error('Failed to save draft before leaving:', error);
-      setToastMessage('Failed to save draft before leaving.');
-      setToastType('error');
-      setShowToast(true);
-    }
-  }, [ensureDraftExam]);
 
   const isClientGeneratedId = (id: string | null | undefined) => {
     if (!id) return true;
