@@ -102,6 +102,7 @@ export default function ExamFormPage() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -132,6 +133,7 @@ export default function ExamFormPage() {
   });
 
   const [sections, setSections] = useState<Section[]>([]);
+  const hasUnsavedChangesRef = useRef(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
   const sectionsForDisplay = useMemo(
     () => sections.filter(section => section.language === selectedLanguage),
@@ -272,6 +274,7 @@ export default function ExamFormPage() {
         })
       };
     }));
+    setHasUnsavedChanges(true);
   };
 
   const totals = useMemo(() => {
@@ -392,6 +395,8 @@ export default function ExamFormPage() {
       });
 
       setSections(loadedSections);
+      setHasUnsavedChanges(false);
+      hasUnsavedChangesRef.current = false;
     } catch (error) {
       console.error('Failed to load exam data:', error);
       alert('Failed to load exam data');
@@ -512,11 +517,44 @@ export default function ExamFormPage() {
     }
   };
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
+  useEffect(() => {
+    hasUnsavedChangesRef.current = hasUnsavedChanges;
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChangesRef.current) return;
+      event.preventDefault();
+      event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    };
+
+    const handlePopState = () => {
+      if (!hasUnsavedChangesRef.current) return;
+      const confirmLeave = window.confirm('You have unsaved changes. Do you really want to leave this page?');
+      if (!confirmLeave) {
+        window.history.pushState(null, '', window.location.href);
+      } else {
+        setHasUnsavedChanges(false);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+    window.history.pushState(null, '', window.location.href);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  const handleChange = useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = event.target;
+    setHasUnsavedChanges(true);
 
     if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
+      const inputTarget = event.target as HTMLInputElement;
+      const checked = inputTarget.checked;
       if (name === 'allow_anytime') {
         const newData = {
           allow_anytime: checked,
@@ -543,6 +581,7 @@ export default function ExamFormPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'thumbnail') => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setHasUnsavedChanges(true);
 
     if (type === 'logo') {
       setLogoFile(file);
@@ -559,6 +598,7 @@ export default function ExamFormPage() {
         ...prev,
         syllabus: [...prev.syllabus, syllabusInput.trim()]
       }));
+      setHasUnsavedChanges(true);
       setSyllabusInput('');
     }
   };
@@ -568,6 +608,7 @@ export default function ExamFormPage() {
       ...prev,
       syllabus: prev.syllabus.filter((_, i) => i !== index)
     }));
+    setHasUnsavedChanges(true);
   };
 
   const addSection = () => {
@@ -585,23 +626,27 @@ export default function ExamFormPage() {
     };
     const updatedSections = [...sections, newSection];
     setSections(updatedSections);
+    setHasUnsavedChanges(true);
     saveDraftField('sections', updatedSections);
   };
 
   const removeSection = (sectionId: string) => {
     const updatedSections = sections.filter(s => s.id !== sectionId);
     setSections(updatedSections);
+    setHasUnsavedChanges(true);
     saveDraftField('sections', updatedSections);
   };
 
   const updateSection = (sectionId: string, field: keyof Section, value: any) => {
     const updatedSections = sections.map(s => s.id === sectionId ? { ...s, [field]: value } : s);
     setSections(updatedSections);
+    setHasUnsavedChanges(true);
     saveDraftField(`sections.${sectionId}.${field}`, value);
   };
 
   const toggleSection = (sectionId: string) => {
     setSections(sections.map(s => s.id === sectionId ? { ...s, expanded: !s.expanded } : s));
+    setHasUnsavedChanges(true);
   };
 
   const addQuestion = (sectionId: string) => {
@@ -648,6 +693,7 @@ export default function ExamFormPage() {
       return s;
     });
     setSections(updatedSections);
+    setHasUnsavedChanges(true);
     saveDraftField('sections', updatedSections);
     const updatedSection = updatedSections.find(s => s.id === sectionId);
     if (updatedSection) {
@@ -666,6 +712,7 @@ export default function ExamFormPage() {
       return s;
     });
     setSections(updatedSections);
+    setHasUnsavedChanges(true);
     saveDraftField(`sections.${sectionId}.questions.${questionId}.${field}`, value);
   };
 
@@ -688,6 +735,7 @@ export default function ExamFormPage() {
       return s;
     });
     setSections(updatedSections);
+    setHasUnsavedChanges(true);
     saveDraftField(`sections.${sectionId}.questions.${questionId}.options.${optionId}.${field}`, value);
   };
 
@@ -718,6 +766,7 @@ export default function ExamFormPage() {
       }
       return s;
     }));
+    setHasUnsavedChanges(true);
   };
 
   const addOption = (sectionId: string, questionId: string) => {
@@ -758,6 +807,7 @@ export default function ExamFormPage() {
       }
       return s;
     }));
+    setHasUnsavedChanges(true);
   };
 
   const handleQuestionImageChange = async (sectionId: string, questionId: string, file: File) => {
@@ -783,6 +833,7 @@ export default function ExamFormPage() {
         
         setSections(updatedSections);
         saveDraftField('sections', updatedSections);
+        setHasUnsavedChanges(true);
         
         setToastMessage('Image uploaded successfully');
         setToastType('success');
@@ -799,15 +850,23 @@ export default function ExamFormPage() {
   };
 
   const clearQuestionImage = (sectionId: string, questionId: string) => {
-    setSections(prevSections => prevSections.map(section => {
-      if (section.id !== sectionId) return section;
-      return {
-        ...section,
-        questions: section.questions.map(question =>
-          question.id === questionId ? { ...question, image: null, imagePreview: undefined } : question
-        )
-      };
-    }));
+    setSections(prevSections => {
+      const updatedSections = prevSections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          questions: section.questions.map(question =>
+            question.id === questionId
+              ? { ...question, image: null, image_url: null, imagePreview: undefined }
+              : question
+          )
+        };
+      });
+
+      saveDraftField('sections', updatedSections);
+      return updatedSections;
+    });
+    setHasUnsavedChanges(true);
   };
 
   const handleOptionImageChange = async (sectionId: string, questionId: string, optionId: string, file: File) => {
@@ -855,21 +914,28 @@ export default function ExamFormPage() {
   };
 
   const clearOptionImage = (sectionId: string, questionId: string, optionId: string) => {
-    setSections(prevSections => prevSections.map(section => {
-      if (section.id !== sectionId) return section;
-      return {
-        ...section,
-        questions: section.questions.map(question => {
-          if (question.id !== questionId) return question;
-          return {
-            ...question,
-            options: question.options.map(option =>
-              option.id === optionId ? { ...option, image: null, imagePreview: undefined } : option
-            )
-          };
-        })
-      };
-    }));
+    setSections(prevSections => {
+      const updatedSections = prevSections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          questions: section.questions.map(question => {
+            if (question.id !== questionId) return question;
+            return {
+              ...question,
+              options: question.options.map(option =>
+                option.id === optionId
+                  ? { ...option, image: null, image_url: null, imagePreview: undefined }
+                  : option
+              )
+            };
+          })
+        };
+      });
+
+      saveDraftField('sections', updatedSections);
+      return updatedSections;
+    });
   };
 
   const handleCSVImport = (parsedSections: ParsedSection[], language: 'en' | 'hi' = 'en') => {
@@ -1205,6 +1271,8 @@ export default function ExamFormPage() {
 
       setLogoFile(null);
       setThumbnailFile(null);
+      setHasUnsavedChanges(false);
+      hasUnsavedChangesRef.current = false;
       router.push('/admin/exams');
     } catch (error: any) {
       console.error(`Failed to ${isEditMode ? 'update' : 'create'} exam:`, error);

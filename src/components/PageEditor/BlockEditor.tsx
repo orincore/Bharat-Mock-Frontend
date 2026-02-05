@@ -408,10 +408,15 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
 
   const handleEditorPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
     if (!onImagePaste || !event.clipboardData) return;
+
     const items = Array.from(event.clipboardData.items || []);
-    const imageItem = items.find((item) => item.type.startsWith('image/'));
-    if (!imageItem) return;
-    const file = imageItem.getAsFile();
+    let file = items.find(item => item.type.startsWith('image/'))?.getAsFile() || null;
+
+    if (!file) {
+      const files = Array.from(event.clipboardData.files || []);
+      file = files.find(f => f.type.startsWith('image/')) || null;
+    }
+
     if (file) {
       event.preventDefault();
       onImagePaste(file);
