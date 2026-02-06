@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -10,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import type { Education, User as UserType } from '@/types';
 import { resultService } from '@/lib/api/resultService';
+import { Badge } from '@/components/ui/badge';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -22,6 +24,18 @@ export default function ProfilePage() {
   const [stats, setStats] = useState({ examsTaken: 0, daysActive: 0, avgScore: 0 });
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState('');
+
+  const formatDateLabel = (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? null
+      : date.toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+  };
   
   const [formData, setFormData] = useState({
     name: '',
@@ -207,6 +221,44 @@ export default function ProfilePage() {
                         })
                       : 'Not available'}
                   </p>
+                  <div className="flex flex-wrap items-center gap-3 mt-3">
+                    <Badge
+                      variant={user?.is_premium ? 'default' : 'secondary'}
+                      className={user?.is_premium ? 'bg-amber-500/10 text-amber-600 border-amber-200' : ''}
+                    >
+                      <Crown className="h-3.5 w-3.5 mr-1" />
+                      {user?.is_premium ? 'Premium Member' : 'Free Account'}
+                    </Badge>
+                    {user?.is_premium ? (
+                      <p className="text-sm text-muted-foreground">
+                        {user?.subscription_plan?.name || 'Active plan'}
+                        {user?.subscription_expires_at
+                          ? ` • Expires ${formatDateLabel(user.subscription_expires_at)}`
+                          : ''}
+                        {user?.subscription_auto_renew !== undefined
+                          ? ` • Auto-renew ${user.subscription_auto_renew ? 'ON' : 'OFF'}`
+                          : ''}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Unlock unlimited mock tests and analytics by upgrading to premium.
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {!user?.is_premium ? (
+                      <Button asChild size="sm" className="bg-primary text-primary-foreground">
+                        <Link href="/subscriptions">Upgrade Plan</Link>
+                      </Button>
+                    ) : (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href="/subscriptions/manage">Manage Plan</Link>
+                      </Button>
+                    )}
+                    <Button asChild size="sm" variant="ghost">
+                      <Link href="/subscriptions">View Benefits</Link>
+                    </Button>
+                  </div>
                 </div>
                 <div className="ml-auto">
                   {!isEditing ? (

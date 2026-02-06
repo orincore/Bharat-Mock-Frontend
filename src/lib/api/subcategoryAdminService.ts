@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/$/, '');
 
 const authFetch = async (path: string, options: RequestInit = {}) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
@@ -271,6 +271,40 @@ export const subcategoryAdminService = {
   async deleteTable(subcategoryId: string, tableId: string) {
     return authFetch(`/subcategories/${subcategoryId}/tables/${tableId}`, {
       method: 'DELETE'
+    });
+  },
+
+  async getCustomTabs(subcategoryId: string) {
+    const data = await authFetch(`/page-content/${subcategoryId}/custom-tabs`);
+    return data.data || [];
+  },
+
+  async createCustomTab(subcategoryId: string, payload: { title: string; description?: string }) {
+    const data = await authFetch(`/page-content/${subcategoryId}/custom-tabs`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    return data.data;
+  },
+
+  async updateCustomTab(subcategoryId: string, tabId: string, payload: { title?: string; description?: string; tab_key?: string; display_order?: number }) {
+    const data = await authFetch(`/page-content/${subcategoryId}/custom-tabs/${tabId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    return data.data;
+  },
+
+  async deleteCustomTab(subcategoryId: string, tabId: string) {
+    return authFetch(`/page-content/${subcategoryId}/custom-tabs/${tabId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async reorderCustomTabs(subcategoryId: string, tabIds: string[]) {
+    return authFetch(`/page-content/${subcategoryId}/custom-tabs/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ tabIds })
     });
   }
 };

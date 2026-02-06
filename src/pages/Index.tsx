@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { getExamUrl } from '@/lib/utils/examUrl';
 import Image from 'next/image';
+import { getExamUrl } from '@/lib/utils/examUrl';
 import { 
   ArrowRight, BookOpen, Users, Award, CheckCircle,
   Smartphone, Download, Apple, Play, Target, TrendingUp, Shield,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +18,31 @@ import { articleService } from '@/lib/api/articleService';
 import { taxonomyService, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { Exam, Article } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
+import { HomepageHero, HomepageHeroMediaItem } from '@/lib/api/homepageService';
+
+type IndexProps = {
+  initialHero?: HomepageHero | null;
+};
+
+const fallbackHero = {
+  title: 'Bharat Mock Hero',
+  subtitle: '',
+  descriptions: [
+    'Start Your Journey With Us! Your Tests, Exams, Quizzes, & Information About Latest Government Exams.',
+    'Learn, Practice & Crack Government Exams Today.',
+    'Start Preparing For Government Jobs Today With Free Mock Tests, Practice Tests, Notes, Quizzes & Exam Resources!'
+  ],
+  primaryCta: { text: 'Get Free Mock', url: '/exams' },
+  secondaryCta: null as { text: string; url: string } | null,
+  media: [
+    {
+      url: '/assets/image1.png',
+      asset_type: 'image',
+      alt_text: 'Exam preparation dashboard'
+    }
+  ] as HomepageHeroMediaItem[],
+  mediaLayout: 'single'
+};
 
 const stats = [
   { icon: BookOpen, value: '500+', label: 'Mock Tests' },
@@ -71,7 +96,7 @@ const faqs = [
   'Which test series is best, online or offline?'
 ];
 
-export default function Index() {
+export default function Index({ initialHero }: IndexProps = { initialHero: null }) {
   const [exams, setExams] = useState<Exam[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -81,6 +106,87 @@ export default function Index() {
   const [subcategoryMap, setSubcategoryMap] = useState<Record<string, Subcategory[]>>({});
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [showAllSubcategories, setShowAllSubcategories] = useState(false);
+  const [activeHeroMedia, setActiveHeroMedia] = useState(0);
+
+  const heroData = initialHero || null;
+  const heroTitle = heroData?.title ?? fallbackHero.title;
+  const heroSubtitle = heroData?.subtitle ?? fallbackHero.subtitle;
+  const heroDescriptions = heroData?.description
+    ? heroData.description
+        .split(/\n+/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean)
+    : fallbackHero.descriptions;
+  const heroPrimaryCta = heroData?.cta_primary_text && heroData?.cta_primary_url
+    ? { text: heroData.cta_primary_text, url: heroData.cta_primary_url }
+    : fallbackHero.primaryCta;
+  const heroSecondaryCta = heroData?.cta_secondary_text && heroData?.cta_secondary_url
+    ? { text: heroData.cta_secondary_text, url: heroData.cta_secondary_url }
+    : fallbackHero.secondaryCta;
+
+  const heroMedia = useMemo(() => {
+    if (heroData?.media_items?.length) {
+      return heroData.media_items;
+    }
+    return fallbackHero.media;
+  }, [heroData]);
+
+  const heroMediaLayout = heroData?.media_layout || fallbackHero.mediaLayout;
+  const heroMediaCount = heroMedia.length;
+  const backgroundVideoUrl = heroData?.background_video_url || '';
+  const heroHasMedia = heroMediaCount > 0;
+  const showSlider = heroMediaLayout === 'slideshow' && heroMediaCount > 1;
+  const primaryMediaIndex = showSlider ? activeHeroMedia : 0;
+  const heroMediaPrimary = heroHasMedia ? heroMedia[Math.min(primaryMediaIndex, heroMediaCount - 1)] : undefined;
+  const heroMediaSecondary = heroMediaLayout === 'split' && heroMediaCount > 1 ? heroMedia.slice(1, 3) : [];
+
+  useEffect(() => {
+    setActiveHeroMedia(0);
+  }, [heroMediaCount, heroMediaLayout]);
+
+  useEffect(() => {
+    if (!showSlider) return undefined;
+    const timer = setInterval(() => {
+      setActiveHeroMedia((prev) => (prev + 1) % heroMediaCount);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [showSlider, heroMediaCount]);
+
+  const handleHeroMediaNav = (direction: 'prev' | 'next') => {
+    if (!showSlider) return;
+    setActiveHeroMedia((prev) => {
+      if (direction === 'prev') {
+        return (prev - 1 + heroMediaCount) % heroMediaCount;
+      }
+      return (prev + 1) % heroMediaCount;
+    });
+  };
+
+  const renderMediaAsset = (asset?: HomepageHeroMediaItem, className = 'w-full h-80 md:h-96 rounded-[28px] object-cover') => {
+    if (!asset) return null;
+    if (asset.asset_type === 'video') {
+      return (
+        <video
+          src={asset.url}
+          className={`${className} shadow-[0_25px_80px_-40px_rgba(15,23,42,0.9)]`}
+          autoPlay
+          muted
+          loop
+          playsInline
+          controls={false}
+        />
+      );
+    }
+    return (
+      <img
+        src={asset.url}
+        alt={asset.alt_text || heroTitle}
+        className={`${className} shadow-[0_25px_80px_-40px_rgba(15,23,42,0.9)]`}
+        loading="lazy"
+      />
+    );
+  };
 
   const isCategorySectionLoading = categoriesLoading || subcategoriesLoading;
 
@@ -115,6 +221,10 @@ export default function Index() {
     }
   }, [selectedCategoryId, subcategoryMap]);
 
+  useEffect(() => {
+    setShowAllSubcategories(false);
+  }, [selectedCategoryId]);
+
   const fetchSubcategories = async (categoryId: string) => {
     setSubcategoriesLoading(true);
     try {
@@ -137,129 +247,159 @@ export default function Index() {
   const selectedCategorySubcategories = selectedCategoryId
     ? subcategoryMap[selectedCategoryId] || []
     : [];
+  const visibleSubcategories = showAllSubcategories
+    ? selectedCategorySubcategories
+    : selectedCategorySubcategories.slice(0, 8);
+  const remainingSubcategoryCount = Math.max(selectedCategorySubcategories.length - visibleSubcategories.length, 0);
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section - First Section */}
-      <section className="relative gradient-hero overflow-hidden">
-        <div className="container-main relative py-20 md:py-32">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-background mb-6 animate-slide-up">
-                Your Personal Government Exam Guide
+      {/* Dynamic Hero Section */}
+      <section className="relative w-full min-h-[100svh] overflow-hidden bg-[#020617] text-white">
+        {backgroundVideoUrl ? (
+          <video
+            className="absolute inset-0 w-full h-full object-cover object-center"
+            src={backgroundVideoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        ) : (
+          heroMediaPrimary && (
+            <img
+              src={heroMediaPrimary.url}
+              alt={heroMediaPrimary.alt_text || heroTitle}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+              aria-hidden="true"
+            />
+          )
+        )}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#01030d]/60 via-[#010718]/55 to-[#030b1f]/60" />
+        <div className="relative z-10 flex flex-col justify-center min-h-[100svh] px-6 py-16 md:px-12">
+          <div className="max-w-5xl">
+            <div className="space-y-6">
+              <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+                {heroTitle}
               </h1>
-              <p className="text-lg text-background/90 mb-4">
-                Start Your Journey With Us! Your Test, Exams, Quizzes, & Information About Latest Government Exams.
-              </p>
-              <p className="text-base text-background/80 mb-8">
-                Learn, Practice & Crack Government Exams Today
-              </p>
-              <p className="text-base text-background/80 mb-8">
-                Start Preparing For Government Jobs Today With Free Mock Tests, Practice Tests, Notes, Quizzes & Exam Resources!
-              </p>
-              
-              <Link href="/exams">
-                <Button
-                  size="xl"
-                  className="bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-xl shadow-secondary/30 transition-all duration-300 hover:-translate-y-0.5"
-                >
-                  Get Free Mock
-                  <ArrowRight className="h-5 w-5 ml-2" />
-                </Button>
-              </Link>
-            </div>
-            <div className="hidden lg:block">
-              <div>
-                <div className="relative w-full h-[500px]">
-                  <Image
-                    src="/assets/image1.png"
-                    alt="Exam preparation dashboard"
-                    fill
-                    sizes="(min-width: 1024px) 480px"
-                    className="object-contain"
-                    priority
-                  />
-                </div>
+              {heroSubtitle && (
+                <p className="text-lg text-white/80 max-w-2xl">{heroSubtitle}</p>
+              )}
+              <div className="space-y-4">
+                {heroDescriptions.map((paragraph, idx) => (
+                  <p key={idx} className="text-lg md:text-xl text-white/80 leading-relaxed">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                {heroPrimaryCta && (
+                  <Link href={heroPrimaryCta.url} className="w-full sm:w-auto">
+                    <Button
+                      size="lg"
+                      className="w-full sm:w-auto bg-white text-[#0f172a] hover:bg-white/90 shadow-xl shadow-white/20"
+                    >
+                      {heroPrimaryCta.text}
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </Button>
+                  </Link>
+                )}
+                {heroSecondaryCta && (
+                  <Link href={heroSecondaryCta.url} className="w-full sm:w-auto">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full sm:w-auto border-white/70 text-white bg-transparent hover:bg-white/15"
+                    >
+                      {heroSecondaryCta.text}
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
+
           </div>
+
+          <div className="mt-12">
+            {heroHasMedia && showSlider && (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleHeroMediaNav('prev')}
+                  className="p-2 rounded-full bg-white/15 text-white hover:bg-white/30 transition"
+                  aria-label="Previous hero media"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleHeroMediaNav('next')}
+                  className="p-2 rounded-full bg-white/15 text-white hover:bg-white/30 transition"
+                  aria-label="Next hero media"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                <div className="flex items-center gap-2">
+                  {heroMedia.map((_, index) => (
+                    <span
+                      key={index}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        index === activeHeroMedia ? 'w-10 bg-white' : 'w-4 bg-white/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {heroMediaSecondary.length > 0 && (
+            <div className="relative z-10 mt-16 grid sm:grid-cols-2 gap-4 max-w-4xl">
+              {heroMediaSecondary.map((asset, index) => (
+                <div key={asset.url + index} className="rounded-3xl bg-white/10 p-4 border border-white/20 backdrop-blur">
+                  {renderMediaAsset(asset, 'w-full h-48 rounded-2xl object-cover')}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       {/* Categories Section */}
-      <section className="py-16 bg-background border-b border-border">
-        <div className="container-main">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-            <div>
-              <p className="text-sm uppercase tracking-wide text-primary font-semibold mb-2">Choose your exam</p>
-              <h2 className="font-display text-4xl font-bold text-foreground mb-3">
-                Browse categories curated for every ambition
-              </h2>
-              <p className="text-muted-foreground max-w-2xl">
-                Discover structured preparation paths for UPSC, Banking, Railways, Defence, Engineering, and more—each with tailored exams, timelines, and resources inspired by the Prepp experience.
-              </p>
-            </div>
-            <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto">
-              {isCategorySectionLoading && (
-                <div className="inline-flex items-center gap-2" aria-live="polite" aria-busy="true">
-                  <Skeleton className="h-4 w-32 rounded-full" />
-                  <Skeleton className="h-4 w-16 rounded-full" />
-                  <span className="sr-only">Loading curated tracks…</span>
-                </div>
-              )}
-              <Link href="/exams" className="w-full md:w-auto">
-                <Button variant="outline" className="w-full md:w-auto">
-                  View all exams
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
+      <section className="py-14 bg-background border-b border-border">
+        <div className="container-main space-y-6">
+          <h2 className="font-display text-2xl font-bold">Choose your exam</h2>
 
-          {categoriesLoading ? (
-            <div className="space-y-8" aria-live="polite" aria-busy="true">
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <Skeleton key={index} className="h-10 w-28 rounded-full" />
+          {isCategorySectionLoading ? (
+            <div className="space-y-6" aria-live="polite" aria-busy="true">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton key={index} className="h-9 w-24 rounded-full" />
                 ))}
               </div>
-
-              <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-6 w-48" />
-                  <Skeleton className="h-4 w-72" />
-                </div>
-
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {Array.from({ length: 8 }).map((_, index) => (
-                    <div key={index} className="border border-border rounded-xl p-4 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <Skeleton className="h-4 w-24" />
-                      </div>
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
-                    </div>
-                  ))}
-                </div>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="border border-border rounded-xl h-16 p-3">
+                    <Skeleton className="h-full w-full" />
+                  </div>
+                ))}
               </div>
             </div>
           ) : categories.length === 0 ? (
-            <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
-              <p className="text-muted-foreground">No categories available yet. Add them from the admin panel to showcase curated exam journeys here.</p>
+            <div className="border border-dashed border-border rounded-2xl p-10 text-center text-muted-foreground">
+              Categories will appear here once added from the admin panel.
             </div>
           ) : (
-            <div className="space-y-8">
-              <div className="flex gap-3 overflow-x-auto pb-2">
+            <>
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {categories.map((category) => (
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategoryId(category.id)}
-                    className={`px-5 py-2 rounded-full border whitespace-nowrap text-sm font-medium transition-all ${
+                    className={`px-5 py-2 rounded-full text-sm font-semibold transition border ${
                       selectedCategoryId === category.id
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                        : 'bg-card border-border hover:border-primary/40'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
                     }`}
                   >
                     {category.name}
@@ -267,89 +407,60 @@ export default function Index() {
                 ))}
               </div>
 
-              <div className="bg-card border border-border rounded-2xl p-6">
-                {selectedCategory ? (
-                  <>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                      <div>
-                        <p className="text-sm uppercase tracking-wide text-muted-foreground">Explore tracks</p>
-                        <h3 className="font-display text-2xl font-bold text-foreground">
-                          {selectedCategory.name}
-                        </h3>
-                        {selectedCategory.description && (
-                          <p className="text-muted-foreground mt-1 max-w-2xl">
-                            {selectedCategory.description}
-                          </p>
-                        )}
-                      </div>
-                      <Link href={`/${selectedCategory.slug}`}>
-                        <Button variant="outline">
-                          Visit category
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                      </Link>
+              {selectedCategory ? (
+                <div className="space-y-4">
+                  {subcategoriesLoading && !selectedCategorySubcategories.length ? (
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3" aria-live="polite" aria-busy="true">
+                      {Array.from({ length: 8 }).map((_, index) => (
+                        <Skeleton key={index} className="h-20 rounded-2xl" />
+                      ))}
                     </div>
-
-                    {subcategoriesLoading && !selectedCategorySubcategories.length ? (
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-live="polite" aria-busy="true">
-                        {Array.from({ length: 8 }).map((_, index) => (
-                          <div key={index} className="border border-border rounded-xl p-4 space-y-3">
-                            <div className="flex items-center gap-3">
-                              <Skeleton className="h-10 w-10 rounded-full" />
-                              <Skeleton className="h-4 w-24" />
-                            </div>
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
-                          </div>
+                  ) : selectedCategorySubcategories.length === 0 ? (
+                    <div className="border border-border rounded-2xl p-8 text-center text-muted-foreground">
+                      No exams yet for this category.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+                        {visibleSubcategories.map((sub) => (
+                          <Link
+                            key={sub.id}
+                            href={`/${selectedCategory.slug}-${sub.slug}`}
+                            className="border border-border rounded-2xl px-3 py-2 bg-card hover:border-primary/60 transition flex items-center gap-2 h-16"
+                          >
+                            {selectedCategory.logo_url ? (
+                              <img
+                                src={selectedCategory.logo_url}
+                                alt=""
+                                className="w-8 h-8 object-contain"
+                              />
+                            ) : (
+                              <BookOpen className="h-5 w-5 text-primary" />
+                            )}
+                            <span className="font-semibold text-sm text-foreground line-clamp-1">{sub.name}</span>
+                          </Link>
                         ))}
                       </div>
-                    ) : selectedCategorySubcategories.length === 0 ? (
-                      <div className="text-center py-12">
-                        <p className="text-muted-foreground">No subcategories available yet.</p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {selectedCategorySubcategories.slice(0, 8).map((sub) => (
-                            <Link
-                              key={sub.id}
-                              href={`/${selectedCategory.slug}/${sub.slug}`}
-                              className="border border-border rounded-xl p-4 hover:border-primary/50 hover:shadow-md transition-all"
-                            >
-                              <div className="flex items-center gap-3 mb-2">
-                                {selectedCategory.logo_url ? (
-                                  <img src={selectedCategory.logo_url} alt="" className="w-10 h-10 object-contain" />
-                                ) : (
-                                  <BookOpen className="h-5 w-5 text-primary" />
-                                )}
-                                <p className="font-semibold text-foreground">{sub.name}</p>
-                              </div>
-                              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
-                                {sub.description || 'Focused coverage, updates, and resources.'}
-                              </p>
-                            </Link>
-                          ))}
+                      {remainingSubcategoryCount > 0 && (
+                        <div className="flex justify-center">
+                          <Button
+                            variant="secondary"
+                            className="mt-4"
+                            onClick={() => setShowAllSubcategories(true)}
+                          >
+                            View {remainingSubcategoryCount} More
+                          </Button>
                         </div>
-                        {selectedCategorySubcategories.length > 8 && (
-                          <div className="flex justify-center mt-6">
-                            <Link href={`/${selectedCategory.slug}`}>
-                              <Button variant="secondary">
-                                View more
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                              </Button>
-                            </Link>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">Select a category to view subcategories.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="border border-border rounded-2xl p-8 text-center text-muted-foreground">
+                  Select a category to preview its exams.
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>

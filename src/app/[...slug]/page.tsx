@@ -2,27 +2,60 @@
 
 import { useParams } from 'next/navigation';
 import { ExamDetailPage } from '@/components/pages/ExamDetailPage';
-import { CategoryPage } from '@/components/pages/CategoryPage';
 import SubcategoryPage from '@/components/pages/SubcategoryPage';
+import ModernSubcategoryPage from '@/components/pages/ModernSubcategoryPage';
 
 export default function DynamicPage() {
   const params = useParams();
   const slugArray = params.slug as string[];
-  const isExamPage = slugArray && slugArray.length === 3;
-  const isSubcategoryPage = slugArray && slugArray.length === 2;
-  const isCategoryPage = slugArray && slugArray.length === 1;
+  const safeArray = Array.isArray(slugArray) ? slugArray : [slugArray];
 
-  if (isExamPage) {
-    const urlPath = `/${slugArray.join('/')}`;
+  const parseCombined = (value: string) => {
+    const segments = value.split('-');
+    if (segments.length < 2) {
+      return { category: value, subcategory: '' };
+    }
+    return {
+      category: segments[0],
+      subcategory: segments.slice(1).join('-')
+    };
+  };
+
+  const isLegacyExam = safeArray.length === 3;
+  const isCombinedExam = safeArray.length === 2;
+  const isLegacySubcategory = safeArray.length === 2;
+  const isCombinedSubcategory = safeArray.length === 1 && safeArray[0]?.includes('-');
+
+  if (isLegacyExam) {
+    const urlPath = `/${safeArray.join('/')}`;
     return <ExamDetailPage urlPath={urlPath} />;
   }
 
-  if (isSubcategoryPage) {
-    return <SubcategoryPage categorySlug={slugArray[0]} subcategorySlug={slugArray[1]} />;
+  if (isCombinedExam) {
+    const [combined, examSlug] = safeArray;
+    const { category, subcategory } = parseCombined(combined);
+    if (!category || !subcategory) {
+      return null;
+    }
+    const urlPath = `/${category}/${subcategory}/${examSlug}`;
+    return <ExamDetailPage urlPath={urlPath} />;
   }
 
-  if (isCategoryPage) {
-    return <CategoryPage categorySlug={slugArray[0]} />;
+  if (isLegacySubcategory) {
+    const [categorySlug, subcategorySlug] = safeArray;
+    if (categorySlug.includes('-')) {
+      const { category, subcategory } = parseCombined(categorySlug);
+      return <ModernSubcategoryPage categorySlug={category} subcategorySlug={subcategory} />;
+    }
+    return <SubcategoryPage categorySlug={categorySlug} subcategorySlug={subcategorySlug} />;
+  }
+
+  if (isCombinedSubcategory) {
+    const { category, subcategory } = parseCombined(safeArray[0]);
+    if (!category || !subcategory) {
+      return null;
+    }
+    return <ModernSubcategoryPage categorySlug={category} subcategorySlug={subcategory} />;
   }
 
   return null;

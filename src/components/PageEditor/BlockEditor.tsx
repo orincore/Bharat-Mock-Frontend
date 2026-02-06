@@ -230,6 +230,7 @@ interface BlockEditorProps {
   onSave: (sections: Section[]) => void;
   autosaveKey?: string;
   onSectionsChange?: (sections: Section[]) => void;
+  tabLabel?: string;
 }
 
 interface InlineRichTextEditorProps {
@@ -870,7 +871,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   sections: initialSections, 
   onSave,
   autosaveKey,
-  onSectionsChange
+  onSectionsChange,
+  tabLabel
 }) => {
   const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
   const parentSectionsSignatureRef = useRef<string | null>(null);
@@ -1242,6 +1244,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
             </button>
           </div>
           <div className="flex items-center space-x-2">
+            {tabLabel && <span className="text-sm font-medium text-gray-500">Editing tab: {tabLabel}</span>}
             <button
               onClick={addSection}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center space-x-2"

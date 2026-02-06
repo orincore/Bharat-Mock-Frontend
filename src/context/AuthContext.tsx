@@ -14,6 +14,7 @@ interface AuthContextType {
   requestPasswordReset: (email: string) => Promise<void>;
   completePasswordReset: (token: string, newPassword: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -159,14 +160,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authService.resetPassword(token, newPassword);
   };
 
+  const refreshProfile = async () => {
+    try {
+      const profile = await authService.getProfile();
+      const normalized = normalizeUser(profile);
+      setUser(normalized);
+      persistUser(normalized);
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
+    }
+  };
+
   const updateProfile = async (data: Partial<User>) => {
     setIsLoading(true);
     try {
       await authService.updateProfile(data);
-      const updatedUser = await authService.getProfile();
-      const normalized = normalizeUser(updatedUser);
-      setUser(normalized);
-      persistUser(normalized);
+      await refreshProfile();
     } catch (error) {
       setIsLoading(false);
       throw error;
@@ -185,7 +194,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         requestPasswordReset,
         completePasswordReset,
-        updateProfile
+        updateProfile,
+        refreshProfile
       }}
     >
       {children}

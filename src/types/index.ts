@@ -354,6 +354,20 @@ export interface User {
   updated_at: string;
   education?: Education;
   preferences?: UserPreferences;
+  is_premium?: boolean;
+  subscription_plan_id?: string | null;
+  subscription_expires_at?: string | null;
+  subscription_auto_renew?: boolean;
+  subscription_plan?: SubscriptionPlanSummary | null;
+}
+
+export interface SubscriptionPlanSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+  duration_days: number;
+  price_cents: number;
+  currency_code: string;
 }
 
 export interface Education {

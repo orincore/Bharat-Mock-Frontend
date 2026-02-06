@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -14,6 +14,7 @@ import {
 import { BlockEditor, clearBlockEditorAutosave } from '@/components/PageEditor/BlockEditor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { subcategoryAdminService } from '@/lib/api/subcategoryAdminService';
 
 interface Section {
   id: string;
@@ -22,6 +23,27 @@ interface Section {
   subtitle?: string;
   display_order: number;
   blocks: Block[];
+  is_sidebar?: boolean;
+  custom_tab_id?: string | null;
+}
+
+const serializeSections = (subset: Section[]) => JSON.stringify(
+  subset
+    .map((section) => ({
+      ...section,
+      blocks: (section.blocks || []).map((block) => ({
+        ...block
+      }))
+    }))
+    .sort((a, b) => a.display_order - b.display_order)
+);
+
+interface CustomTab {
+  id: string;
+  title: string;
+  tab_key: string;
+  description?: string | null;
+  display_order: number;
 }
 
 interface Block {
@@ -87,13 +109,133 @@ export default function AdminSubcategoryEditorPage() {
   const [saving, setSaving] = useState(false);
   const [showSEOPanel, setShowSEOPanel] = useState(false);
   const [uploadingOgImage, setUploadingOgImage] = useState(false);
+  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>('overview');
+
+  const loadCustomTabs = async () => {
+    try {
+      const tabs = await subcategoryAdminService.getCustomTabs(subcategoryId);
+      setCustomTabs(tabs);
+      setActiveTabId((prev) => (prev === 'overview' || tabs.some((tab) => tab.id === prev) ? prev : 'overview'));
+    } catch (error) {
+      console.error('Failed to load custom tabs:', error);
+    }
+  };
+
+  const handleCreateTab = async () => {
+    const title = window.prompt('Enter tab title');
+    if (!title || !title.trim()) return;
+    try {
+      await subcategoryAdminService.createCustomTab(subcategoryId, { title: title.trim() });
+      await loadCustomTabs();
+    } catch (error) {
+      console.error('Failed to create tab:', error);
+      toast({ title: 'Error', description: 'Unable to create tab', variant: 'destructive' });
+    }
+  };
+
+  const handleRenameTab = async (tab: CustomTab) => {
+    const title = window.prompt('Rename tab', tab.title);
+    if (!title || !title.trim() || title.trim() === tab.title) return;
+    try {
+      await subcategoryAdminService.updateCustomTab(subcategoryId, tab.id, { title: title.trim() });
+      await loadCustomTabs();
+    } catch (error) {
+      console.error('Failed to rename tab:', error);
+      toast({ title: 'Error', description: 'Unable to rename tab', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteTab = async (tab: CustomTab) => {
+    const confirmDelete = window.confirm(`Delete tab "${tab.title}"? Sections under this tab will move to Overview.`);
+    if (!confirmDelete) return;
+    try {
+      await subcategoryAdminService.deleteCustomTab(subcategoryId, tab.id);
+      setSections((prev) => prev.map((section) => section.custom_tab_id === tab.id ? { ...section, custom_tab_id: null } : section));
+      setActiveTabId('overview');
+      await loadCustomTabs();
+    } catch (error) {
+      console.error('Failed to delete tab:', error);
+      toast({ title: 'Error', description: 'Unable to delete tab', variant: 'destructive' });
+    }
+  };
+
+  const handleMoveTab = async (tabId: string, direction: 'left' | 'right') => {
+    const index = customTabs.findIndex((tab) => tab.id === tabId);
+    if (index === -1) return;
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= customTabs.length) return;
+    const reordered = [...customTabs];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIndex, 0, moved);
+    setCustomTabs(reordered);
+    try {
+      await subcategoryAdminService.reorderCustomTabs(subcategoryId, reordered.map((tab) => tab.id));
+    } catch (error) {
+      console.error('Failed to reorder tabs:', error);
+    }
+  };
 
   useEffect(() => {
-    if (subcategoryId) {
-      loadSubcategoryInfo();
-      loadPageContent();
-    }
+    if (!subcategoryId) return;
+    const bootstrap = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          loadSubcategoryInfo(),
+          loadPageContent(),
+          loadCustomTabs()
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void bootstrap();
   }, [subcategoryId]);
+
+  const updateSectionsForActiveTab = useCallback((updatedSubset: Section[]) => {
+    setSections((prev) => {
+      const retain: Section[] = [];
+      const currentSubset: Section[] = [];
+
+      prev.forEach((section) => {
+        const belongsToActive = activeTabId === 'overview'
+          ? !section.custom_tab_id
+          : section.custom_tab_id === activeTabId;
+        if (belongsToActive) {
+          currentSubset.push(section);
+        } else {
+          retain.push(section);
+        }
+      });
+
+      const normalizedSubset = updatedSubset.map((section, index) => ({
+        ...section,
+        custom_tab_id: activeTabId === 'overview' ? null : activeTabId,
+        display_order: index,
+        blocks: section.blocks || []
+      }));
+
+      if (serializeSections(currentSubset) === serializeSections(normalizedSubset)) {
+        return prev;
+      }
+
+      return [...retain, ...normalizedSubset];
+    });
+  }, [activeTabId]);
+
+  const sectionsForActiveTab = useMemo(() => (
+    sections
+      .filter((section) => (activeTabId === 'overview' ? !section.custom_tab_id : section.custom_tab_id === activeTabId))
+      .sort((a, b) => a.display_order - b.display_order)
+  ), [sections, activeTabId]);
+
+  const autosaveKey = useMemo(() => `subcategory:${subcategoryId}:${activeTabId}`, [subcategoryId, activeTabId]);
+
+  const tabOptions = useMemo(() => [
+    { id: 'overview', title: 'Overview' },
+    ...customTabs
+  ], [customTabs]);
 
   const loadSubcategoryInfo = async () => {
     try {
@@ -132,7 +274,6 @@ export default function AdminSubcategoryEditorPage() {
 
   const loadPageContent = async () => {
     try {
-      setLoading(true);
       const endpoint = buildApiUrl(`/page-content/${subcategoryId}`);
       debugLog('Fetching page content', endpoint);
       const response = await fetch(endpoint);
@@ -143,9 +284,12 @@ export default function AdminSubcategoryEditorPage() {
       
       const data = await response.json();
       const nextSections = data.sections || [];
+      const nextTabs = data.customTabs || [];
       setSections(nextSections);
       setOriginalSections(nextSections);
       setSeoData(data.seo || {});
+      setCustomTabs(nextTabs);
+      setActiveTabId((prev) => (prev === 'overview' || nextTabs.some((tab: CustomTab) => tab.id === prev) ? prev : 'overview'));
     } catch (error) {
       console.error('Error loading page content:', error);
       toast({
@@ -153,8 +297,6 @@ export default function AdminSubcategoryEditorPage() {
         description: 'Failed to load page content',
         variant: 'destructive'
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -358,8 +500,20 @@ export default function AdminSubcategoryEditorPage() {
   };
 
   const handleRefresh = () => {
-    loadSubcategoryInfo();
-    loadPageContent();
+    if (!subcategoryId) return;
+    const refresh = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          loadSubcategoryInfo(),
+          loadPageContent(),
+          loadCustomTabs()
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void refresh();
   };
 
   if (loading) {
@@ -452,12 +606,50 @@ export default function AdminSubcategoryEditorPage() {
         </div>
       </div>
 
+      {/* Tabs Manager */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Page Tabs</h2>
+              <p className="text-sm text-gray-500">Organize sections across Overview and custom tabs.</p>
+            </div>
+            <Button size="sm" onClick={handleCreateTab} variant="secondary">+ Add Custom Tab</Button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {tabOptions.map((tab) => {
+              const isActive = activeTabId === tab.id;
+              return (
+                <div key={tab.id} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-700'}`}>
+                  <button
+                    onClick={() => setActiveTabId(tab.id)}
+                    className="font-semibold text-sm"
+                  >
+                    {tab.title}
+                  </button>
+                  {tab.id !== 'overview' && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <button onClick={() => handleMoveTab(tab.id, 'left')} className="px-1 text-gray-500 hover:text-gray-800">◀</button>
+                      <button onClick={() => handleMoveTab(tab.id, 'right')} className="px-1 text-gray-500 hover:text-gray-800">▶</button>
+                      <button onClick={() => handleRenameTab(tab as CustomTab)} className="px-1 text-gray-500 hover:text-gray-800">Edit</button>
+                      <button onClick={() => handleDeleteTab(tab as CustomTab)} className="px-1 text-red-500 hover:text-red-700">Delete</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Block Editor */}
       <BlockEditor
-        sections={sections}
-        onSave={handleSave}
-        autosaveKey={`subcategory:${subcategoryId}`}
-        onSectionsChange={(next) => setSections(next as Section[])}
+        key={activeTabId}
+        sections={sectionsForActiveTab}
+        onSave={() => handleSave(sections)}
+        autosaveKey={autosaveKey}
+        onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
+        tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
       />
 
       {/* SEO Settings Panel */}
