@@ -55,7 +55,7 @@ const robotsOptions = ['index,follow', 'noindex,follow', 'index,nofollow', 'noin
 
 type EditableMediaItem = HomepageHeroMediaItem & { tempId: string };
 
-type HeroFormState = HomepageHero & {
+type HeroFormState = Omit<HomepageHero, 'media_items'> & {
   media_items: EditableMediaItem[];
   updated_at?: string;
 };
@@ -122,7 +122,7 @@ export default function HomepageAdminPage() {
   const handleMediaFieldChange = (id: string, key: keyof HomepageHeroMediaItem, value: any) => {
     setHero((prev) => ({
       ...prev,
-      media_items: prev.media_items.map((item) =>
+      media_items: prev.media_items.map((item): EditableMediaItem =>
         item.tempId === id ? { ...item, [key]: value } : item
       )
     }));
