@@ -41,6 +41,7 @@ export interface BlogFilters {
   search?: string;
   category?: string;
   published?: boolean;
+  status?: 'draft' | 'pending' | 'published';
 }
 
 export interface BlogPayload {
@@ -52,6 +53,7 @@ export interface BlogPayload {
   tags?: string[];
   is_published?: boolean;
   is_featured?: boolean;
+  status?: 'draft' | 'pending' | 'published';
   meta_title?: string;
   meta_description?: string;
   meta_keywords?: string;
@@ -69,8 +71,9 @@ export const blogAdminService = {
     if (filters.search) params.set('search', filters.search);
     if (filters.category) params.set('category', filters.category);
     if (filters.published !== undefined) params.set('published', String(filters.published));
+    if (filters.status) params.set('status', filters.status);
 
-    const response = await authFetch(buildApiUrl(`/blogs?${params.toString()}`));
+    const response = await authFetch(buildApiUrl(`/blogs/admin/list?${params.toString()}`));
     return response.json();
   },
 
@@ -79,6 +82,12 @@ export const blogAdminService = {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+    const data = await response.json();
+    return data.data;
+  },
+
+  async getBlogById(blogId: string): Promise<Blog> {
+    const response = await authFetch(buildApiUrl(`/blogs/id/${blogId}`));
     const data = await response.json();
     return data.data;
   },

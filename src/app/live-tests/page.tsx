@@ -20,6 +20,7 @@ import { examService } from '@/lib/api/examService';
 import { taxonomyService } from '@/lib/api/taxonomyService';
 import { Exam } from '@/types';
 import { ExamCard, getCountdownLabel } from '@/components/exam/ExamCard';
+import { formatExamSummary } from '@/lib/utils/examSummary';
 
 const STATUS_TABS: { label: string; value: 'upcoming' | 'ongoing' | 'completed'; helper: string }[] = [
   { label: 'Upcoming Tests', value: 'upcoming', helper: 'Reserve a slot before it fills up' },
@@ -93,10 +94,11 @@ const getGoogleCalendarUrl = (exam: Exam) => {
   const start = formatCalendarDate(window.start);
   const end = formatCalendarDate(window.end);
   const base = 'https://www.google.com/calendar/render?action=TEMPLATE';
+  const summary = formatExamSummary(exam);
   const params = new URLSearchParams({
     text: exam.title,
     dates: `${start}/${end}`,
-    details: exam.description || 'Mock test scheduled via Bharat Mock',
+    details: summary,
     location: 'Bharat Mock portal'
   });
   return `${base}&${params.toString()}`;
@@ -172,6 +174,7 @@ export default function LiveTestsPage() {
       return;
     }
 
+    const summary = formatExamSummary(exam);
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
@@ -182,8 +185,8 @@ export default function LiveTestsPage() {
       `DTSTART:${formatCalendarDate(window.start)}`,
       `DTEND:${formatCalendarDate(window.end)}`,
       `SUMMARY:${escapeICSValue(exam.title)}`,
-      `DESCRIPTION:${escapeICSValue(exam.description || 'Scheduled via Bharat Mock')}`,
-      'LOCATION:Online',
+      `DESCRIPTION:${escapeICSValue(summary)}`,
+      `LOCATION:${escapeICSValue('Bharat Mock portal')}`,
       'END:VEVENT',
       'END:VCALENDAR'
     ].join('\n');
@@ -386,7 +389,7 @@ export default function LiveTestsPage() {
                 <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-sm">
                   <p className="text-sm uppercase tracking-wide text-primary font-semibold mb-2">Featured Slot</p>
                   <h3 className="font-display text-3xl font-bold text-foreground mb-3">{featuredExam.title}</h3>
-                  <p className="text-muted-foreground mb-4 line-clamp-3">{featuredExam.description}</p>
+                  <p className="text-muted-foreground mb-4 line-clamp-3">{formatExamSummary(featuredExam)}</p>
                   {(() => {
                     const meta = getScheduleMeta(featuredExam.start_date);
                     const countdown = featuredExam.status === 'upcoming' ? getCountdownLabel(featuredExam.start_date) : null;
@@ -449,7 +452,7 @@ export default function LiveTestsPage() {
                                 <Link href={`/exams/${exam.slug}`}>Register</Link>
                               </Button>
                             </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{exam.description}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{formatExamSummary(exam)}</p>
                             {countdown && (
                               <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-secondary">
                                 <Clock className="h-3 w-3" /> Starts in {countdown}

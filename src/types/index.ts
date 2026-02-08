@@ -2,7 +2,6 @@
 export interface Exam {
   id: string;
   title: string;
-  description: string;
   duration: number;
   total_marks: number;
   totalMarks?: number;
@@ -22,7 +21,6 @@ export interface Exam {
   pass_percentage: number;
   passPercentage?: number;
   is_free: boolean;
-  price: number;
   image_url?: string;
   image?: string;
   logo_url?: string;

@@ -2,16 +2,14 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion, Save, XCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion, Save, XCircle, Loader2, Eye, EyeOff, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { graphqlExamService, GraphQLExamSection } from '@/lib/services/graphqlExamService';
 import { taxonomyService, Category, Subcategory, Difficulty } from '@/lib/api/taxonomyService';
 import { CSVImportDialog } from '@/components/admin/CSVImportDialog';
 import { ParsedSection } from '@/lib/utils/csvParser';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAutosave } from '@/hooks/useAutosave';
 import { ToastNotification } from '@/components/ui/toast-notification';
 import { InlineRichTextEditor } from '@/components/PageEditor/BlockEditor';
 import { adminService } from '@/lib/api/adminService';
@@ -105,10 +103,10 @@ export default function ExamFormPage() {
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [autosaveEnabled, setAutosaveEnabled] = useState(true);
   
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
     duration: 180,
     total_marks: 100,
     total_questions: 50,
@@ -124,7 +122,6 @@ export default function ExamFormPage() {
     end_date: '',
     pass_percentage: 33,
     is_free: true,
-    price: 0,
     negative_marking: false,
     negative_mark_value: 0,
     is_published: false,
@@ -135,6 +132,17 @@ export default function ExamFormPage() {
   });
 
   const [sections, setSections] = useState<Section[]>([]);
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  const numericFieldNames = useMemo(
+    () => new Set([
+      'duration',
+      'total_marks',
+      'total_questions',
+      'pass_percentage',
+      'negative_mark_value'
+    ]),
+    []
+  );
   const hasUnsavedChangesRef = useRef(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
   const sectionsForDisplay = useMemo(
@@ -189,7 +197,7 @@ export default function ExamFormPage() {
   const [uploadProgress, setUploadProgress] = useState({ total: 0, completed: 0, current: '' });
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string[]}>({});
   const [computedErrors, setComputedErrors] = useState<{[key: string]: string[]}>({});
-  const [draftSaving] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'loading' | 'warning'>('success');
@@ -231,38 +239,50 @@ export default function ExamFormPage() {
     return null;
   }, []);
 
-  // Initialize autosave hook with enhanced status
-  const draftKey = persistedExamId ? `exam-${persistedExamId}` : 'exam-new';
-  const { saveDraftField, clearDraft, loadDraftFields, status: autosaveStatus, lastSaved } = useAutosave({
-    examId: persistedExamId,
-    draftKey,
-    debounceMs: 1500,
-    onSave: (fieldPath) => {
-      console.log(`Auto-saved: ${fieldPath}`);
-      const isBasicInfoField = fieldPath?.startsWith('formData');
-      if (isBasicInfoField) {
-        setToastMessage('Basic Information updated locally. Click “Update Exam/Publish Exam” to persist these details.');
-        setToastType('warning');
-      } else {
-        setToastMessage(`Last draft saved on ${new Date().toLocaleString()}`);
-        setToastType('success');
-      }
-      setShowToast(true);
-      setHasUnsavedChanges(false);
-      hasUnsavedChangesRef.current = false;
-
-      const questionId = extractQuestionIdFromFieldPath(fieldPath);
-      if (questionId) {
-        markQuestionSaved(questionId);
-      }
-    },
-    onError: (error) => {
-      console.error('Autosave error:', error);
-      setToastMessage('Failed to save draft');
-      setToastType('error');
+  // Track unsaved changes for navigation prevention
+  const [lastChangeTime, setLastChangeTime] = useState<Date | null>(null);
+  const [showUnsavedChangesNotification, setShowUnsavedChangesNotification] = useState(false);
+  
+  // Mark changes and show notification
+  const markUnsavedChanges = useCallback(() => {
+    if (!hasUnsavedChanges) {
+      setHasUnsavedChanges(true);
+      hasUnsavedChangesRef.current = true;
+      setLastChangeTime(new Date());
+      setShowUnsavedChangesNotification(true);
+      setToastMessage('Changes made. Save as draft or publish to persist.');
+      setToastType('warning');
       setShowToast(true);
     }
-  });
+  }, [hasUnsavedChanges]);
+
+  // Prevent navigation when there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChangesRef.current) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return 'You have unsaved changes. Are you sure you want to leave?';
+      }
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (hasUnsavedChangesRef.current) {
+        const confirmLeave = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+        if (!confirmLeave) {
+          window.history.pushState(null, '', window.location.href);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const isTempQuestionId = (id: string) => id.startsWith('question-');
@@ -329,6 +349,7 @@ export default function ExamFormPage() {
         explanation: question.explanation || null,
         explanation_hi: question.explanation_hi || null,
         difficulty: question.difficulty,
+        image_url: question.image_url || null,
         question_order: question.question_order ?? questionIdx + 1,
         question_number: question.question_number ?? questionIdx + 1,
         options: question.options.map((option, optionIdx) => ({
@@ -336,7 +357,8 @@ export default function ExamFormPage() {
           option_text: option.option_text,
           option_text_hi: option.option_text_hi || null,
           is_correct: option.is_correct,
-          option_order: option.option_order ?? optionIdx + 1
+          option_order: option.option_order ?? optionIdx + 1,
+          image_url: option.image_url || null
         }))
       }))
     }));
@@ -345,7 +367,6 @@ export default function ExamFormPage() {
   const getMissingBasicFields = useCallback(() => {
     const missing: string[] = [];
     if (!formData.title.trim()) missing.push('title');
-    if (!formData.description.trim()) missing.push('description');
     if (!formData.category_id) missing.push('category');
     if (formData.duration <= 0) missing.push('duration');
     if (!formData.allow_anytime) {
@@ -414,69 +435,60 @@ export default function ExamFormPage() {
 
   useEffect(() => {
     if (!persistedExamId && basicsComplete) {
-      ensureDraftExam();
+      // No draft saving needed with REST approach
+      console.log('Draft saving disabled - using REST API only');
     }
-  }, [basicsComplete, ensureDraftExam, persistedExamId]);
+  }, [basicsComplete, persistedExamId]);
 
   const loadDraftData = async () => {
-    try {
-      const draftFields = await loadDraftFields();
-      if (draftFields.length > 0) {
-        // Apply draft data to form state
-        draftFields.forEach(field => {
-          if (field.field_path === 'formData') {
-            setFormData(prev => ({ ...prev, ...field.payload }));
-          } else if (field.field_path === 'sections') {
-            setSections(field.payload);
-          }
-        });
-        setHasUnsavedChanges(true);
-      }
-    } catch (error) {
-      console.error('Failed to load draft data:', error);
-    }
+    // No draft loading needed with REST approach
+    console.log('Draft loading disabled - using REST API only');
   };
 
   const loadExamData = async () => {
     if (!examId) return;
     setInitialLoading(true);
     try {
-      const { exam, sections: structure } = await graphqlExamService.fetchExamDetail(examId);
+      const examData = await adminService.getExamById(examId);
+      const sectionsData = await adminService.getExamSectionsAndQuestions(examId);
 
-      if (exam) {
+      if (examData) {
+        if (examData.id && examData.id !== persistedExamId) {
+          setPersistedExamId(examData.id.toString());
+        }
         setFormData({
-          title: exam.title || '',
-          description: exam.description || '',
-          duration: exam.duration || 180,
-          total_marks: exam.total_marks || 100,
-          total_questions: exam.total_questions || 50,
-          category: exam.category || '',
-          category_id: exam.category_id || '',
-          subcategory: exam.subcategory || '',
-          subcategory_id: exam.subcategory_id || '',
-          difficulty: exam.difficulty || '',
-          difficulty_id: exam.difficulty_id || '',
-          slug: exam.slug || '',
-          status: (exam.status || 'upcoming') as 'upcoming' | 'ongoing' | 'completed' | 'anytime',
-          start_date: exam.start_date ? new Date(exam.start_date).toISOString().slice(0, 10) : '',
-          end_date: exam.end_date ? new Date(exam.end_date).toISOString().slice(0, 10) : '',
-          pass_percentage: exam.pass_percentage || 33,
-          is_free: exam.is_free ?? true,
-          price: exam.price || 0,
-          negative_marking: exam.negative_marking ?? false,
-          negative_mark_value: exam.negative_mark_value || 0,
-          is_published: exam.is_published ?? false,
-          allow_anytime: exam.allow_anytime ?? false,
-          exam_type: (exam.exam_type || 'mock_test') as 'past_paper' | 'mock_test' | 'short_quiz',
-          show_in_mock_tests: exam.show_in_mock_tests ?? false,
-          syllabus: exam.syllabus || []
+          title: examData.title || '',
+          duration: examData.duration || 180,
+          total_marks: examData.total_marks || 100,
+          total_questions: examData.total_questions || 50,
+          category: examData.category || '',
+          category_id: examData.category_id || '',
+          subcategory: examData.subcategory || '',
+          subcategory_id: examData.subcategory_id || '',
+          difficulty: examData.difficulty || '',
+          difficulty_id: examData.difficulty_id || '',
+          slug: examData.slug || '',
+          status: (examData.status || 'upcoming') as 'upcoming' | 'ongoing' | 'completed' | 'anytime',
+          start_date: examData.start_date ? new Date(examData.start_date).toISOString().slice(0, 10) : '',
+          end_date: examData.end_date ? new Date(examData.end_date).toISOString().slice(0, 10) : '',
+          pass_percentage: examData.pass_percentage || 33,
+          is_free: examData.is_free ?? true,
+          negative_marking: examData.negative_marking ?? false,
+          negative_mark_value: examData.negative_mark_value || 0,
+          is_published: examData.is_published ?? false,
+          allow_anytime: examData.allow_anytime ?? false,
+          exam_type: (examData.exam_type || 'mock_test') as 'past_paper' | 'mock_test' | 'short_quiz',
+          show_in_mock_tests: examData.show_in_mock_tests ?? false,
+          syllabus: examData.syllabus || []
         });
 
-        if (exam.logo_url) setLogoPreview(exam.logo_url);
-        if (exam.thumbnail_url) setThumbnailPreview(exam.thumbnail_url);
+        if (examData.logo_url) setLogoPreview(examData.logo_url);
+        if (examData.thumbnail_url) setThumbnailPreview(examData.thumbnail_url);
       }
 
-      const apiSections = (structure || []) as GraphQLExamSection[];
+      const apiSections = Array.isArray(sectionsData)
+        ? sectionsData
+        : sectionsData?.sections ?? [];
       const sortedApiSections = [...apiSections].sort((a, b) => {
         const orderA = typeof a.section_order === 'number' ? a.section_order : Number.MAX_SAFE_INTEGER;
         const orderB = typeof b.section_order === 'number' ? b.section_order : Number.MAX_SAFE_INTEGER;
@@ -540,23 +552,9 @@ export default function ExamFormPage() {
 
       setSections(loadedSections);
       
-      // After loading exam data, check for any draft changes
-      const draftFields = await loadDraftFields();
-      if (draftFields.length > 0) {
-        // Apply draft data to form state
-        draftFields.forEach(field => {
-          if (field.field_path === 'formData') {
-            setFormData(prev => ({ ...prev, ...field.payload }));
-          } else if (field.field_path === 'sections') {
-            setSections(field.payload);
-          }
-        });
-        setHasUnsavedChanges(true);
-        hasUnsavedChangesRef.current = true;
-      } else {
-        setHasUnsavedChanges(false);
-        hasUnsavedChangesRef.current = false;
-      }
+      // Draft data loading removed - using REST API only
+      setHasUnsavedChanges(false);
+      hasUnsavedChangesRef.current = false;
     } catch (error) {
       console.error('Failed to load exam data:', error);
       alert('Failed to load exam data');
@@ -720,28 +718,31 @@ export default function ExamFormPage() {
     if (type === 'checkbox') {
       const inputTarget = event.target as HTMLInputElement;
       const checked = inputTarget.checked;
-      if (name === 'allow_anytime') {
-        const newData = {
-          allow_anytime: checked,
-          status: checked
-            ? ('anytime' as const)
-            : formData.status === 'anytime'
-              ? ('upcoming' as const)
-              : (formData.status || 'upcoming' as const),
-          start_date: checked ? '' : formData.start_date,
-          end_date: checked ? '' : formData.end_date
-        };
-        setFormData(prev => ({ ...prev, ...newData }));
-        saveDraftField(`formData.${name}`, newData);
-        return;
-      }
-      setFormData(prev => ({ ...prev, [name]: checked }));
-      saveDraftField(`formData.${name}`, checked);
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-      saveDraftField(`formData.${name}`, value);
+      setFormData(prev => {
+        if (name === 'allow_anytime') {
+          const fallbackStatus = prev.status === 'anytime'
+            ? ('upcoming' as const)
+            : ((prev.status || 'upcoming') as typeof prev.status);
+          return {
+            ...prev,
+            allow_anytime: checked,
+            status: checked ? ('anytime' as const) : fallbackStatus,
+            start_date: checked ? '' : prev.start_date,
+            end_date: checked ? '' : prev.end_date
+          };
+        }
+        return { ...prev, [name]: checked };
+      });
+      markUnsavedChanges();
+      return;
     }
-  }, [formData, saveDraftField]);
+
+    const isNumericField = type === 'number' || numericFieldNames.has(name);
+    const parsedValue = isNumericField ? (value === '' ? '' : Number(value)) : value;
+
+    setFormData(prev => ({ ...prev, [name]: parsedValue }));
+    markUnsavedChanges();
+  }, [markUnsavedChanges, numericFieldNames]);
 
   const handleTitleBlur = useCallback(() => {
     ensureDraftExam();
@@ -796,21 +797,21 @@ export default function ExamFormPage() {
     const updatedSections = [...sections, newSection];
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
   };
 
   const removeSection = (sectionId: string) => {
     const updatedSections = sections.filter(s => s.id !== sectionId);
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
   };
 
   const updateSection = (sectionId: string, field: keyof Section, value: any) => {
     const updatedSections = sections.map(s => s.id === sectionId ? { ...s, [field]: value } : s);
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
   };
 
   const toggleSection = (sectionId: string) => {
@@ -847,10 +848,10 @@ export default function ExamFormPage() {
       return s;
     });
     setSections(updatedSections);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
     const updatedSection = updatedSections.find(s => s.id === sectionId);
     if (updatedSection) {
-      saveDraftField(`sections.${sectionId}.total_questions`, updatedSection.total_questions);
+      // Section updated
     }
   };
 
@@ -863,10 +864,10 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
     const updatedSection = updatedSections.find(s => s.id === sectionId);
     if (updatedSection) {
-      saveDraftField(`sections.${sectionId}.total_questions`, updatedSection.total_questions);
+      // Section updated
     }
   };
 
@@ -882,7 +883,7 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
   };
 
   const updateOption = (sectionId: string, questionId: string, optionId: string, field: keyof Option, value: any) => {
@@ -905,7 +906,7 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
   };
 
   const setCorrectAnswer = (sectionId: string, questionId: string, optionId: string, questionType: string) => {
@@ -936,7 +937,7 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
   };
 
   const addOption = (sectionId: string, questionId: string) => {
@@ -962,7 +963,7 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
   };
 
   const removeOption = (sectionId: string, questionId: string, optionId: string) => {
@@ -982,7 +983,7 @@ export default function ExamFormPage() {
     });
     setSections(updatedSections);
     setHasUnsavedChanges(true);
-    saveDraftField('sections', updatedSections);
+    markUnsavedChanges();
   };
 
   const handleQuestionImageChange = async (sectionId: string, questionId: string, file: File) => {
@@ -1010,7 +1011,7 @@ export default function ExamFormPage() {
       });
 
       setSections(updatedSections);
-      saveDraftField('sections', updatedSections);
+      markUnsavedChanges();
       setHasUnsavedChanges(true);
       setToastMessage('Image attached. It will upload once the question is saved.');
       setToastType('success');
@@ -1023,31 +1024,30 @@ export default function ExamFormPage() {
       setToastType('loading');
       setShowToast(true);
 
-      const imageUrl = await graphqlExamService.uploadQuestionImage(questionId, file);
-
-      if (imageUrl) {
-        const updatedSections = sections.map(section => {
-          if (section.id !== sectionId) return section;
-          return {
-            ...section,
-            questions: section.questions.map(question =>
-              question.id === questionId
-                ? { ...question, image: null, image_url: imageUrl, imagePreview: imageUrl }
-                : question
-            )
-          };
-        });
-
-        setSections(updatedSections);
-        saveDraftField('sections', updatedSections);
-        setHasUnsavedChanges(true);
-
-        setToastMessage('Image uploaded successfully');
-        setToastType('success');
-        setShowToast(true);
-      } else {
-        throw new Error('Image upload failed');
+      // Upload image immediately to Cloudflare
+      const questionImageData = await adminService.uploadQuestionImage(questionId, file);
+      const uploadedQuestionUrl = questionImageData?.image_url;
+      if (!uploadedQuestionUrl) {
+        throw new Error('Image uploaded but no URL returned');
       }
+      
+      // Update sections with the uploaded image URL
+      const updatedSections = sections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          questions: section.questions.map(question =>
+            question.id === questionId
+              ? { ...question, image_url: uploadedQuestionUrl, imagePreview: uploadedQuestionUrl, image: null }
+              : question
+          )
+        };
+      });
+      
+      setSections(updatedSections);
+      setToastMessage('Image updated successfully');
+      setToastType('success');
+      setShowToast(true);
     } catch (error) {
       console.error('Image upload error:', error);
       setToastMessage('Image upload failed');
@@ -1056,23 +1056,63 @@ export default function ExamFormPage() {
     }
   };
 
-  const clearQuestionImage = (sectionId: string, questionId: string) => {
-    setSections(prevSections => {
-      const updatedSections = prevSections.map(section => {
-        if (section.id !== sectionId) return section;
-        return {
-          ...section,
-          questions: section.questions.map(question =>
-            question.id === questionId
-              ? { ...question, image: null, image_url: null, imagePreview: undefined }
-              : question
-          )
-        };
-      });
+  const clearQuestionImage = async (sectionId: string, questionId: string) => {
+    const isLocalOnly = isClientGeneratedId(questionId);
+    
+    if (isLocalOnly) {
+      setSections(prevSections => {
+        const updatedSections = prevSections.map(section => {
+          if (section.id !== sectionId) return section;
+          return {
+            ...section,
+            questions: section.questions.map(question =>
+              question.id === questionId
+                ? { ...question, image: null, image_url: null, imagePreview: undefined }
+                : question
+            )
+          };
+        });
 
-      saveDraftField('sections', updatedSections);
-      return updatedSections;
-    });
+        markUnsavedChanges();
+        return updatedSections;
+      });
+      return;
+    }
+
+    try {
+      setToastMessage('Removing image...');
+      setToastType('loading');
+      setShowToast(true);
+
+      // Remove image from database and Cloudflare
+      await adminService.removeQuestionImage(questionId);
+      
+      // Update sections to remove image
+      setSections(prevSections => {
+        const updatedSections = prevSections.map(section => {
+          if (section.id !== sectionId) return section;
+          return {
+            ...section,
+            questions: section.questions.map(question =>
+              question.id === questionId
+                ? { ...question, image: null, image_url: null, imagePreview: undefined }
+                : question
+            )
+          };
+        });
+
+        return updatedSections;
+      });
+      
+      setToastMessage('Image removed successfully');
+      setToastType('success');
+      setShowToast(true);
+    } catch (error) {
+      console.error('Remove image error:', error);
+      setToastMessage('Failed to remove image');
+      setToastType('error');
+      setShowToast(true);
+    }
     setHasUnsavedChanges(true);
   };
 
@@ -1107,7 +1147,7 @@ export default function ExamFormPage() {
       });
 
       setSections(updatedSections);
-      saveDraftField('sections', updatedSections);
+      markUnsavedChanges();
       setHasUnsavedChanges(true);
       setToastMessage('Image attached. It will upload once the option is saved.');
       setToastType('success');
@@ -1120,46 +1160,15 @@ export default function ExamFormPage() {
       setToastType('loading');
       setShowToast(true);
 
-      const imageUrl = await graphqlExamService.uploadOptionImage(optionId, file);
-
-      if (imageUrl) {
-        // Update UI with the uploaded image URL
-        const updatedSections = sections.map(section => {
-          if (section.id !== sectionId) return section;
-          return {
-            ...section,
-            questions: section.questions.map(question => {
-              if (question.id !== questionId) return question;
-              return {
-                ...question,
-                options: question.options.map(option =>
-                  option.id === optionId ? { ...option, image_url: imageUrl, imagePreview: imageUrl } : option
-                )
-              };
-            })
-          };
-        });
-        
-        setSections(updatedSections);
-        saveDraftField('sections', updatedSections);
-        
-        setToastMessage('Option image uploaded successfully');
-        setToastType('success');
-        setShowToast(true);
-      } else {
-        throw new Error('Option image upload failed');
+      // Upload image immediately to Cloudflare
+      const optionImageData = await adminService.uploadOptionImage(optionId, file);
+      const uploadedOptionUrl = optionImageData?.image_url;
+      if (!uploadedOptionUrl) {
+        throw new Error('Option image uploaded but no URL returned');
       }
-    } catch (error) {
-      console.error('Option image upload error:', error);
-      setToastMessage('Option image upload failed');
-      setToastType('error');
-      setShowToast(true);
-    }
-  };
-
-  const clearOptionImage = (sectionId: string, questionId: string, optionId: string) => {
-    setSections(prevSections => {
-      const updatedSections = prevSections.map(section => {
+      
+      // Update sections with the uploaded image URL
+      const updatedSections = sections.map(section => {
         if (section.id !== sectionId) return section;
         return {
           ...section,
@@ -1169,18 +1178,96 @@ export default function ExamFormPage() {
               ...question,
               options: question.options.map(option =>
                 option.id === optionId
-                  ? { ...option, image: null, image_url: null, imagePreview: undefined }
+                  ? { ...option, image_url: uploadedOptionUrl, imagePreview: uploadedOptionUrl, image: null }
                   : option
               )
             };
           })
         };
       });
+      
+      setSections(updatedSections);
+      setToastMessage('Image updated successfully');
+      setToastType('success');
+      setShowToast(true);
+    } catch (error) {
+      console.error('Option image upload error:', error);
+      setToastMessage('Option image upload failed');
+      setToastType('error');
+      setShowToast(true);
+    }
+  };
 
-      saveDraftField('sections', updatedSections);
-      return updatedSections;
-    });
-    setHasUnsavedChanges(true);
+  const clearOptionImage = async (sectionId: string, questionId: string, optionId: string) => {
+    const isLocalOnly = isClientGeneratedId(optionId);
+    
+    if (isLocalOnly) {
+      setSections(prevSections => {
+        const updatedSections = prevSections.map(section => {
+          if (section.id !== sectionId) return section;
+          return {
+            ...section,
+            questions: section.questions.map(question => {
+              if (question.id !== questionId) return question;
+              return {
+                ...question,
+                options: question.options.map(option =>
+                  option.id === optionId
+                    ? { ...option, image: null, image_url: null, imagePreview: undefined }
+                    : option
+                )
+              };
+            })
+          };
+        });
+
+        markUnsavedChanges();
+        return updatedSections;
+      });
+      setHasUnsavedChanges(true);
+      return;
+    }
+
+    try {
+      setToastMessage('Removing image...');
+      setToastType('loading');
+      setShowToast(true);
+
+      // Remove image from database and Cloudflare
+      await adminService.removeOptionImage(optionId);
+      
+      // Update sections to remove image
+      setSections(prevSections => {
+        const updatedSections = prevSections.map(section => {
+          if (section.id !== sectionId) return section;
+          return {
+            ...section,
+            questions: section.questions.map(question => {
+              if (question.id !== questionId) return question;
+              return {
+                ...question,
+                options: question.options.map(option =>
+                  option.id === optionId
+                    ? { ...option, image: null, image_url: null, imagePreview: undefined }
+                    : option
+                )
+              };
+            })
+          };
+        });
+
+        return updatedSections;
+      });
+      
+      setToastMessage('Image removed successfully');
+      setToastType('success');
+      setShowToast(true);
+    } catch (error) {
+      console.error('Remove option image error:', error);
+      setToastMessage('Failed to remove image');
+      setToastType('error');
+      setShowToast(true);
+    }
   };
 
   const handleCSVImport = (parsedSections: ParsedSection[], language: 'en' | 'hi' = 'en') => {
@@ -1250,7 +1337,6 @@ export default function ExamFormPage() {
     const scheduleComplete = needsSchedule ? Boolean(formData.start_date && formData.end_date && formData.status) : true;
     
     if (!formData.title.trim()) requirements.push('❌ Exam title is required');
-    if (!formData.description.trim()) requirements.push('❌ Exam description is required');
     if (!formData.category_id) requirements.push('❌ Category must be selected');
     if (formData.duration <= 0) requirements.push('❌ Duration must be greater than 0 minutes');
     if (!scheduleComplete) requirements.push('❌ Start date, end date, and status are required (or enable "Allow anytime")');
@@ -1419,11 +1505,84 @@ export default function ExamFormPage() {
   }, [computedErrors]);
 
   const canSubmit = pendingRequirements.length === 0 && !loading;
-  const canSaveDraft = false;
+  const canSaveDraft = !creatingDraft && !draftSaving;
+
+  const saveDraftManually = async () => {
+    if (!persistedExamId && !basicsComplete) {
+      setToastMessage('Complete basic details before saving a draft.');
+      setToastType('warning');
+      setShowToast(true);
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, is_published: false }));
+    setDraftSaving(true);
+    setAutosaveEnabled(false);
+    setToastMessage('Saving draft…');
+    setToastType('loading');
+    setShowToast(true);
+
+    const normalizeDate = (value: string) => {
+      if (!value) return null;
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    };
+
+    const draftPayload = {
+      ...formData,
+      is_published: false,
+      exam_id: persistedExamId,
+      start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
+      end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date),
+      status: formData.allow_anytime ? 'anytime' : formData.status
+    };
+
+    const sanitizedSections = serializeSectionsForDraft();
+
+    try {
+      if (persistedExamId) {
+        await adminService.updateExamWithContent(
+          persistedExamId,
+          { ...draftPayload, is_published: false },
+          sanitizedSections,
+          logoFile || undefined,
+          thumbnailFile || undefined
+        );
+        setToastMessage('Draft updated successfully.');
+      } else {
+        const response = await adminService.saveDraftExam(
+          draftPayload,
+          sanitizedSections,
+          logoFile || undefined,
+          thumbnailFile || undefined
+        );
+
+        if (response?.exam?.id) {
+          setPersistedExamId(response.exam.id);
+        }
+        setToastMessage('Draft saved successfully.');
+      }
+
+      setToastType('success');
+      setShowToast(true);
+      setHasUnsavedChanges(false);
+      hasUnsavedChangesRef.current = false;
+    } catch (error: any) {
+      console.error('Failed to save draft via REST:', error);
+      setAutosaveEnabled(true);
+      setToastMessage(error?.message || 'Failed to save draft');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setDraftSaving(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    setFormData(prev => ({ ...prev, is_published: true }));
 
     setUploadProgress({ total: 3, completed: 0, current: 'Preparing exam data...' });
 
@@ -1436,6 +1595,7 @@ export default function ExamFormPage() {
 
       const payload: any = {
         ...formData,
+        is_published: true,
         start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
         end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date)
       };
@@ -1448,56 +1608,24 @@ export default function ExamFormPage() {
         delete payload.end_date;
       }
 
-      setUploadProgress({ total: 3, completed: 1, current: 'Saving exam via GraphQL...' });
+      setUploadProgress({ total: 3, completed: 1, current: 'Saving exam via REST...' });
 
       if (logoFile || thumbnailFile) {
         setUploadProgress(prev => ({ ...prev, completed: 2, current: 'Uploading media files...' }));
       }
 
-      // Use GraphQL for instant updates instead of REST
-      const sectionsPayload = sections.map((section, sectionIdx) => ({
-        id: section.id,
-        name: section.name,
-        name_hi: section.name_hi || null,
-        total_questions: section.questions.length,
-        marks_per_question: section.marks_per_question,
-        duration: section.duration || null,
-        section_order: section.section_order ?? sectionIdx + 1,
-        questions: section.questions.map((question, questionIdx) => ({
-          id: question.id,
-          type: question.type,
-          text: question.text,
-          text_hi: question.text_hi || null,
-          marks: question.marks,
-          negative_marks: question.negative_marks,
-          explanation: question.explanation || null,
-          explanation_hi: question.explanation_hi || null,
-          difficulty: question.difficulty,
-          image_url: question.image_url || null,
-          question_order: question.question_order ?? questionIdx + 1,
-          question_number: question.question_number ?? questionIdx + 1,
-          options: question.options.map((option, optionIdx) => ({
-            id: option.id,
-            option_text: option.option_text,
-            option_text_hi: option.option_text_hi || null,
-            is_correct: option.is_correct,
-            option_order: option.option_order ?? optionIdx + 1,
-            image_url: option.image_url || null
-          }))
-        }))
-      }));
+      const sanitizedSections = serializeSectionsForDraft();
 
       if (isEditMode && examId) {
-        await graphqlExamService.updateExam({
-          id: examId,
-          input: payload,
-          sections: sectionsPayload,
-          logo: logoFile || undefined,
-          thumbnail: thumbnailFile || undefined
-        });
+        await adminService.updateExamWithContent(
+          examId,
+          payload,
+          sanitizedSections,
+          logoFile || undefined,
+          thumbnailFile || undefined
+        );
         
-        // Clear draft after successful update
-        await clearDraft();
+        // Draft cleared - using REST API only
         
         setUploadProgress({ total: 3, completed: 3, current: 'Exam updated successfully!' });
         setToastMessage('Exam updated successfully!');
@@ -1506,14 +1634,16 @@ export default function ExamFormPage() {
         setHasUnsavedChanges(false);
         hasUnsavedChangesRef.current = false;
       } else {
-        const result = await graphqlExamService.createExam({
-          input: payload,
-          sections: sectionsPayload,
-          logo: logoFile || undefined,
-          thumbnail: thumbnailFile || undefined
-        });
+        await adminService.bulkCreateExamWithContent(
+          payload,
+          sanitizedSections,
+          logoFile || undefined,
+          thumbnailFile || undefined
+        );
         setUploadProgress({ total: 3, completed: 3, current: 'Exam created successfully!' });
-        alert('Exam created successfully with all sections and questions!');
+        setToastMessage('Exam created successfully with all sections and questions!');
+        setToastType('success');
+        setShowToast(true);
       }
 
       setLogoFile(null);
@@ -1523,7 +1653,9 @@ export default function ExamFormPage() {
       router.push('/admin/exams');
     } catch (error: any) {
       console.error(`Failed to ${isEditMode ? 'update' : 'create'} exam:`, error);
-      alert(error.message || `Failed to ${isEditMode ? 'update' : 'create'} exam. Please try again.`);
+      setToastMessage(error.message || `Failed to ${isEditMode ? 'update' : 'create'} exam. Please try again.`);
+      setToastType('error');
+      setShowToast(true);
     } finally {
       setLoading(false);
       setUploadProgress({ total: 0, completed: 0, current: '' });
@@ -1550,7 +1682,7 @@ export default function ExamFormPage() {
   }
 
   return (
-    <div>
+    <div className="relative">
       {showCSVImport && (
         <CSVImportDialog
           onImport={handleCSVImport}
@@ -1558,7 +1690,128 @@ export default function ExamFormPage() {
         />
       )}
 
-      <div className="mb-8">
+      {/* Fixed Right Side Panel */}
+      <div className="hidden lg:block fixed top-36 right-6 z-40">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsPanelCollapsed(prev => !prev)}
+            className="absolute -top-6 right-[-12px] bg-white dark:bg-slate-900 border border-border rounded-full h-9 w-9 flex items-center justify-center shadow-md"
+            aria-label={isPanelCollapsed ? 'Show publishing panel' : 'Hide publishing panel'}
+          >
+            {isPanelCollapsed ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </button>
+          <div
+            className={`w-64 bg-card border border-border rounded-xl shadow-lg p-4 transition-all duration-300 flex flex-col ${
+              isPanelCollapsed ? 'opacity-0 pointer-events-none translate-x-4' : 'opacity-100 translate-x-0'
+            }`}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Admin Panel</p>
+                <p className="font-semibold text-sm text-foreground">Publishing Console</p>
+              </div>
+            </div>
+
+          <nav className="space-y-2">
+            <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
+              showUnsavedChangesNotification ? 'bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200' : 'text-muted-foreground bg-muted/40'
+            }`}>
+              <Clock3 className="h-4 w-4" />
+              <div>
+                <p>Unsaved Changes</p>
+                {showUnsavedChangesNotification && lastChangeTime ? (
+                  <span className="text-xs block">Since {lastChangeTime.toLocaleTimeString()}</span>
+                ) : (
+                  <span className="text-xs block text-muted-foreground">All changes saved</span>
+                )}
+              </div>
+            </div>
+
+            <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
+              pendingRequirements.length > 0 ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-200' : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-200'
+            }`}>
+              <XCircle className="h-4 w-4" />
+              <div>
+                <p>{pendingRequirements.length > 0 ? `${pendingRequirements.length} requirements pending` : 'Ready to publish'}</p>
+                <span className="text-xs block">
+                  {pendingRequirements.length > 0 ? 'Resolve items before publishing' : 'All checks passed'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium bg-muted/40 text-muted-foreground">
+              <FileText className="h-4 w-4" />
+              <div>
+                <p>Draft Status</p>
+                <span className="text-xs block">{persistedExamId ? 'Existing draft' : 'New draft in progress'}</span>
+              </div>
+            </div>
+          </nav>
+
+          <div className="mt-4 space-y-3">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!canSaveDraft}
+              onClick={saveDraftManually}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              {draftSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save Draft
+                </>
+              )}
+            </Button>
+            
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              className="w-full bg-primary text-white hover:bg-primary/90 flex items-center justify-center gap-2"
+              onClick={handleSubmit}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {isEditMode ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  {isEditMode ? 'Update Exam' : 'Publish Exam'}
+                </>
+              )}
+            </Button>
+          </div>
+
+            <div className="mt-4 border-t border-border pt-3 space-y-2 text-xs text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Questions</span>
+                <span>{derivedTotals.totalQuestions}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Marks</span>
+                <span>{derivedTotals.totalMarks}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Duration</span>
+                <span>{formData.duration} min</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={`mb-8 ${isPanelCollapsed ? 'lg:pr-8' : 'lg:pr-72'} transition-[padding] duration-300`}>
         <Link href="/admin/exams" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeft className="h-4 w-4" />
           Back to Exams
@@ -1571,30 +1824,6 @@ export default function ExamFormPage() {
             <p className="text-muted-foreground">
               {isEditMode ? 'Update exam details and content' : 'Fill in the details to create a new exam'}
             </p>
-            {autosaveStatus !== 'idle' && (
-              <div className="text-xs mt-1 flex items-center gap-1">
-                {autosaveStatus === 'saving' && (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
-                    <span className="text-blue-600">Saving...</span>
-                  </>
-                )}
-                {autosaveStatus === 'saved' && (
-                  <>
-                    <CheckCircle2 className="h-3 w-3 text-green-600" />
-                    <span className="text-green-600">
-                      Saved as draft {lastSaved && `at ${lastSaved.toLocaleTimeString()}`}
-                    </span>
-                  </>
-                )}
-                {autosaveStatus === 'error' && (
-                  <>
-                    <XCircle className="h-3 w-3 text-red-600" />
-                    <span className="text-red-600">Save failed</span>
-                  </>
-                )}
-              </div>
-            )}
           </div>
           <Button
             type="button"
@@ -1608,7 +1837,7 @@ export default function ExamFormPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className={`space-y-6 ${isPanelCollapsed ? 'lg:pr-8' : 'lg:pr-72'} transition-[padding] duration-300`}>
         {loading && uploadProgress.total > 0 && (
           <div className="bg-muted/60 border border-border rounded-xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between text-sm">
@@ -1644,7 +1873,7 @@ export default function ExamFormPage() {
               />
               {!persistedExamId && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Tip: fill in description, category, duration, and schedule basics before clicking away to trigger auto draft.
+                  Tip: fill in category, duration, and schedule basics before clicking away to trigger auto draft.
                 </p>
               )}
               {creatingDraft && !persistedExamId && (
@@ -1771,20 +2000,7 @@ export default function ExamFormPage() {
               )}
             </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Description *
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Describe the exam..."
-                required
-                rows={4}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -1941,6 +2157,20 @@ export default function ExamFormPage() {
               </div>
             )}
 
+            {!formData.is_free && (
+              <div className="md:col-span-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4 flex items-start gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
+                  ₹
+                </div>
+                <div className="space-y-1 text-sm">
+                  <p className="font-semibold text-foreground">Premium unlock experience enabled</p>
+                  <p className="text-muted-foreground">
+                    Free users will see an <span className="font-medium">“Unlock Exam”</span> button that routes them to the subscription page. Premium subscribers continue to see the standard attempt button.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 Duration (minutes) *
@@ -2047,22 +2277,6 @@ export default function ExamFormPage() {
                 Free Exam
               </label>
             </div>
-
-            {!formData.is_free && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Price (₹)
-                </label>
-                <Input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            )}
 
             <div className="flex items-center gap-3">
               <input
@@ -2668,13 +2882,32 @@ export default function ExamFormPage() {
               </div>
             </div>
           )}
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 lg:hidden">
             <Link href="/admin/exams">
               <Button type="button" variant="outline" disabled={loading}>
                 Cancel
               </Button>
             </Link>
             <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!canSaveDraft}
+                onClick={saveDraftManually}
+                className="flex items-center gap-2"
+              >
+                {draftSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Draft
+                  </>
+                )}
+              </Button>
               <Button
                 type="submit"
                 disabled={!canSubmit}

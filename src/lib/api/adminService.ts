@@ -46,7 +46,6 @@ export interface AdminUserDetails {
 
 interface CreateExamData {
   title: string;
-  description: string;
   duration: number;
   total_marks: number;
   total_questions: number;
@@ -62,7 +61,6 @@ interface CreateExamData {
   end_date: string;
   pass_percentage: number;
   is_free: boolean;
-  price: number;
   negative_marking: boolean;
   negative_mark_value: number;
   is_published?: boolean;
@@ -230,7 +228,7 @@ export const adminService = {
     return response.data;
   },
 
-  async updateExamWithContent(id: string, examData: any, sections: any[], logo?: File, thumbnail?: File): Promise<any> {
+  async updateExamWithContent(examId: string, examData: any, sections: any[], logo?: File, thumbnail?: File): Promise<any> {
     const formData = new FormData();
 
     formData.append('exam', JSON.stringify(examData));
@@ -239,9 +237,10 @@ export const adminService = {
     if (logo) formData.append('logo', logo);
     if (thumbnail) formData.append('thumbnail', thumbnail);
 
-    const response = await apiClient.putFormData<{ success: boolean; data: any }>(`/admin/exams/${id}/content`, formData, true);
+    const response = await apiClient.putFormData<{ success: boolean; data: any }>(`/admin/exams/${examId}/content`, formData, true);
     return response.data;
   },
+
 
   async saveDraftExam(examData: any, sections: any[], logo?: File, thumbnail?: File): Promise<any> {
     const formData = new FormData();
@@ -300,6 +299,19 @@ export const adminService = {
     return response.data;
   },
 
+  async uploadQuestionImage(questionId: string, image: File) {
+    const formData = new FormData();
+    formData.append('image', image);
+
+    const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/questions/${questionId}/upload-image`, formData, true);
+    return response.data;
+  },
+
+  async removeQuestionImage(questionId: string) {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/admin/questions/${questionId}/remove-image`, true);
+    return response;
+  },
+
   async deleteQuestion(id: string): Promise<void> {
     await apiClient.delete(`/admin/questions/${id}`, true);
   },
@@ -332,6 +344,19 @@ export const adminService = {
 
     const response = await apiClient.putFormData<{ success: boolean; data: any }>(`/admin/options/${id}`, formData, true);
     return response.data;
+  },
+
+  async uploadOptionImage(optionId: string, image: File) {
+    const formData = new FormData();
+    formData.append('image', image);
+
+    const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/options/${optionId}/upload-image`, formData, true);
+    return response.data;
+  },
+
+  async removeOptionImage(optionId: string) {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/admin/options/${optionId}/remove-image`, true);
+    return response;
   },
 
   async deleteOption(id: string): Promise<void> {

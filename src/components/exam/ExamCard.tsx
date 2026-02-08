@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Clock, FileText, Users, TrendingUp, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { formatExamSummary } from '@/lib/utils/examSummary';
 
 interface ExamCardProps {
   exam: Exam;
@@ -35,6 +36,7 @@ export const getCountdownLabel = (startDate?: string | null) => {
 
 export function ExamCard({ exam }: ExamCardProps) {
   const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
+  const summary = formatExamSummary(exam);
   
   const statusColors = {
     upcoming: 'bg-warning/10 text-warning border-warning/30',
@@ -105,7 +107,7 @@ export function ExamCard({ exam }: ExamCardProps) {
         </h3>
         
         <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-          {exam.description}
+          {summary}
         </p>
 
         <div className="grid grid-cols-2 gap-3 mb-4">

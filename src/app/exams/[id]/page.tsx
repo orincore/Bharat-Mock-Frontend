@@ -97,6 +97,8 @@ export default function ExamDetailPage() {
   const isUpcoming = exam.status === 'upcoming';
   const isOngoing = exam.status === 'ongoing';
   const isCompleted = exam.status === 'completed';
+  const overviewText = `Prepare for ${exam.category} with ${exam.total_questions} questions and ${exam.total_marks} marks spread across ${exam.duration} minutes.`;
+  const accessLabel = exam.is_free ? 'Free for all learners' : 'Included with Premium subscription';
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -128,7 +130,7 @@ export default function ExamDetailPage() {
               </h1>
               
               <p className="text-lg text-background/80 mb-6">
-                {exam.description}
+                {overviewText}
               </p>
 
               <div className="flex flex-wrap gap-4 text-background/90">
@@ -170,12 +172,10 @@ export default function ExamDetailPage() {
                     <span className="text-sm">Pass Percentage</span>
                     <span className="font-semibold">{exam.pass_percentage}%</span>
                   </div>
-                  {!exam.is_free && (
-                    <div className="flex items-center justify-between text-background">
-                      <span className="text-sm">Price</span>
-                      <span className="font-semibold">₹{exam.price}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between text-background">
+                    <span className="text-sm">Access</span>
+                    <span className="font-semibold">{accessLabel}</span>
+                  </div>
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-background/20">

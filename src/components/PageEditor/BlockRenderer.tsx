@@ -2,6 +2,21 @@
 
 import React from 'react';
 import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+  Cell
+} from 'recharts';
+import {
   Heading,
   FileText,
   List,
@@ -204,16 +219,98 @@ const ImageBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
   );
 };
 
-const ChartBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
-  const { chartType, data, options } = content;
-  
-  return (
-    <div className="mb-6 p-4 bg-white rounded-lg shadow">
-      <div className="text-center text-gray-500 py-8">
-        <BarChart3 className="w-16 h-16 mx-auto mb-2" />
-        <p>Chart: {chartType}</p>
-        <p className="text-sm">Chart rendering requires Chart.js integration</p>
+const ChartBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
+  const { chartType = 'bar', data = {}, options } = content || {};
+  const labels: string[] = data.labels || data.xAxis || [];
+  const datasets = Array.isArray(data.datasets) && data.datasets.length > 0
+    ? data.datasets
+    : [{ label: data.datasetLabel || 'Value', values: data.values || data.yAxis || [] }];
+
+  const datasetKeys = datasets.map((dataset, index) => dataset.key || dataset.label || `Series ${index + 1}`);
+  const chartData = labels.map((label: string, labelIndex: number) => {
+    const row: Record<string, any> = { label };
+    datasets.forEach((dataset, datasetIndex) => {
+      const key = datasetKeys[datasetIndex];
+      const values = dataset.values || [];
+      row[key] = Number(values[labelIndex] ?? 0);
+    });
+    return row;
+  });
+
+  const palette = ['#2563eb', '#9333ea', '#f97316', '#10b981', '#f43f5e', '#0ea5e9'];
+
+  if (!chartData.length || !datasetKeys.length) {
+    return (
+      <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 text-sm text-slate-500">
+        Unable to render chart — please provide labels and values.
       </div>
+    );
+  }
+
+  const commonChildren = (
+    <>
+      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <XAxis dataKey="label" stroke="#475569" />
+      <YAxis stroke="#475569" />
+      <Tooltip wrapperClassName="text-sm" />
+      <Legend />
+    </>
+  );
+
+  const renderBarChart = () => (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={chartData}>
+        {commonChildren}
+        {datasetKeys.map((key, index) => (
+          <Bar key={key} dataKey={key} fill={palette[index % palette.length]} radius={[6, 6, 0, 0]} />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+
+  const renderLineChart = () => (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={chartData}>
+        {commonChildren}
+        {datasetKeys.map((key, index) => (
+          <Line key={key} type="monotone" dataKey={key} stroke={palette[index % palette.length]} strokeWidth={2} dot={false} />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
+  );
+
+  const renderPieChart = () => {
+    const pieData = labels.length
+      ? labels.map((label, index) => ({ name: label, value: Number(datasets[0]?.values?.[index] ?? 0) }))
+      : chartData.map((row) => ({ name: row.label, value: Number(row[datasetKeys[0]]) }));
+
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Tooltip />
+          <Legend />
+          <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={100} paddingAngle={3}>
+            {pieData.map((entry, index) => (
+              <Cell key={`cell-${entry.name}`} fill={palette[index % palette.length]} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  let chartBody: React.ReactNode = renderBarChart();
+  if (chartType === 'line') chartBody = renderLineChart();
+  if (chartType === 'pie') chartBody = renderPieChart();
+
+  return (
+    <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="h-[320px]">
+        {chartBody}
+      </div>
+      {options?.footnote && (
+        <p className="mt-3 text-xs text-slate-500">{options.footnote}</p>
+      )}
     </div>
   );
 };

@@ -7,6 +7,7 @@ interface UseAutosaveOptions {
   debounceMs?: number;
   onSave?: (fieldPath: string, data: any) => void;
   onError?: (error: Error) => void;
+  enabled?: boolean;
 }
 
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -16,7 +17,8 @@ export function useAutosave({
   draftKey,
   debounceMs = 1000,
   onSave,
-  onError
+  onError,
+  enabled = true
 }: UseAutosaveOptions) {
   const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const isMountedRef = useRef(true);
@@ -33,8 +35,14 @@ export function useAutosave({
     };
   }, []);
 
+  useEffect(() => {
+    if (!enabled) {
+      setStatus('idle');
+    }
+  }, [enabled]);
+
   const saveDraftField = useCallback(async (fieldPath: string, data: any) => {
-    if (!isMountedRef.current) return;
+    if (!isMountedRef.current || !enabled) return;
 
     setStatus('saving');
     try {
@@ -70,9 +78,10 @@ export function useAutosave({
         }
       }
     }
-  }, [draftKey, examId, onSave, onError]);
+  }, [draftKey, examId, onSave, onError, enabled]);
 
   const debouncedSave = useCallback((fieldPath: string, data: any) => {
+    if (!enabled) return;
     // Clear existing timeout for this field
     const existingTimeout = timeoutRefs.current.get(fieldPath);
     if (existingTimeout) {
@@ -86,7 +95,7 @@ export function useAutosave({
     }, debounceMs);
 
     timeoutRefs.current.set(fieldPath, timeout);
-  }, [saveDraftField, debounceMs]);
+  }, [saveDraftField, debounceMs, enabled]);
 
   const clearDraft = useCallback(async () => {
     try {

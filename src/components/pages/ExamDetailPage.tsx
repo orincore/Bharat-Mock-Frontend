@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Clock, Calendar, BookOpen, Award, TrendingUp, 
-  CheckCircle, AlertCircle, Play, ArrowLeft, FileText 
+  CheckCircle, AlertCircle, Play, ArrowLeft, FileText, Lock 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { examService } from '@/lib/api/examService';
 import { useAuth } from '@/context/AuthContext';
 import { Exam } from '@/types';
+import { formatExamSummary } from '@/lib/utils/examSummary';
 
 interface ExamDetailPageProps {
   urlPath: string;
@@ -19,7 +20,7 @@ interface ExamDetailPageProps {
 
 export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,6 +57,14 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
     }
   };
 
+  const handleUnlockExam = () => {
+    if (!isAuthenticated) {
+      router.push('/login?redirect=/subscriptions');
+      return;
+    }
+    router.push('/subscriptions');
+  };
+
   const formatCalendarDate = (date: Date) =>
     date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
@@ -82,7 +91,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
     const params = new URLSearchParams({
       text: exam.title,
       dates: `${start}/${end}`,
-      details: exam.description || 'Mock test scheduled via Bharat Mock',
+      details: formatExamSummary(exam),
       location: 'Bharat Mock portal'
     });
     return `${base}&${params.toString()}`;
@@ -104,7 +113,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
       `DTSTART:${formatCalendarDate(calendarWindow.start)}`,
       `DTEND:${formatCalendarDate(calendarWindow.end)}`,
       `SUMMARY:${escapeICSValue(exam.title)}`,
-      `DESCRIPTION:${escapeICSValue(exam.description || 'Scheduled via Bharat Mock')}`,
+      `DESCRIPTION:${escapeICSValue(formatExamSummary(exam))}`,
       'LOCATION:Online',
       'END:VEVENT',
       'END:VCALENDAR'
@@ -186,6 +195,9 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
     return exam?.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Upcoming';
   })();
   const canStartExam = isOngoing || isAnytime;
+  const userHasPremium = !!user?.is_premium;
+  const requiresUnlock = !exam.is_free && !userHasPremium;
+  const showAttemptCta = canStartExam && !requiresUnlock;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -229,7 +241,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
               </div>
 
               <p className="text-base text-white/80 max-w-3xl">
-                {exam.description}
+                {formatExamSummary(exam)}
               </p>
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -272,12 +284,6 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                     <span>Pass Percentage</span>
                     <span className="font-semibold">{exam.pass_percentage}%</span>
                   </div>
-                  {!exam.is_free && (
-                    <div className="flex items-start justify-between">
-                      <span>Registration Fee</span>
-                      <span className="font-semibold">₹{exam.price}</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -309,7 +315,23 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
               )}
 
               <div className="space-y-3">
-                {canStartExam ? (
+                {requiresUnlock ? (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={handleUnlockExam}
+                      className="w-full relative overflow-hidden bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-900 font-semibold shadow-[0_15px_35px_-20px_rgba(245,158,11,0.9)]"
+                      size="lg"
+                    >
+                      <span className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
+                      <span className="relative flex items-center justify-center gap-2 uppercase text-sm tracking-wide">
+                        <Lock className="h-5 w-5" /> Unlock Exam
+                      </span>
+                    </Button>
+                    <p className="text-xs text-white/70 text-center">
+                      Unlock included with Bharat Mock Premium. Get instant access to all paid exams.
+                    </p>
+                  </div>
+                ) : showAttemptCta ? (
                   <Button 
                     onClick={handleStartExam}
                     className="w-full relative overflow-hidden bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white shadow-[0_15px_35px_-20px_rgba(16,185,129,0.9)] transition-all duration-200 disabled:from-slate-500 disabled:to-slate-600"

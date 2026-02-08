@@ -4,6 +4,7 @@ export interface Blog {
   id: string;
   title: string;
   slug: string;
+  status?: 'draft' | 'pending' | 'published';
   excerpt?: string;
   featured_image_url?: string;
   author_id?: string;
@@ -84,6 +85,7 @@ export const blogService = {
     page?: number;
     limit?: number;
     category?: string;
+    categories?: string[];
     search?: string;
     featured?: boolean;
   }): Promise<BlogsResponse> {
@@ -91,6 +93,7 @@ export const blogService = {
     if (options?.page) params.append('page', options.page.toString());
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.category) params.append('category', options.category);
+    if (options?.categories?.length) params.append('categories', options.categories.join(','));
     if (options?.search) params.append('search', options.search);
     if (options?.featured) params.append('featured', 'true');
 
@@ -126,12 +129,8 @@ export const blogService = {
   },
 
   async getCategories(): Promise<string[]> {
-    try {
-      // For now, return static categories. Can be made dynamic later
-      return ['Exam Tips', 'Study Guides', 'Career Advice', 'Success Stories', 'News & Updates'];
-    } catch (error) {
-      return [];
-    }
+    const response = await apiClient.get<{ success: boolean; data: string[] }>('/blogs/categories');
+    return response.data;
   },
 
   async getPopularTags(): Promise<string[]> {

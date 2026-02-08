@@ -9,7 +9,9 @@ import {
   Save,
   Undo,
   Redo,
-  ChevronDown
+  ChevronDown,
+  UploadCloud,
+  Loader2
 } from 'lucide-react';
 import { BlockRenderer, getBlockIcon } from './BlockRenderer';
 
@@ -114,6 +116,19 @@ const deepClone = (value: any) => {
     return value;
   }
 };
+
+export interface BlockEditorMediaUploadResult {
+  url: string;
+  alt?: string;
+  caption?: string;
+}
+
+export interface BlockEditorMediaUploadConfig {
+  maxSizeMB?: number;
+  onUpload: (file: File, context: { blockType: 'image' | 'video' }) => Promise<BlockEditorMediaUploadResult>;
+  onUploadError?: (message: string) => void;
+  onUploadSuccess?: (message?: string) => void;
+}
 
 const AdBannerContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
   return (
@@ -231,6 +246,7 @@ interface BlockEditorProps {
   autosaveKey?: string;
   onSectionsChange?: (sections: Section[]) => void;
   tabLabel?: string;
+  mediaUploadConfig?: BlockEditorMediaUploadConfig;
 }
 
 interface InlineRichTextEditorProps {
@@ -872,7 +888,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   onSave,
   autosaveKey,
   onSectionsChange,
-  tabLabel
+  tabLabel,
+  mediaUploadConfig
 }) => {
   const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
   const parentSectionsSignatureRef = useRef<string | null>(null);
@@ -1504,6 +1521,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                                     onChange={(updatedContent) =>
                                       updateBlock(section.id, block.id, { content: updatedContent })
                                     }
+                                    mediaUploadConfig={mediaUploadConfig}
                                   />
                                 </div>
                               )}
@@ -1527,7 +1545,8 @@ const BlockContentEditor: React.FC<{
   blockType: string;
   content: any;
   onChange: (content: any) => void;
-}> = ({ blockType, content, onChange }) => {
+  mediaUploadConfig?: BlockEditorMediaUploadConfig;
+}> = ({ blockType, content, onChange, mediaUploadConfig }) => {
   switch (blockType) {
     case 'heading':
       return (
@@ -1573,35 +1592,7 @@ const BlockContentEditor: React.FC<{
 
     case 'image':
       return (
-        <>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Image URL</label>
-            <input
-              type="text"
-              value={content.url || ''}
-              onChange={(e) => onChange({ ...content, url: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Alt Text</label>
-            <input
-              type="text"
-              value={content.alt || ''}
-              onChange={(e) => onChange({ ...content, alt: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Caption</label>
-            <input
-              type="text"
-              value={content.caption || ''}
-              onChange={(e) => onChange({ ...content, caption: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </>
+        <ImageContentEditor content={content} onChange={onChange} mediaUploadConfig={mediaUploadConfig} />
       );
     
     case 'button':
@@ -1623,7 +1614,7 @@ const BlockContentEditor: React.FC<{
       return <AlertContentEditor content={content} onChange={onChange} />;
 
     case 'video':
-      return <VideoContentEditor content={content} onChange={onChange} />;
+      return <VideoContentEditor content={content} onChange={onChange} mediaUploadConfig={mediaUploadConfig} />;
 
     case 'card':
       return <CardContentEditor content={content} onChange={onChange} />;
@@ -2239,28 +2230,358 @@ const InlineTableEditor = ({
   );
 };
 
-const VideoContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
-  <div className="space-y-4">
-    <div>
-      <label className="block text-sm font-medium mb-2">Embed / Video URL</label>
-      <input
-        type="text"
-        value={content.url || ''}
-        onChange={(e) => onChange({ ...content, url: e.target.value })}
-        className="w-full px-3 py-2 border border-gray-300 rounded"
-      />
+const ImageContentEditor = ({
+  content,
+  onChange,
+  mediaUploadConfig
+}: {
+  content: any;
+  onChange: (content: any) => void;
+  mediaUploadConfig?: BlockEditorMediaUploadConfig;
+}) => {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const maxSizeMB = mediaUploadConfig?.maxSizeMB ?? 150;
+  const enableCrop = Boolean(content.enableCrop);
+  const borderRadius = typeof content.borderRadius === 'number'
+    ? content.borderRadius
+    : Number.parseFloat(content.borderRadius) || 0;
+
+  const aspectRatioOptions = [
+    { label: 'Freeform', value: '' },
+    { label: 'Square 1:1', value: '1:1' },
+    { label: 'Landscape 16:9', value: '16:9' },
+    { label: 'Classic 4:3', value: '4:3' },
+    { label: 'Portrait 3:4', value: '3:4' }
+  ];
+
+  const objectFitOptions = [
+    { label: 'Cover (crop to fill)', value: 'cover' },
+    { label: 'Contain (fit inside)', value: 'contain' },
+    { label: 'Fill', value: 'fill' }
+  ];
+
+  const parseAspectRatio = (ratio?: string) => {
+    if (!ratio) return undefined;
+    const [w, h] = ratio.split(':').map((part) => Number(part.trim()));
+    if (!w || !h) return undefined;
+    return `${w}/${h}`;
+  };
+
+  const notifyError = (message: string) => {
+    if (mediaUploadConfig?.onUploadError) {
+      mediaUploadConfig.onUploadError(message);
+    } else if (typeof window !== 'undefined') {
+      window.alert(message);
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !mediaUploadConfig?.onUpload) {
+      event.target.value = '';
+      return;
+    }
+
+    const maxBytes = maxSizeMB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      notifyError(`Image exceeds the ${maxSizeMB}MB limit.`);
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const result = await mediaUploadConfig.onUpload(file, { blockType: 'image' });
+      onChange({
+        ...content,
+        url: result.url,
+        alt: result.alt || content.alt || file.name,
+        caption: content.caption || result.caption || ''
+      });
+      mediaUploadConfig.onUploadSuccess?.('Image uploaded');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to upload image';
+      notifyError(message);
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleChange = (key: string, value: any) => {
+    onChange({
+      ...content,
+      [key]: value
+    });
+  };
+
+  const previewAspectRatio = enableCrop ? parseAspectRatio(content.aspectRatio) : undefined;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <label className="block text-sm font-medium mb-2">Image URL</label>
+        <input
+          type="text"
+          value={content.url || ''}
+          onChange={(e) => handleChange('url', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        />
+        {mediaUploadConfig && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-60"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+              {uploading ? 'Uploading…' : 'Upload Image'}
+            </button>
+            <p className="mt-1 text-xs text-gray-500">JPG, PNG, WebP up to {maxSizeMB}MB.</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Alt Text</label>
+          <input
+            type="text"
+            value={content.alt || ''}
+            onChange={(e) => handleChange('alt', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Caption</label>
+          <input
+            type="text"
+            value={content.caption || ''}
+            onChange={(e) => handleChange('caption', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Width</label>
+          <input
+            type="text"
+            value={content.width || '100%'}
+            onChange={(e) => handleChange('width', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            placeholder="e.g. 100%, 640px"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Height (optional)</label>
+          <input
+            type="text"
+            value={content.height || ''}
+            onChange={(e) => handleChange('height', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            placeholder="auto"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Border Radius ({borderRadius.toFixed(0)}px)</label>
+          <input
+            type="range"
+            min={0}
+            max={64}
+            value={borderRadius}
+            onChange={(e) => handleChange('borderRadius', Number(e.target.value))}
+            className="w-full"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="enable-crop"
+            checked={enableCrop}
+            onChange={(e) => handleChange('enableCrop', e.target.checked)}
+          />
+          <label htmlFor="enable-crop" className="text-sm font-medium">Enable crop/aspect ratio</label>
+        </div>
+      </div>
+
+      {enableCrop && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Aspect Ratio</label>
+            <select
+              value={content.aspectRatio || ''}
+              onChange={(e) => handleChange('aspectRatio', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            >
+              {aspectRatioOptions.map((option) => (
+                <option key={option.value || 'free'} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Fill Behavior</label>
+            <select
+              value={content.objectFit || 'cover'}
+              onChange={(e) => handleChange('objectFit', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            >
+              {objectFitOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium mb-2">Live Preview</label>
+        <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+          {content.url ? (
+            <figure className="space-y-2 text-center">
+              <div
+                className={`mx-auto overflow-hidden ${enableCrop ? 'relative' : ''}`}
+                style={{
+                  width: content.width || '100%',
+                  maxWidth: '100%',
+                  borderRadius,
+                  aspectRatio: previewAspectRatio,
+                  height: enableCrop ? undefined : content.height || undefined
+                }}
+              >
+                <img
+                  src={content.url}
+                  alt={content.alt || ''}
+                  className="w-full h-full object-cover"
+                  style={{
+                    objectFit: enableCrop ? (content.objectFit || 'cover') : undefined,
+                    height: enableCrop ? '100%' : content.height || 'auto',
+                    borderRadius: enableCrop ? 0 : borderRadius
+                  }}
+                />
+              </div>
+              {content.caption && <figcaption className="text-xs text-gray-500">{content.caption}</figcaption>}
+            </figure>
+          ) : (
+            <p className="text-sm text-gray-500 text-center">Upload or paste an image URL to preview.</p>
+          )}
+        </div>
+      </div>
     </div>
-    <div>
-      <label className="block text-sm font-medium mb-2">Caption (optional)</label>
-      <input
-        type="text"
-        value={content.caption || ''}
-        onChange={(e) => onChange({ ...content, caption: e.target.value })}
-        className="w-full px-3 py-2 border border-gray-300 rounded"
-      />
+  );
+};
+
+const VideoContentEditor = ({
+  content,
+  onChange,
+  mediaUploadConfig
+}: {
+  content: any;
+  onChange: (content: any) => void;
+  mediaUploadConfig?: BlockEditorMediaUploadConfig;
+}) => {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const maxSizeMB = mediaUploadConfig?.maxSizeMB ?? 150;
+
+  const notifyError = (message: string) => {
+    if (mediaUploadConfig?.onUploadError) {
+      mediaUploadConfig.onUploadError(message);
+    } else if (typeof window !== 'undefined') {
+      window.alert(message);
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !mediaUploadConfig?.onUpload) {
+      event.target.value = '';
+      return;
+    }
+
+    const maxBytes = maxSizeMB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      notifyError(`Video exceeds the ${maxSizeMB}MB limit.`);
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const result = await mediaUploadConfig.onUpload(file, { blockType: 'video' });
+      onChange({
+        ...content,
+        url: result.url,
+        caption: content.caption || result.caption || ''
+      });
+      mediaUploadConfig.onUploadSuccess?.('Video uploaded');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to upload video';
+      notifyError(message);
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Embed / Video URL</label>
+        <input
+          type="text"
+          value={content.url || ''}
+          onChange={(e) => onChange({ ...content, url: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded"
+        />
+        {mediaUploadConfig && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-60"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+              {uploading ? 'Uploading…' : 'Upload Video'}
+            </button>
+            <p className="mt-1 text-xs text-gray-500">MP4, WebM, MOV up to {maxSizeMB}MB.</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
+        )}
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Caption (optional)</label>
+        <input
+          type="text"
+          value={content.caption || ''}
+          onChange={(e) => onChange({ ...content, caption: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded"
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const CardContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
   <div className="space-y-4">
@@ -2411,7 +2732,18 @@ const getDefaultBlockContent = (blockType: string): any => {
       hasHeader: true, 
       striped: true 
     },
-    image: { url: '', alt: '', caption: '', width: '100%', alignment: 'center' },
+    image: {
+      url: '',
+      alt: '',
+      caption: '',
+      width: '100%',
+      height: '',
+      alignment: 'center',
+      borderRadius: 12,
+      enableCrop: false,
+      aspectRatio: '',
+      objectFit: 'cover'
+    },
     quote: { text: 'Enter quote text...', author: '' },
     button: { text: 'Click Here', url: '#', variant: 'primary', size: 'medium' },
     accordion: { items: [{ title: 'Question 1', content: 'Answer 1' }] },

@@ -1,5 +1,17 @@
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/$/, '');
 
+export interface PageMediaItem {
+  id: string;
+  subcategory_id: string;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+  file_size?: number | null;
+  mime_type?: string | null;
+  alt_text?: string | null;
+  caption?: string | null;
+}
+
 const authFetch = async (path: string, options: RequestInit = {}) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   const headers: HeadersInit = {
@@ -75,6 +87,23 @@ export const subcategoryAdminService = {
     formData.append('image', file);
     const data = await authFetchForm(`/subcategories/${subcategoryId}/overview/hero-image`, formData);
     return data.data;
+  },
+
+  async uploadPageMedia(
+    subcategoryId: string,
+    file: File,
+    options?: { folder?: string; metadata?: Record<string, unknown> }
+  ): Promise<PageMediaItem> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (options?.folder) {
+      formData.append('folder', options.folder);
+    }
+    if (options?.metadata) {
+      formData.append('metadata', JSON.stringify(options.metadata));
+    }
+
+    return authFetchForm(`/page-content/${subcategoryId}/media`, formData);
   },
 
   async upsertOverview(subcategoryId: string, payload: any) {

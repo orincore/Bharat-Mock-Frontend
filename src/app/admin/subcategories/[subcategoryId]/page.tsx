@@ -237,6 +237,34 @@ export default function AdminSubcategoryEditorPage() {
     ...customTabs
   ], [customTabs]);
 
+  const mediaUploadConfig = useMemo(() => ({
+    maxSizeMB: 150,
+    onUpload: async (file: File, context: { blockType: 'image' | 'video' }) => {
+      const folder = context.blockType === 'image' ? 'blocks/images' : 'blocks/videos';
+      const response = await subcategoryAdminService.uploadPageMedia(subcategoryId, file, {
+        folder: `${folder}/${activeTabId}`
+      });
+      return {
+        url: response.file_url,
+        alt: response.file_name,
+        caption: response.caption || undefined
+      };
+    },
+    onUploadError: (message: string) => {
+      toast({
+        title: 'Upload failed',
+        description: message,
+        variant: 'destructive'
+      });
+    },
+    onUploadSuccess: (message?: string) => {
+      toast({
+        title: message || 'Upload complete',
+        description: 'File is ready to use inside the block editor.'
+      });
+    }
+  }), [subcategoryId, activeTabId, toast]);
+
   const loadSubcategoryInfo = async () => {
     try {
       const token = getAuthToken();
@@ -650,6 +678,7 @@ export default function AdminSubcategoryEditorPage() {
         autosaveKey={autosaveKey}
         onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
         tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
+        mediaUploadConfig={mediaUploadConfig}
       />
 
       {/* SEO Settings Panel */}
