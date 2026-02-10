@@ -1,112 +1,103 @@
-"use client";
-
 import Image from 'next/image';
-import { Target, Users, Award, BookOpen, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
+import { aboutIconRegistry, fallbackAboutData } from '@/lib/constants/about';
+import { fetchAboutPageData } from '@/lib/data/about';
 
-export default function AboutPage() {
-  const values = [
-    {
-      icon: Target,
-      title: 'Our Mission',
-      description: 'To democratize quality exam preparation and make it accessible to every student in India.'
-    },
-    {
-      icon: Users,
-      title: 'Student-Centric',
-      description: 'Every feature is designed with student success and learning outcomes in mind.'
-    },
-    {
-      icon: Award,
-      title: 'Excellence',
-      description: 'We maintain the highest standards in content quality and platform reliability.'
-    },
-    {
-      icon: TrendingUp,
-      title: 'Innovation',
-      description: 'Continuously evolving with the latest educational technology and methodologies.'
-    }
-  ];
+export const revalidate = 300;
 
-  const stats = [
-    { value: '1M+', label: 'Active Students' },
-    { value: '500+', label: 'Mock Tests' },
-    { value: '95%', label: 'Success Rate' },
-    { value: '50+', label: 'Exam Categories' }
-  ];
+export default async function AboutPage() {
+  const aboutData = await fetchAboutPageData();
+  const content = aboutData.content ?? fallbackAboutData.content;
+  const values = aboutData.values?.length ? aboutData.values : fallbackAboutData.values;
+  const stats = aboutData.stats?.length ? aboutData.stats : fallbackAboutData.stats;
+  const offerings = aboutData.offerings?.length ? aboutData.offerings : fallbackAboutData.offerings;
+
+  const renderIcon = (iconKey?: string) => {
+    const Icon = aboutIconRegistry[iconKey ?? ''] ?? aboutIconRegistry.star;
+    return <Icon className="h-8 w-8" />;
+  };
 
   return (
-    <div className="min-h-screen">
-      <section className="gradient-hero py-20">
-        <div className="container-main">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="flex justify-center mb-6">
-              <div className="relative h-16 w-48">
-                <Image
-                  src="/logo.png"
-                  alt="Bharat Mock Logo"
-                  fill
-                  sizes="(min-width: 768px) 240px, 180px"
-                  className="object-contain"
-                  priority
-                />
-              </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.35),_transparent_55%)]" />
+        <div className="relative container-main py-20">
+          <div className="flex justify-center mb-8">
+            <div className="relative h-16 w-48">
+              <Image
+                src="/logo.png"
+                alt="Bharat Mock Logo"
+                fill
+                sizes="(min-width: 768px) 240px, 180px"
+                className="object-contain"
+                priority
+              />
             </div>
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-6">
-              About Bharat Mock
+          </div>
+
+          <div className="max-w-4xl mx-auto text-center space-y-6">
+            {content.hero_badge && (
+              <span className="inline-flex items-center justify-center px-4 py-1 rounded-full border border-white/20 text-xs uppercase tracking-[0.35em] text-white/70">
+                {content.hero_badge}
+              </span>
+            )}
+            <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight">
+              {content.hero_heading}
             </h1>
-            <p className="text-lg text-background/80">
-              India's leading online exam preparation platform, empowering millions of students 
-              to achieve their academic and career goals.
-            </p>
+            {content.hero_subheading && (
+              <p className="text-lg text-white/80 max-w-3xl mx-auto">{content.hero_subheading}</p>
+            )}
+            {content.hero_description && (
+              <p className="text-base text-white/70 max-w-3xl mx-auto">{content.hero_description}</p>
+            )}
+
+            {content.cta_label && content.cta_href && (
+              <div className="pt-4">
+                <Link
+                  href={content.cta_href}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 font-semibold shadow-lg hover:shadow-xl transition"
+                >
+                  {content.cta_label}
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
       <section className="section-padding bg-background">
         <div className="container-main">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="font-display text-3xl font-bold text-foreground mb-6 text-center">
-              Our Story
-            </h2>
-            <div className="prose prose-lg max-w-none">
-              <p className="text-muted-foreground mb-4">
-                Founded in 2020, Bharat Mock was born from a simple observation: quality exam 
-                preparation resources were either too expensive or not comprehensive enough for 
-                the average Indian student.
-              </p>
-              <p className="text-muted-foreground mb-4">
-                We set out to change that by creating a platform that combines the best of 
-                technology and pedagogy. Our team of educators, technologists, and exam experts 
-                work tirelessly to ensure every student has access to world-class preparation 
-                materials.
-              </p>
-              <p className="text-muted-foreground">
-                Today, Bharat Mock serves over a million students across India, helping them 
-                prepare for JEE, NEET, CAT, UPSC, and dozens of other competitive exams. Our 
-                success is measured not in revenue, but in the dreams we help realize.
-              </p>
+          <div className="grid gap-10 lg:grid-cols-2">
+            <div className="space-y-6">
+              <p className="text-xs uppercase tracking-[0.4em] text-primary font-semibold">Mission</p>
+              <h2 className="font-display text-3xl font-bold">{content.mission_heading}</h2>
+              {content.mission_body && (
+                <p className="text-muted-foreground leading-relaxed">{content.mission_body}</p>
+              )}
+            </div>
+            <div className="space-y-6">
+              <p className="text-xs uppercase tracking-[0.4em] text-primary font-semibold">Story</p>
+              <h2 className="font-display text-3xl font-bold">{content.story_heading}</h2>
+              {content.story_body && (
+                <p className="text-muted-foreground leading-relaxed">{content.story_body}</p>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="section-padding bg-muted/30">
+      <section className="section-padding bg-muted/20">
         <div className="container-main">
-          <h2 className="font-display text-3xl font-bold text-foreground mb-12 text-center">
-            Our Values
-          </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <p className="text-xs uppercase tracking-[0.35em] text-primary font-semibold text-center">Values</p>
+          <h2 className="font-display text-3xl font-bold text-center mt-3">{content.hero_badge || 'What drives us'}</h2>
+          <div className="mt-10 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {values.map((value) => (
-              <div key={value.title} className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-primary/10 text-primary mb-4">
-                  <value.icon className="h-8 w-8" />
+              <div key={value.id ?? value.title} className="text-center bg-card border border-border rounded-2xl p-6 shadow-sm">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-4">
+                  {renderIcon(value.icon)}
                 </div>
-                <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                  {value.title}
-                </h3>
-                <p className="text-muted-foreground text-sm">
-                  {value.description}
-                </p>
+                <h3 className="font-display text-xl font-semibold mb-2">{value.title}</h3>
+                <p className="text-sm text-muted-foreground">{value.description}</p>
               </div>
             ))}
           </div>
@@ -115,68 +106,40 @@ export default function AboutPage() {
 
       <section className="section-padding bg-background">
         <div className="container-main">
-          <h2 className="font-display text-3xl font-bold text-foreground mb-12 text-center">
-            Our Impact
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="flex flex-col items-center text-center mb-12">
+            <p className="text-xs uppercase tracking-[0.35em] text-primary font-semibold">Impact</p>
+            <h2 className="font-display text-3xl font-bold">{content.impact_heading}</h2>
+            {content.impact_body && <p className="text-muted-foreground mt-2 max-w-3xl">{content.impact_body}</p>}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="font-display text-4xl font-bold text-primary mb-2">
-                  {stat.value}
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  {stat.label}
-                </p>
+              <div key={stat.id ?? stat.label} className="text-center rounded-2xl border border-border p-6 bg-card">
+                <p className="font-display text-4xl font-bold text-primary">{stat.value}</p>
+                <p className="text-sm font-semibold mt-2">{stat.label}</p>
+                {stat.helper_text && <p className="text-xs text-muted-foreground mt-1">{stat.helper_text}</p>}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="section-padding bg-muted/30">
+      <section className="section-padding bg-muted/20">
         <div className="container-main">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="font-display text-3xl font-bold text-foreground mb-6 text-center">
-              What We Offer
-            </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-card p-6 rounded-xl border border-border">
-                <BookOpen className="h-8 w-8 text-primary mb-4" />
-                <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                  Comprehensive Mock Tests
-                </h3>
-                <p className="text-muted-foreground text-sm">
-                  Practice with exam-pattern mock tests designed by subject matter experts.
-                </p>
+          <div className="flex flex-col items-center text-center mb-12">
+            <p className="text-xs uppercase tracking-[0.35em] text-primary font-semibold">Offerings</p>
+            <h2 className="font-display text-3xl font-bold">{content.offerings_heading}</h2>
+            {content.offerings_body && <p className="text-muted-foreground mt-2 max-w-3xl">{content.offerings_body}</p>}
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {offerings.map((offering) => (
+              <div key={offering.id ?? offering.title} className="bg-card border border-border rounded-2xl p-6">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary mb-4">
+                  {renderIcon(offering.icon)}
+                </div>
+                <h3 className="font-display text-xl font-semibold">{offering.title}</h3>
+                <p className="text-sm text-muted-foreground mt-2">{offering.description}</p>
               </div>
-              <div className="bg-card p-6 rounded-xl border border-border">
-                <Target className="h-8 w-8 text-primary mb-4" />
-                <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                  Detailed Analytics
-                </h3>
-                <p className="text-muted-foreground text-sm">
-                  Track your progress with in-depth performance analysis and insights.
-                </p>
-              </div>
-              <div className="bg-card p-6 rounded-xl border border-border">
-                <Users className="h-8 w-8 text-primary mb-4" />
-                <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                  Expert Guidance
-                </h3>
-                <p className="text-muted-foreground text-sm">
-                  Learn from experienced educators and successful exam toppers.
-                </p>
-              </div>
-              <div className="bg-card p-6 rounded-xl border border-border">
-                <Award className="h-8 w-8 text-primary mb-4" />
-                <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                  College & Career Info
-                </h3>
-                <p className="text-muted-foreground text-sm">
-                  Access comprehensive information about colleges, courses, and career paths.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>

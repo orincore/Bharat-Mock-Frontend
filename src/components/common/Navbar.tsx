@@ -3,18 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { 
-  GraduationCap, 
-  Menu, 
-  X, 
-  User, 
-  LogOut,
-  BookOpen,
-  FileText,
-  Home,
-  Flame
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { GraduationCap, Menu, X, User, LogOut, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -25,24 +15,70 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { navigationService } from '@/lib/api/navigationService';
+import { useToast } from '@/components/ui/use-toast';
 
-const navigation = [
-  { name: 'Home', href: '/', icon: Home },
-  { name: 'Live Tests', href: '/live-tests', icon: Flame },
-  { name: 'Exams', href: '/exams', icon: BookOpen },
-  { name: 'Courses', href: '/courses', icon: GraduationCap },
-  { name: 'Blogs', href: '/blogs', icon: FileText },
+type NavigationItem = {
+  label: string;
+  href: string;
+  open_in_new_tab?: boolean;
+};
+
+const fallbackNavigation: NavigationItem[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Live Tests', href: '/live-tests' },
+  { label: 'Exams', href: '/exams' },
+  { label: 'Courses', href: '/courses' },
+  { label: 'Blogs', href: '/blogs' }
 ];
+
+const renderNavLabel = (item: NavigationItem) => item.label;
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [navLinks, setNavLinks] = useState<NavigationItem[]>(fallbackNavigation);
+  const [loadingNav, setLoadingNav] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const pathname = usePathname();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchNavigation = async () => {
+      try {
+        setLoadingNav(true);
+        const data = await navigationService.getNavigationLinks();
+        if (!data?.length) {
+          setNavLinks(fallbackNavigation);
+          return;
+        }
+        setNavLinks(
+          data.map((link) => ({
+            label: link.label,
+            href: link.href,
+            open_in_new_tab: link.open_in_new_tab
+          }))
+        );
+      } catch (error: any) {
+        setNavLinks(fallbackNavigation);
+        toast({
+          title: 'Navigation unavailable',
+          description: error?.message || 'Using default menu items.',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoadingNav(false);
+      }
+    };
+
+    fetchNavigation();
+  }, [toast]);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   };
+
+  const desktopNavItems = useMemo(() => navLinks, [navLinks]);
 
   return (
     <nav className="sticky top-0 z-50 glass-effect border-b border-border/50">
@@ -64,17 +100,19 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
-            {navigation.map((item) => (
+            {desktopNavItems.map((item, index) => (
               <Link
-                key={item.name}
+                key={`${item.href}-${index}`}
                 href={item.href}
+                target={item.open_in_new_tab ? '_blank' : undefined}
+                rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive(item.href)
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
-                {item.name}
+                {item.label}
               </Link>
             ))}
           </div>
@@ -182,10 +220,12 @@ export function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background animate-slide-down">
           <div className="container-main py-4 space-y-2">
-            {navigation.map((item) => (
+            {desktopNavItems.map((item, index) => (
               <Link
-                key={item.name}
+                key={`${item.href}-${index}`}
                 href={item.href}
+                target={item.open_in_new_tab ? '_blank' : undefined}
+                rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                   isActive(item.href)
                     ? 'bg-primary/10 text-primary'
@@ -193,8 +233,7 @@ export function Navbar() {
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <item.icon className="h-5 w-5" />
-                {item.name}
+                {renderNavLabel(item)}
               </Link>
             ))}
             

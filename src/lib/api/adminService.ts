@@ -1,5 +1,52 @@
 import { apiClient } from './client';
-import { Exam, User, FilterOptions, PaginatedResponse } from '@/types';
+import {
+  Exam,
+  User,
+  FilterOptions,
+  PaginatedResponse,
+  NavigationLink,
+  NavigationLinkInput,
+  FooterLink,
+  FooterLinkInput,
+  ContactInfo,
+  ContactInfoInput,
+  AboutPageData,
+  AboutPageContent,
+  AboutValue,
+  AboutStat,
+  AboutOffering,
+  PrivacyPolicyData,
+  PrivacyPolicySection,
+  PrivacyPolicyPoint,
+  PrivacyPolicyContent,
+  DisclaimerData,
+  DisclaimerSection,
+  DisclaimerPoint,
+  DisclaimerContent
+} from '@/types';
+
+interface AboutPayload extends Partial<AboutPageContent> {
+  values?: AboutValue[];
+  stats?: AboutStat[];
+  offerings?: AboutOffering[];
+  deleted_value_ids?: string[];
+  deleted_stat_ids?: string[];
+  deleted_offering_ids?: string[];
+}
+
+interface PrivacyPolicyPayload extends Partial<PrivacyPolicyContent> {
+  sections?: PrivacyPolicySection[];
+  points?: (PrivacyPolicyPoint & { section_title?: string })[];
+  deleted_section_ids?: string[];
+  deleted_point_ids?: string[];
+}
+
+interface DisclaimerPayload extends Partial<DisclaimerContent> {
+  sections?: DisclaimerSection[];
+  points?: (DisclaimerPoint & { section_title?: string })[];
+  deleted_section_ids?: string[];
+  deleted_point_ids?: string[];
+}
 
 export interface AdminUserStats {
   totalExamsTaken: number;
@@ -397,6 +444,102 @@ export const adminService = {
 
   async getUserDetails(userId: string): Promise<AdminUserDetails> {
     const response = await apiClient.get<{ success: boolean; data: AdminUserDetails }>(`/admin/users/${userId}`, true);
+    return response.data;
+  },
+
+  async getNavigationLinksAdmin(): Promise<NavigationLink[]> {
+    const response = await apiClient.get<{ success: boolean; data: NavigationLink[] }>('/admin/navigation', true);
+    return response.data;
+  },
+
+  async createNavigationLink(payload: NavigationLinkInput): Promise<NavigationLink> {
+    const response = await apiClient.post<{ success: boolean; data: NavigationLink }>('/admin/navigation', payload, true);
+    return response.data;
+  },
+
+  async updateNavigationLink(id: string, payload: NavigationLinkInput): Promise<NavigationLink> {
+    const response = await apiClient.put<{ success: boolean; data: NavigationLink }>(`/admin/navigation/${id}`, payload, true);
+    return response.data;
+  },
+
+  async deleteNavigationLink(id: string): Promise<void> {
+    await apiClient.delete(`/admin/navigation/${id}`, true);
+  },
+
+  async reorderNavigationLinks(order: Array<{ id: string; display_order: number }>): Promise<NavigationLink[]> {
+    const response = await apiClient.post<{ success: boolean; data: NavigationLink[] }>(
+      '/admin/navigation/reorder',
+      { order },
+      true
+    );
+    return response.data;
+  },
+
+  async getFooterLinksAdmin(): Promise<FooterLink[]> {
+    const response = await apiClient.get<{ success: boolean; data: FooterLink[] }>('/admin/footer', true);
+    return response.data;
+  },
+
+  async createFooterLink(payload: FooterLinkInput): Promise<FooterLink> {
+    const response = await apiClient.post<{ success: boolean; data: FooterLink }>('/admin/footer', payload, true);
+    return response.data;
+  },
+
+  async updateFooterLink(id: string, payload: FooterLinkInput): Promise<FooterLink> {
+    const response = await apiClient.put<{ success: boolean; data: FooterLink }>(`/admin/footer/${id}`, payload, true);
+    return response.data;
+  },
+
+  async deleteFooterLink(id: string): Promise<void> {
+    await apiClient.delete(`/admin/footer/${id}`, true);
+  },
+
+  async reorderFooterLinks(order: Array<{ id: string; section_order: number; display_order: number }>): Promise<FooterLink[]> {
+    const response = await apiClient.post<{ success: boolean; data: FooterLink[] }>(
+      '/admin/footer/reorder',
+      { order },
+      true
+    );
+    return response.data;
+  },
+
+  async getContactInfoAdmin(): Promise<ContactInfo | null> {
+    const response = await apiClient.get<{ success: boolean; data: ContactInfo | null }>('/admin/contact', true);
+    return response.data;
+  },
+
+  async upsertContactInfo(payload: ContactInfoInput): Promise<ContactInfo | null> {
+    const response = await apiClient.put<{ success: boolean; data: ContactInfo | null }>('/admin/contact', payload, true);
+    return response.data;
+  },
+
+  async getAboutContentAdmin(): Promise<AboutPageData> {
+    const response = await apiClient.get<{ success: boolean; data: AboutPageData }>('/admin/about', true);
+    return response.data;
+  },
+
+  async upsertAboutContent(payload: AboutPayload): Promise<AboutPageData> {
+    const response = await apiClient.put<{ success: boolean; data: AboutPageData }>('/admin/about', payload, true);
+    return response.data;
+  },
+
+  async getPrivacyPolicyAdmin(): Promise<PrivacyPolicyData> {
+    const response = await apiClient.get<{ success: boolean; data: PrivacyPolicyData }>('/admin/privacy', true);
+    return response.data;
+  },
+
+  async upsertPrivacyPolicy(payload: PrivacyPolicyPayload): Promise<PrivacyPolicyData> {
+    const response = await apiClient.put<{ success: boolean; data: PrivacyPolicyData }>('/admin/privacy', payload, true);
+    return response.data;
+  },
+
+  async getDisclaimerAdmin(): Promise<DisclaimerData> {
+    const response = await apiClient.get<{ success: boolean; data: DisclaimerData }>('/admin/disclaimer', true);
+    return response.data;
+  },
+
+  async upsertDisclaimer(payload: DisclaimerPayload): Promise<DisclaimerData> {
+    const response = await apiClient.put<{ success: boolean; data: DisclaimerData }>('/admin/disclaimer', payload, true);
     return response.data;
   }
 };

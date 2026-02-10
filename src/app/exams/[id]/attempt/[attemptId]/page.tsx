@@ -645,33 +645,6 @@ export default function ExamAttemptPage() {
             </div>
 
             <div className="space-y-6">
-              {supportsHindi && (
-                <div className="bg-card border border-border rounded-2xl p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-semibold text-foreground">Select Exam Language</p>
-                    <span className="text-[10px] uppercase tracking-[0.3em] bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Required</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-4">Your chosen language cannot be changed after you begin.</p>
-                  <div className="grid gap-3">
-                    {[{ value: 'en', label: 'English' }, { value: 'hi', label: 'हिंदी' }].map(option => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handleLanguageSelect(option.value as 'en' | 'hi')}
-                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                          selectedLanguage === option.value
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border text-foreground hover:border-primary/40'
-                        }`}
-                      >
-                        <span>{option.label}</span>
-                        <span className={`w-3 h-3 rounded-full border ${selectedLanguage === option.value ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="bg-card border border-border rounded-2xl p-5">
                 <h2 className="font-semibold text-lg mb-3 text-foreground">Before You Begin</h2>
                 <ul className="space-y-2 text-sm text-muted-foreground">

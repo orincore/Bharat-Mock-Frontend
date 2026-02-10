@@ -1691,19 +1691,21 @@ export default function ExamFormPage() {
       )}
 
       {/* Fixed Right Side Panel */}
-      <div className="hidden lg:block fixed top-36 right-6 z-40">
+      <div className="hidden lg:block fixed top-36 right-6 z-40 pointer-events-none">
         <div className="relative">
           <button
             type="button"
             onClick={() => setIsPanelCollapsed(prev => !prev)}
-            className="absolute -top-6 right-[-12px] bg-white dark:bg-slate-900 border border-border rounded-full h-9 w-9 flex items-center justify-center shadow-md"
+            className="absolute -top-6 right-[-12px] bg-white dark:bg-slate-900 border border-border rounded-full h-9 w-9 flex items-center justify-center shadow-md z-50 pointer-events-auto"
             aria-label={isPanelCollapsed ? 'Show publishing panel' : 'Hide publishing panel'}
           >
             {isPanelCollapsed ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </button>
           <div
             className={`w-64 bg-card border border-border rounded-xl shadow-lg p-4 transition-all duration-300 flex flex-col ${
-              isPanelCollapsed ? 'opacity-0 pointer-events-none translate-x-4' : 'opacity-100 translate-x-0'
+              isPanelCollapsed
+                ? 'opacity-0 pointer-events-none translate-x-4'
+                : 'opacity-100 translate-x-0 pointer-events-auto'
             }`}
           >
             <div className="flex items-center gap-3 mb-4">
@@ -2298,84 +2300,6 @@ export default function ExamFormPage() {
                 </p>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border p-6">
-          <h2 className="font-display text-xl font-bold text-foreground mb-6">Media Files</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Exam Logo
-              </label>
-              <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-                {logoPreview ? (
-                  <div className="space-y-2">
-                    <img src={logoPreview} alt="Logo preview" className="h-32 w-32 object-contain mx-auto" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setLogoFile(null);
-                        setLogoPreview('');
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer">
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-2">Click to upload logo</p>
-                    <p className="text-xs text-muted-foreground">PNG, JPG up to 500KB</p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'logo')}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Exam Thumbnail
-              </label>
-              <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-                {thumbnailPreview ? (
-                  <div className="space-y-2">
-                    <img src={thumbnailPreview} alt="Thumbnail preview" className="h-32 w-full object-cover mx-auto rounded" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setThumbnailFile(null);
-                        setThumbnailPreview('');
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer">
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-2">Click to upload thumbnail</p>
-                    <p className="text-xs text-muted-foreground">PNG, JPG up to 1MB</p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'thumbnail')}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 

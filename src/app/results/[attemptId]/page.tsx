@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -10,6 +10,7 @@ import {
 import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
+import { examService } from '@/lib/api/examService';
 
 interface ResultData {
   id: string;
@@ -27,6 +28,8 @@ interface ResultData {
     title: string;
     pass_percentage: number;
     total_questions: number;
+    slug?: string;
+    url_path?: string;
   };
   created_at: string;
   language?: 'en' | 'hi';
@@ -87,6 +90,33 @@ export default function ResultPage() {
   const [isReviewLoading, setIsReviewLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [examDetailUrl, setExamDetailUrl] = useState<string | null>(null);
+  const [examUrlLoading, setExamUrlLoading] = useState(false);
+
+  const buildExamDetailUrl = useCallback(async (examId: string, examMeta?: ResultData['exam']) => {
+    if (!examId) return null;
+
+    const sanitizePath = (path?: string | null) => {
+      if (!path) return null;
+      const trimmed = path.replace(/^\/+/, '');
+      return trimmed ? `/${trimmed}` : null;
+    };
+
+    const urlFromMeta = sanitizePath(examMeta?.url_path) || (examMeta?.slug ? `/exams/${examMeta.slug}` : null);
+    if (urlFromMeta) return urlFromMeta;
+
+    try {
+      const examDetails = await examService.getExamById(examId);
+      return (
+        sanitizePath(examDetails?.url_path) ||
+        (examDetails?.slug ? `/exams/${examDetails.slug}` : null) ||
+        `/exams/${examId}`
+      );
+    } catch (err) {
+      console.error('Failed to resolve exam URL from result page:', err);
+      return `/exams/${examId}`;
+    }
+  }, []);
 
   useEffect(() => {
     const fetchResult = async () => {
@@ -134,6 +164,11 @@ export default function ResultPage() {
         const data = await response.json();
         setResult(data.data);
 
+        setExamUrlLoading(true);
+        const derivedUrl = await buildExamDetailUrl(data.data.exam_id, data.data.exam);
+        setExamDetailUrl(derivedUrl);
+        setExamUrlLoading(false);
+
         const reviewResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/results/${data.data.id}/review`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -163,7 +198,7 @@ export default function ResultPage() {
     };
 
     fetchResult();
-  }, [attemptId, router]);
+  }, [attemptId, router, buildExamDetailUrl]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -643,8 +678,23 @@ export default function ResultPage() {
           <Button onClick={() => router.push('/exams')} className="flex-1">
             Browse More Exams
           </Button>
-          <Button variant="outline" onClick={() => router.push(`/exams/${result.exam_id}`)} className="flex-1">
-            View Exam Details
+          <Button
+            variant="outline"
+            className="flex-1"
+            disabled={examUrlLoading}
+            onClick={async () => {
+              if (!result) return;
+              setExamUrlLoading(true);
+              try {
+                const destination = examDetailUrl || (await buildExamDetailUrl(result.exam_id, result.exam)) || `/exams/${result.exam_id}`;
+                setExamDetailUrl(destination);
+                router.push(destination);
+              } finally {
+                setExamUrlLoading(false);
+              }
+            }}
+          >
+            {examUrlLoading ? 'Opening…' : 'View Exam Details'}
           </Button>
         </div>
       </div>

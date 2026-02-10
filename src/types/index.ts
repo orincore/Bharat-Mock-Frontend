@@ -43,6 +43,205 @@ export interface Exam {
   supports_hindi?: boolean;
 }
 
+export interface NavigationLink {
+  id: string;
+  label: string;
+  href: string;
+  display_order: number;
+  is_active: boolean;
+  open_in_new_tab?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NavigationLinkInput {
+  label: string;
+  href: string;
+  display_order?: number;
+  is_active?: boolean;
+  open_in_new_tab?: boolean;
+}
+
+export interface FooterLink {
+  id: string;
+  section: string;
+  section_order: number;
+  label: string;
+  href: string;
+  display_order: number;
+  is_active: boolean;
+  open_in_new_tab?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FooterLinkInput {
+  section?: string;
+  section_order?: number;
+  label: string;
+  href: string;
+  display_order?: number;
+  is_active?: boolean;
+  open_in_new_tab?: boolean;
+}
+
+export interface ContactSocialLink {
+  id?: string;
+  platform: string;
+  label: string;
+  url: string;
+  icon?: string;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface ContactInfo {
+  id: string;
+  headline: string;
+  subheading?: string;
+  description?: string;
+  support_email: string;
+  support_phone: string;
+  whatsapp_number?: string;
+  address_line1: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  support_hours?: string;
+  map_embed_url?: string;
+  contact_social_links?: ContactSocialLink[];
+}
+
+export interface ContactInfoInput extends Partial<ContactInfo> {
+  contact_social_links?: ContactSocialLink[];
+  deleted_social_ids?: string[];
+}
+
+export interface AboutPageContent {
+  id: string;
+  hero_heading: string;
+  hero_subheading?: string;
+  hero_description?: string;
+  hero_badge?: string;
+  mission_heading?: string;
+  mission_body?: string;
+  story_heading?: string;
+  story_body?: string;
+  impact_heading?: string;
+  impact_body?: string;
+  offerings_heading?: string;
+  offerings_body?: string;
+  cta_label?: string;
+  cta_href?: string;
+}
+
+export interface AboutValue {
+  id?: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface AboutStat {
+  id?: string;
+  label: string;
+  value: string;
+  helper_text?: string;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface AboutOffering {
+  id?: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface AboutPageData {
+  content: AboutPageContent | null;
+  values: AboutValue[];
+  stats: AboutStat[];
+  offerings: AboutOffering[];
+}
+
+export type PrivacyPolicyListItem = string | {
+  term?: string;
+  text?: string;
+};
+
+export interface PrivacyPolicyPoint {
+  id?: string;
+  section_id?: string;
+  heading?: string;
+  body?: string;
+  list_items?: PrivacyPolicyListItem[];
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface PrivacyPolicySection {
+  id?: string;
+  title: string;
+  description?: string;
+  display_order?: number;
+  is_active?: boolean;
+  points?: PrivacyPolicyPoint[];
+}
+
+export interface PrivacyPolicyContent {
+  id: string;
+  title: string;
+  last_updated: string;
+  intro_body?: string;
+  contact_email?: string;
+  contact_url?: string;
+}
+
+export interface PrivacyPolicyData {
+  content: PrivacyPolicyContent | null;
+  sections: PrivacyPolicySection[];
+}
+
+export interface DisclaimerPoint {
+  id?: string;
+  section_id?: string;
+  heading?: string;
+  body?: string;
+  list_items?: PrivacyPolicyListItem[];
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface DisclaimerSection {
+  id?: string;
+  title: string;
+  description?: string;
+  display_order?: number;
+  is_active?: boolean;
+  points?: DisclaimerPoint[];
+}
+
+export interface DisclaimerContent {
+  id: string;
+  title: string;
+  last_updated: string;
+  intro_body?: string;
+  contact_email?: string;
+  contact_url?: string;
+}
+
+export interface DisclaimerData {
+  content: DisclaimerContent | null;
+  sections: DisclaimerSection[];
+}
+
 export interface ExamPattern {
   sections: ExamPatternSection[];
   negative_marking?: boolean;

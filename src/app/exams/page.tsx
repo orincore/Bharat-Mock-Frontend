@@ -111,7 +111,13 @@ export default function ExamsPage() {
         limit: pagination.limit
       });
       
-      setExams(response.data);
+      const sortedExams = [...response.data].sort((a, b) => {
+        const aDate = a.created_at || a.updated_at || '';
+        const bDate = b.created_at || b.updated_at || '';
+        return new Date(bDate).getTime() - new Date(aDate).getTime();
+      });
+
+      setExams(sortedExams);
       setPagination(prev => ({
         ...prev,
         total: response.total,

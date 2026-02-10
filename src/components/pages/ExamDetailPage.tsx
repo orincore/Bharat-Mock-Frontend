@@ -25,7 +25,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
   const [exam, setExam] = useState<Exam | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
+  const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi' | null>(null);
   const [languageSelected, setLanguageSelected] = useState(false);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
       }
       setExam(data);
       if (data.supports_hindi) {
-        setSelectedLanguage('en');
+        setSelectedLanguage(null);
         setLanguageSelected(false);
       } else {
         setSelectedLanguage('en');
@@ -130,9 +130,9 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
-  const handleLanguageSelect = (lang: 'en' | 'hi') => {
+  const handleLanguageSelect = (lang: 'en' | 'hi' | null) => {
     setSelectedLanguage(lang);
-    setLanguageSelected(true);
+    setLanguageSelected(Boolean(lang));
   };
 
   const handleStartExam = async () => {
@@ -147,7 +147,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
         throw new Error('Invalid exam identifier');
       }
 
-      const attempt = await examService.startExam(targetExamId, selectedLanguage);
+      const attempt = await examService.startExam(targetExamId, selectedLanguage || 'en');
       const langParam = selectedLanguage || 'en';
       router.push(`/exams/${targetExamId}/attempt/${attempt.attemptId}?lang=${langParam}`);
     } catch (err: any) {
@@ -294,22 +294,26 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                     <span className="text-[10px] tracking-widest uppercase bg-white/10 px-2 py-0.5 rounded-full">Required</span>
                   </div>
                   <p className="text-xs text-white/70 mb-3">Language cannot be changed once the attempt begins.</p>
-                  <div className="grid gap-3">
-                    {[{ value: 'en', label: 'English' }, { value: 'hi', label: 'हिंदी' }].map(option => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handleLanguageSelect(option.value as 'en' | 'hi')}
-                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                          selectedLanguage === option.value
-                            ? 'border-white bg-white/10 text-white'
-                            : 'border-white/20 text-white/70 hover:border-white/40'
-                        }`}
-                      >
-                        <span>{option.label}</span>
-                        <span className={`w-3 h-3 rounded-full border ${selectedLanguage === option.value ? 'bg-white border-white' : 'border-white/40'}`} />
-                      </button>
-                    ))}
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-widest text-white/60">Preferred Language</label>
+                    <select
+                      value={selectedLanguage ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (!value) {
+                          setSelectedLanguage(null);
+                          return;
+                        }
+                        handleLanguageSelect(value as 'en' | 'hi');
+                      }}
+                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/70"
+                    >
+                      <option value="">
+                        Select language
+                      </option>
+                      <option value="en">English</option>
+                      <option value="hi">हिंदी (Hindi)</option>
+                    </select>
                   </div>
                 </div>
               )}

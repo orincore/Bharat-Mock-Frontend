@@ -2,39 +2,56 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
-
-const footerLinks = {
-  exams: [
-    { name: 'JEE Main', href: '/exams?category=engineering' },
-    { name: 'NEET', href: '/exams?category=medical' },
-    { name: 'CAT', href: '/exams?category=management' },
-    { name: 'GATE', href: '/exams?category=engineering' },
-    { name: 'UPSC', href: '/exams?category=civil-services' },
-  ],
-  resources: [
-    { name: 'Articles', href: '/blogs' },
-    { name: 'Courses', href: '/courses' },
-    { name: 'Study Material', href: '/blogs' },
-    { name: 'Previous Papers', href: '/exams' },
-  ],
-  company: [
-    { name: 'About Us', href: '/about' },
-    { name: 'Contact', href: '/contact' },
-    { name: 'Careers', href: '/careers' },
-    { name: 'Privacy Policy', href: '/privacy' },
-    { name: 'Terms of Service', href: '/terms' },
-  ],
-};
-
-const socialLinks = [
-  { name: 'Facebook', icon: Facebook, href: '#' },
-  { name: 'Twitter', icon: Twitter, href: '#' },
-  { name: 'Instagram', icon: Instagram, href: '#' },
-  { name: 'LinkedIn', icon: Linkedin, href: '#' },
-];
+import { useEffect, useMemo, useState } from 'react';
+import { Mail, Phone, MapPin } from 'lucide-react';
+import { footerService } from '@/lib/api/footerService';
+import { useToast } from '@/components/ui/use-toast';
+import { useContactInfo } from '@/hooks/useContactInfo';
+import { fallbackContactInfo, socialIconMap } from '@/lib/constants/contact';
+import { fallbackFooterSections, mapLinksToFooterSections, FooterSection } from '@/lib/constants/footer';
 
 export function Footer() {
+  const { toast } = useToast();
+  const [sections, setSections] = useState<FooterSection[]>(fallbackFooterSections);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const { contactInfo, loading: contactLoading, error: contactError } = useContactInfo();
+  const info = contactInfo ?? fallbackContactInfo;
+
+  useEffect(() => {
+    const fetchFooterLinks = async () => {
+      try {
+        setLinkLoading(true);
+        const data = await footerService.getFooterLinks();
+        const mapped = mapLinksToFooterSections(data);
+        if (!mapped.length) {
+          setSections(fallbackFooterSections);
+          return;
+        }
+        setSections(mapped);
+      } catch (error: any) {
+        setSections(fallbackFooterSections);
+        toast({
+          title: 'Footer links unavailable',
+          description: error?.message || 'Using default footer links.',
+          variant: 'destructive'
+        });
+      } finally {
+        setLinkLoading(false);
+      }
+    };
+
+    fetchFooterLinks();
+  }, [toast]);
+
+  const renderedSections = useMemo(() => sections, [sections]);
+  const socialLinks = useMemo(
+    () =>
+      (info.contact_social_links || [])
+        .filter((link) => link.is_active !== false && link.url)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)),
+    [info.contact_social_links]
+  );
+
   return (
     <footer className="bg-foreground text-background/90">
       <div className="container-main py-16">
@@ -59,69 +76,48 @@ export function Footer() {
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-3 text-background/70">
                 <Mail className="h-4 w-4" />
-                <span>support@bharatmock.com</span>
+                <span>{info.support_email}</span>
               </div>
               <div className="flex items-center gap-3 text-background/70">
                 <Phone className="h-4 w-4" />
-                <span>+91 1800-123-4567</span>
+                <span>{info.support_phone}</span>
               </div>
               <div className="flex items-center gap-3 text-background/70">
                 <MapPin className="h-4 w-4" />
-                <span>Bangalore, Karnataka, India</span>
+                <span>
+                  {[info.address_line1, info.address_line2, info.city, info.state, info.postal_code, info.country]
+                    .filter(Boolean)
+                    .join(', ')}
+                </span>
               </div>
+              {contactError && !contactLoading && (
+                <p className="text-xs text-background/60">Showing fallback contact details.</p>
+              )}
             </div>
           </div>
 
-          {/* Exams */}
-          <div>
-            <h3 className="font-display font-semibold text-background mb-4">Popular Exams</h3>
-            <ul className="space-y-3">
-              {footerLinks.exams.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-background/70 hover:text-primary transition-colors text-sm"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div>
-            <h3 className="font-display font-semibold text-background mb-4">Resources</h3>
-            <ul className="space-y-3">
-              {footerLinks.resources.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-background/70 hover:text-primary transition-colors text-sm"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h3 className="font-display font-semibold text-background mb-4">Company</h3>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-background/70 hover:text-primary transition-colors text-sm"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {renderedSections.map((section) => (
+            <div key={section.title}>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="font-display font-semibold text-background">{section.title}</h3>
+                {linkLoading && <span className="text-xs text-background/60">(loading...)</span>}
+              </div>
+              <ul className="space-y-3">
+                {section.links.map((link) => (
+                  <li key={`${section.title}-${link.label}`}>
+                    <Link
+                      href={link.href}
+                      target={link.openInNewTab ? '_blank' : undefined}
+                      rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
+                      className="text-background/70 hover:text-primary transition-colors text-sm"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
         {/* Bottom Section */}
@@ -131,16 +127,21 @@ export function Footer() {
           </p>
           
           <div className="flex items-center gap-4">
-            {socialLinks.map((social) => (
-              <a
-                key={social.name}
-                href={social.href}
-                className="p-2 rounded-lg bg-background/10 hover:bg-primary hover:text-primary-foreground transition-colors"
-                aria-label={social.name}
-              >
-                <social.icon className="h-4 w-4" />
-              </a>
-            ))}
+            {(socialLinks.length ? socialLinks : fallbackContactInfo.contact_social_links || []).map((link) => {
+              const Icon = socialIconMap[link.icon || link.platform?.toLowerCase()] ?? Mail;
+              return (
+                <a
+                  key={link.id ?? link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2 rounded-lg bg-background/10 hover:bg-primary hover:text-primary-foreground transition-colors"
+                  aria-label={link.label || link.platform}
+                >
+                  <Icon className="h-4 w-4" />
+                </a>
+              );
+            })}
           </div>
         </div>
       </div>
