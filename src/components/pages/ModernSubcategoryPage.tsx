@@ -510,21 +510,43 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         </Head>
       )}
 
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="text-left">
-            <h1 className="text-4xl md:text-5xl font-bold mb-3">{heroTitle}</h1>
-            {heroSubtitle && <p className="text-xl md:text-2xl text-blue-100 mb-4 max-w-3xl">{heroSubtitle}</p>}
-            <nav className="flex flex-wrap items-center gap-2 text-sm text-blue-100/80">
-              {breadcrumbs.map((crumb, index) => (
-                <React.Fragment key={`${crumb.label}-${index}`}>
-                  {index > 0 && <span className="text-blue-200/60">/</span>}
-                  <Link href={crumb.href} className="hover:underline">
-                    {crumb.label}
-                  </Link>
-                </React.Fragment>
-              ))}
-            </nav>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12 relative overflow-hidden">
+        {subcategoryInfo?.logo_url && (
+          <div className="absolute right-4 sm:right-12 lg:right-24 top-1/2 -translate-y-1/2 pointer-events-none select-none">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={subcategoryInfo.logo_url}
+              alt=""
+              className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 object-contain opacity-15"
+            />
+          </div>
+        )}
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 relative z-10">
+          <div className="text-left flex items-center gap-5">
+            {subcategoryInfo?.logo_url && (
+              <div className="flex-shrink-0 hidden sm:block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={subcategoryInfo.logo_url}
+                  alt={heroTitle || ''}
+                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-xl bg-white/10 p-2 border border-white/20"
+                />
+              </div>
+            )}
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-3">{heroTitle}</h1>
+              {heroSubtitle && <p className="text-xl md:text-2xl text-blue-100 mb-4 max-w-3xl">{heroSubtitle}</p>}
+              <nav className="flex flex-wrap items-center gap-2 text-sm text-blue-100/80">
+                {breadcrumbs.map((crumb, index) => (
+                  <React.Fragment key={`${crumb.label}-${index}`}>
+                    {index > 0 && <span className="text-blue-200/60">/</span>}
+                    <Link href={crumb.href} className="hover:underline">
+                      {crumb.label}
+                    </Link>
+                  </React.Fragment>
+                ))}
+              </nav>
+            </div>
           </div>
         </div>
       </div>
