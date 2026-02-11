@@ -1,0 +1,830 @@
+'use client';
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { 
+  ArrowLeft, 
+  Save, 
+  Eye, 
+  RefreshCw,
+  Settings,
+  Loader2
+} from 'lucide-react';
+import { BlockEditor, clearBlockEditorAutosave } from '@/components/PageEditor/BlockEditor';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+
+interface Section {
+  id: string;
+  section_key: string;
+  title: string;
+  subtitle?: string;
+  display_order: number;
+  blocks: Block[];
+  is_sidebar?: boolean;
+  custom_tab_id?: string | null;
+  category_custom_tab_id?: string | null;
+}
+
+const serializeSections = (subset: Section[]) => JSON.stringify(
+  subset
+    .map((section) => ({
+      ...section,
+      blocks: (section.blocks || []).map((block) => ({
+        ...block
+      }))
+    }))
+    .sort((a, b) => a.display_order - b.display_order)
+);
+
+interface CustomTab {
+  id: string;
+  title: string;
+  tab_key: string;
+  description?: string | null;
+  display_order: number;
+}
+
+interface Block {
+  id: string;
+  block_type: string;
+  content: any;
+  settings?: any;
+  display_order: number;
+  section_id?: string;
+}
+
+interface CategoryInfo {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logo_url?: string | null;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+interface SEOData {
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image_url?: string;
+  canonical_url?: string;
+  robots_meta?: string;
+  structured_data?: string;
+}
+
+export default function AdminCategoryEditorPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const categoryId = params.categoryId as string;
+  const envApi = process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
+    : '';
+  const apiBase = envApi || '/api/v1';
+  const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('token') || localStorage.getItem('auth_token');
+  };
+  const debugLog = (...args: unknown[]) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[AdminCategoryEditor]', ...args);
+    }
+  };
+
+  const [categoryInfo, setCategoryInfo] = useState<CategoryInfo | null>(null);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [originalSections, setOriginalSections] = useState<Section[]>([]);
+  const [seoData, setSeoData] = useState<SEOData>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showSEOPanel, setShowSEOPanel] = useState(false);
+  const [uploadingOgImage, setUploadingOgImage] = useState(false);
+  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>('overview');
+
+  const loadCustomTabs = async () => {
+    try {
+      const token = getAuthToken();
+      const endpoint = buildApiUrl(`/category-page-content/${categoryId}/custom-tabs`);
+      const res = await fetch(endpoint, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (!res.ok) throw new Error('Failed to fetch custom tabs');
+      const data = await res.json();
+      const tabs = data.data || [];
+      setCustomTabs(tabs);
+      setActiveTabId((prev) => (prev === 'overview' || tabs.some((tab: CustomTab) => tab.id === prev) ? prev : 'overview'));
+    } catch (error) {
+      console.error('Failed to load custom tabs:', error);
+    }
+  };
+
+  const handleCreateTab = async () => {
+    const title = window.prompt('Enter tab title');
+    if (!title || !title.trim()) return;
+    try {
+      const token = getAuthToken();
+      await fetch(buildApiUrl(`/category-page-content/${categoryId}/custom-tabs`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ title: title.trim() })
+      });
+      await loadCustomTabs();
+    } catch (error) {
+      console.error('Failed to create tab:', error);
+      toast({ title: 'Error', description: 'Unable to create tab', variant: 'destructive' });
+    }
+  };
+
+  const handleRenameTab = async (tab: CustomTab) => {
+    const title = window.prompt('Rename tab', tab.title);
+    if (!title || !title.trim() || title.trim() === tab.title) return;
+    try {
+      const token = getAuthToken();
+      await fetch(buildApiUrl(`/category-page-content/${categoryId}/custom-tabs/${tab.id}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ title: title.trim() })
+      });
+      await loadCustomTabs();
+    } catch (error) {
+      console.error('Failed to rename tab:', error);
+      toast({ title: 'Error', description: 'Unable to rename tab', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteTab = async (tab: CustomTab) => {
+    const confirmDelete = window.confirm(`Delete tab "${tab.title}"? Sections under this tab will move to Overview.`);
+    if (!confirmDelete) return;
+    try {
+      const token = getAuthToken();
+      await fetch(buildApiUrl(`/category-page-content/${categoryId}/custom-tabs/${tab.id}`), {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      setSections((prev) => prev.map((section) =>
+        (section.category_custom_tab_id === tab.id || section.custom_tab_id === tab.id)
+          ? { ...section, category_custom_tab_id: null, custom_tab_id: null }
+          : section
+      ));
+      setActiveTabId('overview');
+      await loadCustomTabs();
+    } catch (error) {
+      console.error('Failed to delete tab:', error);
+      toast({ title: 'Error', description: 'Unable to delete tab', variant: 'destructive' });
+    }
+  };
+
+  const handleMoveTab = async (tabId: string, direction: 'left' | 'right') => {
+    const index = customTabs.findIndex((tab) => tab.id === tabId);
+    if (index === -1) return;
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= customTabs.length) return;
+    const reordered = [...customTabs];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIndex, 0, moved);
+    setCustomTabs(reordered);
+    try {
+      const token = getAuthToken();
+      await fetch(buildApiUrl(`/category-page-content/${categoryId}/custom-tabs/reorder`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ tabIds: reordered.map((tab) => tab.id) })
+      });
+    } catch (error) {
+      console.error('Failed to reorder tabs:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!categoryId) return;
+    const bootstrap = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          loadCategoryInfo(),
+          loadPageContent(),
+          loadCustomTabs()
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void bootstrap();
+  }, [categoryId]);
+
+  const updateSectionsForActiveTab = useCallback((updatedSubset: Section[]) => {
+    setSections((prev) => {
+      const retain: Section[] = [];
+      const currentSubset: Section[] = [];
+
+      prev.forEach((section) => {
+        const belongsToActive = activeTabId === 'overview'
+          ? !section.category_custom_tab_id && !section.custom_tab_id
+          : (section.category_custom_tab_id === activeTabId || section.custom_tab_id === activeTabId);
+        if (belongsToActive) {
+          currentSubset.push(section);
+        } else {
+          retain.push(section);
+        }
+      });
+
+      const normalizedSubset = updatedSubset.map((section, index) => ({
+        ...section,
+        category_custom_tab_id: activeTabId === 'overview' ? null : activeTabId,
+        custom_tab_id: activeTabId === 'overview' ? null : activeTabId,
+        display_order: index,
+        blocks: section.blocks || []
+      }));
+
+      if (serializeSections(currentSubset) === serializeSections(normalizedSubset)) {
+        return prev;
+      }
+
+      return [...retain, ...normalizedSubset];
+    });
+  }, [activeTabId]);
+
+  const sectionsForActiveTab = useMemo(() => (
+    sections
+      .filter((section) => (
+        activeTabId === 'overview'
+          ? !section.category_custom_tab_id && !section.custom_tab_id
+          : (section.category_custom_tab_id === activeTabId || section.custom_tab_id === activeTabId)
+      ))
+      .sort((a, b) => a.display_order - b.display_order)
+  ), [sections, activeTabId]);
+
+  const autosaveKey = useMemo(() => `category:${categoryId}:${activeTabId}`, [categoryId, activeTabId]);
+
+  const tabOptions = useMemo(() => [
+    { id: 'overview', title: 'Overview' },
+    ...customTabs
+  ], [customTabs]);
+
+  const mediaUploadConfig = useMemo(() => ({
+    maxSizeMB: 150,
+    onUpload: async (file: File, context: { blockType: 'image' | 'video' }) => {
+      const token = getAuthToken();
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `page-content/category/${categoryId}/${context.blockType === 'image' ? 'images' : 'videos'}/${activeTabId}`);
+
+      const res = await fetch(buildApiUrl(`/category-page-content/${categoryId}/media`), {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      return {
+        url: data.file_url,
+        alt: data.file_name,
+        caption: data.caption || undefined
+      };
+    },
+    onUploadError: (message: string) => {
+      toast({ title: 'Upload failed', description: message, variant: 'destructive' });
+    },
+    onUploadSuccess: (message?: string) => {
+      toast({ title: message || 'Upload complete', description: 'File is ready to use inside the block editor.' });
+    }
+  }), [categoryId, activeTabId, toast]);
+
+  const loadCategoryInfo = async () => {
+    try {
+      const endpoint = buildApiUrl(`/taxonomy/category-id/${categoryId}`);
+      debugLog('Fetching category info', endpoint);
+      const response = await fetch(endpoint);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch category info');
+      }
+
+      const raw = await response.json();
+      const payload = raw?.data ?? raw;
+      setCategoryInfo(payload);
+      return payload;
+    } catch (error) {
+      console.error('Error loading category info:', error);
+      toast({ title: 'Error', description: 'Failed to load category information', variant: 'destructive' });
+      return null;
+    }
+  };
+
+  const loadPageContent = async () => {
+    try {
+      const endpoint = buildApiUrl(`/category-page-content/${categoryId}`);
+      debugLog('Fetching page content', endpoint);
+      const response = await fetch(endpoint);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch page content');
+      }
+
+      const data = await response.json();
+      const nextSections = data.sections || [];
+      const nextTabs = data.customTabs || [];
+      setSections(nextSections);
+      setOriginalSections(nextSections);
+      setSeoData(data.seo || {});
+      setCustomTabs(nextTabs);
+      setActiveTabId((prev) => (prev === 'overview' || nextTabs.some((tab: CustomTab) => tab.id === prev) ? prev : 'overview'));
+    } catch (error) {
+      console.error('Error loading page content:', error);
+      toast({ title: 'Error', description: 'Failed to load page content', variant: 'destructive' });
+    }
+  };
+
+  const handleSave = async (updatedSections: Section[]) => {
+    try {
+      setSaving(true);
+      const token = getAuthToken();
+
+      if (!token) {
+        toast({ title: 'Authentication Error', description: 'Please log in to save changes', variant: 'destructive' });
+        return;
+      }
+
+      const bulkPayload = {
+        sections: updatedSections.map((section) => ({
+          ...section,
+          blocks: section.blocks || []
+        }))
+      };
+
+      const endpoint = buildApiUrl(`/category-page-content/${categoryId}/bulk-sync`);
+      debugLog('Bulk syncing page content', { endpoint, payloadSize: bulkPayload.sections.length });
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bulkPayload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Bulk sync failed');
+      }
+
+      const revisionEndpoint = buildApiUrl(`/category-page-content/${categoryId}/revisions`);
+      debugLog('Creating revision', revisionEndpoint);
+      const revisionResponse = await fetch(revisionEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ change_summary: 'Content updated via block editor' })
+      });
+
+      if (!revisionResponse.ok) {
+        console.warn('Failed to create revision');
+      }
+
+      toast({ title: 'Success', description: 'Page content saved successfully' });
+
+      clearBlockEditorAutosave(categoryId);
+
+      await loadPageContent();
+      setOriginalSections(updatedSections);
+    } catch (error) {
+      console.error('Error saving page content:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to save page content',
+        variant: 'destructive'
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSeoChange = (field: keyof SEOData, value: string) => {
+    setSeoData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleOgImageFile = async (file: File) => {
+    try {
+      setUploadingOgImage(true);
+      const token = getAuthToken();
+      if (!token) {
+        toast({ title: 'Authentication Error', description: 'Please log in to upload images', variant: 'destructive' });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `seo/${categoryId}`);
+
+      const uploadResponse = await fetch(
+        buildApiUrl(`/category-page-content/${categoryId}/media`),
+        {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        }
+      );
+
+      if (!uploadResponse.ok) throw new Error('Upload failed');
+      const uploadData = await uploadResponse.json();
+      if (!uploadData?.file_url) throw new Error('Upload did not return a URL');
+
+      handleSeoChange('og_image_url', uploadData.file_url);
+      toast({ title: 'Image uploaded', description: 'OG image updated successfully' });
+    } catch (error) {
+      console.error('Failed to upload OG image:', error);
+      toast({
+        title: 'Upload failed',
+        description: error instanceof Error ? error.message : 'Could not upload image',
+        variant: 'destructive'
+      });
+    } finally {
+      setUploadingOgImage(false);
+    }
+  };
+
+  const handleSaveSEO = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        toast({ title: 'Authentication Error', description: 'Please log in to save SEO settings', variant: 'destructive' });
+        return;
+      }
+
+      const response = await fetch(
+        buildApiUrl(`/category-page-content/${categoryId}/seo`),
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(seoData)
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to save SEO settings');
+      toast({ title: 'Success', description: 'SEO settings saved successfully' });
+      setShowSEOPanel(false);
+    } catch (error) {
+      console.error('Error saving SEO:', error);
+      toast({ title: 'Error', description: 'Failed to save SEO settings', variant: 'destructive' });
+    }
+  };
+
+  const handlePreview = () => {
+    if (categoryInfo?.slug) {
+      window.open(`/${categoryInfo.slug}`, '_blank');
+      return;
+    }
+    toast({ title: 'Preview Unavailable', description: 'Cannot generate preview URL', variant: 'destructive' });
+  };
+
+  const handleRefresh = () => {
+    if (!categoryId) return;
+    const refresh = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([loadCategoryInfo(), loadPageContent(), loadCustomTabs()]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void refresh();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading page editor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Navigation Bar */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push(`/admin/categories/${categoryId}`)}
+                className="flex items-center"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <div className="border-l border-gray-300 h-6" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">
+                  {categoryInfo?.name || 'Category Page Editor'}
+                </h1>
+                <p className="text-sm text-gray-600">
+                  /{categoryInfo?.slug || 'category'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowSEOPanel(true)}>
+                <Settings className="w-4 h-4 mr-2" />
+                SEO Settings
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePreview}>
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleSave(sections)}
+                disabled={saving}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs Manager */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Page Tabs</h2>
+              <p className="text-sm text-gray-500">Organize sections across Overview and custom tabs.</p>
+            </div>
+            <Button size="sm" onClick={handleCreateTab} variant="secondary">+ Add Custom Tab</Button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {tabOptions.map((tab) => {
+              const isActive = activeTabId === tab.id;
+              return (
+                <div key={tab.id} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-700'}`}>
+                  <button
+                    onClick={() => setActiveTabId(tab.id)}
+                    className="font-semibold text-sm"
+                  >
+                    {tab.title}
+                  </button>
+                  {tab.id !== 'overview' && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <button onClick={() => handleMoveTab(tab.id, 'left')} className="px-1 text-gray-500 hover:text-gray-800">◀</button>
+                      <button onClick={() => handleMoveTab(tab.id, 'right')} className="px-1 text-gray-500 hover:text-gray-800">▶</button>
+                      <button onClick={() => handleRenameTab(tab as CustomTab)} className="px-1 text-gray-500 hover:text-gray-800">Edit</button>
+                      <button onClick={() => handleDeleteTab(tab as CustomTab)} className="px-1 text-red-500 hover:text-red-700">Delete</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Block Editor */}
+      <BlockEditor
+        key={activeTabId}
+        sections={sectionsForActiveTab}
+        onSave={() => handleSave(sections)}
+        autosaveKey={autosaveKey}
+        onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
+        tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
+        mediaUploadConfig={mediaUploadConfig}
+      />
+
+      {/* SEO Settings Panel */}
+      {showSEOPanel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">SEO Settings</h2>
+                <p className="text-sm text-gray-500">Optimize metadata for Google Search and social platforms.</p>
+              </div>
+              <button
+                onClick={() => setShowSEOPanel(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-8">
+              <section className="space-y-4">
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-gray-700">
+                    <span>Meta Title</span>
+                    <span className={`text-xs ${seoData.meta_title && seoData.meta_title.length > 60 ? 'text-red-500' : 'text-gray-500'}`}>
+                      {seoData.meta_title?.length || 0}/60
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={seoData.meta_title || ''}
+                    onChange={(e) => handleSeoChange('meta_title', e.target.value)}
+                    className={`mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      seoData.meta_title && seoData.meta_title.length > 60 ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter a compelling title (50-60 characters)"
+                    maxLength={70}
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-gray-700">
+                    <span>Meta Description</span>
+                    <span className={`text-xs ${seoData.meta_description && seoData.meta_description.length > 160 ? 'text-red-500' : 'text-gray-500'}`}>
+                      {seoData.meta_description?.length || 0}/160
+                    </span>
+                  </label>
+                  <textarea
+                    value={seoData.meta_description || ''}
+                    onChange={(e) => handleSeoChange('meta_description', e.target.value)}
+                    rows={3}
+                    className={`mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      seoData.meta_description && seoData.meta_description.length > 160 ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="Explain the page in 150-160 characters"
+                    maxLength={200}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Keywords</label>
+                  <input
+                    type="text"
+                    value={seoData.meta_keywords || ''}
+                    onChange={(e) => handleSeoChange('meta_keywords', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="keyword1, keyword2, keyword3"
+                  />
+                </div>
+              </section>
+
+              <section className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
+                <p className="text-xs uppercase font-semibold text-gray-500 mb-3">Search Preview</p>
+                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">google.com › {categoryInfo?.slug || 'category'}</p>
+                    <p className="text-lg text-blue-700 font-semibold leading-tight">{seoData.meta_title || categoryInfo?.name || 'Meta title preview'}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {seoData.meta_description || 'Meta description preview will appear here once you add it.'}
+                    </p>
+                  </div>
+                  {seoData.og_image_url && (
+                    <div className="w-full md:w-40 flex-shrink-0">
+                      <img src={seoData.og_image_url} alt="OG preview" className="w-full h-24 object-cover rounded-lg border border-gray-200" />
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Open Graph Title</label>
+                    <input
+                      type="text"
+                      value={seoData.og_title || ''}
+                      onChange={(e) => handleSeoChange('og_title', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Title for Facebook / LinkedIn"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Open Graph Description</label>
+                    <textarea
+                      value={seoData.og_description || ''}
+                      onChange={(e) => handleSeoChange('og_description', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Short description for social sharing"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Open Graph Image URL</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={seoData.og_image_url || ''}
+                        onChange={(e) => handleSeoChange('og_image_url', e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="https://example.com/og-image.jpg"
+                      />
+                      <label className={`inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 cursor-pointer ${uploadingOgImage ? 'opacity-60 pointer-events-none' : ''}`}>
+                        {uploadingOgImage ? 'Uploading…' : 'Upload'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingOgImage}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (!file) return;
+                            void handleOgImageFile(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {seoData.og_image_url && (
+                      <div className="mt-3 border border-dashed border-gray-300 rounded-lg p-2 bg-white">
+                        <img src={seoData.og_image_url} alt="OG preview" className="w-full h-32 object-cover rounded" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Canonical URL</label>
+                    <input
+                      type="url"
+                      value={seoData.canonical_url || ''}
+                      onChange={(e) => handleSeoChange('canonical_url', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="https://bharatmock.com/ssc"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Robots Meta Tag</label>
+                  <select
+                    value={seoData.robots_meta || 'index,follow'}
+                    onChange={(e) => handleSeoChange('robots_meta', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="index,follow">Index, Follow</option>
+                    <option value="noindex,follow">No Index, Follow</option>
+                    <option value="index,nofollow">Index, No Follow</option>
+                    <option value="noindex,nofollow">No Index, No Follow</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Structured Data Notes</label>
+                  <textarea
+                    value={seoData.structured_data || ''}
+                    onChange={(e) => handleSeoChange('structured_data' as keyof SEOData, e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Add reminders for schema markup"
+                  />
+                </div>
+              </section>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-2 sticky bottom-0 bg-white">
+              <Button variant="outline" onClick={() => setShowSEOPanel(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveSEO} className="bg-blue-600 hover:bg-blue-700 text-white">
+                Save SEO Settings
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BlockRenderer } from "@/components/PageEditor/BlockRenderer";
+import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
@@ -314,7 +314,7 @@ export default function SSCCGLPage() {
               <>
                 {pageContent.orphanBlocks?.map((block) => (
                   <div key={block.id} className="mb-6">
-                    <BlockRenderer block={block} />
+                    <PageBlockRenderer block={block} />
                   </div>
                 ))}
 
@@ -335,7 +335,7 @@ export default function SSCCGLPage() {
                     <div className="p-6">
                       {section.blocks.map((block) => (
                         <div key={block.id} className="mb-4">
-                          <BlockRenderer block={block} />
+                          <PageBlockRenderer block={block} />
                         </div>
                       ))}
                     </div>
@@ -480,7 +480,7 @@ export default function SSCCGLPage() {
                       <div className="p-4 space-y-4">
                         {section.blocks.map((block) => (
                           <div key={block.id}>
-                            <BlockRenderer block={block} />
+                            <PageBlockRenderer block={block} />
                           </div>
                         ))}
                       </div>

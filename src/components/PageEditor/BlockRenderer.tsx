@@ -33,7 +33,8 @@ import {
   AlertCircle,
   Video,
   FileCode,
-  Megaphone
+  Megaphone,
+  GraduationCap
 } from 'lucide-react';
 
 interface Block {
@@ -101,6 +102,8 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
         return <SpacerBlock settings={settings} />;
       case 'adBanner':
         return <AdBannerBlock content={content} settings={settings} />;
+      case 'examCards':
+        return <ExamCardsBlock content={content} settings={settings} />;
       default:
         return <div className="p-4 bg-gray-100 rounded">Unknown block type: {block_type}</div>;
     }
@@ -563,6 +566,38 @@ const AdBannerBlock: React.FC<{ content: any; settings?: any }> = ({ content }) 
   );
 };
 
+const ExamCardsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
+  const { examIds = [], title, layout = 'grid', columns = 2 } = content || {};
+
+  return (
+    <div className="mb-6" data-block-type="examCards" data-exam-ids={JSON.stringify(examIds)} data-layout={layout} data-columns={columns}>
+      {title && <h3 className="text-xl font-bold mb-4">{title}</h3>}
+      {examIds.length === 0 ? (
+        <div className="p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
+          <GraduationCap className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+          <p className="text-sm">No exams attached yet. Add exam IDs in the editor.</p>
+        </div>
+      ) : (
+        <div className={`grid gap-4 ${columns === 1 ? 'grid-cols-1' : columns === 3 ? 'grid-cols-1 md:grid-cols-3' : columns === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
+          {examIds.map((id: string) => (
+            <div key={id} className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-700 truncate">Exam: {id}</p>
+                  <p className="text-xs text-gray-400">Loading...</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const getBlockIcon = (blockType: string) => {
   const icons: Record<string, any> = {
     heading: Heading,
@@ -584,7 +619,8 @@ export const getBlockIcon = (blockType: string) => {
     html: FileCode,
     columns: Columns,
     spacer: Minus,
-    adBanner: Megaphone
+    adBanner: Megaphone,
+    examCards: GraduationCap
   };
   
   return icons[blockType] || FileText;

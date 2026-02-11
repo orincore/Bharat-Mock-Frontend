@@ -11,7 +11,11 @@ import {
   Redo,
   ChevronDown,
   UploadCloud,
-  Loader2
+  Loader2,
+  Bold,
+  Italic,
+  Underline,
+  Palette
 } from 'lucide-react';
 import { BlockRenderer, getBlockIcon } from './BlockRenderer';
 
@@ -32,6 +36,8 @@ interface Section {
   display_order: number;
   blocks: Block[];
   is_sidebar?: boolean;
+  text_color?: string;
+  background_color?: string;
 }
 
 const TEXT_COLOR_OPTIONS = [
@@ -206,6 +212,186 @@ const AdBannerContentEditor = ({ content, onChange }: { content: any; onChange: 
           onChange={(e) => onChange({ ...content, badgeText: e.target.value })}
           className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
         />
+      </div>
+    </div>
+  );
+};
+
+const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
+  const examIds: string[] = content.examIds || [];
+  const examNames: Record<string, string> = content.examNames || {};
+  const [query, setQuery] = React.useState('');
+  const [results, setResults] = React.useState<{ id: string; title: string; category?: string; status?: string }[]>([]);
+  const [searching, setSearching] = React.useState(false);
+  const [showDropdown, setShowDropdown] = React.useState(false);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+
+  const searchExams = React.useCallback(async (term: string) => {
+    if (!term.trim()) { setResults([]); return; }
+    try {
+      setSearching(true);
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '') || '/api/v1';
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
+      const res = await fetch(`${apiBase}/exams?search=${encodeURIComponent(term.trim())}&limit=10`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+      const exams = data.data || [];
+      setResults(exams.map((e: any) => ({ id: e.id, title: e.title, category: e.category, status: e.status })));
+      setShowDropdown(true);
+    } catch (err) {
+      console.error('[ExamCardsEditor] search failed', err);
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchExams(value), 300);
+  };
+
+  const addExam = (exam: { id: string; title: string }) => {
+    if (examIds.includes(exam.id)) return;
+    onChange({
+      ...content,
+      examIds: [...examIds, exam.id],
+      examNames: { ...examNames, [exam.id]: exam.title }
+    });
+    setQuery('');
+    setResults([]);
+    setShowDropdown(false);
+  };
+
+  const removeExam = (id: string) => {
+    const nextNames = { ...examNames };
+    delete nextNames[id];
+    onChange({
+      ...content,
+      examIds: examIds.filter((eid: string) => eid !== id),
+      examNames: nextNames
+    });
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Section Title</label>
+        <input
+          type="text"
+          value={content.title || ''}
+          onChange={(e) => onChange({ ...content, title: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          placeholder="Related Exams"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Layout</label>
+          <select
+            value={content.layout || 'grid'}
+            onChange={(e) => onChange({ ...content, layout: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="grid">Grid</option>
+            <option value="list">List</option>
+            <option value="carousel">Carousel</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Columns</label>
+          <select
+            value={content.columns || 2}
+            onChange={(e) => onChange({ ...content, columns: Number(e.target.value) })}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          >
+            <option value={1}>1</option>
+            <option value={2}>2</option>
+            <option value={3}>3</option>
+            <option value={4}>4</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Attach Exams ({examIds.length} added)</label>
+        <div className="relative" ref={wrapperRef}>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            onFocus={() => { if (results.length) setShowDropdown(true); }}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            placeholder="Search exams by name..."
+          />
+          {searching && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+            </div>
+          )}
+          {showDropdown && results.length > 0 && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {results.map((exam) => {
+                const alreadyAdded = examIds.includes(exam.id);
+                return (
+                  <button
+                    key={exam.id}
+                    type="button"
+                    disabled={alreadyAdded}
+                    onClick={() => addExam(exam)}
+                    className={`w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-blue-50 border-b border-gray-100 last:border-b-0 ${alreadyAdded ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{exam.title}</p>
+                      <p className="text-xs text-gray-500">{[exam.category, exam.status].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    {alreadyAdded ? (
+                      <span className="text-xs text-gray-400 ml-2 flex-shrink-0">Added</span>
+                    ) : (
+                      <span className="text-xs text-blue-600 font-medium ml-2 flex-shrink-0">+ Add</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {showDropdown && !searching && query.trim() && results.length === 0 && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-sm text-gray-500">
+              No exams found for &ldquo;{query}&rdquo;
+            </div>
+          )}
+        </div>
+        {examIds.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {examIds.map((id: string, index: number) => (
+              <div key={id} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded px-3 py-2">
+                <span className="text-sm text-gray-700 truncate flex-1">
+                  {index + 1}. {examNames[id] || id}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeExam(id)}
+                  className="ml-2 text-red-500 hover:text-red-700 text-sm font-medium flex-shrink-0"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -871,7 +1057,8 @@ const BLOCK_TYPES = [
   { type: 'video', label: 'Video', description: 'Embed video' },
   { type: 'html', label: 'HTML', description: 'Custom HTML' },
   { type: 'spacer', label: 'Spacer', description: 'Add vertical space' },
-  { type: 'adBanner', label: 'Ad Banner', description: 'Display an ad image with link' }
+  { type: 'adBanner', label: 'Ad Banner', description: 'Display an ad image with link' },
+  { type: 'examCards', label: 'Exam Cards', description: 'Attach and display exam cards' }
 ];
 
 const INLINE_EDITABLE_BLOCKS = new Set([
@@ -1313,13 +1500,78 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                               className={`w-4 h-4 transition-transform ${collapsedSections.has(section.id) ? '' : 'rotate-180'}`}
                             />
                           </button>
-                          <input
-                            type="text"
-                            value={section.title}
-                            onChange={(e) => updateSection(section.id, { title: e.target.value })}
-                            className="text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2"
-                            placeholder="Section Title"
-                          />
+                          <div className="flex items-center gap-1">
+                            <div
+                              contentEditable
+                              suppressContentEditableWarning
+                              dangerouslySetInnerHTML={{ __html: section.title || '' }}
+                              onBlur={(e) => updateSection(section.id, { title: e.currentTarget.innerHTML })}
+                              className="text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 min-w-[120px] max-w-[400px] outline-none"
+                              data-placeholder="Section Title"
+                              style={{ minHeight: '1.5em', color: section.text_color || undefined }}
+                            />
+                            <div className="flex items-center gap-0.5 ml-1 border border-gray-200 rounded-md bg-white px-1 py-0.5">
+                              <button
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold'); }}
+                                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                title="Bold"
+                              >
+                                <Bold className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic'); }}
+                                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                title="Italic"
+                              >
+                                <Italic className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline'); }}
+                                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                title="Underline"
+                              >
+                                <Underline className="w-3.5 h-3.5" />
+                              </button>
+                              <div className="w-px h-4 bg-gray-200 mx-0.5" />
+                              <div className="relative group/color">
+                                <button
+                                  type="button"
+                                  className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                  title="Title Color"
+                                >
+                                  <Palette className="w-3.5 h-3.5" />
+                                </button>
+                                <div className="absolute top-full left-0 mt-1 hidden group-hover/color:flex flex-wrap gap-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 w-[160px]">
+                                  {[
+                                    { label: 'Default', value: '' },
+                                    { label: 'Gray', value: '#111827' },
+                                    { label: 'Blue', value: '#1d4ed8' },
+                                    { label: 'Green', value: '#15803d' },
+                                    { label: 'Orange', value: '#d97706' },
+                                    { label: 'Red', value: '#b91c1c' },
+                                    { label: 'Purple', value: '#7c3aed' },
+                                    { label: 'Teal', value: '#0d9488' },
+                                    { label: 'Pink', value: '#db2777' },
+                                    { label: 'Indigo', value: '#4338ca' }
+                                  ].map((opt) => (
+                                    <button
+                                      key={opt.value}
+                                      type="button"
+                                      onClick={() => updateSection(section.id, { text_color: opt.value || undefined })}
+                                      className={`w-6 h-6 rounded-full border-2 flex-shrink-0 ${
+                                        (section.text_color || '') === opt.value ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'
+                                      }`}
+                                      style={{ backgroundColor: opt.value || '#f3f4f6' }}
+                                      title={opt.label}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           <span
                             className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ${
                               section.is_sidebar ? 'border-amber-400 text-amber-600 bg-amber-50' : 'border-blue-300 text-blue-600 bg-blue-50'
@@ -1621,6 +1873,9 @@ const BlockContentEditor: React.FC<{
 
     case 'adBanner':
       return <AdBannerContentEditor content={content} onChange={onChange} />;
+
+    case 'examCards':
+      return <ExamCardsContentEditor content={content} onChange={onChange} />;
 
     default:
       return (
@@ -2747,7 +3002,8 @@ const getDefaultBlockContent = (blockType: string): any => {
     quote: { text: 'Enter quote text...', author: '' },
     button: { text: 'Click Here', url: '#', variant: 'primary', size: 'medium' },
     accordion: { items: [{ title: 'Question 1', content: 'Answer 1' }] },
-    alert: { text: 'This is an alert message', type: 'info' }
+    alert: { text: 'This is an alert message', type: 'info' },
+    examCards: { examIds: [], title: 'Related Exams', layout: 'grid', columns: 2 }
   };
   
   return defaults[blockType] || {};

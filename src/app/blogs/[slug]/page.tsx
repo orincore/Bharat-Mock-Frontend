@@ -7,7 +7,7 @@ import { ArrowLeft, Calendar, Clock, Eye, Tag, User, ChevronRight, ChevronLeft, 
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { blogService, Blog, BlogSection } from '@/lib/api/blogService';
-import { BlockRenderer } from '@/components/PageEditor/BlockRenderer';
+import { PageBlockRenderer } from '@/components/PageEditor/PageBlockRenderer';
 
 export default function BlogDetailPage() {
   const params = useParams();
@@ -162,7 +162,7 @@ export default function BlogDetailPage() {
                   <div className="space-y-5">
                     {section.blocks.map((block) => (
                       <div key={block.id}>
-                        <BlockRenderer block={block} />
+                        <PageBlockRenderer block={block} />
                       </div>
                     ))}
                   </div>

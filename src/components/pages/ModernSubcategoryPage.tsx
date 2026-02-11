@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BlockRenderer } from "@/components/PageEditor/BlockRenderer";
+import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
@@ -441,13 +441,19 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       });
     }
     if (heroTitle && resolvedCategorySlug && resolvedSubcategorySlug) {
+      const baseHref = `/${resolvedCategorySlug}-${resolvedSubcategorySlug}`;
       items.push({
         label: heroTitle,
-        href: `/${resolvedCategorySlug}-${resolvedSubcategorySlug}`
+        href: baseHref
       });
+
+      if (currentTabDescriptor && currentTabDescriptor.id !== 'overview') {
+        const tabHref = currentTabDescriptor.slug ? `${baseHref}/${currentTabDescriptor.slug}` : baseHref;
+        items.push({ label: currentTabDescriptor.label, href: tabHref });
+      }
     }
     return items;
-  }, [heroTitle, resolvedCategorySlug, resolvedSubcategorySlug, subcategoryInfo]);
+  }, [heroTitle, resolvedCategorySlug, resolvedSubcategorySlug, subcategoryInfo, currentTabDescriptor]);
 
   if (isLoading) {
     return (
@@ -559,7 +565,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               <>
                 {pageContent?.orphanBlocks?.map((block) => (
                   <div key={block.id} className="mb-6">
-                    <BlockRenderer block={block} />
+                    <PageBlockRenderer block={block} />
                   </div>
                 ))}
 
@@ -585,7 +591,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                       <div className="p-6">
                         {section.blocks.map((block) => (
                           <div key={block.id} className="mb-4">
-                            <BlockRenderer block={block} />
+                            <PageBlockRenderer block={block} />
                           </div>
                         ))}
                       </div>
@@ -732,7 +738,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                     <div className="p-4 space-y-4">
                       {section.blocks.map((block) => (
                         <div key={block.id}>
-                          <BlockRenderer block={block} />
+                          <PageBlockRenderer block={block} />
                         </div>
                       ))}
                     </div>
