@@ -229,7 +229,9 @@ export default function Index({ initialHero }: IndexProps = { initialHero: null 
     setSubcategoriesLoading(true);
     try {
       const data = await taxonomyService.getSubcategories(categoryId);
-      const filtered = (data || []).filter((sub) => sub.name && sub.slug);
+      const filtered = (data || [])
+        .filter((sub) => sub.name && sub.slug)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
       setSubcategoryMap((prev) => ({
         ...prev,
         [categoryId]: filtered
@@ -428,7 +430,13 @@ export default function Index({ initialHero }: IndexProps = { initialHero: null 
                             href={`/${selectedCategory.slug}-${sub.slug}`}
                             className="border border-border rounded-2xl px-3 py-2 bg-card hover:border-primary/60 transition flex items-center gap-2 h-16"
                           >
-                            {selectedCategory.logo_url ? (
+                            {sub.logo_url ? (
+                              <img
+                                src={sub.logo_url}
+                                alt=""
+                                className="w-8 h-8 object-contain"
+                              />
+                            ) : selectedCategory.logo_url ? (
                               <img
                                 src={selectedCategory.logo_url}
                                 alt=""

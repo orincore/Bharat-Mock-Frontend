@@ -52,6 +52,40 @@ export const categoryAdminService = {
     return data.data;
   },
 
+  async createCategory(payload: {
+    name: string;
+    description?: string;
+    slug?: string;
+    display_order?: string | number;
+    is_active?: boolean;
+    logo?: File;
+  }) {
+    const formData = new FormData();
+    formData.append('name', payload.name);
+
+    if (payload.description !== undefined) {
+      formData.append('description', payload.description);
+    }
+
+    if (payload.slug && payload.slug.trim()) {
+      formData.append('slug', payload.slug.trim());
+    }
+
+    if (payload.display_order !== undefined && payload.display_order !== null) {
+      formData.append('display_order', payload.display_order.toString());
+    }
+
+    if (payload.is_active !== undefined) {
+      formData.append('is_active', payload.is_active ? 'true' : 'false');
+    }
+
+    if (payload.logo) {
+      formData.append('logo', payload.logo);
+    }
+
+    return authFormFetch('/taxonomy/categories', formData, 'POST');
+  },
+
   async updateCategory(
     id: string,
     payload: {
@@ -87,6 +121,12 @@ export const categoryAdminService = {
     }
 
     return authFormFetch(`/taxonomy/categories/${id}`, formData, 'PUT');
+  },
+
+  async deleteCategory(id: string) {
+    return authFetch(`/taxonomy/categories/${id}`, {
+      method: 'DELETE',
+    });
   },
 
   async getNotifications(categoryId: string) {
@@ -245,5 +285,12 @@ export const categoryAdminService = {
   async getSubcategories(categoryId: string) {
     const data = await authFetch(`/taxonomy/subcategories?category_id=${categoryId}`);
     return data.data;
+  },
+
+  async reorderSubcategories(orderedIds: string[]) {
+    return authFetch('/taxonomy/subcategories/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ orderedIds }),
+    });
   },
 };

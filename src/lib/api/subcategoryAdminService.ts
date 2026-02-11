@@ -64,16 +64,93 @@ export const subcategoryAdminService = {
     return data.data;
   },
 
+  async createSubcategory(payload: {
+    category_id: string;
+    name: string;
+    slug?: string;
+    description?: string;
+    display_order?: string | number | null;
+    is_active?: boolean;
+    logo?: File;
+  }) {
+    const formData = new FormData();
+    formData.append('category_id', payload.category_id);
+    formData.append('name', payload.name);
+    if (payload.slug) formData.append('slug', payload.slug);
+    if (payload.description !== undefined) formData.append('description', payload.description || '');
+    if (payload.display_order !== undefined && payload.display_order !== null) {
+      formData.append('display_order', payload.display_order.toString());
+    }
+    if (payload.is_active !== undefined) {
+      formData.append('is_active', payload.is_active ? 'true' : 'false');
+    }
+    if (payload.logo) {
+      formData.append('logo', payload.logo);
+    }
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}/taxonomy/subcategories`, {
+      method: 'POST',
+      body: formData,
+      headers
+    });
+
+    const data = await response.json();
+    if (!response.ok || data.success === false) {
+      throw new Error(data.message || 'Request failed');
+    }
+    return data;
+  },
+
   async updateSubcategory(id: string, payload: {
     name: string;
     slug?: string;
     description?: string;
     display_order?: string | number | null;
     is_active?: boolean;
+    logo?: File;
   }) {
-    return authFetch(`/taxonomy/subcategories/${id}`, {
+    const formData = new FormData();
+    formData.append('name', payload.name);
+    if (payload.slug) formData.append('slug', payload.slug);
+    if (payload.description !== undefined) formData.append('description', payload.description || '');
+    if (payload.display_order !== undefined && payload.display_order !== null) {
+      formData.append('display_order', payload.display_order.toString());
+    }
+    if (payload.is_active !== undefined) {
+      formData.append('is_active', payload.is_active ? 'true' : 'false');
+    }
+    if (payload.logo) {
+      formData.append('logo', payload.logo);
+    }
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}/taxonomy/subcategories/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(payload)
+      body: formData,
+      headers
+    });
+
+    const data = await response.json();
+    if (!response.ok || data.success === false) {
+      throw new Error(data.message || 'Request failed');
+    }
+    return data;
+  },
+
+  async deleteSubcategory(id: string) {
+    return authFetch(`/taxonomy/subcategories/${id}`, {
+      method: 'DELETE',
     });
   },
 

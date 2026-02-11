@@ -9,7 +9,8 @@ import {
   Eye, 
   RefreshCw,
   Settings,
-  Loader2
+  Loader2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { BlockEditor, clearBlockEditorAutosave } from '@/components/PageEditor/BlockEditor';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,8 @@ interface SubcategoryInfo {
   slug: string;
   category_slug?: string;
   description?: string;
+  logo_url?: string | null;
+  display_order?: number;
   category?: {
     id: string;
     name: string;
@@ -108,9 +111,22 @@ export default function AdminSubcategoryEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSEOPanel, setShowSEOPanel] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [uploadingOgImage, setUploadingOgImage] = useState(false);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>('overview');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    display_order: '0',
+    is_active: true,
+  });
+  const [descriptionInput, setDescriptionInput] = useState('');
+  const [savingDescription, setSavingDescription] = useState(false);
 
   const loadCustomTabs = async () => {
     try {
@@ -288,6 +304,7 @@ export default function AdminSubcategoryEditorPage() {
       } as SubcategoryInfo;
 
       setSubcategoryInfo(normalized);
+      syncSettingsForm(normalized);
       return normalized;
     } catch (error) {
       console.error('Error loading subcategory info:', error);
@@ -297,6 +314,84 @@ export default function AdminSubcategoryEditorPage() {
         variant: 'destructive'
       });
       return null;
+    }
+  };
+
+  const syncSettingsForm = (info: SubcategoryInfo) => {
+    setSettingsForm({
+      name: info.name || '',
+      slug: info.slug || '',
+      description: info.description || '',
+      display_order: (info.display_order ?? 0).toString(),
+      is_active: info.is_active ?? true,
+    });
+    setLogoPreview(info.logo_url || '');
+    setLogoFile(null);
+    setDescriptionInput(info.description || '');
+  };
+
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setLogoFile(null);
+      setLogoPreview(subcategoryInfo?.logo_url || '');
+      return;
+    }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const resetDescriptionInput = () => {
+    setDescriptionInput(subcategoryInfo?.description || '');
+  };
+
+  const handleSaveDescription = async () => {
+    if (!subcategoryInfo) return;
+    if (savingDescription) return;
+    try {
+      setSavingDescription(true);
+      await subcategoryAdminService.updateSubcategory(subcategoryId, {
+        name: subcategoryInfo.name,
+        slug: subcategoryInfo.slug || undefined,
+        description: descriptionInput,
+        display_order: (subcategoryInfo.display_order ?? 0).toString(),
+        is_active: subcategoryInfo.is_active ?? true,
+      });
+      toast({ title: 'Saved', description: 'Description updated successfully.' });
+      await loadSubcategoryInfo();
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error?.message || 'Could not save description',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingDescription(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!settingsForm.name.trim()) {
+      toast({ title: 'Error', description: 'Subcategory name is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      setSavingSettings(true);
+      await subcategoryAdminService.updateSubcategory(subcategoryId, {
+        name: settingsForm.name.trim(),
+        slug: settingsForm.slug.trim() || undefined,
+        description: settingsForm.description,
+        display_order: settingsForm.display_order || '0',
+        is_active: settingsForm.is_active,
+        logo: logoFile || undefined,
+      });
+      toast({ title: 'Success', description: 'Subcategory settings saved successfully' });
+      await loadSubcategoryInfo();
+      setShowSettingsPanel(false);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to save settings', variant: 'destructive' });
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -572,16 +667,29 @@ export default function AdminSubcategoryEditorPage() {
                 Back
               </Button>
               <div className="border-l border-gray-300 h-6" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  {subcategoryInfo?.name || 'Page Editor'}
-                </h1>
-                <p className="text-sm text-gray-600">
-                  {subcategoryInfo?.category?.name && (
-                    <span>{subcategoryInfo.category.name} / </span>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden">
+                  {logoPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoPreview} alt="Subcategory logo" className="w-full h-full object-contain p-1" />
+                  ) : subcategoryInfo?.logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={subcategoryInfo.logo_url} alt="Subcategory logo" className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-gray-400" />
                   )}
-                  {subcategoryInfo?.slug}
-                </p>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">
+                    {subcategoryInfo?.name || 'Page Editor'}
+                  </h1>
+                  <p className="text-sm text-gray-600">
+                    {subcategoryInfo?.category?.name && (
+                      <span>{subcategoryInfo.category.name} / </span>
+                    )}
+                    {subcategoryInfo?.slug}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -594,6 +702,17 @@ export default function AdminSubcategoryEditorPage() {
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (subcategoryInfo) syncSettingsForm(subcategoryInfo);
+                  setShowSettingsPanel(true);
+                }}
+              >
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Settings
               </Button>
               <Button
                 variant="outline"
@@ -627,6 +746,52 @@ export default function AdminSubcategoryEditorPage() {
                     <Save className="w-4 h-4 mr-2" />
                     Save Changes
                   </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Subcategory summary / description editor */}
+      <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-6">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
+          <div className="flex flex-wrap justify-between gap-3 items-start">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Subcategory description</p>
+              <h2 className="text-2xl font-semibold text-gray-900 mt-1">Pitch this exam in a sentence or two</h2>
+              <p className="text-sm text-gray-500">This copy shows on homepage cards and other quick summaries.</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-700">Status</p>
+              <p className={`text-sm font-semibold ${subcategoryInfo?.is_active ? 'text-green-600' : 'text-gray-500'}`}>
+                {subcategoryInfo?.is_active ? 'Active' : 'Inactive'}
+              </p>
+            </div>
+          </div>
+
+          <textarea
+            value={descriptionInput}
+            onChange={(e) => setDescriptionInput(e.target.value)}
+            rows={4}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
+            placeholder="e.g. Comprehensive SSC CGL prep with previous year papers, syllabus tracker, and smart revision plans."
+          />
+
+          <div className="flex flex-wrap justify-between gap-3 items-center">
+            <p className="text-xs text-gray-500">{descriptionInput.trim().length}/240 characters</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={resetDescriptionInput} disabled={savingDescription}>
+                Reset
+              </Button>
+              <Button size="sm" onClick={handleSaveDescription} disabled={savingDescription || !subcategoryInfo}>
+                {savingDescription ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </span>
+                ) : (
+                  'Save Description'
                 )}
               </Button>
             </div>
@@ -887,6 +1052,132 @@ export default function AdminSubcategoryEditorPage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Save SEO Settings
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subcategory Settings Panel */}
+      {showSettingsPanel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Subcategory Settings</h2>
+                <p className="text-sm text-gray-500">Update name, slug, logo, display order, and status.</p>
+              </div>
+              <button
+                onClick={() => setShowSettingsPanel(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={settingsForm.name}
+                    onChange={(e) => setSettingsForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g., CGL, CHSL"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+                  <input
+                    type="text"
+                    value={settingsForm.slug}
+                    onChange={(e) => setSettingsForm((prev) => ({ ...prev, slug: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Auto-generated from name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+                  <input
+                    type="number"
+                    value={settingsForm.display_order}
+                    onChange={(e) => setSettingsForm((prev) => ({ ...prev, display_order: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Lower number = shown first on homepage &quot;Choose your exam&quot;</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={settingsForm.is_active ? 'true' : 'false'}
+                    onChange={(e) => setSettingsForm((prev) => ({ ...prev, is_active: e.target.value === 'true' }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={settingsForm.description}
+                  onChange={(e) => setSettingsForm((prev) => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Short description for the subcategory"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subcategory Logo</label>
+                <div className="flex items-start gap-4">
+                  <div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 flex-shrink-0">
+                    {logoPreview ? (
+                      <img src={logoPreview} alt="Subcategory logo" className="w-full h-full object-contain p-2 rounded-lg" />
+                    ) : (
+                      <ImageIcon className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoChange}
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    <p className="text-xs text-gray-500">Recommended: Square image (PNG/SVG). This logo will appear on the homepage &quot;Choose your exam&quot; cards.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-2 sticky bottom-0 bg-white">
+              <Button
+                variant="outline"
+                onClick={() => setShowSettingsPanel(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {savingSettings ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Settings'
+                )}
               </Button>
             </div>
           </div>

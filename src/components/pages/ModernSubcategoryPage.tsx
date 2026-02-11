@@ -3,12 +3,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BlockRenderer } from "@/components/PageEditor/BlockRenderer";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
-import { Calendar, Users, FileText, TrendingUp, Download } from "lucide-react";
+import { Download } from "lucide-react";
 
 interface Block {
   id: string;
@@ -42,6 +42,13 @@ interface CustomTab {
   display_order: number;
 }
 
+type TabDescriptor = {
+  id: string;
+  label: string;
+  slug: string;
+  type: 'content' | 'special';
+};
+
 interface PageContentResponse {
   sections: Section[];
   orphanBlocks: Block[];
@@ -55,8 +62,10 @@ interface PageContentResponse {
 }
 
 interface ModernSubcategoryPageProps {
-  categorySlug: string;
-  subcategorySlug: string;
+  categorySlug?: string;
+  subcategorySlug?: string;
+  combinedSlug?: string;
+  initialTabSlug?: string;
 }
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL
@@ -97,11 +106,12 @@ const resolvePaperYear = (paper: any): number | null => {
   return extractYearFromTitle(paper?.title || paper?.exam?.title || null);
 };
 
-export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }: ModernSubcategoryPageProps) {
-  const normalizedCategory = categorySlug?.toLowerCase();
-  const normalizedSubcategory = subcategorySlug?.toLowerCase();
+export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, combinedSlug, initialTabSlug }: ModernSubcategoryPageProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
+  const [resolvedCategorySlug, setResolvedCategorySlug] = useState<string | null>(categorySlug?.toLowerCase() || null);
+  const [resolvedSubcategorySlug, setResolvedSubcategorySlug] = useState<string | null>(subcategorySlug?.toLowerCase() || null);
   const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
   const [subcategoryInfo, setSubcategoryInfo] = useState<any>(null);
   const [pageContent, setPageContent] = useState<PageContentResponse | null>(null);
@@ -116,37 +126,50 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingExamId, setDownloadingExamId] = useState<string | null>(null);
+  const [isTabListOpen, setIsTabListOpen] = useState(false);
 
   useEffect(() => {
     const fetchSubcategory = async () => {
-      if (!normalizedCategory || !normalizedSubcategory) {
-        setError("Missing category or subcategory slug");
-        setIsLoading(false);
-        return;
-      }
-
       try {
         setIsLoading(true);
         setError(null);
 
-        const endpoints = [
-          buildApiUrl(`/taxonomy/category/${normalizedCategory}/subcategory/${normalizedSubcategory}`),
-          buildApiUrl(`/taxonomy/subcategory-id/${normalizedSubcategory}`)
-        ];
-
         let resolved: any = null;
-        for (const endpoint of endpoints) {
-          if (process.env.NODE_ENV !== "production") {
-            console.log("[ModernSubcategory] Resolving subcategory", { endpoint, normalizedCategory, normalizedSubcategory });
-          }
-          const res = await fetch(endpoint);
+
+        // If we have a combined slug, use the backend resolve endpoint
+        if (combinedSlug) {
+          const resolveEndpoint = buildApiUrl(`/taxonomy/resolve/${combinedSlug.toLowerCase()}`);
+          const res = await fetch(resolveEndpoint);
           if (res.ok) {
             const data = await res.json();
-            if (data?.id || data?.data?.id) {
-              resolved = data.data || data;
-              break;
+            if (data?.data?.id) {
+              resolved = data.data;
+              // Store the resolved slugs for subsequent exam fetches
+              setResolvedCategorySlug(resolved.category?.slug ? resolved.category.slug.toLowerCase() : null);
+              setResolvedSubcategorySlug(resolved.slug ? resolved.slug.toLowerCase() : null);
             }
           }
+        } else if (resolvedCategorySlug && resolvedSubcategorySlug) {
+          // Direct category/subcategory slugs provided
+          const endpoints = [
+            buildApiUrl(`/taxonomy/category/${resolvedCategorySlug}/subcategory/${resolvedSubcategorySlug}`),
+            buildApiUrl(`/taxonomy/subcategory-id/${resolvedSubcategorySlug}`)
+          ];
+
+          for (const endpoint of endpoints) {
+            const res = await fetch(endpoint);
+            if (res.ok) {
+              const data = await res.json();
+              if (data?.id || data?.data?.id) {
+                resolved = data.data || data;
+                break;
+              }
+            }
+          }
+        } else {
+          setError("Missing category or subcategory slug");
+          setIsLoading(false);
+          return;
         }
 
         if (!resolved?.id) {
@@ -162,7 +185,91 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
     };
 
     fetchSubcategory();
-  }, [normalizedCategory, normalizedSubcategory]);
+  }, [combinedSlug, resolvedCategorySlug, resolvedSubcategorySlug]);
+
+  const sanitizeTabSlug = (value: string | null | undefined) => {
+    if (!value) return '';
+    return value
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/--+/g, '-');
+  };
+
+  const tabDescriptors: TabDescriptor[] = useMemo(() => {
+    const staticTabs: TabDescriptor[] = [
+      { id: 'overview', label: 'Overview', slug: 'overview', type: 'content' },
+      { id: 'mock-tests', label: 'Mock Tests', slug: 'mock-tests', type: 'special' },
+      { id: 'question-papers', label: 'Previous Papers', slug: 'question-papers', type: 'special' }
+    ];
+
+    const customDescriptors: TabDescriptor[] = customTabs.map((tab) => ({
+      id: tab.id,
+      label: tab.title,
+      slug: sanitizeTabSlug(tab.tab_key || tab.title || tab.id),
+      type: 'content'
+    }));
+
+    return [
+      staticTabs[0],
+      ...customDescriptors,
+      staticTabs[1],
+      staticTabs[2]
+    ];
+  }, [customTabs]);
+
+  const normalizedInitialTabSlug = useMemo(() => sanitizeTabSlug(initialTabSlug), [initialTabSlug]);
+  const [hasAppliedInitialTab, setHasAppliedInitialTab] = useState(!initialTabSlug);
+
+  useEffect(() => {
+    if (hasAppliedInitialTab) {
+      return;
+    }
+
+    if (!initialTabSlug || !normalizedInitialTabSlug) {
+      setHasAppliedInitialTab(true);
+      return;
+    }
+
+    const match = tabDescriptors.find((tab) => tab.slug === normalizedInitialTabSlug);
+
+    if (match) {
+      if (match.id !== activeTab) {
+        setActiveTab(match.id);
+      }
+      setHasAppliedInitialTab(true);
+      return;
+    }
+
+    if (pageContent) {
+      setHasAppliedInitialTab(true);
+    }
+  }, [initialTabSlug, normalizedInitialTabSlug, tabDescriptors, activeTab, hasAppliedInitialTab, pageContent]);
+
+  const currentTabDescriptor = tabDescriptors.find((tab) => tab.id === activeTab) || tabDescriptors[0];
+
+  const basePath = useMemo(() => {
+    if (resolvedCategorySlug && resolvedSubcategorySlug) {
+      return `${resolvedCategorySlug}-${resolvedSubcategorySlug}`;
+    }
+    if (combinedSlug) {
+      return combinedSlug.toLowerCase();
+    }
+    return null;
+  }, [combinedSlug, resolvedCategorySlug, resolvedSubcategorySlug]);
+
+  useEffect(() => {
+    if (!basePath || !hasAppliedInitialTab || typeof window === 'undefined') return;
+    const normalizedTab = currentTabDescriptor?.slug || 'overview';
+    const targetPath = normalizedTab === 'overview' ? `/${basePath}` : `/${basePath}/${normalizedTab}`;
+    if (window.location.pathname === targetPath) {
+      return;
+    }
+    const nextUrl = `${targetPath}${window.location.search}${window.location.hash}`;
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, [currentTabDescriptor?.slug, basePath, hasAppliedInitialTab]);
 
   useEffect(() => {
     const fetchPageContent = async () => {
@@ -214,14 +321,15 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
 
   useEffect(() => {
     const fetchMockTests = async () => {
-      if (!normalizedCategory || !normalizedSubcategory) return;
+      if (!resolvedCategorySlug || !resolvedSubcategorySlug) return;
       try {
         setMockTestsLoading(true);
         const params = new URLSearchParams({ limit: '6', exam_type: 'mock_test' });
-        const endpoint = buildApiUrl(`/taxonomy/category/${normalizedCategory}/subcategory/${normalizedSubcategory}/exams?${params.toString()}`);
+        const endpoint = buildApiUrl(`/taxonomy/category/${resolvedCategorySlug}/subcategory/${resolvedSubcategorySlug}/exams?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
-          throw new Error('Failed to load mock tests');
+          setMockTests([]);
+          return;
         }
         const payload = await response.json();
         setMockTests(Array.isArray(payload?.data) ? payload.data : payload?.data?.data || []);
@@ -234,7 +342,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
     };
 
     fetchMockTests();
-  }, [normalizedCategory, normalizedSubcategory]);
+  }, [resolvedCategorySlug, resolvedSubcategorySlug]);
 
   useEffect(() => {
     const fetchQuestionPapers = async () => {
@@ -245,7 +353,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
         const endpoint = buildApiUrl(`/subcategories/${subcategoryId}/question-papers?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
-          throw new Error('Failed to load question papers');
+          setQuestionPapers([]);
+          return;
         }
         const payload = await response.json();
         setQuestionPapers(Array.isArray(payload?.data) ? payload.data : payload?.data?.data || []);
@@ -262,14 +371,15 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
 
   useEffect(() => {
     const fetchPastPaperExams = async () => {
-      if (!normalizedCategory || !normalizedSubcategory) return;
+      if (!resolvedCategorySlug || !resolvedSubcategorySlug) return;
       try {
         setPastPaperLoading(true);
         const params = new URLSearchParams({ limit: '20', exam_type: 'past_paper' });
-        const endpoint = buildApiUrl(`/taxonomy/category/${normalizedCategory}/subcategory/${normalizedSubcategory}/exams?${params.toString()}`);
+        const endpoint = buildApiUrl(`/taxonomy/category/${resolvedCategorySlug}/subcategory/${resolvedSubcategorySlug}/exams?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
-          throw new Error('Failed to load past papers');
+          setPastPaperExams([]);
+          return;
         }
         const payload = await response.json();
         setPastPaperExams(Array.isArray(payload?.data) ? payload.data : payload?.data?.data || []);
@@ -282,7 +392,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
     };
 
     fetchPastPaperExams();
-  }, [normalizedCategory, normalizedSubcategory]);
+  }, [resolvedCategorySlug, resolvedSubcategorySlug]);
 
   const combinedQuestionPapers = useMemo(() => {
     if (!subcategoryId) {
@@ -314,13 +424,30 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
   }, [questionPapers, pastPaperExams, subcategoryId]);
 
   const heroTitle = useMemo(
-    () => subcategoryInfo?.name || normalizedSubcategory?.toUpperCase(),
-    [subcategoryInfo, normalizedSubcategory]
+    () => subcategoryInfo?.name || resolvedSubcategorySlug?.toUpperCase(),
+    [subcategoryInfo, resolvedSubcategorySlug]
   );
   const heroSubtitle = useMemo(
-    () => subcategoryInfo?.description || "Latest details, notifications, and preparation guidance",
+    () => (subcategoryInfo?.description || '').trim(),
     [subcategoryInfo]
   );
+
+  const breadcrumbs = useMemo(() => {
+    const items = [{ label: 'Home', href: '/' }];
+    if (subcategoryInfo?.category?.name && resolvedCategorySlug) {
+      items.push({
+        label: subcategoryInfo.category.name,
+        href: `/${resolvedCategorySlug}`
+      });
+    }
+    if (heroTitle && resolvedCategorySlug && resolvedSubcategorySlug) {
+      items.push({
+        label: heroTitle,
+        href: `/${resolvedCategorySlug}-${resolvedSubcategorySlug}`
+      });
+    }
+    return items;
+  }, [heroTitle, resolvedCategorySlug, resolvedSubcategorySlug, subcategoryInfo]);
 
   if (isLoading) {
     return (
@@ -359,13 +486,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
   };
 
   const visibleSections = getSectionsForTab(activeTab);
-  const tabItems = [
-    { id: 'overview', label: 'Overview' },
-    ...customTabs.map((tab) => ({ id: tab.id, label: tab.title })),
-    { id: 'mock-tests', label: 'Mock Tests' },
-    { id: 'question-papers', label: 'Previous Papers' }
-  ];
-  const isContentTab = activeTab === 'overview' || customTabs.some((tab) => tab.id === activeTab);
+  const tabItems = tabDescriptors.map(({ id, label }) => ({ id, label }));
+  const isContentTab = currentTabDescriptor?.type === 'content';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -383,46 +505,54 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
       )}
 
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">{heroTitle}</h1>
-            <p className="text-xl md:text-2xl text-blue-100 mb-6">{heroSubtitle}</p>
-            <div className="flex flex-wrap justify-center gap-4 text-sm">
-              <HeroBadge
-                icon={<Calendar className="w-5 h-5 mr-2" />}
-                label="Exam Cycle"
-                value={subcategoryInfo?.exam_cycle || "2024"}
-              />
-              <HeroBadge icon={<Users className="w-5 h-5 mr-2" />} label="Vacancies" value={subcategoryInfo?.vacancies || "TBA"} />
-              <HeroBadge
-                icon={<FileText className="w-5 h-5 mr-2" />}
-                label="Application"
-                value={subcategoryInfo?.application_mode || "Online"}
-              />
-            </div>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="text-left">
+            <h1 className="text-4xl md:text-5xl font-bold mb-3">{heroTitle}</h1>
+            {heroSubtitle && <p className="text-xl md:text-2xl text-blue-100 mb-4 max-w-3xl">{heroSubtitle}</p>}
+            <nav className="flex flex-wrap items-center gap-2 text-sm text-blue-100/80">
+              {breadcrumbs.map((crumb, index) => (
+                <React.Fragment key={`${crumb.label}-${index}`}>
+                  {index > 0 && <span className="text-blue-200/60">/</span>}
+                  <Link href={crumb.href} className="hover:underline">
+                    {crumb.label}
+                  </Link>
+                </React.Fragment>
+              ))}
+            </nav>
           </div>
         </div>
       </div>
 
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex overflow-x-auto py-4 space-x-6">
-            {tabItems.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`whitespace-nowrap text-sm font-medium transition-colors ${
-                  activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-gray-700 hover:text-blue-600'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center gap-3 py-4">
+            <div className="flex-1 overflow-x-auto hide-scrollbar">
+              <div className="flex items-center space-x-6">
+                {tabItems.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`whitespace-nowrap text-sm font-medium transition-colors ${
+                      activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-gray-700 hover:text-blue-600'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="md:hidden whitespace-nowrap text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 flex-shrink-0"
+              onClick={() => setIsTabListOpen(true)}
+            >
+              More
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             {isContentTab && (
@@ -613,19 +743,46 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug }:
           </aside>
         </div>
       </div>
+
+      {isTabListOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden">
+          <div className="absolute inset-0 bg-white text-gray-900 flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h2 className="text-lg font-semibold">All Sections</h2>
+              <button
+                type="button"
+                className="text-sm font-medium text-blue-600"
+                onClick={() => setIsTabListOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <ul className="divide-y">
+                {tabDescriptors.map((tab) => (
+                  <li key={tab.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setIsTabListOpen(false);
+                      }}
+                      className={`w-full text-left px-5 py-4 text-base font-medium ${
+                        activeTab === tab.id ? 'text-blue-600 bg-blue-50' : 'text-gray-800'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-const HeroBadge = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
-  <div className="flex items-center bg-blue-700 px-4 py-2 rounded-lg">
-    {icon}
-    <div>
-      <p className="text-blue-200 text-xs uppercase tracking-wide">{label}</p>
-      <span className="font-semibold">{value}</span>
-    </div>
-  </div>
-);
 
 const DefaultModernPage = ({ title, subtitle }: { title: string; subtitle: string }) => (
   <div className="min-h-screen bg-gray-50">

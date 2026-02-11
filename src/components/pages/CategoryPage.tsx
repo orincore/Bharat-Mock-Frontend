@@ -360,7 +360,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
                 {subcategories.map((sub) => (
                   <Link
                     key={sub.id}
-                    href={`/${category.slug}/${sub.slug}`}
+                    href={`/${category.slug}-${sub.slug}`}
                     className="group bg-white border border-slate-200 rounded-3xl p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 flex flex-col gap-4"
                   >
                     <div className="flex items-center justify-between">

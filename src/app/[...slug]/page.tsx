@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import { ExamDetailPage } from '@/components/pages/ExamDetailPage';
-import SubcategoryPage from '@/components/pages/SubcategoryPage';
 import ModernSubcategoryPage from '@/components/pages/ModernSubcategoryPage';
 
 export default function DynamicPage() {
@@ -10,52 +9,25 @@ export default function DynamicPage() {
   const slugArray = params.slug as string[];
   const safeArray = Array.isArray(slugArray) ? slugArray : [slugArray];
 
-  const parseCombined = (value: string) => {
-    const segments = value.split('-');
-    if (segments.length < 2) {
-      return { category: value, subcategory: '' };
-    }
-    return {
-      category: segments[0],
-      subcategory: segments.slice(1).join('-')
-    };
-  };
-
-  const isLegacyExam = safeArray.length === 3;
-  const isCombinedExam = safeArray.length === 2;
-  const isLegacySubcategory = safeArray.length === 2;
-  const isCombinedSubcategory = safeArray.length === 1 && safeArray[0]?.includes('-');
-
-  if (isLegacyExam) {
+  // 3 segments: /categorySlug/subcategorySlug/examSlug  →  Exam detail
+  if (safeArray.length === 3) {
     const urlPath = `/${safeArray.join('/')}`;
     return <ExamDetailPage urlPath={urlPath} />;
   }
 
-  if (isCombinedExam) {
-    const [combined, examSlug] = safeArray;
-    const { category, subcategory } = parseCombined(combined);
-    if (!category || !subcategory) {
-      return null;
+  // 2 segments: could be /categorySlug/subcategorySlug OR /combinedSlug/tabSlug
+  if (safeArray.length === 2) {
+    const [first, second] = safeArray;
+    if (first?.includes('-')) {
+      return <ModernSubcategoryPage combinedSlug={first} initialTabSlug={second} />;
     }
-    const urlPath = `/${category}/${subcategory}/${examSlug}`;
-    return <ExamDetailPage urlPath={urlPath} />;
+    return <ModernSubcategoryPage categorySlug={first} subcategorySlug={second} />;
   }
 
-  if (isLegacySubcategory) {
-    const [categorySlug, subcategorySlug] = safeArray;
-    if (categorySlug.includes('-')) {
-      const { category, subcategory } = parseCombined(categorySlug);
-      return <ModernSubcategoryPage categorySlug={category} subcategorySlug={subcategory} />;
-    }
-    return <SubcategoryPage categorySlug={categorySlug} subcategorySlug={subcategorySlug} />;
-  }
-
-  if (isCombinedSubcategory) {
-    const { category, subcategory } = parseCombined(safeArray[0]);
-    if (!category || !subcategory) {
-      return null;
-    }
-    return <ModernSubcategoryPage categorySlug={category} subcategorySlug={subcategory} />;
+  // 1 segment with hyphen: combined format e.g. /ssc-test-test-ssc
+  // The backend /resolve endpoint will try all split points to find the correct category+subcategory
+  if (safeArray.length === 1 && safeArray[0]?.includes('-')) {
+    return <ModernSubcategoryPage combinedSlug={safeArray[0]} />;
   }
 
   return null;

@@ -6,6 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { categoryAdminService } from '@/lib/api/categoryAdminService';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +37,12 @@ interface Category {
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; target: Category | null }>({ open: false, target: null });
+  const [renameForm, setRenameForm] = useState({ name: '', slug: '' });
+  const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -45,8 +63,32 @@ export default function AdminCategoriesPage() {
       }
     } catch (error) {
       console.error('Failed to fetch categories:', error);
+      toast({
+        title: 'Error',
+        description: 'Unable to load categories. Please try again.',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deleteTarget) return;
+    try {
+      setDeleting(true);
+      await categoryAdminService.deleteCategory(deleteTarget.id);
+      toast({ title: 'Deleted', description: `${deleteTarget.name} removed successfully.` });
+      setDeleteTarget(null);
+      await fetchCategories();
+    } catch (error: any) {
+      toast({
+        title: 'Delete failed',
+        description: error?.message || 'Could not delete category',
+        variant: 'destructive'
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -166,6 +208,13 @@ export default function AdminCategoriesPage() {
                           Manage
                         </Link>
                       </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteTarget(category)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -174,6 +223,27 @@ export default function AdminCategoriesPage() {
           </table>
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove "{deleteTarget?.name}" along with all its subcategories. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={handleDeleteCategory}
+            >
+              {deleting ? 'Deleting...' : 'Yes, delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

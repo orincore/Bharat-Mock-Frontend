@@ -17,13 +17,34 @@ import {
   Trash2,
   Edit,
   Layers,
-  Image as ImageIcon
+  Image as ImageIcon,
+  GripVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { categoryAdminService } from '@/lib/api/categoryAdminService';
+import { subcategoryAdminService } from '@/lib/api/subcategoryAdminService';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 
 type SectionCardProps = {
   icon: React.ElementType;
@@ -141,6 +162,8 @@ interface SubcategorySummary {
   name: string;
   slug: string;
   description?: string | null;
+  logo_url?: string | null;
+  display_order?: number;
   is_active: boolean;
 }
 
@@ -177,6 +200,7 @@ type SubmitKey =
 export default function AdminCategoryDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const categoryId = params.categoryId as string;
 
   const [category, setCategory] = useState<Category | null>(null);
@@ -256,6 +280,9 @@ export default function AdminCategoryDetailPage() {
     customSection: false
   });
   const [subcategories, setSubcategories] = useState<SubcategorySummary[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     slug: '',
@@ -266,6 +293,18 @@ export default function AdminCategoryDetailPage() {
   const [logoPreview, setLogoPreview] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [subcategoryDeleteTarget, setSubcategoryDeleteTarget] = useState<SubcategorySummary | null>(null);
+  const [deletingSubcategory, setDeletingSubcategory] = useState(false);
+  const [showCreateSubcategory, setShowCreateSubcategory] = useState(false);
+  const [creatingSubcategory, setCreatingSubcategory] = useState(false);
+  const [createSubcategoryForm, setCreateSubcategoryForm] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    display_order: '0',
+    is_active: true,
+  });
+  const [createLogoFile, setCreateLogoFile] = useState<File | null>(null);
 
   const setSubmittingState = (key: SubmitKey, value: boolean) =>
     setSubmitting((prev) => ({ ...prev, [key]: value }));
@@ -406,9 +445,101 @@ export default function AdminCategoryDetailPage() {
   const loadSubcategories = async () => {
     try {
       const data = await categoryAdminService.getSubcategories(categoryId);
-      setSubcategories(data || []);
+      const sorted = (data || []).sort((a: SubcategorySummary, b: SubcategorySummary) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      setSubcategories(sorted);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (index: number) => {
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const reordered = [...subcategories];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(index, 0, moved);
+    setSubcategories(reordered);
+    setDragIndex(null);
+    setDragOverIndex(null);
+
+    try {
+      setSavingOrder(true);
+      await categoryAdminService.reorderSubcategories(reordered.map((s) => s.id));
+    } catch (err) {
+      console.error('Failed to save order:', err);
+      await loadSubcategories();
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const openCreateSubcategoryDialog = () => {
+    setCreateSubcategoryForm({ name: '', slug: '', description: '', display_order: '0', is_active: true });
+    setCreateLogoFile(null);
+    setShowCreateSubcategory(true);
+  };
+
+  const handleCreateSubcategory = async () => {
+    if (!createSubcategoryForm.name.trim()) {
+      toast({ title: 'Name required', description: 'Please enter a subcategory name', variant: 'destructive' });
+      return;
+    }
+    try {
+      setCreatingSubcategory(true);
+      await subcategoryAdminService.createSubcategory({
+        category_id: categoryId,
+        name: createSubcategoryForm.name.trim(),
+        slug: createSubcategoryForm.slug.trim() || undefined,
+        description: createSubcategoryForm.description,
+        display_order: createSubcategoryForm.display_order,
+        is_active: createSubcategoryForm.is_active,
+        logo: createLogoFile || undefined,
+      });
+      toast({ title: 'Subcategory created', description: `${createSubcategoryForm.name.trim()} added successfully.` });
+      setShowCreateSubcategory(false);
+      await loadSubcategories();
+    } catch (error: any) {
+      toast({ title: 'Create failed', description: error?.message || 'Could not create subcategory', variant: 'destructive' });
+    } finally {
+      setCreatingSubcategory(false);
+    }
+  };
+
+  const handleCreateLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setCreateLogoFile(file);
+  };
+
+  const handleDeleteSubcategory = async () => {
+    if (!subcategoryDeleteTarget) return;
+    try {
+      setDeletingSubcategory(true);
+      await subcategoryAdminService.deleteSubcategory(subcategoryDeleteTarget.id);
+      toast({ title: 'Subcategory deleted', description: `${subcategoryDeleteTarget.name} removed successfully.` });
+      setSubcategoryDeleteTarget(null);
+      await loadSubcategories();
+    } catch (error: any) {
+      toast({ title: 'Delete failed', description: error?.message || 'Could not delete subcategory', variant: 'destructive' });
+    } finally {
+      setDeletingSubcategory(false);
     }
   };
 
@@ -796,23 +927,56 @@ export default function AdminCategoryDetailPage() {
       <SectionCard
         icon={Layers}
         title="Subcategories"
-        description="Manage subcategory-specific content like overview, updates, and papers"
+        description="Drag to reorder subcategory cards for the homepage &quot;Choose your exam&quot; section"
       >
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <p className="text-sm text-muted-foreground">
+            Create, reorder, and manage all exam subcategories for this category.
+          </p>
+          <Button size="sm" onClick={openCreateSubcategoryDialog}>
+            + Add Subcategory
+          </Button>
+        </div>
+        {savingOrder && (
+          <p className="text-xs text-muted-foreground animate-pulse">Saving order...</p>
+        )}
         {subcategories.length === 0 ? (
           <p className="text-sm text-muted-foreground">No subcategories found for this category.</p>
         ) : (
           <div className="space-y-3">
-            {subcategories.map((sub) => {
+            {subcategories.map((sub, index) => {
               const status = getSubcategoryStatus(sub.is_active);
+              const isDragging = dragIndex === index;
+              const isDragOver = dragOverIndex === index && dragIndex !== index;
               return (
                 <div
                   key={sub.id}
-                  className="border border-border rounded-xl p-4 hover:border-primary/40 transition"
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={() => handleDrop(index)}
+                  onDragEnd={handleDragEnd}
+                  className={`border rounded-xl p-4 transition cursor-grab active:cursor-grabbing ${
+                    isDragging
+                      ? 'opacity-50 border-primary bg-primary/5'
+                      : isDragOver
+                      ? 'border-primary border-dashed bg-primary/5'
+                      : 'border-border hover:border-primary/40'
+                  }`}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-1">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center pt-1 text-muted-foreground hover:text-foreground">
+                      <GripVertical className="h-5 w-5" />
+                    </div>
+                    {sub.logo_url && (
+                      <img src={sub.logo_url} alt="" className="w-10 h-10 object-contain rounded flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-3">
                         <p className="font-semibold text-lg">{sub.name}</p>
+                        <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+                          #{index + 1}
+                        </span>
                         <span className="text-xs font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
                           /{category.slug}/{sub.slug}
                         </span>
@@ -826,7 +990,7 @@ export default function AdminCategoryDetailPage() {
                   </div>
                   <div className="mt-4 flex flex-wrap justify-end gap-2">
                     <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/${category.slug}/${sub.slug}`} target="_blank">
+                      <Link href={`/${category.slug}-${sub.slug}`} target="_blank">
                         View page
                       </Link>
                     </Button>
@@ -834,6 +998,13 @@ export default function AdminCategoryDetailPage() {
                       <Link href={`/admin/subcategories/${sub.id}`}>
                         Manage
                       </Link>
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setSubcategoryDeleteTarget(sub)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -1438,6 +1609,82 @@ export default function AdminCategoryDetailPage() {
           )}
         </div>
       </SectionCard>
+
+      <Dialog
+        open={showCreateSubcategory}
+        onOpenChange={(open) => {
+          if (!open && !creatingSubcategory) setShowCreateSubcategory(false);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create subcategory</DialogTitle>
+            <DialogDescription>Add a new exam variant under this category.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Name *</label>
+              <Input
+                value={createSubcategoryForm.name}
+                onChange={(e) => setCreateSubcategoryForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g. SSC CGL"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Slug</label>
+              <Input
+                value={createSubcategoryForm.slug}
+                onChange={(e) => setCreateSubcategoryForm((prev) => ({ ...prev, slug: e.target.value }))}
+                placeholder="Auto-generated when blank"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Description</label>
+              <Textarea
+                rows={3}
+                value={createSubcategoryForm.description}
+                onChange={(e) => setCreateSubcategoryForm((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="Optional short description"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Display order</label>
+                <Input
+                  type="number"
+                  value={createSubcategoryForm.display_order}
+                  onChange={(e) => setCreateSubcategoryForm((prev) => ({ ...prev, display_order: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <select
+                  className="w-full border border-border rounded-lg px-3 py-2 text-sm"
+                  value={createSubcategoryForm.is_active ? 'true' : 'false'}
+                  onChange={(e) => setCreateSubcategoryForm((prev) => ({ ...prev, is_active: e.target.value === 'true' }))}
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Logo</label>
+              <Input type="file" accept="image/*" onChange={handleCreateLogoChange} />
+              <p className="text-xs text-muted-foreground">Optional. Appears on homepage "Choose your exam" cards.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateSubcategory(false)} disabled={creatingSubcategory}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateSubcategory} disabled={creatingSubcategory}>
+              {creatingSubcategory ? 'Creating…' : 'Create Subcategory'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
