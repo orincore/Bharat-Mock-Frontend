@@ -4,46 +4,21 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
-import { footerService } from '@/lib/api/footerService';
-import { useToast } from '@/components/ui/use-toast';
-import { useContactInfo } from '@/hooks/useContactInfo';
+import { useAppData } from '@/context/AppDataContext';
 import { fallbackContactInfo, socialIconMap } from '@/lib/constants/contact';
 import { fallbackFooterSections, mapLinksToFooterSections, FooterSection } from '@/lib/constants/footer';
 
 export function Footer() {
-  const { toast } = useToast();
-  const [sections, setSections] = useState<FooterSection[]>(fallbackFooterSections);
-  const [linkLoading, setLinkLoading] = useState(false);
-  const { contactInfo, loading: contactLoading, error: contactError } = useContactInfo();
+  const { footer: footerLinks, contact: contactInfo, isLoading: appLoading, error: appError } = useAppData();
   const info = contactInfo ?? fallbackContactInfo;
+  const linkLoading = appLoading;
+  const contactError = appError;
 
-  useEffect(() => {
-    const fetchFooterLinks = async () => {
-      try {
-        setLinkLoading(true);
-        const data = await footerService.getFooterLinks();
-        const mapped = mapLinksToFooterSections(data);
-        if (!mapped.length) {
-          setSections(fallbackFooterSections);
-          return;
-        }
-        setSections(mapped);
-      } catch (error: any) {
-        setSections(fallbackFooterSections);
-        toast({
-          title: 'Footer links unavailable',
-          description: error?.message || 'Using default footer links.',
-          variant: 'destructive'
-        });
-      } finally {
-        setLinkLoading(false);
-      }
-    };
-
-    fetchFooterLinks();
-  }, [toast]);
-
-  const renderedSections = useMemo(() => sections, [sections]);
+  const renderedSections: FooterSection[] = useMemo(() => {
+    if (!footerLinks?.length) return fallbackFooterSections;
+    const mapped = mapLinksToFooterSections(footerLinks);
+    return mapped.length ? mapped : fallbackFooterSections;
+  }, [footerLinks]);
   const socialLinks = useMemo(
     () =>
       (info.contact_social_links || [])
@@ -90,7 +65,7 @@ export function Footer() {
                     .join(', ')}
                 </span>
               </div>
-              {contactError && !contactLoading && (
+              {contactError && !linkLoading && (
                 <p className="text-xs text-background/60">Showing fallback contact details.</p>
               )}
             </div>
@@ -124,6 +99,12 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-background/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-background/60 text-sm">
             © {new Date().getFullYear()} Bharat Mock. All rights reserved.
+          </p>
+          <p className="text-background/60 text-sm">
+            Powered by{' '}
+            <Link href="https://orincore.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">
+              ORINCORE Technologies
+            </Link>
           </p>
           
           <div className="flex items-center gap-4">

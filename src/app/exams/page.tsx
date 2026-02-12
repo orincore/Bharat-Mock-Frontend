@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, Filter, BookOpen, Clock, Award, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,9 @@ export default function ExamsPage() {
     difficulty: '',
     status: DEFAULT_STATUS
   });
+  const [selectedDifficultyId, setSelectedDifficultyId] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const activeRequestRef = useRef(0);
   
   const [pagination, setPagination] = useState({
     page: 1,
@@ -58,7 +61,23 @@ export default function ExamsPage() {
 
   useEffect(() => {
     fetchExams();
-  }, [filters, pagination.page]);
+  }, [filters.category, filters.subcategory, filters.difficulty, filters.status, pagination.page, debouncedSearch]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(filters.search.trim());
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [filters.search]);
+
+  useEffect(() => {
+    if (!filters.difficulty) {
+      setSelectedDifficultyId('');
+      return;
+    }
+    const matched = difficultyOptions.find(option => option.name === filters.difficulty);
+    setSelectedDifficultyId(matched ? matched.id : '');
+  }, [filters.difficulty, difficultyOptions]);
 
   const fetchCategories = async () => {
     setCategoriesLoading(true);
@@ -101,16 +120,22 @@ export default function ExamsPage() {
   };
 
   const fetchExams = async () => {
+    const requestId = ++activeRequestRef.current;
     setIsLoading(true);
     setError('');
     
     try {
       const response = await examService.getExams({
         ...filters,
+        search: debouncedSearch,
         page: pagination.page,
         limit: pagination.limit
       });
-      
+
+      if (requestId !== activeRequestRef.current) {
+        return;
+      }
+
       const sortedExams = [...response.data].sort((a, b) => {
         const aDate = a.created_at || a.updated_at || '';
         const bDate = b.created_at || b.updated_at || '';
@@ -124,8 +149,14 @@ export default function ExamsPage() {
         totalPages: response.totalPages
       }));
     } catch (err: any) {
+      if (requestId !== activeRequestRef.current) {
+        return;
+      }
       setError(err.message || 'Failed to load exams');
     } finally {
+      if (requestId !== activeRequestRef.current) {
+        return;
+      }
       setIsLoading(false);
     }
   };
@@ -133,7 +164,6 @@ export default function ExamsPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPagination(prev => ({ ...prev, page: 1 }));
-    fetchExams();
   };
 
   const handleFilterChange = (key: string, value: string) => {
@@ -149,10 +179,37 @@ export default function ExamsPage() {
     handleFilterChange('subcategory', '');
   };
 
+  const toggleCategory = (categoryId: string) => {
+    if (selectedCategoryId === categoryId) {
+      handleCategorySelect('');
+    } else {
+      handleCategorySelect(categoryId);
+    }
+  };
+
   const handleSubcategorySelect = (value: string) => {
     setSelectedSubcategoryId(value);
     const selectedSubcategory = subcategories.find(sub => sub.id === value);
     handleFilterChange('subcategory', selectedSubcategory ? selectedSubcategory.name : '');
+  };
+
+  const toggleSubcategory = (subcategoryId: string) => {
+    if (selectedSubcategoryId === subcategoryId) {
+      handleSubcategorySelect('');
+    } else {
+      handleSubcategorySelect(subcategoryId);
+    }
+  };
+
+  const toggleDifficulty = (difficultyId: string) => {
+    if (selectedDifficultyId === difficultyId) {
+      setSelectedDifficultyId('');
+      handleFilterChange('difficulty', '');
+      return;
+    }
+    setSelectedDifficultyId(difficultyId);
+    const selectedDifficulty = difficultyOptions.find(option => option.id === difficultyId);
+    handleFilterChange('difficulty', selectedDifficulty ? selectedDifficulty.name : '');
   };
 
   const clearFilters = () => {
@@ -165,6 +222,7 @@ export default function ExamsPage() {
     });
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
+    setSelectedDifficultyId('');
     setSubcategories([]);
     setPagination(prev => ({ ...prev, page: 1 }));
   };
@@ -250,18 +308,28 @@ export default function ExamsPage() {
                       <label className="block text-sm font-medium text-foreground mb-2">
                         Category
                       </label>
-                      <select
-                        value={selectedCategoryId}
-                        onChange={(e) => handleCategorySelect(e.target.value)}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="">All Categories</option>
+                      <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+                        <label className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-primary"
+                            checked={selectedCategoryId === ''}
+                            onChange={() => handleCategorySelect('')}
+                          />
+                          <span>All Categories</span>
+                        </label>
                         {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
+                          <label key={category.id} className="flex items-center gap-2 text-sm text-foreground">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-primary"
+                              checked={selectedCategoryId === category.id}
+                              onChange={() => toggleCategory(category.id)}
+                            />
+                            <span>{category.name}</span>
+                          </label>
                         ))}
-                      </select>
+                      </div>
                     </div>
 
                     {/* Subcategory Filter */}
@@ -272,19 +340,30 @@ export default function ExamsPage() {
                       {subcategoriesLoading ? (
                         <Skeleton className="h-10 w-full rounded-lg" />
                       ) : (
-                        <select
-                          value={selectedSubcategoryId}
-                          onChange={(e) => handleSubcategorySelect(e.target.value)}
-                          disabled={!selectedCategoryId || subcategories.length === 0}
-                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-70"
-                        >
-                          <option value="">{selectedCategoryId ? 'All Sub-categories' : 'Select category first'}</option>
+                        <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+                          <label className="flex items-center gap-2 text-sm text-foreground">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-primary"
+                              checked={selectedSubcategoryId === ''}
+                              onChange={() => handleSubcategorySelect('')}
+                              disabled={!selectedCategoryId || subcategories.length === 0}
+                            />
+                            <span>{selectedCategoryId ? 'All Sub-categories' : 'Select category first'}</span>
+                          </label>
                           {subcategories.map((subcategory) => (
-                            <option key={subcategory.id} value={subcategory.id}>
-                              {subcategory.name}
-                            </option>
+                            <label key={subcategory.id} className="flex items-center gap-2 text-sm text-foreground">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 accent-primary"
+                                checked={selectedSubcategoryId === subcategory.id}
+                                onChange={() => toggleSubcategory(subcategory.id)}
+                                disabled={!selectedCategoryId}
+                              />
+                              <span>{subcategory.name}</span>
+                            </label>
                           ))}
-                        </select>
+                        </div>
                       )}
                     </div>
 
@@ -293,18 +372,28 @@ export default function ExamsPage() {
                       <label className="block text-sm font-medium text-foreground mb-2">
                         Tier
                       </label>
-                      <select
-                        value={filters.difficulty}
-                        onChange={(e) => handleFilterChange('difficulty', e.target.value)}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="">All Tiers</option>
+                      <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+                        <label className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-primary"
+                            checked={selectedDifficultyId === ''}
+                            onChange={() => toggleDifficulty('')}
+                          />
+                          <span>All Tiers</span>
+                        </label>
                         {difficultyOptions.map((difficulty) => (
-                          <option key={difficulty.id} value={difficulty.name}>
-                            {difficulty.name}
-                          </option>
+                          <label key={difficulty.id} className="flex items-center gap-2 text-sm text-foreground">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-primary"
+                              checked={selectedDifficultyId === difficulty.id}
+                              onChange={() => toggleDifficulty(difficulty.id)}
+                            />
+                            <span>{difficulty.name}</span>
+                          </label>
                         ))}
-                      </select>
+                      </div>
                     </div>
 
                     

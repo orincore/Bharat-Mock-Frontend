@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from 'dompurify';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   AlertCircle, Clock, ChevronLeft, ChevronRight, Flag, 
@@ -20,8 +20,25 @@ const RICH_TEXT_SANITIZE_CONFIG = {
   ADD_ATTR: ['style', 'class', 'color', 'face', 'size', 'target', 'rel', 'data-inline-break'],
 };
 
-const sanitizeRichText = (html?: string) =>
-  DOMPurify.sanitize(html || '', RICH_TEXT_SANITIZE_CONFIG);
+const sanitizeRichText = (html?: string) => {
+  if (typeof window === 'undefined') {
+    return html || '';
+  }
+  return DOMPurify.sanitize(html || '', RICH_TEXT_SANITIZE_CONFIG);
+};
+
+const requestDomFullscreen = () => {
+  if (typeof document === 'undefined') return;
+  const docEl = document.documentElement;
+  if (!docEl.requestFullscreen || document.fullscreenElement) return;
+  docEl.requestFullscreen().catch(() => {});
+};
+
+const exitDomFullscreen = () => {
+  if (typeof document === 'undefined') return;
+  if (!document.fullscreenElement || !document.exitFullscreen) return;
+  document.exitFullscreen().catch(() => {});
+};
 
 interface QuestionWithStatus extends Question {
   userAnswer?: {
@@ -70,6 +87,8 @@ export default function ExamAttemptPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
   const [languageSelectionMade, setLanguageSelectionMade] = useState(false);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState('Submitting your exam...');
 
 
   const orderValue = (question: Question | QuestionWithStatus) => (
@@ -124,6 +143,11 @@ export default function ExamAttemptPage() {
 
     return { filteredSections, filteredQuestions };
   }, [hasContentForLanguage]);
+
+  useEffect(() => {
+    if (!attemptId) return;
+    router.prefetch(`/results/${attemptId}`);
+  }, [attemptId, router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -374,6 +398,8 @@ export default function ExamAttemptPage() {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
+    setSubmissionMessage('Time is up. Submitting your exam and preparing results...');
+    setShowSubmissionModal(true);
     try {
       await saveAnswer(selectedAnswer, markedForReview);
       await examService.submitExam(attemptId);
@@ -381,6 +407,7 @@ export default function ExamAttemptPage() {
     } catch (error: any) {
       setError('Failed to auto-submit exam');
       setIsSubmitting(false);
+      setShowSubmissionModal(false);
     }
   }, [attemptId, isSubmitting, markedForReview, router, saveAnswer, selectedAnswer]);
 
@@ -388,12 +415,15 @@ export default function ExamAttemptPage() {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
+    setSubmissionMessage('Submitting your exam and generating results. Please wait...');
+    setShowSubmissionModal(true);
     try {
       await examService.submitExam(attemptId);
       router.push(`/results/${attemptId}`);
     } catch (error: any) {
       setError(error.message || 'Failed to submit exam');
       setIsSubmitting(false);
+      setShowSubmissionModal(false);
     }
   }, [attemptId, isSubmitting, router]);
 
@@ -415,7 +445,7 @@ export default function ExamAttemptPage() {
     setLanguageSelectionMade(true);
   }, [allSections, allQuestions, filterContentByLanguage]);
 
-  useEffect(() => {
+    useEffect(() => {
     if (showInstructions || isLoading) return;
 
     const timer = setInterval(() => {
@@ -430,6 +460,17 @@ export default function ExamAttemptPage() {
 
     return () => clearInterval(timer);
   }, [showInstructions, isLoading, handleAutoSubmit]);
+
+  useEffect(() => {
+    if (showInstructions) {
+      exitDomFullscreen();
+      return;
+    }
+    requestDomFullscreen();
+    return () => {
+      exitDomFullscreen();
+    };
+  }, [showInstructions]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -686,7 +727,17 @@ export default function ExamAttemptPage() {
     currentQuestionIndex === currentSectionQuestions.length - 1;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 relative">
+      {showSubmissionModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-10 max-w-md w-full text-center space-y-4 shadow-2xl border border-primary/20">
+            <div className="mx-auto h-16 w-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <h2 className="text-2xl font-display font-semibold text-primary">Submitting Exam</h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">{submissionMessage}</p>
+            <p className="text-xs text-muted-foreground/80">Do not close this window or refresh the page.</p>
+          </div>
+        </div>
+      )}
       <div className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container-main py-4">
           <div className="flex items-center justify-between">

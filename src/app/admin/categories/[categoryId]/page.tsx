@@ -547,7 +547,7 @@ export default function AdminCategoryDetailPage() {
                           #{index + 1}
                         </span>
                         <span className="text-xs font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
-                          /{category.slug}/{sub.slug}
+                          /{sub.slug}
                         </span>
                       </div>
                       {sub.description ? (
@@ -559,7 +559,7 @@ export default function AdminCategoryDetailPage() {
                   </div>
                   <div className="mt-4 flex flex-wrap justify-end gap-2">
                     <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/${category.slug}-${sub.slug}`} target="_blank">
+                      <Link href={`/${sub.slug}`} target="_blank">
                         View page
                       </Link>
                     </Button>

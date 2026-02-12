@@ -128,6 +128,7 @@ export default function ExamFormPage() {
     allow_anytime: false,
     exam_type: 'mock_test' as 'past_paper' | 'mock_test' | 'short_quiz',
     show_in_mock_tests: false,
+    is_premium: false,
     syllabus: [] as string[]
   });
 
@@ -479,6 +480,7 @@ export default function ExamFormPage() {
           allow_anytime: examData.allow_anytime ?? false,
           exam_type: (examData.exam_type || 'mock_test') as 'past_paper' | 'mock_test' | 'short_quiz',
           show_in_mock_tests: examData.show_in_mock_tests ?? false,
+          is_premium: examData.is_premium ?? false,
           syllabus: examData.syllabus || []
         });
 
@@ -1597,15 +1599,16 @@ export default function ExamFormPage() {
         ...formData,
         is_published: true,
         start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
-        end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date)
+        end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date),
+        is_premium: formData.is_premium ?? false,
       };
       if (payload.exam_type !== 'past_paper') {
         payload.show_in_mock_tests = false;
       }
       if (payload.allow_anytime) {
-        delete payload.status;
-        delete payload.start_date;
-        delete payload.end_date;
+        payload.status = 'anytime';
+        payload.start_date = null;
+        payload.end_date = null;
       }
 
       setUploadProgress({ total: 3, completed: 1, current: 'Saving exam via REST...' });
@@ -1617,7 +1620,7 @@ export default function ExamFormPage() {
       const sanitizedSections = serializeSectionsForDraft();
 
       if (isEditMode && examId) {
-        await adminService.updateExamWithContent(
+        const result = await adminService.updateExamWithContent(
           examId,
           payload,
           sanitizedSections,
@@ -1625,24 +1628,34 @@ export default function ExamFormPage() {
           thumbnailFile || undefined
         );
         
-        // Draft cleared - using REST API only
-        
         setUploadProgress({ total: 3, completed: 3, current: 'Exam updated successfully!' });
-        setToastMessage('Exam updated successfully!');
-        setToastType('success');
+
+        if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
+          setToastMessage(`Exam updated but only ${result.questionCount}/${result.expectedQuestionCount} questions saved. Please re-save.`);
+          setToastType('warning');
+        } else {
+          setToastMessage('Exam updated successfully!');
+          setToastType('success');
+        }
         setShowToast(true);
         setHasUnsavedChanges(false);
         hasUnsavedChangesRef.current = false;
       } else {
-        await adminService.bulkCreateExamWithContent(
+        const result = await adminService.bulkCreateExamWithContent(
           payload,
           sanitizedSections,
           logoFile || undefined,
           thumbnailFile || undefined
         );
         setUploadProgress({ total: 3, completed: 3, current: 'Exam created successfully!' });
-        setToastMessage('Exam created successfully with all sections and questions!');
-        setToastType('success');
+
+        if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
+          setToastMessage(`Exam created but only ${result.questionCount}/${result.expectedQuestionCount} questions saved. Please re-save.`);
+          setToastType('warning');
+        } else {
+          setToastMessage('Exam created successfully with all sections and questions!');
+          setToastType('success');
+        }
         setShowToast(true);
       }
 
@@ -1980,7 +1993,7 @@ export default function ExamFormPage() {
               </div>
 
               {formData.exam_type === 'past_paper' && (
-                <div className="mt-4 p-4 rounded-xl border border-border bg-muted/30">
+                <div className="mt-4 p-4 rounded-xl border border-border bg-muted/30 space-y-4">
                   <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
@@ -2000,6 +2013,26 @@ export default function ExamFormPage() {
                   </div>
                 </div>
               )}
+
+              <div className="mt-4 p-4 rounded-xl border border-amber-300/40 bg-amber-50/50">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    name="is_premium"
+                    checked={formData.is_premium}
+                    onChange={handleChange}
+                    className="h-5 w-5 accent-amber-500 mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <label className="text-sm font-semibold text-foreground cursor-pointer">
+                      Bharat Mock Premium
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Mark this as a premium exam. Premium exams appear under the "Bharat Mock Premium" tab.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
 

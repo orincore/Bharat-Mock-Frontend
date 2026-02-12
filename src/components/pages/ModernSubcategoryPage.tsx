@@ -8,7 +8,7 @@ import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { Download, Lock } from "lucide-react";
 
 interface Block {
   id: string;
@@ -136,40 +136,31 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
         let resolved: any = null;
 
-        // If we have a combined slug, use the backend resolve endpoint
-        if (combinedSlug) {
+        // Primary: look up subcategory by its own independent slug
+        if (resolvedSubcategorySlug) {
+          const res = await fetch(buildApiUrl(`/taxonomy/subcategory/${resolvedSubcategorySlug}`));
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.data?.id) {
+              resolved = data.data;
+              setResolvedCategorySlug(resolved.category?.slug ? resolved.category.slug.toLowerCase() : null);
+              setResolvedSubcategorySlug(resolved.slug ? resolved.slug.toLowerCase() : null);
+            }
+          }
+        }
+
+        // Legacy fallback: combined slug resolution
+        if (!resolved && combinedSlug) {
           const resolveEndpoint = buildApiUrl(`/taxonomy/resolve/${combinedSlug.toLowerCase()}`);
           const res = await fetch(resolveEndpoint);
           if (res.ok) {
             const data = await res.json();
             if (data?.data?.id) {
               resolved = data.data;
-              // Store the resolved slugs for subsequent exam fetches
               setResolvedCategorySlug(resolved.category?.slug ? resolved.category.slug.toLowerCase() : null);
               setResolvedSubcategorySlug(resolved.slug ? resolved.slug.toLowerCase() : null);
             }
           }
-        } else if (resolvedCategorySlug && resolvedSubcategorySlug) {
-          // Direct category/subcategory slugs provided
-          const endpoints = [
-            buildApiUrl(`/taxonomy/category/${resolvedCategorySlug}/subcategory/${resolvedSubcategorySlug}`),
-            buildApiUrl(`/taxonomy/subcategory-id/${resolvedSubcategorySlug}`)
-          ];
-
-          for (const endpoint of endpoints) {
-            const res = await fetch(endpoint);
-            if (res.ok) {
-              const data = await res.json();
-              if (data?.id || data?.data?.id) {
-                resolved = data.data || data;
-                break;
-              }
-            }
-          }
-        } else {
-          setError("Missing category or subcategory slug");
-          setIsLoading(false);
-          return;
         }
 
         if (!resolved?.id) {
@@ -185,7 +176,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     };
 
     fetchSubcategory();
-  }, [combinedSlug, resolvedCategorySlug, resolvedSubcategorySlug]);
+  }, [combinedSlug, resolvedSubcategorySlug]);
 
   const sanitizeTabSlug = (value: string | null | undefined) => {
     if (!value) return '';
@@ -251,14 +242,14 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const currentTabDescriptor = tabDescriptors.find((tab) => tab.id === activeTab) || tabDescriptors[0];
 
   const basePath = useMemo(() => {
-    if (resolvedCategorySlug && resolvedSubcategorySlug) {
-      return `${resolvedCategorySlug}-${resolvedSubcategorySlug}`;
+    if (resolvedSubcategorySlug) {
+      return resolvedSubcategorySlug;
     }
     if (combinedSlug) {
       return combinedSlug.toLowerCase();
     }
     return null;
-  }, [combinedSlug, resolvedCategorySlug, resolvedSubcategorySlug]);
+  }, [combinedSlug, resolvedSubcategorySlug]);
 
   useEffect(() => {
     if (!basePath || !hasAppliedInitialTab || typeof window === 'undefined') return;
@@ -321,11 +312,11 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
   useEffect(() => {
     const fetchMockTests = async () => {
-      if (!resolvedCategorySlug || !resolvedSubcategorySlug) return;
+      if (!resolvedSubcategorySlug) return;
       try {
         setMockTestsLoading(true);
         const params = new URLSearchParams({ limit: '6', exam_type: 'mock_test' });
-        const endpoint = buildApiUrl(`/taxonomy/category/${resolvedCategorySlug}/subcategory/${resolvedSubcategorySlug}/exams?${params.toString()}`);
+        const endpoint = buildApiUrl(`/taxonomy/subcategory/${resolvedSubcategorySlug}/exams?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
           setMockTests([]);
@@ -342,7 +333,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     };
 
     fetchMockTests();
-  }, [resolvedCategorySlug, resolvedSubcategorySlug]);
+  }, [resolvedSubcategorySlug]);
 
   useEffect(() => {
     const fetchQuestionPapers = async () => {
@@ -371,11 +362,11 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
   useEffect(() => {
     const fetchPastPaperExams = async () => {
-      if (!resolvedCategorySlug || !resolvedSubcategorySlug) return;
+      if (!resolvedSubcategorySlug) return;
       try {
         setPastPaperLoading(true);
         const params = new URLSearchParams({ limit: '20', exam_type: 'past_paper' });
-        const endpoint = buildApiUrl(`/taxonomy/category/${resolvedCategorySlug}/subcategory/${resolvedSubcategorySlug}/exams?${params.toString()}`);
+        const endpoint = buildApiUrl(`/taxonomy/subcategory/${resolvedSubcategorySlug}/exams?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
           setPastPaperExams([]);
@@ -392,7 +383,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     };
 
     fetchPastPaperExams();
-  }, [resolvedCategorySlug, resolvedSubcategorySlug]);
+  }, [resolvedSubcategorySlug]);
 
   const combinedQuestionPapers = useMemo(() => {
     if (!subcategoryId) {
@@ -410,7 +401,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         id: `exam-${exam.id}`,
         subcategory_id: subcategoryId,
         title: exam.title,
-        description: exam.description,
+        description: null,
         year: exam.start_date ? new Date(exam.start_date).getFullYear() : extractYearFromTitle(exam.title),
         paper_type: exam.exam_type === 'past_paper' ? 'Past Paper' : null,
         exam_id: exam.id,
@@ -440,8 +431,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         href: `/${resolvedCategorySlug}`
       });
     }
-    if (heroTitle && resolvedCategorySlug && resolvedSubcategorySlug) {
-      const baseHref = `/${resolvedCategorySlug}-${resolvedSubcategorySlug}`;
+    if (heroTitle && resolvedSubcategorySlug) {
+      const baseHref = `/${resolvedSubcategorySlug}`;
       items.push({
         label: heroTitle,
         href: baseHref
@@ -636,20 +627,21 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                       <div key={exam.id} className="border rounded-xl p-4 flex flex-col gap-4">
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
-                          {exam.description && <p className="text-sm text-gray-600 mt-1">{exam.description}</p>}
+                          
                           <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
                             {exam.total_questions && <span>{exam.total_questions} Questions</span>}
                             {exam.duration && <span>{exam.duration} mins</span>}
                             {exam.total_marks && <span>{exam.total_marks} Marks</span>}
-                            {exam.is_free ? <span className="text-green-600 font-semibold">Free</span> : exam.price ? <span>₹{exam.price}</span> : null}
+                            {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-3">
                           <Link
                             href={exam.url_path || `/exams/${exam.slug || exam.id}`}
-                            className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                            className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${exam.is_free ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
                           >
-                            Attempt Now
+                            {!exam.is_free && <Lock className="w-4 h-4 mr-2" />}
+                            {exam.is_free ? 'Attempt Now' : 'Unlock Now'}
                           </Link>
                           <button
                             onClick={() => handleDownloadExamPDF(exam.id)}
@@ -704,9 +696,10 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                               {paper.exam?.url_path && (
                                 <Link
                                   href={paper.exam.url_path}
-                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
+                                  className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${(paper.exam?.is_free ?? true) ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
                                 >
-                                  Attempt Online
+                                  {!(paper.exam?.is_free ?? true) && <Lock className="w-4 h-4 mr-2" />}
+                                  {(paper.exam?.is_free ?? true) ? 'Attempt Now' : 'Unlock Now'}
                                 </Link>
                               )}
                               {paperExamId && (

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { GraduationCap, Menu, X, User, LogOut, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import {
   DropdownMenu,
@@ -15,8 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { navigationService } from '@/lib/api/navigationService';
-import { useToast } from '@/components/ui/use-toast';
+import { useAppData } from '@/context/AppDataContext';
 
 type NavigationItem = {
   label: string;
@@ -24,54 +24,23 @@ type NavigationItem = {
   open_in_new_tab?: boolean;
 };
 
-const fallbackNavigation: NavigationItem[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Live Tests', href: '/live-tests' },
-  { label: 'Exams', href: '/exams' },
-  { label: 'Courses', href: '/courses' },
-  { label: 'Blogs', href: '/blogs' }
-];
-
 const renderNavLabel = (item: NavigationItem) => item.label;
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [navLinks, setNavLinks] = useState<NavigationItem[]>(fallbackNavigation);
-  const [loadingNav, setLoadingNav] = useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
-  const { toast } = useToast();
+  const { navigation: rawNavLinks, isLoading: loadingNav } = useAppData();
 
-  useEffect(() => {
-    const fetchNavigation = async () => {
-      try {
-        setLoadingNav(true);
-        const data = await navigationService.getNavigationLinks();
-        if (!data?.length) {
-          setNavLinks(fallbackNavigation);
-          return;
-        }
-        setNavLinks(
-          data.map((link) => ({
-            label: link.label,
-            href: link.href,
-            open_in_new_tab: link.open_in_new_tab
-          }))
-        );
-      } catch (error: any) {
-        setNavLinks(fallbackNavigation);
-        toast({
-          title: 'Navigation unavailable',
-          description: error?.message || 'Using default menu items.',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoadingNav(false);
-      }
-    };
-
-    fetchNavigation();
-  }, [toast]);
+  const navLinks: NavigationItem[] = useMemo(
+    () =>
+      (rawNavLinks || []).map((link) => ({
+        label: link.label,
+        href: link.href,
+        open_in_new_tab: link.open_in_new_tab,
+      })),
+    [rawNavLinks]
+  );
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -99,27 +68,38 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
-            {desktopNavItems.map((item, index) => (
-              <Link
-                key={`${item.href}-${index}`}
-                href={item.href}
-                target={item.open_in_new_tab ? '_blank' : undefined}
-                rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActive(item.href)
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <div className="hidden md:flex items-center gap-1 min-h-[40px]">
+            {loadingNav ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={`nav-skel-${index}`} className="h-9 w-20 rounded-lg" />
+              ))
+            ) : (
+              desktopNavItems.map((item, index) => (
+                <Link
+                  key={`${item.href}-${index}`}
+                  href={item.href}
+                  target={item.open_in_new_tab ? '_blank' : undefined}
+                  rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActive(item.href)
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))
+            )}
           </div>
 
           {/* Auth Section */}
-          <div className="hidden md:flex items-center gap-3">
-            {isAuthenticated ? (
+          <div className="hidden md:flex items-center gap-3 min-w-[160px] justify-end">
+            {isLoading ? (
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="h-10 w-10 rounded-full" />
+              </div>
+            ) : isAuthenticated ? (
               <>
                 {user?.role === 'admin' && (
                   <Link href="/admin">
@@ -220,25 +200,34 @@ export function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background animate-slide-down">
           <div className="container-main py-4 space-y-2">
-            {desktopNavItems.map((item, index) => (
-              <Link
-                key={`${item.href}-${index}`}
-                href={item.href}
-                target={item.open_in_new_tab ? '_blank' : undefined}
-                rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  isActive(item.href)
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {renderNavLabel(item)}
-              </Link>
-            ))}
+            {loadingNav
+              ? Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={`mobile-nav-skel-${index}`} className="h-12 w-full rounded-lg" />
+                ))
+              : desktopNavItems.map((item, index) => (
+                  <Link
+                    key={`${item.href}-${index}`}
+                    href={item.href}
+                    target={item.open_in_new_tab ? '_blank' : undefined}
+                    rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      isActive(item.href)
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {renderNavLabel(item)}
+                  </Link>
+                ))}
             
             <div className="pt-4 border-t border-border space-y-2">
-              {isAuthenticated ? (
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+              ) : isAuthenticated ? (
                 <>
                   <Link
                     href="/profile"

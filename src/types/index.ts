@@ -40,6 +40,7 @@ export interface Exam {
   allow_anytime?: boolean;
   exam_type?: 'past_paper' | 'mock_test' | 'short_quiz';
   show_in_mock_tests?: boolean;
+  is_premium?: boolean;
   supports_hindi?: boolean;
 }
 
@@ -603,6 +604,8 @@ export interface FilterOptions {
   subcategory?: string;
   status?: string;
   difficulty?: string;
+  exam_type?: string;
+  is_premium?: string;
   location?: string;
   type?: string;
   level?: string;

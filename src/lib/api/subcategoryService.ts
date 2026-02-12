@@ -190,7 +190,7 @@ export const subcategoryService = {
   async getSubcategoryBySlug(categorySlug: string, subcategorySlug: string): Promise<Subcategory | null> {
     try {
       const response = await apiClient.get<ApiResponse<Subcategory>>(
-        `/taxonomy/category/${categorySlug}/subcategory/${subcategorySlug}`
+        `/taxonomy/subcategory/${subcategorySlug}`
       );
       return response.data;
     } catch (error) {
@@ -212,7 +212,7 @@ export const subcategoryService = {
       if (params?.search) queryParams.append('search', params.search);
 
       const response = await apiClient.get<PaginatedResponse<any>>(
-        `/taxonomy/category/${categorySlug}/subcategory/${subcategorySlug}/exams?${queryParams.toString()}`
+        `/taxonomy/subcategory/${subcategorySlug}/exams?${queryParams.toString()}`
       );
       return response;
     } catch (error) {

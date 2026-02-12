@@ -520,7 +520,7 @@ export default function NewCategoryPage({
                         return (
                           <Link
                             key={sub.id}
-                            href={`/${categorySlug}-${sub.slug}`}
+                            href={`/${sub.slug}`}
                             className="border border-border rounded-2xl px-4 py-3 bg-card hover:border-blue-200 hover:shadow-md transition flex items-center gap-4 min-h-[84px]"
                           >
                             <div className="w-10 h-10 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center overflow-hidden text-orange-600 flex-shrink-0">

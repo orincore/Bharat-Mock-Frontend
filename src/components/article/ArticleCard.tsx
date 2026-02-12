@@ -20,7 +20,7 @@ const getAuthorMeta = (article: ArticleLike) => {
 
   if (articleAuthor) {
     return {
-      name: articleAuthor.name || 'Editorial Team',
+      name: articleAuthor.name || 'Bharat Mock Team',
       avatar: articleAuthor.avatar_url,
       bio: articleAuthor.bio || 'Bharat Mock Expert'
     };
@@ -28,7 +28,7 @@ const getAuthorMeta = (article: ArticleLike) => {
 
   const rawMeta = blogAuthor?.raw_user_meta_data || {};
   return {
-    name: rawMeta.name || 'Editorial Team',
+    name: rawMeta.name || 'Bharat Mock Team',
     avatar: rawMeta.avatar_url,
     bio: rawMeta.bio || 'Bharat Mock Expert'
   };

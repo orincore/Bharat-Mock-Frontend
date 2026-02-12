@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
 import Index from "@/pages/Index";
-import { HomepageHero } from "@/lib/api/homepageService";
+import { HomepageHero, HomepageData } from "@/lib/api/homepageService";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 const DEFAULT_TITLE = "Bharat Mock — India's Smart Exam Companion";
 const DEFAULT_DESCRIPTION =
   "Practice adaptive mock tests, explore govt exam resources, and stay ahead with Bharat Mock.";
 
-async function fetchHomepageHero(): Promise<HomepageHero | null> {
+async function fetchHomepageData(): Promise<HomepageData | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/homepage/hero/default`, {
+    const response = await fetch(`${API_BASE_URL}/homepage/data`, {
       next: { revalidate: 60 }
     });
     if (!response.ok) {
-      throw new Error(`Failed to load homepage hero: ${response.status}`);
+      throw new Error(`Failed to load homepage data: ${response.status}`);
     }
     const payload = await response.json();
     return payload?.data ?? null;
   } catch (error) {
-    console.error("Failed to fetch homepage hero", error);
+    console.error("Failed to fetch homepage data", error);
     return null;
   }
 }
@@ -31,7 +31,8 @@ const parseRobots = (value?: string) => {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const hero = await fetchHomepageHero();
+  const data = await fetchHomepageData();
+  const hero = data?.hero;
   const robots = parseRobots(hero?.robots_meta);
 
   return {
@@ -56,6 +57,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const hero = await fetchHomepageHero();
-  return <Index initialHero={hero} />;
+  const data = await fetchHomepageData();
+  return <Index initialHero={data?.hero ?? null} initialData={data} />;
 }

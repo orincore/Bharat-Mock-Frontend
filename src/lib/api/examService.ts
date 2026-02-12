@@ -72,8 +72,11 @@ export const examService = {
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.search) params.append('search', options.search);
     if (options?.category) params.append('category', options.category);
+    if (options?.subcategory) params.append('subcategory', options.subcategory);
     if (options?.status) params.append('status', options.status);
     if (options?.difficulty) params.append('difficulty', options.difficulty);
+    if (options?.exam_type) params.append('exam_type', options.exam_type);
+    if (options?.is_premium) params.append('is_premium', options.is_premium);
 
     const response = await apiClient.get<ExamResponse>(
       `/exams?${params.toString()}`

@@ -41,6 +41,35 @@ export interface HomepageHero {
   updated_at?: string;
 }
 
+export interface HomepageSubcategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  category_id: string;
+  logo_url?: string | null;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface HomepageCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logo_url?: string | null;
+  display_order?: number;
+  is_active?: boolean;
+  subcategories: HomepageSubcategory[];
+}
+
+export interface HomepageData {
+  hero: HomepageHero | null;
+  categories: HomepageCategory[];
+  featuredExams: any[];
+  featuredArticles: any[];
+}
+
 export const homepageService = {
   async getHero(slug = 'default'): Promise<HomepageHero | null> {
     try {
@@ -48,6 +77,16 @@ export const homepageService = {
       return response.data;
     } catch (error) {
       console.error('Failed to fetch homepage hero:', error);
+      return null;
+    }
+  },
+
+  async getHomepageData(): Promise<HomepageData | null> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: HomepageData }>('/homepage/data');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch homepage data:', error);
       return null;
     }
   }

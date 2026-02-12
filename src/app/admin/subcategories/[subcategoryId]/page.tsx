@@ -598,20 +598,17 @@ export default function AdminSubcategoryEditorPage() {
   };
 
   const handlePreview = async () => {
-    let categorySlug = subcategoryInfo?.category?.slug || subcategoryInfo?.category_slug;
     let subcategorySlug = subcategoryInfo?.slug;
 
-    if (!categorySlug || !subcategorySlug) {
+    if (!subcategorySlug) {
       const refreshed = await loadSubcategoryInfo();
       if (refreshed) {
-        categorySlug = refreshed.category?.slug || refreshed.category_slug;
         subcategorySlug = refreshed.slug;
       }
     }
 
-    if (categorySlug && subcategorySlug) {
-      const previewUrl = `/${categorySlug}/${subcategorySlug}`;
-      window.open(previewUrl, '_blank');
+    if (subcategorySlug) {
+      window.open(`/${subcategorySlug}`, '_blank');
       return;
     }
 

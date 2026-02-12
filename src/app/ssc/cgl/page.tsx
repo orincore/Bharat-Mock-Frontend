@@ -79,8 +79,8 @@ export default function SSCCGLPage() {
         setError(null);
 
         const endpoints = [
-          buildApiUrl(`/taxonomy/category/${CATEGORY_SLUG}/subcategory/${SUBCATEGORY_SLUG}`),
-          buildApiUrl(`/taxonomy/subcategory-id/${SUBCATEGORY_SLUG}`)
+          buildApiUrl(`/taxonomy/subcategory/${SUBCATEGORY_SLUG}`),
+          buildApiUrl(`/taxonomy/category/${CATEGORY_SLUG}/subcategory/${SUBCATEGORY_SLUG}`)
         ];
 
         let resolved: any = null;
@@ -158,7 +158,7 @@ export default function SSCCGLPage() {
       try {
         setMockTestsLoading(true);
         const params = new URLSearchParams({ limit: '6', exam_type: 'mock_test' });
-        const endpoint = buildApiUrl(`/taxonomy/category/${CATEGORY_SLUG}/subcategory/${SUBCATEGORY_SLUG}/exams?${params.toString()}`);
+        const endpoint = buildApiUrl(`/taxonomy/subcategory/${SUBCATEGORY_SLUG}/exams?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
           throw new Error('Failed to load mock tests');

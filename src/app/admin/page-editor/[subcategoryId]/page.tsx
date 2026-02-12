@@ -193,9 +193,8 @@ export default function PageEditorPage() {
   };
 
   const handlePreview = () => {
-    if (subcategoryInfo) {
-      const previewUrl = `/${subcategoryInfo.category_slug}/${subcategoryInfo.slug}`;
-      window.open(previewUrl, '_blank');
+    if (subcategoryInfo?.slug) {
+      window.open(`/${subcategoryInfo.slug}`, '_blank');
     }
   };
 

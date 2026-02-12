@@ -14,14 +14,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ExamCard } from '@/components/exam/ExamCard';
 import { ArticleCard } from '@/components/article/ArticleCard';
 import { examService } from '@/lib/api/examService';
-import { articleService } from '@/lib/api/articleService';
+import { blogService, Blog } from '@/lib/api/blogService';
 import { taxonomyService, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { Exam, Article } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
-import { HomepageHero, HomepageHeroMediaItem } from '@/lib/api/homepageService';
+import { HomepageHero, HomepageHeroMediaItem, HomepageData } from '@/lib/api/homepageService';
 
 type IndexProps = {
   initialHero?: HomepageHero | null;
+  initialData?: HomepageData | null;
 };
 
 const fallbackHero = {
@@ -96,20 +97,38 @@ const faqs = [
   'Which test series is best, online or offline?'
 ];
 
-export default function Index({ initialHero }: IndexProps = { initialHero: null }) {
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, Subcategory[]>>({});
+export default function Index({ initialHero, initialData }: IndexProps = { initialHero: null, initialData: null }) {
+  const [exams, setExams] = useState<Exam[]>(initialData?.featuredExams || []);
+  const [articles, setArticles] = useState<(Article | Blog)[]>(initialData?.featuredArticles || []);
+  const hasInitialData = Boolean(initialData?.categories?.length);
+  const initialCategories = useMemo((): Category[] => {
+    if (!initialData?.categories) return [];
+    return initialData.categories
+      .filter((c) => c.is_active !== false)
+      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+      .map((c) => ({ ...c, created_at: '', updated_at: '' } as Category));
+  }, [initialData]);
+  const initialSubMap = useMemo((): Record<string, Subcategory[]> => {
+    if (!initialData?.categories) return {};
+    const map: Record<string, Subcategory[]> = {};
+    for (const cat of initialData.categories) {
+      if (cat.subcategories?.length) {
+        map[cat.id] = cat.subcategories.map((s) => ({ ...s, created_at: '', updated_at: '' } as Subcategory));
+      }
+    }
+    return map;
+  }, [initialData]);
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
+  const [categoriesLoading, setCategoriesLoading] = useState(!hasInitialData);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(initialCategories[0]?.id || null);
+  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, Subcategory[]>>(initialSubMap);
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [showAllSubcategories, setShowAllSubcategories] = useState(false);
   const [activeHeroMedia, setActiveHeroMedia] = useState(0);
 
-  const heroData = initialHero || null;
+  const heroData = initialHero || initialData?.hero || null;
   const heroTitle = heroData?.title ?? fallbackHero.title;
   const heroSubtitle = heroData?.subtitle ?? fallbackHero.subtitle;
   const heroDescriptions = heroData?.description
@@ -191,15 +210,16 @@ export default function Index({ initialHero }: IndexProps = { initialHero: null 
   const isCategorySectionLoading = categoriesLoading || subcategoriesLoading;
 
   useEffect(() => {
+    if (hasInitialData) return;
     const fetchData = async () => {
       try {
-        const [examsData, articlesData, categoriesData] = await Promise.all([
+        const [examsData, blogsResponse, categoriesData] = await Promise.all([
           examService.getFeaturedExams(),
-          articleService.getFeaturedArticles(),
+          blogService.getBlogs({ limit: 10 }),
           taxonomyService.getCategories()
         ]);
         setExams(examsData);
-        setArticles(articlesData);
+        setArticles(blogsResponse.data || []);
         const visibleCategories = categoriesData
           .filter((category) => category.is_active !== false)
           .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
@@ -213,7 +233,7 @@ export default function Index({ initialHero }: IndexProps = { initialHero: null 
       }
     };
     fetchData();
-  }, []);
+  }, [hasInitialData]);
 
   useEffect(() => {
     if (selectedCategoryId && !subcategoryMap[selectedCategoryId]) {
@@ -427,7 +447,7 @@ export default function Index({ initialHero }: IndexProps = { initialHero: null 
                         {visibleSubcategories.map((sub) => (
                           <Link
                             key={sub.id}
-                            href={`/${selectedCategory.slug}-${sub.slug}`}
+                            href={`/${sub.slug}`}
                             className="border border-border rounded-2xl px-3 py-2 bg-card hover:border-primary/60 transition flex items-center gap-2 h-16"
                           >
                             {sub.logo_url ? (

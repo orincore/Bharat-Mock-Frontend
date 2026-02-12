@@ -113,8 +113,8 @@ export default function BlogsPage() {
         <div className="container-main py-10 flex flex-col gap-4">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-wide text-primary font-semibold">Bharat Mock Blogs</p>
-            <h1 className="font-display text-3xl font-bold text-slate-900">Read exam strategies, paper analysis, and daily briefs</h1>
-            <p className="text-slate-600 max-w-3xl">Pick the categories you want to follow and we’ll show only those stories. All blogs come directly from our editorial team using the Block Editor.</p>
+            <h1 className="font-display text-3xl font-bold text-slate-900">Read exam strategies, paper analysis, news and daily briefs</h1>
+            <p className="text-slate-600 max-w-3xl">Pick the categories you want to follow and we’ll show only those stories. All blogs come directly from our editorial team.</p>
           </div>
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">

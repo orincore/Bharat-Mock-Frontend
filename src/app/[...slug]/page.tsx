@@ -15,19 +15,16 @@ const buildApiUrl = (path: string) => {
   return apiBase ? `${apiBase}${p}` : `/api/v1${p}`;
 };
 
-/**
- * SmartResolver: For 1-segment URLs with hyphens, we need to determine if it's
- * a combined category-subcategory slug (e.g., ssc-cgl) or just a category slug
- * that happens to contain hyphens. We try the backend /resolve endpoint first.
- */
-function SmartResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
-  const [resolved, setResolved] = useState<'subcategory' | 'category' | null>(null);
+type ResolvedType = 'subcategory' | 'category' | null;
+
+function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
+  const [resolved, setResolved] = useState<ResolvedType>(null);
 
   useEffect(() => {
     let cancelled = false;
     const resolve = async () => {
       try {
-        const res = await fetch(buildApiUrl(`/taxonomy/resolve/${slug.toLowerCase()}`));
+        const res = await fetch(buildApiUrl(`/taxonomy/subcategory/${slug.toLowerCase()}`));
         if (res.ok) {
           const data = await res.json();
           if (data?.data?.id) {
@@ -35,8 +32,7 @@ function SmartResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
             return;
           }
         }
-      } catch {}
-      // Not a combined slug — try as category
+      } catch { /* not a subcategory */ }
       if (!cancelled) setResolved('category');
     };
     resolve();
@@ -55,10 +51,97 @@ function SmartResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
   }
 
   if (resolved === 'subcategory') {
-    return <ModernSubcategoryPage combinedSlug={slug} initialTabSlug={tabSlug} />;
+    return <ModernSubcategoryPage subcategorySlug={slug} initialTabSlug={tabSlug} />;
   }
 
   return <NewCategoryPage categorySlug={slug} initialTabSlug={tabSlug} />;
+}
+
+const KNOWN_TAB_SLUGS = new Set([
+  'overview', 'mock-tests', 'question-papers'
+]);
+
+type TwoSegmentResolved = 'exam' | 'subcategory-tab' | 'category-tab' | null;
+
+function TwoSegmentResolver({ first, second }: { first: string; second: string }) {
+  const [resolved, setResolved] = useState<TwoSegmentResolved>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      const isKnownTab = KNOWN_TAB_SLUGS.has(second.toLowerCase());
+
+      try {
+        const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`));
+        if (subRes.ok) {
+          const subData = await subRes.json();
+          if (subData?.data?.id) {
+            if (isKnownTab) {
+              if (!cancelled) setResolved('subcategory-tab');
+              return;
+            }
+            // Second segment is not a known tab — check if it's a custom tab
+            // by looking at the subcategory's page content tabs
+            try {
+              const contentRes = await fetch(buildApiUrl(`/page-content/${subData.data.id}`));
+              if (contentRes.ok) {
+                const contentData = await contentRes.json();
+                const customTabs = contentData?.data?.customTabs || [];
+                const isCustomTab = customTabs.some((tab: any) => {
+                  const tabSlug = (tab.tab_key || tab.title || '')
+                    .toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                  return tabSlug === second.toLowerCase();
+                });
+                if (isCustomTab) {
+                  if (!cancelled) setResolved('subcategory-tab');
+                  return;
+                }
+              }
+            } catch { /* ignore */ }
+            // Not a tab — treat as exam
+            if (!cancelled) setResolved('exam');
+            return;
+          }
+        }
+      } catch { /* not a subcategory */ }
+
+      try {
+        const catRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`));
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          if (catData?.data?.id) {
+            if (!cancelled) setResolved('category-tab');
+            return;
+          }
+        }
+      } catch { /* not a category */ }
+
+      if (!cancelled) setResolved('exam');
+    };
+    resolve();
+    return () => { cancelled = true; };
+  }, [first, second]);
+
+  if (resolved === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (resolved === 'subcategory-tab') {
+    return <ModernSubcategoryPage subcategorySlug={first} initialTabSlug={second} />;
+  }
+
+  if (resolved === 'category-tab') {
+    return <NewCategoryPage categorySlug={first} initialTabSlug={second} />;
+  }
+
+  return <ExamDetailPage urlPath={`/${first}/${second}`} />;
 }
 
 export default function DynamicPage() {
@@ -66,31 +149,20 @@ export default function DynamicPage() {
   const slugArray = params.slug as string[];
   const safeArray = Array.isArray(slugArray) ? slugArray : [slugArray];
 
-  // 3 segments: /categorySlug/subcategorySlug/examSlug  →  Exam detail
-  if (safeArray.length === 3) {
+  // 3+ segments: treat as exam detail path (legacy or deep link)
+  if (safeArray.length >= 3) {
     const urlPath = `/${safeArray.join('/')}`;
     return <ExamDetailPage urlPath={urlPath} />;
   }
 
-  // 2 segments: could be /combinedSlug/tabSlug OR /categorySlug/tabSlug
+  // 2 segments: /{slug}/{second} — could be subcategory+tab, category+tab, or subcategory+exam
   if (safeArray.length === 2) {
-    const [first, second] = safeArray;
-    if (first?.includes('-')) {
-      // Could be combined category-subcategory slug with tab, use smart resolver
-      return <SmartResolver slug={first} tabSlug={second} />;
-    }
-    // No hyphen in first segment: it's a plain category slug with a tab slug
-    return <NewCategoryPage categorySlug={first} initialTabSlug={second} />;
+    return <TwoSegmentResolver first={safeArray[0]} second={safeArray[1]} />;
   }
 
-  // 1 segment with hyphen: could be combined slug OR hyphenated category slug
-  if (safeArray.length === 1 && safeArray[0]?.includes('-')) {
-    return <SmartResolver slug={safeArray[0]} />;
-  }
-
-  // 1 segment without hyphen: plain category slug (e.g., /ssc)
+  // 1 segment: try as subcategory first, fall back to category
   if (safeArray.length === 1 && safeArray[0]) {
-    return <NewCategoryPage categorySlug={safeArray[0]} />;
+    return <SlugResolver slug={safeArray[0]} />;
   }
 
   return null;

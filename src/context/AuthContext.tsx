@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Education, User } from '@/types';
 import { authService } from '@/lib/api/authService';
 
@@ -71,21 +71,34 @@ const normalizeUser = (userData: any): User | null => {
   } as User;
 };
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isHydrated, setIsHydrated] = useState(false);
+interface AuthProviderProps {
+  children: ReactNode;
+  initProfile?: any | null;
+  initProfileLoading?: boolean;
+}
+
+export function AuthProvider({ children, initProfile, initProfileLoading }: AuthProviderProps) {
+  const initialUser = typeof window !== 'undefined' ? getStoredUser() : null;
+  const [user, setUser] = useState<User | null>(initialUser);
+  const [isLoading, setIsLoading] = useState(!initialUser);
+  const hydratedFromInit = useRef(false);
 
   useEffect(() => {
-    const cached = getStoredUser();
-    if (cached) {
-      setUser(cached);
+    if (initProfileLoading) return;
+
+    if (initProfile && !hydratedFromInit.current) {
+      hydratedFromInit.current = true;
+      const normalized = normalizeUser(initProfile);
+      setUser(normalized);
+      persistUser(normalized);
+      setIsLoading(false);
+      return;
     }
-    setIsHydrated(true);
-  }, []);
 
-  useEffect(() => {
-    if (!isHydrated) return;
+    if (hydratedFromInit.current) {
+      setIsLoading(false);
+      return;
+    }
 
     const checkAuth = async () => {
       try {
@@ -114,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkAuth();
-  }, [isHydrated]);
+  }, [initProfile, initProfileLoading]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);

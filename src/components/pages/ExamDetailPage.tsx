@@ -183,11 +183,13 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
     );
   }
 
+  const isQuiz = exam?.exam_type === 'short_quiz';
   const isUpcoming = exam?.status === 'upcoming';
   const isOngoing = exam?.status === 'ongoing';
   const isCompleted = exam?.status === 'completed';
-  const isAnytime = exam?.status === 'anytime' || exam?.allow_anytime;
+  const isAnytime = isQuiz || exam?.status === 'anytime' || exam?.allow_anytime;
   const statusLabel = (() => {
+    if (isQuiz) return 'Short Quiz';
     if (isAnytime) return 'Anytime';
     if (isOngoing) return 'Live Now';
     if (isCompleted) return 'Completed';
@@ -201,13 +203,13 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <section className="relative overflow-hidden bg-[#0a1833] text-white">
+      <section className={`relative overflow-hidden ${isQuiz ? 'bg-[#0b1a2b]' : 'bg-[#0a1833]'} text-white`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.1),_transparent_55%)]" />
         <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="relative container-main py-10">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs uppercase tracking-[0.25em] text-white/70">
-            <Link href="/exams" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition">
-              <ArrowLeft className="h-4 w-4" /> Back to Exams
+            <Link href={isQuiz ? '/quizzes' : '/exams'} className="inline-flex items-center gap-2 text-white/70 hover:text-white transition">
+              <ArrowLeft className="h-4 w-4" /> Back to {isQuiz ? 'Quizzes' : 'Exams'}
             </Link>
             <span className="inline-flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400" /> Bharat Mock Public Examination Cell
@@ -220,11 +222,17 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20">
                   {exam.category}
                 </span>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  (isAnytime || isUpcoming) ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/40' :
-                  isOngoing ? 'bg-blue-500/15 text-blue-200 border border-blue-300/40' :
-                  'bg-slate-600/40 text-slate-200 border border-slate-400/30'
-                }`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    isQuiz
+                      ? 'bg-pink-500/20 text-pink-200 border border-pink-300/40'
+                      : (isAnytime || isUpcoming)
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/40'
+                        : isOngoing
+                          ? 'bg-blue-500/15 text-blue-200 border border-blue-300/40'
+                          : 'bg-slate-600/40 text-slate-200 border border-slate-400/30'
+                  }`}
+                >
                   {statusLabel}
                 </span>
                 <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20 flex items-center gap-2">
@@ -234,7 +242,9 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
               </div>
 
               <div>
-                <p className="text-sm uppercase tracking-[0.35em] text-white/70 mb-2">Official mock examination</p>
+                <p className="text-sm uppercase tracking-[0.35em] text-white/70 mb-2">
+                  {isQuiz ? 'Concept Booster Quiz' : 'Official mock examination'}
+                </p>
                 <h1 className="font-display text-3xl md:text-4xl font-bold leading-tight">
                   {exam.title}
                 </h1>
@@ -246,10 +256,10 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Duration', value: `${exam.duration} Minutes`, icon: Clock },
-                  { label: 'Total Questions', value: `${exam.total_questions}`, icon: FileText },
-                  { label: 'Total Marks', value: `${exam.total_marks}`, icon: Award },
-                  { label: 'Difficulty', value: exam.difficulty, icon: TrendingUp }
+                  { label: isQuiz ? 'Quiz Length' : 'Duration', value: `${exam.duration} Minutes`, icon: Clock },
+                  { label: 'Questions', value: `${exam.total_questions}`, icon: FileText },
+                  { label: isQuiz ? 'Avg Score Weight' : 'Total Marks', value: `${exam.total_marks}`, icon: Award },
+                  { label: isQuiz ? 'Recommended Level' : 'Difficulty', value: exam.difficulty, icon: TrendingUp }
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/[0.08] p-4">
                     <div className="flex items-center gap-3">
@@ -265,27 +275,47 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
             </div>
 
             <div className="bg-slate-900/70 backdrop-blur rounded-2xl border border-white/10 p-6 space-y-6">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-white/60 mb-1">Attempt Window</p>
-                <div className="space-y-4 text-sm text-white/90">
-                  <div className="flex items-start justify-between">
-                    <span>Start Date</span>
-                    <span className="font-semibold">
-                      {isAnytime ? 'Available Anytime' : (exam.start_date ? new Date(exam.start_date).toLocaleDateString() : 'TBA')}
-                    </span>
-                  </div>
-                  <div className="flex items-start justify-between">
-                    <span>End Date</span>
-                    <span className="font-semibold">
-                      {isAnytime ? 'No Deadline' : (exam.end_date ? new Date(exam.end_date).toLocaleDateString() : 'TBA')}
-                    </span>
-                  </div>
-                  <div className="flex items-start justify-between">
-                    <span>Pass Percentage</span>
-                    <span className="font-semibold">{exam.pass_percentage}%</span>
+              {isQuiz ? (
+                <div className="space-y-3">
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/60 mb-1">Quiz Insights</p>
+                  <div className="space-y-3 text-sm text-white/90">
+                    <div className="flex items-start justify-between">
+                      <span>Estimated time</span>
+                      <span className="font-semibold">{exam.duration} mins</span>
+                    </div>
+                    <div className="flex items-start justify-between">
+                      <span>Attempts Allowed</span>
+                      <span className="font-semibold">Unlimited</span>
+                    </div>
+                    <div className="flex items-start justify-between">
+                      <span>Scoring</span>
+                      <span className="font-semibold">Instant feedback</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/60 mb-1">Attempt Window</p>
+                  <div className="space-y-4 text-sm text-white/90">
+                    <div className="flex items-start justify-between">
+                      <span>Start Date</span>
+                      <span className="font-semibold">
+                        {isAnytime ? 'Available Anytime' : (exam.start_date ? new Date(exam.start_date).toLocaleDateString() : 'TBA')}
+                      </span>
+                    </div>
+                    <div className="flex items-start justify-between">
+                      <span>End Date</span>
+                      <span className="font-semibold">
+                        {isAnytime ? 'No Deadline' : (exam.end_date ? new Date(exam.end_date).toLocaleDateString() : 'TBA')}
+                      </span>
+                    </div>
+                    <div className="flex items-start justify-between">
+                      <span>Pass Percentage</span>
+                      <span className="font-semibold">{exam.pass_percentage}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {exam.supports_hindi && (
                 <div className="border border-white/10 rounded-xl p-4 bg-white/[0.04]">
@@ -345,7 +375,11 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                     <span className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
                     <span className="relative flex items-center justify-center gap-2 font-semibold tracking-wide uppercase text-sm">
                       <Play className="h-5 w-5" />
-                      {exam.supports_hindi && !languageSelected ? 'Select language to start' : 'Begin Attempt'}
+                      {exam.supports_hindi && !languageSelected
+                        ? 'Select language to start'
+                        : isQuiz
+                          ? 'Start Quiz'
+                          : 'Begin Attempt'}
                     </span>
                   </Button>
                 ) : isUpcoming ? (
@@ -358,23 +392,27 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                     Examination Closed
                   </Button>
                 )}
-                <Button
-                  onClick={handleAddToCalendar}
-                  disabled={!calendarWindow}
-                  className="w-full bg-amber-400 text-slate-900 hover:bg-amber-300 disabled:bg-slate-400 disabled:text-slate-700 border-none"
-                >
-                  <Calendar className="h-5 w-5 mr-2" /> Add to Calendar
-                </Button>
-                {calendarWindow && googleCalendarUrl && (
-                  <Button
-                    variant="ghost"
-                    asChild
-                    className="w-full text-white/80 hover:text-white"
-                  >
-                    <a href={googleCalendarUrl} target="_blank" rel="noreferrer">
-                      Sync via Google Calendar
-                    </a>
-                  </Button>
+                {!isQuiz && (
+                  <>
+                    <Button
+                      onClick={handleAddToCalendar}
+                      disabled={!calendarWindow}
+                      className="w-full bg-amber-400 text-slate-900 hover:bg-amber-300 disabled:bg-slate-400 disabled:text-slate-700 border-none"
+                    >
+                      <Calendar className="h-5 w-5 mr-2" /> Add to Calendar
+                    </Button>
+                    {calendarWindow && googleCalendarUrl && (
+                      <Button
+                        variant="ghost"
+                        asChild
+                        className="w-full text-white/80 hover:text-white"
+                      >
+                        <a href={googleCalendarUrl} target="_blank" rel="noreferrer">
+                          Sync via Google Calendar
+                        </a>
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -387,7 +425,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="font-display text-2xl font-bold text-foreground mb-6">
-                Exam Pattern
+                {isQuiz ? 'Quiz Overview' : 'Exam Pattern'}
               </h2>
               
               <div className="grid md:grid-cols-2 gap-6">
