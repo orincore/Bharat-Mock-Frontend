@@ -18,7 +18,7 @@ import { blogService, Blog } from '@/lib/api/blogService';
 import { taxonomyService, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { Exam, Article } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
-import { HomepageHero, HomepageHeroMediaItem, HomepageData } from '@/lib/api/homepageService';
+import { HomepageHero, HomepageHeroMediaItem, HomepageData, HomepageBanner } from '@/lib/api/homepageService';
 
 type IndexProps = {
   initialHero?: HomepageHero | null;
@@ -100,6 +100,7 @@ const faqs = [
 export default function Index({ initialHero, initialData }: IndexProps = { initialHero: null, initialData: null }) {
   const [exams, setExams] = useState<Exam[]>(initialData?.featuredExams || []);
   const [articles, setArticles] = useState<(Article | Blog)[]>(initialData?.featuredArticles || []);
+  const heroBanners: HomepageBanner[] = initialData?.banners?.filter((banner) => banner.is_active) ?? [];
   const hasInitialData = Boolean(initialData?.categories?.length);
   const initialCategories = useMemo((): Category[] => {
     if (!initialData?.categories) return [];
@@ -386,6 +387,58 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
           )}
         </div>
       </section>
+
+      {heroBanners.length > 0 && (
+        <section className="py-10 bg-background border-b border-border">
+          <div className="container-main space-y-6">
+            <div className="space-y-6">
+              {heroBanners.map((banner) => (
+                <div
+                  key={banner.id}
+                  className="rounded-[36px] bg-muted/40 px-6 py-8 lg:px-10 lg:py-12"
+                >
+                  <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
+                    <div className="flex-1 space-y-4">
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">Featured</p>
+                        <h3 className="font-display text-3xl font-bold text-foreground leading-tight">
+                          {banner.title}
+                        </h3>
+                        {banner.subtitle && (
+                          <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
+                            {banner.subtitle}
+                          </p>
+                        )}
+                      </div>
+                      {banner.button_text && banner.link_url && (
+                        <Button
+                          asChild
+                          className="inline-flex items-center gap-2 text-base h-12 px-6 rounded-full"
+                        >
+                          <Link href={banner.link_url}>
+                            {banner.button_text}
+                            <ArrowRight className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex-1 w-full">
+                      <div className="relative w-full h-60 lg:h-72">
+                        <img
+                          src={banner.image_url}
+                          alt={banner.title}
+                          className="h-full w-full object-contain"
+                          loading="lazy"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Categories Section */}
       <section className="py-14 bg-background border-b border-border">

@@ -10,6 +10,7 @@ import { ExamProvider } from "@/context/ExamContext";
 import { AppDataProvider, useAppData } from "@/context/AppDataContext";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
+import { AuthReminderDialog } from "@/components/common/AuthReminderDialog";
 import { apolloClient } from "@/lib/graphql/client";
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -35,6 +36,7 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
             </main>
             {!hideChrome && <Footer />}
           </div>
+          <AuthReminderDialog />
         </TooltipProvider>
       </ExamProvider>
     </AuthProvider>

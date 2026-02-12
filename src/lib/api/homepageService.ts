@@ -63,8 +63,20 @@ export interface HomepageCategory {
   subcategories: HomepageSubcategory[];
 }
 
+export interface HomepageBanner {
+  id: string;
+  title: string;
+  subtitle?: string;
+  image_url: string;
+  link_url?: string;
+  button_text?: string;
+  display_order: number;
+  is_active: boolean;
+}
+
 export interface HomepageData {
   hero: HomepageHero | null;
+  banners: HomepageBanner[];
   categories: HomepageCategory[];
   featuredExams: any[];
   featuredArticles: any[];

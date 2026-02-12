@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { homepageAdminService } from '@/lib/api/homepageAdminService';
-import { HomepageHero, HomepageHeroMediaItem } from '@/lib/api/homepageService';
+import { HomepageHero, HomepageHeroMediaItem, HomepageBanner } from '@/lib/api/homepageService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +18,12 @@ import {
   Sparkles,
   Trash2,
   UploadCloud,
-  Video
+  Video,
+  Link2,
+  Type,
+  Image as ImageIcon,
+  Plus,
+  X
 } from 'lucide-react';
 
 const layoutOptions = [
@@ -60,6 +65,8 @@ type HeroFormState = Omit<HomepageHero, 'media_items'> & {
   updated_at?: string;
 };
 
+type EditableBanner = HomepageBanner & { tempId: string };
+
 const createEditableMediaItems = (items?: HomepageHeroMediaItem[]): EditableMediaItem[] => {
   return (items || []).map((item, index) => ({
     ...item,
@@ -82,35 +89,161 @@ export default function HomepageAdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [banners, setBanners] = useState<EditableBanner[]>([]);
+  const [bannerSaving, setBannerSaving] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
+
+  const fetchHero = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await homepageAdminService.getHero('default');
+      if (data) {
+        setHero({
+          ...defaultHero,
+          ...data,
+          media_items: createEditableMediaItems(data.media_items),
+          updated_at: data.updated_at
+        });
+      } else {
+        setHero({ ...initialHeroState });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Unable to load hero content',
+        description: error?.message || 'Please refresh and try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  const fetchBanners = useCallback(async () => {
+    try {
+      setBannerSaving(true);
+      const list = await homepageAdminService.getBanners();
+      const withTempIds = list.map((banner) => ({ ...banner, tempId: banner.id }));
+      setBanners(withTempIds);
+    } catch (error: any) {
+      toast({
+        title: 'Failed to load banners',
+        description: error?.message || 'Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setBannerSaving(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    const fetchHero = async () => {
+    fetchHero();
+    fetchBanners();
+  }, [fetchHero, fetchBanners]);
+
+  const handleBannerFieldChange = (id: string, key: keyof HomepageBanner, value: any) => {
+    setBanners((prev) => prev.map((banner) => (banner.tempId === id ? { ...banner, [key]: value } : banner)));
+  };
+
+  const handleAddBanner = () => {
+    setBanners((prev) => [
+      ...prev,
+      {
+        id: '',
+        tempId: generateTempId(),
+        title: 'Untitled Banner',
+        subtitle: '',
+        image_url: '',
+        link_url: '',
+        button_text: '',
+        display_order: prev.length,
+        is_active: true
+      }
+    ]);
+  };
+
+  const handleRemoveBanner = async (tempId: string, bannerId?: string) => {
+    if (bannerId) {
       try {
-        setLoading(true);
-        const data = await homepageAdminService.getHero('default');
-        if (data) {
-          setHero({
-            ...defaultHero,
-            ...data,
-            media_items: createEditableMediaItems(data.media_items),
-            updated_at: data.updated_at
-          });
-        } else {
-          setHero({ ...initialHeroState });
-        }
+        await homepageAdminService.deleteBanner(bannerId);
+        toast({ title: 'Banner removed' });
       } catch (error: any) {
         toast({
-          title: 'Unable to load hero content',
-          description: error?.message || 'Please refresh and try again.',
+          title: 'Failed to delete banner',
+          description: error?.message || 'Please try again.',
           variant: 'destructive'
         });
-      } finally {
-        setLoading(false);
+        return;
       }
+    }
+    setBanners((prev) => prev.filter((banner) => banner.tempId !== tempId));
+  };
+
+  const handleBannerUpload = async (tempId: string, file?: FileList | null) => {
+    const selectedFile = file?.[0];
+    if (!selectedFile) return;
+    setBannerUploading(true);
+    try {
+      const uploaded = await homepageAdminService.uploadBannerImage(selectedFile);
+      handleBannerFieldChange(tempId, 'image_url', uploaded.url);
+      toast({ title: 'Banner image uploaded' });
+    } catch (error: any) {
+      toast({
+        title: 'Upload failed',
+        description: error?.message || 'Unable to upload banner image.',
+        variant: 'destructive'
+      });
+    } finally {
+      setBannerUploading(false);
+    }
+  };
+
+  const persistBanner = async (banner: EditableBanner) => {
+    const payload = {
+      title: banner.title,
+      subtitle: banner.subtitle,
+      image_url: banner.image_url,
+      link_url: banner.link_url,
+      button_text: banner.button_text,
+      display_order: banner.display_order,
+      is_active: banner.is_active,
     };
 
-    fetchHero();
-  }, [toast]);
+    if (banner.id) {
+      return homepageAdminService.updateBanner(banner.id, payload);
+    }
+    return homepageAdminService.createBanner(payload);
+  };
+
+  const handleSaveBanners = async () => {
+    try {
+      setBannerSaving(true);
+      const sorted = banners.map((banner, index) => ({ ...banner, display_order: index }));
+      const saved = await Promise.all(sorted.map(persistBanner));
+      const refreshed = saved.map((banner) => ({ ...banner, tempId: banner.id }));
+      setBanners(refreshed);
+      toast({ title: 'Banners saved' });
+    } catch (error: any) {
+      toast({
+        title: 'Failed to save banners',
+        description: error?.message || 'Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setBannerSaving(false);
+    }
+  };
+
+  const handleReorderBanner = (tempId: string, direction: 'up' | 'down') => {
+    setBanners((prev) => {
+      const index = prev.findIndex((banner) => banner.tempId === tempId);
+      if (index === -1) return prev;
+      const swapWith = direction === 'up' ? index - 1 : index + 1;
+      if (swapWith < 0 || swapWith >= prev.length) return prev;
+      const cloned = [...prev];
+      [cloned[index], cloned[swapWith]] = [cloned[swapWith], cloned[index]];
+      return cloned.map((banner, idx) => ({ ...banner, display_order: idx }));
+    });
+  };
 
   const handleFieldChange = (key: keyof HomepageHero, value: any) => {
     setHero((prev) => ({
@@ -328,6 +461,160 @@ export default function HomepageAdminPage() {
                   placeholder="/resources"
                 />
               </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Homepage Banners"
+            description="Add tappable promotional banners for the homepage."
+            icon={<ImageIcon className="h-5 w-5" />}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <Label>Banners ({banners.length})</Label>
+                <p className="text-xs text-muted-foreground">Upload JPG/PNG/WebP images and provide optional links.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={handleAddBanner}>
+                  <Plus className="h-4 w-4 mr-1" /> Add banner
+                </Button>
+                <Button type="button" onClick={handleSaveBanners} disabled={bannerSaving || bannerUploading}>
+                  {bannerSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save banners'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {banners.length === 0 && (
+                <div className="border border-dashed border-border rounded-xl p-6 text-center text-sm text-muted-foreground">
+                  No banners yet. Click "Add banner" to create one.
+                </div>
+              )}
+
+              {banners.map((banner, index) => (
+                <div key={banner.tempId} className="border border-border rounded-xl p-4 space-y-4 bg-card">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">Banner {index + 1}</span>
+                      <span className="text-xs text-muted-foreground">{banner.is_active ? 'Active' : 'Hidden'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={index === 0}
+                        onClick={() => handleReorderBanner(banner.tempId, 'up')}
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={index === banners.length - 1}
+                        onClick={() => handleReorderBanner(banner.tempId, 'down')}
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveBanner(banner.tempId, banner.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Title</Label>
+                      <Input
+                        value={banner.title}
+                        onChange={(e) => handleBannerFieldChange(banner.tempId, 'title', e.target.value)}
+                        placeholder="Banner title"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Subtitle</Label>
+                      <Input
+                        value={banner.subtitle || ''}
+                        onChange={(e) => handleBannerFieldChange(banner.tempId, 'subtitle', e.target.value)}
+                        placeholder="Optional subtitle"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Button text</Label>
+                      <Input
+                        value={banner.button_text || ''}
+                        onChange={(e) => handleBannerFieldChange(banner.tempId, 'button_text', e.target.value)}
+                        placeholder="CTA label"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Link2 className="h-4 w-4 text-muted-foreground" /> Link URL
+                      </Label>
+                      <Input
+                        value={banner.link_url || ''}
+                        onChange={(e) => handleBannerFieldChange(banner.tempId, 'link_url', e.target.value)}
+                        placeholder="https://bharatmock.com/exams"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={banner.is_active}
+                          onCheckedChange={(checked) => handleBannerFieldChange(banner.tempId, 'is_active', checked)}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {banner.is_active ? 'Visible to users' : 'Hidden from homepage'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Image URL</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={banner.image_url}
+                          onChange={(e) => handleBannerFieldChange(banner.tempId, 'image_url', e.target.value)}
+                          placeholder="https://cdn.example.com/banner.jpg"
+                        />
+                        <label className="inline-flex items-center gap-1 px-3 py-2 border border-border rounded-lg text-sm cursor-pointer hover:bg-muted">
+                          <UploadCloud className="h-4 w-4" />
+                          Upload
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleBannerUpload(banner.tempId, e.target.files)}
+                            disabled={bannerUploading}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Preview</Label>
+                      <div className="border border-dashed border-border rounded-lg h-32 flex items-center justify-center overflow-hidden bg-muted/30">
+                        {banner.image_url ? (
+                          <img src={banner.image_url} alt="Banner preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <p className="text-xs text-muted-foreground text-center px-4">Upload an image to preview the banner.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </SectionCard>
 
@@ -570,8 +857,8 @@ function SectionCard({
   children
 }: {
   title: string;
-  description: string;
-  icon: React.ReactNode;
+  description?: string;
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (

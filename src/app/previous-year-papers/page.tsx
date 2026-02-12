@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Filter, BookOpen, Crown, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,9 +14,17 @@ import { Exam } from '@/types';
 const PAPER_EXAM_TYPE = 'past_paper';
 
 type PremiumTab = 'all' | 'premium';
+type ExamWithDerivedYear = Exam & { derivedYear?: string | null };
+
+const extractYearFromTitle = (title: string): string | null => {
+  if (!title) return null;
+  const match = title.match(/\b(19|20)\d{2}\b/);
+  return match ? match[0] : null;
+};
 
 export default function PrevPapersPage() {
-  const [exams, setExams] = useState<Exam[]>([]);
+  const [exams, setExams] = useState<ExamWithDerivedYear[]>([]);
+  const [allExams, setAllExams] = useState<ExamWithDerivedYear[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -28,6 +36,8 @@ export default function PrevPapersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<PremiumTab>('all');
+  const [yearOptions, setYearOptions] = useState<string[]>([]);
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -123,6 +133,15 @@ export default function PrevPapersPage() {
     }
   };
 
+  const applyYearFilter = (dataset: ExamWithDerivedYear[], years: string[]) => {
+    if (!years.length) {
+      setExams(dataset);
+      return;
+    }
+    const filtered = dataset.filter((exam) => exam.derivedYear && years.includes(exam.derivedYear));
+    setExams(filtered);
+  };
+
   const fetchExams = async () => {
     const requestId = ++activeRequestRef.current;
     setIsLoading(true);
@@ -138,13 +157,24 @@ export default function PrevPapersPage() {
 
       if (requestId !== activeRequestRef.current) return;
 
-      const sortedExams = [...response.data].sort((a, b) => {
+      const enrichedExams: ExamWithDerivedYear[] = [...response.data].map((exam) => ({
+        ...exam,
+        derivedYear: extractYearFromTitle(exam.title),
+      }));
+
+      const sortedExams = enrichedExams.sort((a, b) => {
         const aDate = a.created_at || a.updated_at || '';
         const bDate = b.created_at || b.updated_at || '';
         return new Date(bDate).getTime() - new Date(aDate).getTime();
       });
 
-      setExams(sortedExams);
+      const uniqueYears = Array.from(
+        new Set(sortedExams.map((exam) => exam.derivedYear).filter((year): year is string => Boolean(year)))
+      ).sort((a, b) => Number(b) - Number(a));
+
+      setYearOptions(uniqueYears);
+      setAllExams(sortedExams);
+      applyYearFilter(sortedExams, selectedYears);
       setPagination((prev) => ({
         ...prev,
         total: response.total,
@@ -220,6 +250,10 @@ export default function PrevPapersPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
+  useEffect(() => {
+    applyYearFilter(allExams, selectedYears);
+  }, [selectedYears, allExams]);
+
   const clearFilters = () => {
     setFilters({
       search: '',
@@ -233,6 +267,7 @@ export default function PrevPapersPage() {
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
     setSelectedDifficultyId('');
+    setSelectedYears([]);
     setSubcategories([]);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
@@ -242,8 +277,19 @@ export default function PrevPapersPage() {
     filters.search ||
     filters.category ||
     filters.subcategory ||
-    filters.difficulty
+    filters.difficulty ||
+    selectedYears.length
   );
+
+  const handleYearToggle = (year: string) => {
+    setSelectedYears((prev) => {
+      if (prev.includes(year)) {
+        return prev.filter((y) => y !== year);
+      }
+      return [...prev, year];
+    });
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -393,6 +439,37 @@ export default function PrevPapersPage() {
                             onChange={() => toggleDifficulty(difficulty.id)}
                           />
                           <span>{difficulty.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Year
+                    </label>
+                    <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+                      <label className="flex items-center gap-2 text-sm text-foreground">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-primary"
+                          checked={selectedYears.length === 0}
+                          onChange={() => setSelectedYears([])}
+                        />
+                        <span>All Years</span>
+                      </label>
+                      {yearOptions.length === 0 && (
+                        <p className="text-xs text-muted-foreground">Year data will appear once papers load.</p>
+                      )}
+                      {yearOptions.map((year) => (
+                        <label key={year} className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-primary"
+                            checked={selectedYears.includes(year)}
+                            onChange={() => handleYearToggle(year)}
+                          />
+                          <span>{year}</span>
                         </label>
                       ))}
                     </div>

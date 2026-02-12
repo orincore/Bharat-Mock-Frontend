@@ -28,7 +28,7 @@ const adminNavItems = [
   { name: 'Blogs', href: '/admin/blogs', icon: PenSquare },
   { name: 'Homepage', href: '/admin/homepage', icon: Home },
   { name: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
-  { name: 'Navigation', href: '/admin/navigation', icon: Settings },
+  { name: 'Header', href: '/admin/navigation', icon: Settings },
   { name: 'Footer', href: '/admin/footer', icon: Settings },
   { name: 'About', href: '/admin/about', icon: Settings },
   { name: 'Privacy Policy', href: '/admin/privacy', icon: Settings },

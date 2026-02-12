@@ -1,4 +1,4 @@
-import { HomepageHero } from './homepageService';
+import { HomepageHero, HomepageBanner } from './homepageService';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:5000/api/v1';
 
@@ -78,6 +78,54 @@ export const homepageAdminService = {
       size: number;
       original_name: string;
       asset_type: 'image' | 'video';
+    };
+  },
+
+  async getBanners(includeInactive = true): Promise<HomepageBanner[]> {
+    const query = includeInactive ? '?include_inactive=true' : '';
+    const data = await authFetch(`/homepage/banners${query}`);
+    return data.data || [];
+  },
+
+  async createBanner(payload: Partial<HomepageBanner>): Promise<HomepageBanner> {
+    const data = await authFetch(`/homepage/banners`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    return data.data;
+  },
+
+  async updateBanner(id: string, payload: Partial<HomepageBanner>): Promise<HomepageBanner> {
+    const data = await authFetch(`/homepage/banners/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    return data.data;
+  },
+
+  async deleteBanner(id: string): Promise<void> {
+    await authFetch(`/homepage/banners/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async reorderBanners(ids: string[]): Promise<void> {
+    await authFetch(`/homepage/banners/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ order: ids })
+    });
+  },
+
+  async uploadBannerImage(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const data = await authFormFetch(`/homepage/banners/upload`, formData, 'POST');
+    return data.data as {
+      url: string;
+      key: string;
+      mime_type: string;
+      size: number;
+      original_name: string;
     };
   }
 };
