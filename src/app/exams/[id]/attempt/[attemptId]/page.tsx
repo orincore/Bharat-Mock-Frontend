@@ -103,19 +103,32 @@ export default function ExamAttemptPage() {
     [...items].sort((a, b) => orderValue(a) - orderValue(b));
 
   const hasContentForLanguage = useCallback((question: QuestionWithStatus, language: 'en' | 'hi') => {
-    if (language === 'hi') {
-      return Boolean(
-        (question.text_hi && question.text_hi.trim()) ||
-        (question.explanation_hi && question.explanation_hi.trim()) ||
-        (question.image_url && question.image_url.trim()) ||
-        (question.options || []).some(opt => (opt.option_text_hi && opt.option_text_hi.trim()) || (opt.image_url && opt.image_url.trim()))
-      );
+    const hasText = language === 'hi' 
+      ? (question.text_hi && question.text_hi.trim())
+      : (question.text && question.text.trim());
+    const hasExplanation = language === 'hi'
+      ? (question.explanation_hi && question.explanation_hi.trim())
+      : (question.explanation && question.explanation.trim());
+    const hasImage = question.image_url && question.image_url.trim();
+    const hasOptions = language === 'hi'
+      ? (question.options || []).some(opt => (opt.option_text_hi && opt.option_text_hi.trim()) || (opt.image_url && opt.image_url.trim()))
+      : (question.options || []).some(opt => (opt.option_text && opt.option_text.trim()) || (opt.image_url && opt.image_url.trim()));
+    
+    const result = Boolean(hasText || hasExplanation || hasImage || hasOptions);
+    
+    if (!result) {
+      console.log(`Question ${question.id} filtered out for ${language}:`, {
+        hasText,
+        hasExplanation,
+        hasImage,
+        hasOptions,
+        text: question.text?.substring(0, 30),
+        image_url: question.image_url,
+        options_count: question.options?.length
+      });
     }
-    return Boolean(
-      (question.text && question.text.trim()) ||
-      (question.image_url && question.image_url.trim()) ||
-      (question.options || []).some(opt => (opt.option_text && opt.option_text.trim()) || (opt.image_url && opt.image_url.trim()))
-    );
+    
+    return result;
   }, []);
 
   const filterContentByLanguage = useCallback((language: 'en' | 'hi', sourceSections: SectionWithQuestions[], sourceQuestions: QuestionWithStatus[]) => {
@@ -173,21 +186,21 @@ export default function ExamAttemptPage() {
         setLanguageSelectionMade(true);
         setTimeRemaining((examData.duration || 0) * 60);
         
+        console.log('API Response:', {
+          sections_count: questionsResponse.sections.length,
+          questions_count: questionsResponse.questions.length,
+          questions: questionsResponse.questions.map((q: any) => ({
+            id: q.id,
+            text: q.text?.substring(0, 30),
+            image_url: q.image_url,
+            options_count: q.options?.length
+          }))
+        });
+
         const normalizedQuestions = sortQuestionsByNumber(questionsResponse.questions);
         const allQuestions: QuestionWithStatus[] = normalizedQuestions.map((q: any) => {
           const hasAnswer = hasAnswerValue(q.userAnswer?.answer);
           const isMarked = q.userAnswer?.marked_for_review || false;
-          
-          // Debug logging for status assignment
-          if (q.question_number === 1) {
-            console.log('Question 1 status debug:', {
-              questionId: q.id,
-              userAnswer: q.userAnswer?.answer,
-              hasAnswer,
-              isMarked,
-              userAnswerObject: q.userAnswer
-            });
-          }
           
           let status: QuestionStatus;
           if (hasAnswer && isMarked) {
@@ -206,16 +219,26 @@ export default function ExamAttemptPage() {
           };
         });
 
+        console.log('All questions after mapping:', allQuestions.length);
+
         const sectionsData: SectionWithQuestions[] = questionsResponse.sections.map((s: any) => ({
           ...s,
           language: s.language || s.language_code || 'en',
           questions: sortQuestionsByNumber(allQuestions.filter(q => q.section_id === s.id))
         }));
 
+        console.log('Sections data:', sectionsData.map(s => ({ id: s.id, name: s.name, language: s.language, questions: s.questions.length })));
+
         setAllSections(sectionsData);
         setAllQuestions(allQuestions);
 
         const { filteredSections, filteredQuestions } = filterContentByLanguage(requestedLanguage, sectionsData, allQuestions);
+        
+        console.log('After filtering for language', requestedLanguage, ':', {
+          filteredSections: filteredSections.length,
+          filteredQuestions: filteredQuestions.length,
+          sections: filteredSections.map(s => ({ id: s.id, name: s.name, questions: s.questions.length }))
+        });
 
         if (filteredSections.length === 0) {
           const fallback = filterContentByLanguage('en', sectionsData, allQuestions);
