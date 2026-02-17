@@ -45,6 +45,11 @@ export default function AdminLayout({
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [navCollapsed, setNavCollapsed] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isLoading) {
@@ -56,7 +61,7 @@ export default function AdminLayout({
     }
   }, [isAuthenticated, isLoading, user, router]);
 
-  if (isLoading) {
+  if (!hasMounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner />

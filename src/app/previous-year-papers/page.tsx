@@ -26,10 +26,10 @@ export default function PrevPapersPage() {
   const [exams, setExams] = useState<ExamWithDerivedYear[]>([]);
   const [allExams, setAllExams] = useState<ExamWithDerivedYear[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
-  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
+  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
+  const [subcategoriesLoading, setSubcategoriesLoading] = useState(true);
   const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [difficultiesLoading, setDifficultiesLoading] = useState(true);
@@ -48,7 +48,7 @@ export default function PrevPapersPage() {
     exam_type: PAPER_EXAM_TYPE,
     is_premium: 'false' as string,
   });
-  const [selectedDifficultyId, setSelectedDifficultyId] = useState('');
+  const [selectedDifficultyIds, setSelectedDifficultyIds] = useState<string[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const activeRequestRef = useRef(0);
 
@@ -61,17 +61,9 @@ export default function PrevPapersPage() {
 
   useEffect(() => {
     fetchCategories();
+    fetchSubcategories();
     fetchDifficulties();
   }, []);
-
-  useEffect(() => {
-    if (selectedCategoryId) {
-      fetchSubcategories(selectedCategoryId);
-    } else {
-      setSubcategories([]);
-      setSelectedSubcategoryId('');
-    }
-  }, [selectedCategoryId]);
 
   useEffect(() => {
     fetchExams();
@@ -83,15 +75,6 @@ export default function PrevPapersPage() {
     }, 400);
     return () => clearTimeout(handle);
   }, [filters.search]);
-
-  useEffect(() => {
-    if (!filters.difficulty) {
-      setSelectedDifficultyId('');
-      return;
-    }
-    const matched = difficultyOptions.find((option) => option.name === filters.difficulty);
-    setSelectedDifficultyId(matched ? matched.id : '');
-  }, [filters.difficulty, difficultyOptions]);
 
   const fetchCategories = async () => {
     setCategoriesLoading(true);
@@ -108,14 +91,13 @@ export default function PrevPapersPage() {
     }
   };
 
-  const fetchSubcategories = async (categoryId: string) => {
+  const fetchSubcategories = async () => {
     setSubcategoriesLoading(true);
     try {
-      const data = await taxonomyService.getSubcategories(categoryId);
+      const data = await taxonomyService.getSubcategories();
       setSubcategories(data.filter((sub) => sub.name));
     } catch (err) {
       console.error('Failed to fetch subcategories:', err);
-      setSubcategories([]);
     } finally {
       setSubcategoriesLoading(false);
     }
@@ -199,45 +181,89 @@ export default function PrevPapersPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const handleCategorySelect = (value: string) => {
-    setSelectedCategoryId(value);
-    const selectedCategory = categories.find((category) => category.id === value);
-    handleFilterChange('category', selectedCategory ? selectedCategory.name : '');
-    setSelectedSubcategoryId('');
-    handleFilterChange('subcategory', '');
-  };
+  const buildCategoryFilterValue = (ids: string[]) =>
+    ids
+      .map((id) => categories.find((category) => category.id === id))
+      .map((category) => category?.slug || category?.name || '')
+      .filter(Boolean)
+      .join(',');
+
+  const buildSubcategoryFilterValue = (ids: string[]) =>
+    ids
+      .map((id) => subcategories.find((subcategory) => subcategory.id === id))
+      .map((subcategory) => subcategory?.slug || subcategory?.name || '')
+      .filter(Boolean)
+      .join(',');
+
+  const buildDifficultyFilterValue = (ids: string[]) =>
+    ids
+      .map((id) => difficultyOptions.find((option) => option.id === id))
+      .map((option) => option?.slug || option?.name || '')
+      .filter(Boolean)
+      .join(',');
 
   const toggleCategory = (categoryId: string) => {
-    if (selectedCategoryId === categoryId) {
-      handleCategorySelect('');
+    let nextCategoryIds: string[];
+    if (!categoryId) {
+      nextCategoryIds = [];
+    } else if (selectedCategoryIds.includes(categoryId)) {
+      nextCategoryIds = selectedCategoryIds.filter((id) => id !== categoryId);
     } else {
-      handleCategorySelect(categoryId);
+      nextCategoryIds = [...selectedCategoryIds, categoryId];
+    }
+
+    setSelectedCategoryIds(nextCategoryIds);
+    handleFilterChange('category', buildCategoryFilterValue(nextCategoryIds));
+
+    if (nextCategoryIds.length > 0) {
+      const allowedCategoryIds = new Set(nextCategoryIds);
+      const filteredSubcategories = selectedSubcategoryIds.filter((subId) => {
+        const subcategory = subcategories.find((sub) => sub.id === subId);
+        return subcategory && allowedCategoryIds.has(subcategory.category_id);
+      });
+
+      if (filteredSubcategories.length !== selectedSubcategoryIds.length) {
+        setSelectedSubcategoryIds(filteredSubcategories);
+        handleFilterChange('subcategory', buildSubcategoryFilterValue(filteredSubcategories));
+      }
     }
   };
 
-  const handleSubcategorySelect = (value: string) => {
-    setSelectedSubcategoryId(value);
-    const selectedSubcategory = subcategories.find((sub) => sub.id === value);
-    handleFilterChange('subcategory', selectedSubcategory ? selectedSubcategory.name : '');
-  };
-
   const toggleSubcategory = (subcategoryId: string) => {
-    if (selectedSubcategoryId === subcategoryId) {
-      handleSubcategorySelect('');
+    let nextSubcategoryIds: string[];
+    if (!subcategoryId) {
+      nextSubcategoryIds = [];
+    } else if (selectedSubcategoryIds.includes(subcategoryId)) {
+      nextSubcategoryIds = selectedSubcategoryIds.filter((id) => id !== subcategoryId);
     } else {
-      handleSubcategorySelect(subcategoryId);
+      nextSubcategoryIds = [...selectedSubcategoryIds, subcategoryId];
+    }
+
+    setSelectedSubcategoryIds(nextSubcategoryIds);
+    handleFilterChange('subcategory', buildSubcategoryFilterValue(nextSubcategoryIds));
+
+    if (subcategoryId) {
+      const targetSubcategory = subcategories.find((sub) => sub.id === subcategoryId);
+      if (targetSubcategory && !selectedCategoryIds.includes(targetSubcategory.category_id)) {
+        const updatedCategoryIds = [...selectedCategoryIds, targetSubcategory.category_id];
+        setSelectedCategoryIds(updatedCategoryIds);
+        handleFilterChange('category', buildCategoryFilterValue(updatedCategoryIds));
+      }
     }
   };
 
   const toggleDifficulty = (difficultyId: string) => {
-    if (selectedDifficultyId === difficultyId) {
-      setSelectedDifficultyId('');
-      handleFilterChange('difficulty', '');
-      return;
+    let nextDifficultyIds: string[];
+    if (!difficultyId) {
+      nextDifficultyIds = [];
+    } else if (selectedDifficultyIds.includes(difficultyId)) {
+      nextDifficultyIds = selectedDifficultyIds.filter((id) => id !== difficultyId);
+    } else {
+      nextDifficultyIds = [...selectedDifficultyIds, difficultyId];
     }
-    setSelectedDifficultyId(difficultyId);
-    const selectedDifficulty = difficultyOptions.find((option) => option.id === difficultyId);
-    handleFilterChange('difficulty', selectedDifficulty ? selectedDifficulty.name : '');
+
+    setSelectedDifficultyIds(nextDifficultyIds);
+    handleFilterChange('difficulty', buildDifficultyFilterValue(nextDifficultyIds));
   };
 
   const handleTabChange = (tab: PremiumTab) => {
@@ -264,20 +290,19 @@ export default function PrevPapersPage() {
       exam_type: PAPER_EXAM_TYPE,
       is_premium: activeTab === 'premium' ? 'true' : 'false',
     });
-    setSelectedCategoryId('');
-    setSelectedSubcategoryId('');
-    setSelectedDifficultyId('');
+    setSelectedCategoryIds([]);
+    setSelectedSubcategoryIds([]);
+    setSelectedDifficultyIds([]);
     setSelectedYears([]);
-    setSubcategories([]);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const isFilterDataLoading = categoriesLoading || difficultiesLoading;
+  const isFilterDataLoading = categoriesLoading || difficultiesLoading || subcategoriesLoading;
   const hasCustomFilters = Boolean(
     filters.search ||
-    filters.category ||
-    filters.subcategory ||
-    filters.difficulty ||
+    selectedCategoryIds.length ||
+    selectedSubcategoryIds.length ||
+    selectedDifficultyIds.length ||
     selectedYears.length
   );
 
@@ -290,6 +315,10 @@ export default function PrevPapersPage() {
     });
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
+
+  const filteredSubcategories = selectedCategoryIds.length
+    ? subcategories.filter((sub) => selectedCategoryIds.includes(sub.category_id))
+    : subcategories;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -308,7 +337,7 @@ export default function PrevPapersPage() {
             <p className="text-lg text-white/80 mb-8">
               Practice with authentic previous year exam papers. Solve real questions to understand patterns and boost your preparation.
             </p>
-            <form onSubmit={handleSearch} className="flex gap-3">
+            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 sm:items-stretch">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
@@ -319,7 +348,7 @@ export default function PrevPapersPage() {
                   className="pl-10 bg-background text-foreground"
                 />
               </div>
-              <Button type="submit" size="lg">
+              <Button type="submit" className="h-10 px-6 text-base font-semibold">
                 Search
               </Button>
             </form>
@@ -363,8 +392,8 @@ export default function PrevPapersPage() {
                         <input
                           type="checkbox"
                           className="h-4 w-4 accent-primary"
-                          checked={selectedCategoryId === ''}
-                          onChange={() => handleCategorySelect('')}
+                          checked={selectedCategoryIds.length === 0}
+                          onChange={() => toggleCategory('')}
                         />
                         <span>All Categories</span>
                       </label>
@@ -373,7 +402,7 @@ export default function PrevPapersPage() {
                           <input
                             type="checkbox"
                             className="h-4 w-4 accent-primary"
-                            checked={selectedCategoryId === category.id}
+                            checked={selectedCategoryIds.includes(category.id)}
                             onChange={() => toggleCategory(category.id)}
                           />
                           <span>{category.name}</span>
@@ -394,20 +423,19 @@ export default function PrevPapersPage() {
                           <input
                             type="checkbox"
                             className="h-4 w-4 accent-primary"
-                            checked={selectedSubcategoryId === ''}
-                            onChange={() => handleSubcategorySelect('')}
-                            disabled={!selectedCategoryId || subcategories.length === 0}
+                            checked={selectedSubcategoryIds.length === 0}
+                            onChange={() => toggleSubcategory('')}
+                            disabled={filteredSubcategories.length === 0}
                           />
-                          <span>{selectedCategoryId ? 'All Sub-categories' : 'Select category first'}</span>
+                          <span>All Sub-categories</span>
                         </label>
-                        {subcategories.map((subcategory) => (
+                        {filteredSubcategories.map((subcategory) => (
                           <label key={subcategory.id} className="flex items-center gap-2 text-sm text-foreground">
                             <input
                               type="checkbox"
                               className="h-4 w-4 accent-primary"
-                              checked={selectedSubcategoryId === subcategory.id}
+                              checked={selectedSubcategoryIds.includes(subcategory.id)}
                               onChange={() => toggleSubcategory(subcategory.id)}
-                              disabled={!selectedCategoryId}
                             />
                             <span>{subcategory.name}</span>
                           </label>
@@ -425,7 +453,7 @@ export default function PrevPapersPage() {
                         <input
                           type="checkbox"
                           className="h-4 w-4 accent-primary"
-                          checked={selectedDifficultyId === ''}
+                          checked={selectedDifficultyIds.length === 0}
                           onChange={() => toggleDifficulty('')}
                         />
                         <span>All Difficulties</span>
@@ -435,7 +463,7 @@ export default function PrevPapersPage() {
                           <input
                             type="checkbox"
                             className="h-4 w-4 accent-primary"
-                            checked={selectedDifficultyId === difficulty.id}
+                            checked={selectedDifficultyIds.includes(difficulty.id)}
                             onChange={() => toggleDifficulty(difficulty.id)}
                           />
                           <span>{difficulty.name}</span>

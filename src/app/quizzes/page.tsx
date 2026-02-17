@@ -250,7 +250,7 @@ export default function QuizzesPage() {
             <p className="text-lg text-background/80 mb-8">
               Bite-sized Q&A quizzes to strengthen your concepts in minutes.
             </p>
-            <form onSubmit={handleSearch} className="flex gap-3">
+            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 sm:items-stretch">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
@@ -261,7 +261,7 @@ export default function QuizzesPage() {
                   className="pl-10 bg-background"
                 />
               </div>
-              <Button type="submit" size="lg">
+              <Button type="submit" className="h-10 px-6 text-base font-semibold">
                 Search
               </Button>
             </form>

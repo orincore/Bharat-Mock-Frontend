@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -26,6 +26,7 @@ interface Section {
   blocks: Block[];
   is_sidebar?: boolean;
   custom_tab_id?: string | null;
+  settings?: Record<string, any>;
 }
 
 const serializeSections = (subset: Section[]) => JSON.stringify(
@@ -45,6 +46,25 @@ interface CustomTab {
   tab_key: string;
   description?: string | null;
   display_order: number;
+}
+
+interface TabConfig {
+  id: string;
+  tab_type: 'overview' | 'mock-tests' | 'previous-papers' | 'custom';
+  tab_label: string;
+  tab_key: string;
+  custom_tab_id?: string | null;
+  display_order: number;
+  is_active: boolean;
+}
+
+interface TabOption {
+  id: string;
+  title: string;
+  isSpecial: boolean;
+  configId?: string;
+  tabType?: TabConfig['tab_type'];
+  customTabId?: string | null;
 }
 
 interface Block {
@@ -114,7 +134,10 @@ export default function AdminSubcategoryEditorPage() {
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [uploadingOgImage, setUploadingOgImage] = useState(false);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const [tabConfig, setTabConfig] = useState<TabConfig[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>('overview');
+  const [reservedPositions, setReservedPositions] = useState<Record<string, number>>({});
+  const tabConfigInitAttemptedRef = useRef(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [savingSettings, setSavingSettings] = useState(false);
@@ -177,13 +200,63 @@ export default function AdminSubcategoryEditorPage() {
   };
 
   const handleMoveTab = async (tabId: string, direction: 'left' | 'right') => {
+    const currentIndex = tabOptions.findIndex((tab) => tab.id === tabId);
+    if (currentIndex === -1) return;
+    const targetIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= tabOptions.length) return;
+
+    if (tabConfig.length > 0) {
+      const currentConfigId = tabOptions[currentIndex]?.configId;
+      const targetConfigId = tabOptions[targetIndex]?.configId;
+      if (!currentConfigId || !targetConfigId) return;
+
+      const orderedConfigIds = tabOptions
+        .map((tab) => tab.configId)
+        .filter((id): id is string => Boolean(id));
+
+      const currentConfigIndex = orderedConfigIds.indexOf(currentConfigId);
+      const targetConfigIndex = orderedConfigIds.indexOf(targetConfigId);
+      if (currentConfigIndex === -1 || targetConfigIndex === -1) return;
+
+      const updatedOrder = [...orderedConfigIds];
+      const [movedId] = updatedOrder.splice(currentConfigIndex, 1);
+      updatedOrder.splice(targetConfigIndex, 0, movedId);
+
+      setTabConfig((prev) => {
+        const lookup = new Map(prev.map((config) => [config.id, config]));
+        return updatedOrder.map((id) => lookup.get(id)).filter((config): config is TabConfig => Boolean(config));
+      });
+
+      try {
+        const token = getAuthToken();
+        const response = await fetch(buildApiUrl(`/page-content/${subcategoryId}/tab-config/reorder`), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ tabConfigIds: updatedOrder })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to reorder tabs');
+        }
+      } catch (error) {
+        console.error('Failed to reorder tab configuration:', error);
+        toast({ title: 'Error', description: 'Unable to reorder tabs', variant: 'destructive' });
+        await loadPageContent({ skipInit: true });
+      }
+      return;
+    }
+
     const index = customTabs.findIndex((tab) => tab.id === tabId);
     if (index === -1) return;
-    const targetIndex = direction === 'left' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= customTabs.length) return;
+    const newTargetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (newTargetIndex < 0 || newTargetIndex >= customTabs.length) return;
+
     const reordered = [...customTabs];
     const [moved] = reordered.splice(index, 1);
-    reordered.splice(targetIndex, 0, moved);
+    reordered.splice(newTargetIndex, 0, moved);
     setCustomTabs(reordered);
     try {
       await subcategoryAdminService.reorderCustomTabs(subcategoryId, reordered.map((tab) => tab.id));
@@ -209,15 +282,21 @@ export default function AdminSubcategoryEditorPage() {
     void bootstrap();
   }, [subcategoryId]);
 
+  const isSpecialTab = useMemo(() => activeTabId === 'mock-tests' || activeTabId === 'previous-papers', [activeTabId]);
+
   const updateSectionsForActiveTab = useCallback((updatedSubset: Section[]) => {
+    const specialTabId = activeTabId === 'mock-tests' || activeTabId === 'previous-papers' ? activeTabId : null;
     setSections((prev) => {
       const retain: Section[] = [];
       const currentSubset: Section[] = [];
 
       prev.forEach((section) => {
+        const sectionSpecialTab = section.settings?.special_tab_type;
         const belongsToActive = activeTabId === 'overview'
-          ? !section.custom_tab_id
-          : section.custom_tab_id === activeTabId;
+          ? !section.custom_tab_id && !sectionSpecialTab
+          : specialTabId
+            ? sectionSpecialTab === specialTabId
+            : section.custom_tab_id === activeTabId;
         if (belongsToActive) {
           currentSubset.push(section);
         } else {
@@ -227,9 +306,22 @@ export default function AdminSubcategoryEditorPage() {
 
       const normalizedSubset = updatedSubset.map((section, index) => ({
         ...section,
-        custom_tab_id: activeTabId === 'overview' ? null : activeTabId,
+        custom_tab_id: activeTabId === 'overview' || specialTabId ? null : activeTabId,
         display_order: index,
-        blocks: section.blocks || []
+        blocks: section.blocks || [],
+        settings: (() => {
+          const nextSettings = { ...(section.settings || {}) };
+          if (specialTabId) {
+            nextSettings.special_tab_type = specialTabId;
+            if (reservedPositions[specialTabId] !== undefined) {
+              nextSettings.reserved_position = reservedPositions[specialTabId];
+            }
+          } else if (nextSettings.special_tab_type) {
+            delete nextSettings.special_tab_type;
+            delete nextSettings.reserved_position;
+          }
+          return nextSettings;
+        })()
       }));
 
       if (serializeSections(currentSubset) === serializeSections(normalizedSubset)) {
@@ -238,20 +330,87 @@ export default function AdminSubcategoryEditorPage() {
 
       return [...retain, ...normalizedSubset];
     });
-  }, [activeTabId]);
+  }, [activeTabId, reservedPositions]);
 
   const sectionsForActiveTab = useMemo(() => (
     sections
-      .filter((section) => (activeTabId === 'overview' ? !section.custom_tab_id : section.custom_tab_id === activeTabId))
+      .filter((section) => {
+        const sectionSpecialTab = section.settings?.special_tab_type;
+        if (activeTabId === 'overview') {
+          return !section.custom_tab_id && !sectionSpecialTab;
+        }
+        if (activeTabId === 'mock-tests' || activeTabId === 'previous-papers') {
+          return sectionSpecialTab === activeTabId;
+        }
+        return section.custom_tab_id === activeTabId;
+      })
       .sort((a, b) => a.display_order - b.display_order)
   ), [sections, activeTabId]);
 
   const autosaveKey = useMemo(() => `subcategory:${subcategoryId}:${activeTabId}`, [subcategoryId, activeTabId]);
 
-  const tabOptions = useMemo(() => [
-    { id: 'overview', title: 'Overview' },
-    ...customTabs
-  ], [customTabs]);
+  const tabOptions = useMemo<TabOption[]>(() => {
+    if (tabConfig.length > 0) {
+      const configuredTabs = tabConfig
+        .map((config) => {
+          if (config.tab_type === 'overview') {
+            return {
+              id: 'overview',
+              title: config.tab_label || 'Overview',
+              isSpecial: false,
+              configId: config.id,
+              tabType: config.tab_type,
+            } as TabOption;
+          }
+          if (config.tab_type === 'mock-tests' || config.tab_type === 'previous-papers') {
+            return {
+              id: config.tab_type,
+              title: config.tab_label,
+              isSpecial: true,
+              configId: config.id,
+              tabType: config.tab_type,
+            } as TabOption;
+          }
+          if (config.tab_type === 'custom' && config.custom_tab_id) {
+            const customTab = customTabs.find((tab) => tab.id === config.custom_tab_id);
+            if (!customTab) return null;
+            return {
+              id: customTab.id,
+              title: config.tab_label || customTab.title,
+              isSpecial: false,
+              configId: config.id,
+              tabType: config.tab_type,
+              customTabId: customTab.id
+            } as TabOption;
+          }
+          return null;
+        })
+        .filter((tabOption): tabOption is TabOption => Boolean(tabOption));
+
+      const seenIds = new Set(configuredTabs.map((tab) => tab.id));
+      const missingCustomTabs = customTabs
+        .filter((tab) => !seenIds.has(tab.id))
+        .map((tab) => ({ id: tab.id, title: tab.title, isSpecial: false } satisfies TabOption));
+
+      return [...configuredTabs, ...missingCustomTabs];
+    }
+
+    return [
+      { id: 'overview', title: 'Overview', isSpecial: false },
+      ...customTabs.map((tab) => ({ id: tab.id, title: tab.title, isSpecial: false })),
+      { id: 'mock-tests', title: 'Mock Tests', isSpecial: true },
+      { id: 'previous-papers', title: 'Previous Papers', isSpecial: true }
+    ];
+  }, [tabConfig, customTabs]);
+
+  const canMoveTabDirection = useCallback((tabId: string, direction: 'left' | 'right') => {
+    const index = tabOptions.findIndex((tab) => tab.id === tabId);
+    if (index === -1) return false;
+    if (direction === 'left') {
+      return index - 1 >= 0 && tabOptions[index - 1]?.id !== 'overview';
+    }
+    return index + 1 < tabOptions.length;
+  }, [tabOptions]);
 
   const mediaUploadConfig = useMemo(() => ({
     maxSizeMB: 150,
@@ -395,7 +554,9 @@ export default function AdminSubcategoryEditorPage() {
     }
   };
 
-  const loadPageContent = async () => {
+  const loadPageContent = async ({ skipInit = false }: { skipInit?: boolean } = {}) => {
+    if (!subcategoryId) return;
+
     try {
       const endpoint = buildApiUrl(`/page-content/${subcategoryId}`);
       debugLog('Fetching page content', endpoint);
@@ -408,11 +569,49 @@ export default function AdminSubcategoryEditorPage() {
       const data = await response.json();
       const nextSections = data.sections || [];
       const nextTabs = data.customTabs || [];
+      const nextTabConfig = data.tabConfig || [];
       setSections(nextSections);
       setOriginalSections(nextSections);
       setSeoData(data.seo || {});
       setCustomTabs(nextTabs);
-      setActiveTabId((prev) => (prev === 'overview' || nextTabs.some((tab: CustomTab) => tab.id === prev) ? prev : 'overview'));
+      setTabConfig(nextTabConfig);
+
+      const positions: Record<string, number> = {};
+      (data.sections || []).forEach((section: Section) => {
+        const specialTab = section.settings?.special_tab_type;
+        if (specialTab && section.settings?.reserved_position !== undefined) {
+          positions[specialTab] = section.settings.reserved_position;
+        }
+      });
+      setReservedPositions(positions);
+
+      const validTabIds = new Set<string>([
+        'overview',
+        'mock-tests',
+        'previous-papers',
+        ...nextTabs.map((tab: CustomTab) => tab.id)
+      ]);
+      setActiveTabId((prev) => (validTabIds.has(prev) ? prev : 'overview'));
+
+      if (!skipInit && nextTabConfig.length === 0 && !tabConfigInitAttemptedRef.current) {
+        tabConfigInitAttemptedRef.current = true;
+        try {
+          const token = getAuthToken();
+          const initResponse = await fetch(buildApiUrl(`/page-content/${subcategoryId}/tab-config/initialize`), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            }
+          });
+          const initData = await initResponse.json();
+          if (initResponse.ok && initData.success) {
+            await loadPageContent({ skipInit: true });
+          }
+        } catch (initError) {
+          console.error('Failed to initialize tab configuration:', initError);
+        }
+      }
     } catch (error) {
       console.error('Error loading page content:', error);
       toast({
@@ -708,7 +907,7 @@ export default function AdminSubcategoryEditorPage() {
                   setShowSettingsPanel(true);
                 }}
               >
-                <ImageIcon className="w-4 h-4 mr-2" />
+                <Settings className="w-4 h-4 mr-2" />
                 Settings
               </Button>
               <Button
@@ -809,6 +1008,8 @@ export default function AdminSubcategoryEditorPage() {
           <div className="mt-4 flex flex-wrap gap-3">
             {tabOptions.map((tab) => {
               const isActive = activeTabId === tab.id;
+              const isSpecial = tab.isSpecial || false;
+              const linkedCustomTab = !isSpecial ? customTabs.find((customTab) => customTab.id === tab.id) : null;
               return (
                 <div key={tab.id} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-700'}`}>
                   <button
@@ -817,12 +1018,33 @@ export default function AdminSubcategoryEditorPage() {
                   >
                     {tab.title}
                   </button>
+                  {isSpecial && (
+                    <span className="text-[10px] uppercase tracking-wide font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+                      Reserved
+                    </span>
+                  )}
                   {tab.id !== 'overview' && (
                     <div className="flex items-center gap-1 text-xs">
-                      <button onClick={() => handleMoveTab(tab.id, 'left')} className="px-1 text-gray-500 hover:text-gray-800">◀</button>
-                      <button onClick={() => handleMoveTab(tab.id, 'right')} className="px-1 text-gray-500 hover:text-gray-800">▶</button>
-                      <button onClick={() => handleRenameTab(tab as CustomTab)} className="px-1 text-gray-500 hover:text-gray-800">Edit</button>
-                      <button onClick={() => handleDeleteTab(tab as CustomTab)} className="px-1 text-red-500 hover:text-red-700">Delete</button>
+                      <button
+                        onClick={() => handleMoveTab(tab.id, 'left')}
+                        className={`px-1 ${canMoveTabDirection(tab.id, 'left') ? 'text-gray-500 hover:text-gray-800' : 'text-gray-300 cursor-not-allowed'}`}
+                        disabled={!canMoveTabDirection(tab.id, 'left')}
+                      >
+                        ◀
+                      </button>
+                      <button
+                        onClick={() => handleMoveTab(tab.id, 'right')}
+                        className={`px-1 ${canMoveTabDirection(tab.id, 'right') ? 'text-gray-500 hover:text-gray-800' : 'text-gray-300 cursor-not-allowed'}`}
+                        disabled={!canMoveTabDirection(tab.id, 'right')}
+                      >
+                        ▶
+                      </button>
+                      {!isSpecial && linkedCustomTab && (
+                        <>
+                          <button onClick={() => handleRenameTab(linkedCustomTab)} className="px-1 text-gray-500 hover:text-gray-800">Edit</button>
+                          <button onClick={() => handleDeleteTab(linkedCustomTab)} className="px-1 text-red-500 hover:text-red-700">Delete</button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -841,6 +1063,18 @@ export default function AdminSubcategoryEditorPage() {
         onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
         tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
         mediaUploadConfig={mediaUploadConfig}
+        reservedTabInfo={activeTabId === 'mock-tests' || activeTabId === 'previous-papers' ? {
+          tabType: activeTabId,
+          message: activeTabId === 'mock-tests'
+            ? 'This area is reserved for displaying mock tests automatically. You can add custom sections above or below this reserved area.'
+            : 'This area is reserved for displaying previous year question papers automatically. You can add custom sections above or below this reserved area.',
+          position: reservedPositions[activeTabId] ?? 0
+        } : undefined}
+        onReservedPositionChange={(position) => {
+          if (activeTabId === 'mock-tests' || activeTabId === 'previous-papers') {
+            setReservedPositions(prev => ({ ...prev, [activeTabId]: position }));
+          }
+        }}
       />
 
       {/* SEO Settings Panel */}

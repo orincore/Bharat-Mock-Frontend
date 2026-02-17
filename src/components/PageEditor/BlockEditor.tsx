@@ -1,21 +1,55 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Plus,
-  Trash2,
-  GripVertical,
-  Settings,
-  Save,
-  Undo,
-  Redo,
-  ChevronDown,
-  UploadCloud,
-  Loader2,
   Bold,
   Italic,
   Underline,
-  Palette
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Quote,
+  Image as ImageIcon,
+  Video,
+  Columns,
+  Table,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Palette,
+  Upload,
+  UploadCloud,
+  Trash,
+  Trash2,
+  GripVertical,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  Plus,
+  Save,
+  Play,
+  Pause,
+  Loader2,
+  ExternalLink,
+  Undo,
+  Redo,
+  Calendar,
+  Tag,
+  QuoteIcon,
+  AlertTriangle,
+  FileText,
+  Sheet,
+  MoveHorizontal,
+  MoveVertical,
+  Search,
+  Link,
+  Minimize2,
+  Maximize2,
+  Layout,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { BlockRenderer, getBlockIcon } from './BlockRenderer';
 
@@ -433,6 +467,12 @@ interface BlockEditorProps {
   onSectionsChange?: (sections: Section[]) => void;
   tabLabel?: string;
   mediaUploadConfig?: BlockEditorMediaUploadConfig;
+  reservedTabInfo?: {
+    tabType: string;
+    message: string;
+    position?: number;
+  };
+  onReservedPositionChange?: (position: number) => void;
 }
 
 interface InlineRichTextEditorProps {
@@ -1070,17 +1110,20 @@ const INLINE_EDITABLE_BLOCKS = new Set([
   'card'
 ]);
 
-export const BlockEditor: React.FC<BlockEditorProps> = ({ 
-  sections: initialSections, 
+export const BlockEditor: React.FC<BlockEditorProps> = ({
+  sections: initialSections,
   onSave,
   autosaveKey,
   onSectionsChange,
   tabLabel,
-  mediaUploadConfig
+  mediaUploadConfig,
+  reservedTabInfo,
+  onReservedPositionChange
 }) => {
   const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
   const parentSectionsSignatureRef = useRef<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+  const [reservedPosition, setReservedPosition] = useState<number>(reservedTabInfo?.position ?? 0);
   const isPreview = false;
   const [showBlockPicker, setShowBlockPicker] = useState<string | null>(null);
   const [openBlockEditor, setOpenBlockEditor] = useState<string | null>(null);
@@ -1215,6 +1258,32 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       )
     );
   };
+
+  const moveSection = (sectionId: string, direction: 'up' | 'down') => {
+    setSections((prev) => {
+      const index = prev.findIndex((section) => section.id === sectionId);
+      if (index === -1) return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const reordered = [...prev];
+      const [moved] = reordered.splice(index, 1);
+      reordered.splice(targetIndex, 0, moved);
+      return reordered.map((section, idx) => ({ ...section, display_order: idx }));
+    });
+  };
+
+  const moveReservedCard = (direction: 'up' | 'down') => {
+    const targetPos = direction === 'up' ? reservedPosition - 1 : reservedPosition + 1;
+    if (targetPos < 0 || targetPos > sections.length) return;
+    setReservedPosition(targetPos);
+    onReservedPositionChange?.(targetPos);
+  };
+
+  useEffect(() => {
+    if (reservedTabInfo?.position !== undefined && reservedTabInfo.position !== reservedPosition) {
+      setReservedPosition(reservedTabInfo.position);
+    }
+  }, [reservedTabInfo?.position]);
 
   const addSection = () => {
     const newSection: Section = {
@@ -1462,7 +1531,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-5xl mx-auto p-8">
-            {sections.length === 0 ? (
+
+            {sections.length === 0 && !reservedTabInfo ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 mb-4">No sections yet. Add a section to get started.</p>
                 <button
@@ -1473,9 +1543,53 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                 </button>
               </div>
             ) : (
-              sections.map((section, sectionIndex) => (
-                <div
-                  key={section.id}
+              <>
+                {sections.map((section, sectionIndex) => {
+                  const renderReservedCard = reservedTabInfo && sectionIndex === reservedPosition;
+                  return (
+                    <React.Fragment key={section.id}>
+                      {renderReservedCard && (
+                        <div className="mb-8 bg-amber-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
+                          <div className="flex items-start gap-4">
+                            <div className="flex-shrink-0 w-12 h-12 bg-amber-200 rounded-full flex items-center justify-center">
+                              <Settings className="w-6 h-6 text-amber-800" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-lg font-bold text-amber-900 mb-2">
+                                Reserved Area: {reservedTabInfo.tabType === 'mock-tests' ? 'Mock Tests Listing' : 'Question Papers Listing'}
+                              </h3>
+                              <p className="text-sm text-amber-800 mb-3">
+                                {reservedTabInfo.message}
+                              </p>
+                              <div className="bg-white border border-amber-200 rounded-lg p-3">
+                                <p className="text-xs text-gray-700">
+                                  <strong>Note:</strong> This reserved area automatically displays exam content from your database.
+                                  You can add custom sections above or below this area to provide additional context, instructions, or promotional content.
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => moveReservedCard('up')}
+                                disabled={reservedPosition === 0}
+                                className="p-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30"
+                                title="Move reserved area up"
+                              >
+                                <ArrowUp className="w-4 h-4 text-amber-700" />
+                              </button>
+                              <button
+                                onClick={() => moveReservedCard('down')}
+                                disabled={reservedPosition === sections.length}
+                                className="p-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30"
+                                title="Move reserved area down"
+                              >
+                                <ArrowDown className="w-4 h-4 text-amber-700" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <div
                   className={`mb-8 bg-white rounded-lg shadow-sm border transition-colors ${
                     dragOverSectionId === section.id ? 'border-blue-400 shadow-md' : 'border-gray-200'
                   } ${draggingSectionId === section.id ? 'opacity-70' : ''}`}
@@ -1581,6 +1695,24 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => moveSection(section.id, 'up')}
+                              disabled={sectionIndex === 0}
+                              className="p-1 rounded border border-gray-200 hover:bg-white disabled:opacity-30"
+                              title="Move section up"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => moveSection(section.id, 'down')}
+                              disabled={sectionIndex === sections.length - 1}
+                              className="p-1 rounded border border-gray-200 hover:bg-white disabled:opacity-30"
+                              title="Move section down"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </button>
+                          </div>
                           <button
                             onClick={() => toggleSectionSidebar(section.id)}
                             className={`px-3 py-1 rounded text-sm border ${
@@ -1784,8 +1916,54 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                     </div>
                   )}
                 </div>
-              ))
+                    </React.Fragment>
+                  );
+                })}
+                
+                {reservedTabInfo && reservedPosition === sections.length && (
+                  <div className="mb-8 bg-amber-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-amber-200 rounded-full flex items-center justify-center">
+                        <Settings className="w-6 h-6 text-amber-800" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-amber-900 mb-2">
+                          Reserved Area: {reservedTabInfo.tabType === 'mock-tests' ? 'Mock Tests Listing' : 'Question Papers Listing'}
+                        </h3>
+                        <p className="text-sm text-amber-800 mb-3">
+                          {reservedTabInfo.message}
+                        </p>
+                        <div className="bg-white border border-amber-200 rounded-lg p-3">
+                          <p className="text-xs text-gray-700">
+                            <strong>Note:</strong> This reserved area automatically displays exam content from your database.
+                            You can add custom sections above or below this area to provide additional context, instructions, or promotional content.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => moveReservedCard('up')}
+                          disabled={reservedPosition === 0}
+                          className="p-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30"
+                          title="Move reserved area up"
+                        >
+                          <ArrowUp className="w-4 h-4 text-amber-700" />
+                        </button>
+                        <button
+                          onClick={() => moveReservedCard('down')}
+                          disabled={reservedPosition === sections.length}
+                          className="p-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30"
+                          title="Move reserved area down"
+                        >
+                          <ArrowDown className="w-4 h-4 text-amber-700" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
+            
           </div>
         </div>
       </div>

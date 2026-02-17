@@ -9,6 +9,7 @@ import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
 import { Download, Lock } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface Block {
   id: string;
@@ -32,6 +33,7 @@ interface Section {
   is_sidebar?: boolean;
   custom_tab_id?: string | null;
   blocks: Block[];
+  settings?: Record<string, any>;
 }
 
 interface CustomTab {
@@ -109,6 +111,12 @@ const resolvePaperYear = (paper: any): number | null => {
 export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, combinedSlug, initialTabSlug }: ModernSubcategoryPageProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const extractYearFromTitle = (title: string): string | null => {
+    const yearMatch = title.match(/\b(19|20)\d{2}\b/);
+    return yearMatch ? yearMatch[0] : null;
+  };
 
   const [resolvedCategorySlug, setResolvedCategorySlug] = useState<string | null>(categorySlug?.toLowerCase() || null);
   const [resolvedSubcategorySlug, setResolvedSubcategorySlug] = useState<string | null>(subcategorySlug?.toLowerCase() || null);
@@ -121,6 +129,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const [mockTestsLoading, setMockTestsLoading] = useState(false);
   const [questionPapersLoading, setQuestionPapersLoading] = useState(false);
   const [pastPaperLoading, setPastPaperLoading] = useState(false);
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [isLoading, setIsLoading] = useState(true);
@@ -193,7 +202,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     const staticTabs: TabDescriptor[] = [
       { id: 'overview', label: 'Overview', slug: 'overview', type: 'content' },
       { id: 'mock-tests', label: 'Mock Tests', slug: 'mock-tests', type: 'special' },
-      { id: 'question-papers', label: 'Previous Papers', slug: 'question-papers', type: 'special' }
+      { id: 'previous-papers', label: 'Previous Papers', slug: 'previous-papers', type: 'special' }
     ];
 
     const customDescriptors: TabDescriptor[] = customTabs.map((tab) => ({
@@ -315,7 +324,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       if (!resolvedSubcategorySlug) return;
       try {
         setMockTestsLoading(true);
-        const params = new URLSearchParams({ limit: '6', exam_type: 'mock_test' });
+        const params = new URLSearchParams({ limit: '50', exam_type: 'mock_test' });
         const endpoint = buildApiUrl(`/taxonomy/subcategory/${resolvedSubcategorySlug}/exams?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
@@ -323,7 +332,12 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           return;
         }
         const payload = await response.json();
-        setMockTests(Array.isArray(payload?.data) ? payload.data : payload?.data?.data || []);
+        console.log('[DEBUG] Mock tests API payload:', payload);
+        console.log('[DEBUG] payload.data:', payload?.data);
+        console.log('[DEBUG] payload.data.data:', payload?.data?.data);
+        const mockTestsData = Array.isArray(payload?.data) ? payload.data : payload?.data?.data || [];
+        console.log('[DEBUG] Setting mockTests to:', mockTestsData);
+        setMockTests(mockTestsData);
       } catch (err) {
         console.error('[ModernSubcategory] mock tests fetch failed', err);
         setMockTests([]);
@@ -340,7 +354,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       if (!subcategoryId) return;
       try {
         setQuestionPapersLoading(true);
-        const params = new URLSearchParams({ limit: '12' });
+        const params = new URLSearchParams({ limit: '50' });
         const endpoint = buildApiUrl(`/subcategories/${subcategoryId}/question-papers?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
@@ -348,6 +362,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           return;
         }
         const payload = await response.json();
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[ModernSubcategory] question papers payload', payload);
+        }
         setQuestionPapers(Array.isArray(payload?.data) ? payload.data : payload?.data?.data || []);
       } catch (err) {
         console.error('[ModernSubcategory] question papers fetch failed', err);
@@ -365,7 +382,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       if (!resolvedSubcategorySlug) return;
       try {
         setPastPaperLoading(true);
-        const params = new URLSearchParams({ limit: '20', exam_type: 'past_paper' });
+        const params = new URLSearchParams({ limit: '50', exam_type: 'past_paper' });
         const endpoint = buildApiUrl(`/taxonomy/subcategory/${resolvedSubcategorySlug}/exams?${params.toString()}`);
         const response = await fetch(endpoint);
         if (!response.ok) {
@@ -373,7 +390,19 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           return;
         }
         const payload = await response.json();
-        setPastPaperExams(Array.isArray(payload?.data) ? payload.data : payload?.data?.data || []);
+        const parsedData = Array.isArray(payload?.data) ? payload.data : payload?.data?.data || [];
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[ModernSubcategory] past paper exams payload', payload);
+          console.log('[ModernSubcategory] past paper exams parsed data count:', parsedData.length);
+          console.log('[ModernSubcategory] past paper exams with show_in_mock_tests:', 
+            parsedData.filter((exam: any) => exam?.show_in_mock_tests).map((exam: any) => ({
+              id: exam.id,
+              title: exam.title,
+              show_in_mock_tests: exam.show_in_mock_tests
+            }))
+          );
+        }
+        setPastPaperExams(parsedData);
       } catch (err) {
         console.error('[ModernSubcategory] past papers fetch failed', err);
         setPastPaperExams([]);
@@ -446,6 +475,157 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return items;
   }, [heroTitle, resolvedCategorySlug, resolvedSubcategorySlug, subcategoryInfo, currentTabDescriptor]);
 
+  const sections = pageContent?.sections ?? [];
+
+  const extendedMockTests = useMemo(() => {
+    const uniqueMap = new Map<string, any>();
+    const registerExam = (exam: any, fallbackKey?: string) => {
+      if (!exam) return;
+      const key = fallbackKey || exam.id || exam.slug || exam.exam_id || `${exam.title || 'exam'}-${uniqueMap.size}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, exam);
+      }
+    };
+
+    mockTests.forEach((exam) => registerExam(exam));
+
+    pastPaperExams
+      .filter((exam) => Boolean(exam?.show_in_mock_tests))
+      .forEach((exam) => registerExam(exam));
+
+    const showFromSections = sections
+      .filter((section) => section.settings?.special_tab_type === 'mock-tests' && Array.isArray(section.blocks))
+      .flatMap((section) => section.blocks)
+      .filter((block) => block.block_type === 'exam_list' && block.settings?.show_in_mock_tests)
+      .flatMap((block) => block.content?.exams || []);
+    showFromSections.forEach((exam) => registerExam(exam));
+
+    combinedQuestionPapers.forEach((paper, paperIndex) => {
+      const paperExam = paper.exam || pastPaperExams.find((exam) => exam.id === paper.exam_id);
+      const shouldInclude = paper?.show_in_mock_tests || paperExam?.show_in_mock_tests;
+      if (!shouldInclude) {
+        return;
+      }
+      if (paperExam) {
+        registerExam(paperExam);
+        return;
+      }
+      registerExam(
+        {
+          id: paper.exam_id || paper.id,
+          title: paper.title,
+          total_questions: paper.total_questions,
+          total_marks: paper.total_marks,
+          duration: paper.duration,
+          is_free: paper.is_free,
+          slug: paper.slug,
+          url_path: paper.url_path || paper.download_url,
+          show_in_mock_tests: true
+        },
+        paper.exam_id || paper.id || `paper-${paperIndex}`
+      );
+    });
+
+    const result = Array.from(uniqueMap.values());
+
+    if (process.env.NODE_ENV !== 'production') {
+      const flaggedPastPapers = pastPaperExams.filter((exam) => Boolean(exam?.show_in_mock_tests)).map((exam) => exam.id);
+      const sectionExams = showFromSections.map((exam: any) => exam.id || exam.slug).filter(Boolean);
+      const combinedFlags = combinedQuestionPapers
+        .filter((paper) => paper?.show_in_mock_tests || paper.exam?.show_in_mock_tests)
+        .map((paper) => paper.exam_id || paper.id);
+      console.log('[ModernSubcategory] extendedMockTests summary', {
+        mockTestsCount: mockTests.length,
+        flaggedPastPapers,
+        sectionExamIds: sectionExams,
+        combinedFlaggedIds: combinedFlags,
+        resultCount: result.length,
+        resultIds: result.map((exam) => exam.id || exam.slug || 'unknown')
+      });
+    }
+
+    return result;
+  }, [mockTests, pastPaperExams, sections, combinedQuestionPapers]);
+
+  const availableMockTestYears = useMemo(() => {
+    const years = new Set<string>();
+    extendedMockTests.forEach((exam) => {
+      const year = extractYearFromTitle(exam.title);
+      if (year) years.add(year);
+    });
+    return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
+  }, [extendedMockTests]);
+
+  const availablePreviousPaperYears = useMemo(() => {
+    const years = new Set<string>();
+    combinedQuestionPapers.forEach((exam) => {
+      const year = extractYearFromTitle(exam.title);
+      if (year) years.add(year);
+    });
+    return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
+  }, [combinedQuestionPapers]);
+
+  const filteredMockTests = useMemo(() => {
+    if (selectedYears.length === 0) return extendedMockTests;
+    return extendedMockTests.filter((exam) => {
+      const year = extractYearFromTitle(exam.title);
+      return year && selectedYears.includes(year);
+    });
+  }, [extendedMockTests, selectedYears]);
+
+  const filteredPreviousPapers = useMemo(() => {
+    if (selectedYears.length === 0) return combinedQuestionPapers;
+    return combinedQuestionPapers.filter((exam) => {
+      const year = extractYearFromTitle(exam.title);
+      return year && selectedYears.includes(year);
+    });
+  }, [combinedQuestionPapers, selectedYears]);
+
+  const toggleYear = (year: string) => {
+    setSelectedYears((prev) =>
+      prev.includes(year) ? prev.filter((y) => y !== year) : [...prev, year]
+    );
+  };
+
+  const clearYearFilters = () => setSelectedYears([]);
+
+  const isYearFilterTab = activeTab === 'mock-tests' || activeTab === 'previous-papers';
+  const currentYearOptions = activeTab === 'mock-tests' ? availableMockTestYears : availablePreviousPaperYears;
+  const hasYearFilters = isYearFilterTab && currentYearOptions.length > 0;
+
+  const yearFilterPanel = hasYearFilters ? (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+      <div className="flex flex-col gap-2">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Filter by Year</h3>
+          <p className="text-sm text-gray-500">Select one or more years to refine the list.</p>
+        </div>
+        {selectedYears.length > 0 && (
+          <button
+            type="button"
+            onClick={clearYearFilters}
+            className="self-start text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+      <div className="flex flex-col gap-3">
+        {currentYearOptions.map((year) => (
+          <label key={year} className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selectedYears.includes(year)}
+              onChange={() => toggleYear(year)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">{year}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -469,12 +649,14 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     );
   }
 
-  const sections = pageContent?.sections ?? [];
   const sidebarSections = sections.filter((section) => section.is_sidebar);
 
   const getSectionsForTab = (tabId: string) => {
     if (tabId === 'overview') {
-      return sections.filter((section) => !section.is_sidebar && !section.custom_tab_id);
+      return sections.filter((section) => !section.is_sidebar && !section.custom_tab_id && !section.settings?.special_tab_type);
+    }
+    if (tabId === 'mock-tests' || tabId === 'previous-papers') {
+      return sections.filter((section) => !section.is_sidebar && section.settings?.special_tab_type === tabId);
     }
     if (customTabs.some((tab) => tab.id === tabId)) {
       return sections.filter((section) => !section.is_sidebar && section.custom_tab_id === tabId);
@@ -482,9 +664,20 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return [];
   };
 
+  const getReservedPosition = (tabId: string) => {
+    if (tabId !== 'mock-tests' && tabId !== 'previous-papers') return 0;
+    const tabSections = sections.filter((section) => section.settings?.special_tab_type === tabId);
+    if (tabSections.length > 0 && tabSections[0].settings?.reserved_position !== undefined) {
+      return tabSections[0].settings.reserved_position;
+    }
+    return 0;
+  };
+
   const visibleSections = getSectionsForTab(activeTab);
   const tabItems = tabDescriptors.map(({ id, label }) => ({ id, label }));
-  const isContentTab = currentTabDescriptor?.type === 'content';
+  const isSpecialTab = activeTab === 'mock-tests' || activeTab === 'previous-papers';
+  const isContentTab = currentTabDescriptor?.type === 'content' || isSpecialTab;
+  const reservedPosition = getReservedPosition(activeTab);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -582,95 +775,201 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                   </div>
                 ))}
 
-                {visibleSections.length === 0 && (!pageContent?.orphanBlocks || pageContent.orphanBlocks.length === 0) ? (
+                {visibleSections.length === 0 && (!pageContent?.orphanBlocks || pageContent.orphanBlocks.length === 0) && !isSpecialTab ? (
                   <div className="bg-white rounded-lg border border-dashed border-gray-300 p-10 text-center text-gray-500">
                     No Content Yet! Come again later...
                   </div>
                 ) : (
-                  visibleSections.map((section) => (
-                    <section
-                      key={section.id}
-                      id={section.section_key}
-                      className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-                      style={{
-                        backgroundColor: section.background_color || "white",
-                        color: section.text_color || "inherit"
-                      }}
-                    >
-                      <div className="p-6 border-b border-gray-200 bg-gray-50">
-                        <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
-                        {section.subtitle && <p className="mt-2 text-gray-600">{section.subtitle}</p>}
-                      </div>
-                      <div className="p-6">
-                        {section.blocks.map((block) => (
-                          <div key={block.id} className="mb-4">
-                            <PageBlockRenderer block={block} />
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))
+                  <>
+                    {visibleSections.map((section, sectionIndex) => {
+                      const renderReservedBefore = isSpecialTab && sectionIndex === reservedPosition;
+                      const reservedContent = activeTab === 'mock-tests' ? (
+                        <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                          <h2 className="text-xl font-semibold mb-4">Mock Tests</h2>
+                          {mockTestsLoading ? (
+                            <p className="text-sm text-gray-500">Loading mock tests...</p>
+                          ) : filteredMockTests.length === 0 ? (
+                            <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No mock tests found for selected years.' : 'No mock tests available yet.'}</p>
+                          ) : (
+                            <div className="space-y-4">
+                              {filteredMockTests.map((exam, examIndex) => {
+                                const examKey = exam.id || exam.slug || `mock-exam-${examIndex}`;
+                                const canAccess = exam.is_free || user?.is_premium;
+                                return (
+                                  <div key={examKey} className="border rounded-xl p-4 flex flex-col gap-4">
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
+                                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                        {exam.total_questions && <span>{exam.total_questions} Questions</span>}
+                                        {exam.duration && <span>{exam.duration} mins</span>}
+                                        {exam.total_marks && <span>{exam.total_marks} Marks</span>}
+                                        {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3">
+                                      <Link
+                                        href={exam.url_path || `/exams/${exam.slug || exam.id}`}
+                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                      >
+                                        {!canAccess && <Lock className="w-4 h-4 mr-2" />}
+                                        {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                      </Link>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                          <h2 className="text-xl font-semibold mb-4">Previous Year Question Papers</h2>
+                          {questionPapersLoading || pastPaperLoading ? (
+                            <p className="text-sm text-gray-500">Loading question papers...</p>
+                          ) : filteredPreviousPapers.length === 0 ? (
+                            <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No question papers found for selected years.' : 'No question papers available yet.'}</p>
+                          ) : (
+                            <div className="space-y-4">
+                              {filteredPreviousPapers.map((exam) => {
+                                const canAccess = exam.is_free || exam.exam?.is_free || user?.is_premium;
+                                return (
+                                <div key={exam.id} className="border rounded-xl p-4 flex flex-col gap-4">
+                                  <div className="flex-1">
+                                    <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
+                                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                      {exam.total_questions && <span>{exam.total_questions} Questions</span>}
+                                      {exam.duration && <span>{exam.duration} mins</span>}
+                                      {exam.total_marks && <span>{exam.total_marks} Marks</span>}
+                                      {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-3">
+                                    <Link
+                                      href={exam.url_path || `/exams/${exam.slug || exam.id}`}
+                                      className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                    >
+                                      {!canAccess && <Lock className="w-4 h-4 mr-2" />}
+                                      {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                    </Link>
+                                  </div>
+                                </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+
+                      return (
+                        <React.Fragment key={section.id}>
+                          {renderReservedBefore && reservedContent}
+                          <section
+                            id={section.section_key}
+                            className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                            style={{
+                              backgroundColor: section.background_color || "white",
+                              color: section.text_color || "inherit"
+                            }}
+                          >
+                            <div className="p-6 border-b border-gray-200 bg-gray-50">
+                              <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
+                              {section.subtitle && <p className="mt-2 text-gray-600">{section.subtitle}</p>}
+                            </div>
+                            <div className="p-6">
+                              {section.blocks.map((block) => (
+                                <div key={block.id} className="mb-4">
+                                  <PageBlockRenderer block={block} />
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+                        </React.Fragment>
+                      );
+                    })}
+                    {isSpecialTab && reservedPosition === visibleSections.length && (
+                      activeTab === 'mock-tests' ? (
+                        <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                          <h2 className="text-xl font-semibold mb-4">Mock Tests</h2>
+                          {mockTestsLoading ? (
+                            <p className="text-sm text-gray-500">Loading mock tests...</p>
+                          ) : filteredMockTests.length === 0 ? (
+                            <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No mock tests found for selected years.' : 'No mock tests available yet.'}</p>
+                          ) : (
+                            <div className="space-y-4">
+                              {filteredMockTests.map((exam, examIndex) => {
+                                const examKey = exam.id || exam.slug || `mock-exam-${examIndex}`;
+                                const canAccess = exam.is_free || user?.is_premium;
+                                return (
+                                  <div key={examKey} className="border rounded-xl p-4 flex flex-col gap-4">
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
+                                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                        {exam.total_questions && <span>{exam.total_questions} Questions</span>}
+                                        {exam.duration && <span>{exam.duration} mins</span>}
+                                        {exam.total_marks && <span>{exam.total_marks} Marks</span>}
+                                        {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3">
+                                      <Link
+                                        href={exam.url_path || `/exams/${exam.slug || exam.id}`}
+                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                      >
+                                        {!canAccess && <Lock className="w-4 h-4 mr-2" />}
+                                        {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                      </Link>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                          <h2 className="text-xl font-semibold mb-4">Previous Year Question Papers</h2>
+                          {questionPapersLoading || pastPaperLoading ? (
+                            <p className="text-sm text-gray-500">Loading question papers...</p>
+                          ) : filteredPreviousPapers.length === 0 ? (
+                            <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No question papers found for selected years.' : 'No question papers available yet.'}</p>
+          ) : (
+                            <div className="space-y-4">
+                              {filteredPreviousPapers.map((exam) => {
+                                const canAccess = exam.is_free || exam.exam?.is_free || user?.is_premium;
+                                return (
+                                  <div key={exam.id} className="border rounded-xl p-4 flex flex-col gap-4">
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-semibold text-gray-900">{exam.title || exam.exam?.title}</h3>
+                                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                        {exam.total_questions && <span>{exam.total_questions} Questions</span>}
+                                        {exam.duration && <span>{exam.duration} mins</span>}
+                                        {exam.total_marks && <span>{exam.total_marks} Marks</span>}
+                                        {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3">
+                                      <Link
+                                        href={exam.url_path || exam.exam?.url_path || `/exams/${exam.slug || exam.id}`}
+                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                      >
+                                        {!canAccess && <Lock className="w-4 h-4 mr-2" />}
+                                        {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                      </Link>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    )}
+                  </>
                 )}
               </>
             )}
 
-            {activeTab === 'mock-tests' && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold mb-4">Mock Tests</h2>
-                {mockTestsLoading ? (
-                  <p className="text-sm text-gray-500">Loading mock tests...</p>
-                ) : mockTests.length === 0 ? (
-                  <p className="text-sm text-gray-600">No mock tests available yet.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {mockTests.map((exam) => (
-                      <div key={exam.id} className="border rounded-xl p-4 flex flex-col gap-4">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
-                          
-                          <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                            {exam.total_questions && <span>{exam.total_questions} Questions</span>}
-                            {exam.duration && <span>{exam.duration} mins</span>}
-                            {exam.total_marks && <span>{exam.total_marks} Marks</span>}
-                            {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                          <Link
-                            href={exam.url_path || `/exams/${exam.slug || exam.id}`}
-                            className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${exam.is_free ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
-                          >
-                            {!exam.is_free && <Lock className="w-4 h-4 mr-2" />}
-                            {exam.is_free ? 'Attempt Now' : 'Unlock Now'}
-                          </Link>
-                          <button
-                            onClick={() => handleDownloadExamPDF(exam.id)}
-                            disabled={downloadingExamId === exam.id}
-                            className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            {downloadingExamId === exam.id ? 'Preparing...' : 'Download PDF'}
-                          </button>
-                          {(exam.download_url || exam.pdf_url || exam.file_url) && (
-                            <a
-                              href={exam.download_url || exam.pdf_url || exam.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
-                            >
-                              <Download className="w-4 h-4 mr-2" />
-                              Download PDF
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'question-papers' && (
+            {!isContentTab && activeTab === 'previous-papers' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h2 className="text-xl font-semibold mb-4">Last Year Question Papers</h2>
                 {questionPapersLoading || pastPaperLoading ? (
@@ -735,8 +1034,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           </div>
 
           <aside className="lg:col-span-1">
-            {sidebarSections.length > 0 && (
+            {(sidebarSections.length > 0 || hasYearFilters) && (
               <div className="sticky top-24 space-y-6">
+                {hasYearFilters && yearFilterPanel}
                 {sidebarSections.map((section) => (
                   <section
                     key={section.id}

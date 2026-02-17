@@ -31,6 +31,11 @@ export function Navbar() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
   const { navigation: rawNavLinks, isLoading: loadingNav } = useAppData();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const navLinks: NavigationItem[] = useMemo(
     () =>
@@ -94,7 +99,7 @@ export function Navbar() {
 
           {/* Auth Section */}
           <div className="hidden md:flex items-center gap-3 min-w-[160px] justify-end">
-            {isLoading ? (
+            {!hasMounted || isLoading ? (
               <div className="flex items-center gap-3">
                 <Skeleton className="h-9 w-24" />
                 <Skeleton className="h-10 w-10 rounded-full" />
@@ -102,11 +107,14 @@ export function Navbar() {
             ) : isAuthenticated ? (
               <>
                 {user?.role === 'admin' && (
-                  <Link href="/admin">
-                    <Button variant="outline" size="sm" className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground">
-                      Admin Dashboard
-                    </Button>
-                  </Link>
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                  >
+                    <Link href="/admin">Admin Dashboard</Link>
+                  </Button>
                 )}
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -172,12 +180,12 @@ export function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/login">
-                  <Button variant="ghost">Log in</Button>
-                </Link>
-                <Link href="/register">
-                  <Button>Sign up</Button>
-                </Link>
+                <Button asChild variant="ghost">
+                  <Link href="/login">Log in</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/register">Sign up</Link>
+                </Button>
               </>
             )}
           </div>
@@ -222,7 +230,7 @@ export function Navbar() {
                 ))}
             
             <div className="pt-4 border-t border-border space-y-2">
-              {isLoading ? (
+              {!hasMounted || isLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-10 w-full rounded-lg" />
                   <Skeleton className="h-10 w-full rounded-lg" />
@@ -257,12 +265,14 @@ export function Navbar() {
                   >
                     Log in
                   </Link>
-                  <Link
-                    href="/register"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Button className="w-full">Sign up</Button>
-                  </Link>
+                  <Button asChild className="w-full">
+                    <Link
+                      href="/register"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Sign up
+                    </Link>
+                  </Button>
                 </>
               )}
             </div>
