@@ -55,6 +55,8 @@ export default function AdminBlogsPage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState('');
+  const [bulkActionProcessing, setBulkActionProcessing] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -157,6 +159,40 @@ export default function AdminBlogsPage() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
+  const handleApplyBulkAction = async () => {
+    if (!bulkAction || bulkAction === 'none') {
+      toast({ title: 'Select an action', description: 'Choose a bulk action to apply.', variant: 'destructive' });
+      return;
+    }
+
+    if (selectedIds.length === 0) {
+      toast({ title: 'No posts selected', description: 'Select at least one blog to proceed.', variant: 'destructive' });
+      return;
+    }
+
+    if (bulkAction === 'move-to-trash') {
+      const confirmed = window.confirm(`Move ${selectedIds.length} post(s) to trash? This action cannot be undone.`);
+      if (!confirmed) return;
+
+      try {
+        setBulkActionProcessing(true);
+        await Promise.all(selectedIds.map((blogId) => blogAdminService.deleteBlog(blogId)));
+        toast({ title: 'Moved to trash', description: `${selectedIds.length} post(s) deleted.` });
+        setSelectedIds([]);
+        setBulkAction('');
+        await fetchBlogs();
+      } catch (error: any) {
+        toast({
+          title: 'Failed to delete posts',
+          description: error?.message || 'Unexpected error occurred',
+          variant: 'destructive'
+        });
+      } finally {
+        setBulkActionProcessing(false);
+      }
+    }
+  };
+
   const formatDate = (blog: Blog) => {
     const date = blog.published_at || blog.updated_at || blog.created_at;
     try {
@@ -233,12 +269,16 @@ export default function AdminBlogsPage() {
 
           <div className="flex flex-wrap items-center gap-3 pt-4 text-sm">
             <div className="flex items-center gap-2">
-              <select className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm">
-                <option>Bulk actions</option>
-                <option>Edit</option>
-                <option>Move to Trash</option>
+              <select
+                className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
+                value={bulkAction}
+                onChange={(event) => setBulkAction(event.target.value)}
+              >
+                <option value="none">Bulk actions</option>
+                <option value="edit">Edit</option>
+                <option value="move-to-trash">Move to Trash</option>
               </select>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={handleApplyBulkAction} disabled={bulkActionProcessing}>
                 Apply
               </Button>
             </div>
