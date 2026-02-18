@@ -270,9 +270,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   const selectedCategorySubcategories = selectedCategoryId
     ? subcategoryMap[selectedCategoryId] || []
     : [];
-  const visibleSubcategories = showAllSubcategories
-    ? selectedCategorySubcategories
-    : selectedCategorySubcategories.slice(0, 8);
+  const visibleSubcategories = selectedCategorySubcategories.slice(0, 10);
   const remainingSubcategoryCount = Math.max(selectedCategorySubcategories.length - visibleSubcategories.length, 0);
 
   return (
@@ -466,7 +464,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
             </div>
           ) : (
             <>
-              <div className="flex gap-2 overflow-x-auto pb-2">
+              <div className="grid grid-cols-2 gap-2 pb-2 sm:grid-cols-3 md:grid-cols-4 lg:flex lg:flex-wrap lg:overflow-x-visible">
                 {categories.map((category) => (
                   <button
                     key={category.id}
@@ -496,7 +494,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
                         {visibleSubcategories.map((sub) => (
                           <Link
                             key={sub.id}
@@ -522,15 +520,16 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                           </Link>
                         ))}
                       </div>
-                      {remainingSubcategoryCount > 0 && (
+                      {remainingSubcategoryCount > 0 && selectedCategory && (
                         <div className="flex justify-center">
-                          <Button
-                            variant="secondary"
-                            className="mt-4"
-                            onClick={() => setShowAllSubcategories(true)}
-                          >
-                            View {remainingSubcategoryCount} More
-                          </Button>
+                          <Link href={`/${selectedCategory.slug}`}>
+                            <Button
+                              variant="secondary"
+                              className="mt-4"
+                            >
+                              View {remainingSubcategoryCount} More
+                            </Button>
+                          </Link>
                         </div>
                       )}
                     </>

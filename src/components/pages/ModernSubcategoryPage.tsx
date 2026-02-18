@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -42,6 +42,11 @@ interface CustomTab {
   tab_key: string;
   description?: string | null;
   display_order: number;
+}
+
+interface TableOfContentsEntry {
+  id: string;
+  label: string;
 }
 
 type TabDescriptor = {
@@ -91,6 +96,17 @@ const extractYearFromTitle = (title?: string | null): number | null => {
     return null;
   }
   return parseInt(matches[matches.length - 1], 10) || null;
+};
+
+const sanitizeAnchor = (value?: string | null) => {
+  if (!value) return '';
+  return value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/--+/g, '-');
 };
 
 const resolvePaperYear = (paper: any): number | null => {
@@ -476,6 +492,20 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   }, [heroTitle, resolvedCategorySlug, resolvedSubcategorySlug, subcategoryInfo, currentTabDescriptor]);
 
   const sections = pageContent?.sections ?? [];
+  const buildSectionAnchor = useCallback(
+    (section: Section) => sanitizeAnchor(section.section_key || section.title || section.id),
+    []
+  );
+
+  const scrollToAnchor = useCallback((anchorId: string) => {
+    if (!anchorId) return;
+    const element = document.getElementById(anchorId);
+    if (!element) return;
+    const headerOffset = 90;
+    const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+    const offsetPosition = elementPosition - headerOffset;
+    window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+  }, []);
 
   const extendedMockTests = useMemo(() => {
     const uniqueMap = new Map<string, any>();
@@ -626,30 +656,20 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     </div>
   ) : null;
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading category content...</p>
-        </div>
-      </div>
-    );
-  }
+  const getSidebarSectionsForTab = (tabId: string) => {
+    return sections.filter((section) => {
+      if (!section.is_sidebar) return false;
+      
+      // If sidebar_tab_id is null or undefined, it's shared across all tabs (backward compatible)
+      const sidebarTabId = (section as any).sidebar_tab_id;
+      if (sidebarTabId === null || sidebarTabId === undefined) return true;
+      
+      // Match sidebar to specific tab
+      return sidebarTabId === tabId;
+    });
+  };
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <p className="text-2xl font-semibold text-gray-800">Unable to load this section.</p>
-        <p className="text-gray-500 mt-2">{error}</p>
-        <button className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg" onClick={() => router.refresh()}>
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  const sidebarSections = sections.filter((section) => section.is_sidebar);
+  const sidebarSections = getSidebarSectionsForTab(activeTab);
 
   const getSectionsForTab = (tabId: string) => {
     if (tabId === 'overview') {
@@ -678,6 +698,38 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const isSpecialTab = activeTab === 'mock-tests' || activeTab === 'previous-papers';
   const isContentTab = currentTabDescriptor?.type === 'content' || isSpecialTab;
   const reservedPosition = getReservedPosition(activeTab);
+  const tableOfContents = useMemo<TableOfContentsEntry[]>(() => {
+    if (!isContentTab) return [];
+    return visibleSections
+      .map((section) => ({
+        id: buildSectionAnchor(section),
+        label: section.title || 'Untitled Section'
+      }))
+      .filter((entry) => Boolean(entry.id));
+  }, [visibleSections, isContentTab, buildSectionAnchor]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading category content...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-2xl font-semibold text-gray-800">Unable to load this section.</p>
+        <p className="text-gray-500 mt-2">{error}</p>
+        <button className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg" onClick={() => router.refresh()}>
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -864,7 +916,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                         <React.Fragment key={section.id}>
                           {renderReservedBefore && reservedContent}
                           <section
-                            id={section.section_key}
+                            id={buildSectionAnchor(section)}
                             className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
                             style={{
                               backgroundColor: section.background_color || "white",
@@ -1034,8 +1086,30 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           </div>
 
           <aside className="lg:col-span-1">
-            {(sidebarSections.length > 0 || hasYearFilters) && (
-              <div className="sticky top-24 space-y-6">
+            {(sidebarSections.length > 0 || hasYearFilters || tableOfContents.length > 0) && (
+              <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto">
+                {tableOfContents.length > 0 && (
+                  <section className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="p-4 border-b border-gray-200 bg-gray-50">
+                      <h3 className="text-lg font-semibold text-gray-900">Table of Contents</h3>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Jump to any section on this tab.
+                      </p>
+                    </div>
+                    <div className="divide-y">
+                      {tableOfContents.map((entry) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          onClick={() => scrollToAnchor(entry.id)}
+                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50"
+                        >
+                          {entry.label}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 {hasYearFilters && yearFilterPanel}
                 {sidebarSections.map((section) => (
                   <section

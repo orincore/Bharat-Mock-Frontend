@@ -7,11 +7,13 @@ import { ArrowLeft, Save, Eye, History, Settings } from 'lucide-react';
 
 interface Section {
   id: string;
-  section_key: string;
+  section_key?: string;
   title: string;
   subtitle?: string;
   display_order: number;
   blocks: any[];
+  is_sidebar?: boolean;
+  sidebar_tab_id?: string | null;
 }
 
 export default function PageEditorPage() {
@@ -25,6 +27,7 @@ export default function PageEditorPage() {
   const [subcategoryInfo, setSubcategoryInfo] = useState<any>(null);
   const [showSEOPanel, setShowSEOPanel] = useState(false);
   const [seoData, setSeoData] = useState<any>({});
+  const [customTabs, setCustomTabs] = useState<any[]>([]);
 
   useEffect(() => {
     fetchPageContent();
@@ -56,6 +59,7 @@ export default function PageEditorPage() {
       const data = await response.json();
       setSections(data.sections || []);
       setSeoData(data.seo || {});
+      setCustomTabs(data.customTabs || []);
     } catch (error) {
       console.error('Error fetching page content:', error);
     } finally {
@@ -67,83 +71,41 @@ export default function PageEditorPage() {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      
-      for (const section of updatedSections) {
-        if (section.id.startsWith('temp-')) {
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/${subcategoryId}/sections`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                section_key: section.section_key || section.title.toLowerCase().replace(/\s+/g, '-'),
-                title: section.title,
-                subtitle: section.subtitle,
-                display_order: section.display_order
-              })
-            }
-          );
-          const newSection = await response.json();
-          section.id = newSection.id;
-        } else {
-          await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/sections/${section.id}`,
-            {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                title: section.title,
-                subtitle: section.subtitle,
-                display_order: section.display_order
-              })
-            }
-          );
-        }
+      if (!token) {
+        alert('You must be logged in to save changes.');
+        return;
+      }
 
-        for (const block of section.blocks) {
-          if (block.id.startsWith('temp-')) {
-            await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/${subcategoryId}/blocks`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  section_id: section.id,
-                  block_type: block.block_type,
-                  content: block.content,
-                  settings: block.settings,
-                  display_order: block.display_order
-                })
-              }
-            );
-          } else {
-            await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/blocks/${block.id}`,
-              {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  section_id: section.id,
-                  content: block.content,
-                  settings: block.settings,
-                  display_order: block.display_order
-                })
-              }
-            );
-          }
-        }
+      const currentIds = new Set(updatedSections.map((section) => section.id).filter(Boolean));
+      const originalIds = new Set(sections.map((section) => section.id).filter(Boolean));
+      const deletedSectionIds = Array.from(originalIds).filter((id) => !currentIds.has(id));
+
+      const syncPayload = {
+        sections: updatedSections.map((section) => ({
+          ...section,
+          blocks: (section.blocks || []).map((block, idx) => ({
+            ...block,
+            display_order: block.display_order ?? idx
+          })),
+          display_order: section.display_order ?? 0,
+          is_sidebar: section.is_sidebar || false,
+          sidebar_tab_id: section.sidebar_tab_id ?? null
+        })),
+        deletedSectionIds
+      };
+
+      const syncEndpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/${subcategoryId}/sections/sync`;
+      const syncResponse = await fetch(syncEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(syncPayload)
+      });
+
+      if (!syncResponse.ok) {
+        throw new Error('Section sync failed');
       }
 
       await fetch(
@@ -261,6 +223,13 @@ export default function PageEditorPage() {
       <BlockEditor
         sections={sections}
         onSave={handleSave}
+        onSectionsChange={setSections}
+        availableTabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'mock-tests', label: 'Mock Tests' },
+          { id: 'previous-papers', label: 'Previous Papers' },
+          ...customTabs.map(tab => ({ id: tab.id, label: tab.title }))
+        ]}
       />
 
       {/* SEO Panel */}

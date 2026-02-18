@@ -70,6 +70,7 @@ interface Section {
   display_order: number;
   blocks: Block[];
   is_sidebar?: boolean;
+  sidebar_tab_id?: string | null;
   text_color?: string;
   background_color?: string;
 }
@@ -473,6 +474,7 @@ interface BlockEditorProps {
     position?: number;
   };
   onReservedPositionChange?: (position: number) => void;
+  availableTabs?: Array<{ id: string; label: string }>;
 }
 
 interface InlineRichTextEditorProps {
@@ -1118,7 +1120,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   tabLabel,
   mediaUploadConfig,
   reservedTabInfo,
-  onReservedPositionChange
+  onReservedPositionChange,
+  availableTabs
 }) => {
   const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
   const parentSectionsSignatureRef = useRef<string | null>(null);
@@ -1253,7 +1256,17 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     setSections((prev) =>
       prev.map((section) =>
         section.id === sectionId
-          ? { ...section, is_sidebar: !(section.is_sidebar ?? false) }
+          ? { ...section, is_sidebar: !(section.is_sidebar ?? false), sidebar_tab_id: !(section.is_sidebar ?? false) ? null : section.sidebar_tab_id }
+          : section
+      )
+    );
+  };
+
+  const updateSidebarTab = (sectionId: string, tabId: string | null) => {
+    setSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId
+          ? { ...section, sidebar_tab_id: tabId }
           : section
       )
     );
@@ -1352,7 +1365,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   };
 
   const deleteSection = (sectionId: string) => {
-    setSections(sections.filter(section => section.id !== sectionId));
+    setSections((prev) => prev.filter(section => section.id !== sectionId));
   };
 
   const addBlock = (sectionId: string, blockType: string) => {
@@ -1713,16 +1726,33 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                               <ArrowDown className="w-4 h-4" />
                             </button>
                           </div>
-                          <button
-                            onClick={() => toggleSectionSidebar(section.id)}
-                            className={`px-3 py-1 rounded text-sm border ${
-                              section.is_sidebar
-                                ? 'border-amber-500 text-amber-600 bg-amber-50'
-                                : 'border-gray-200 text-gray-700'
-                            }`}
-                          >
-                            {section.is_sidebar ? 'Use as main' : 'Use as sidebar'}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleSectionSidebar(section.id)}
+                              className={`px-3 py-1 rounded text-sm border ${
+                                section.is_sidebar
+                                  ? 'border-amber-500 text-amber-600 bg-amber-50'
+                                  : 'border-gray-200 text-gray-700'
+                              }`}
+                            >
+                              {section.is_sidebar ? 'Use as main' : 'Use as sidebar'}
+                            </button>
+                            {section.is_sidebar && availableTabs && availableTabs.length > 0 && (
+                              <select
+                                value={section.sidebar_tab_id || ''}
+                                onChange={(e) => updateSidebarTab(section.id, e.target.value || null)}
+                                className="px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+                                title="Assign sidebar to specific tab"
+                              >
+                                <option value="">All tabs (shared)</option>
+                                {availableTabs.map((tab) => (
+                                  <option key={tab.id} value={tab.id}>
+                                    {tab.label} only
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
                           <button
                             onClick={() => setShowBlockPicker(showBlockPicker === section.id ? null : section.id)}
                             className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"

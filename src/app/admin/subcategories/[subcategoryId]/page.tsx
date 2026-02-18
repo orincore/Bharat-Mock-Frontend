@@ -26,6 +26,7 @@ interface Section {
   blocks: Block[];
   is_sidebar?: boolean;
   custom_tab_id?: string | null;
+  sidebar_tab_id?: string | null;
   settings?: Record<string, any>;
 }
 
@@ -636,26 +637,37 @@ export default function AdminSubcategoryEditorPage() {
         return;
       }
 
-      const bulkPayload = {
+      const currentIds = new Set(updatedSections.map((section) => section.id).filter(Boolean));
+      const originalIds = new Set(originalSections.map((section) => section.id).filter(Boolean));
+      const deletedSectionIds = Array.from(originalIds).filter((id) => !currentIds.has(id));
+
+      const syncPayload = {
         sections: updatedSections.map((section) => ({
           ...section,
-          blocks: section.blocks || []
-        }))
+          blocks: (section.blocks || []).map((block, idx) => ({
+            ...block,
+            display_order: block.display_order ?? idx
+          })),
+          display_order: section.display_order ?? 0,
+          is_sidebar: section.is_sidebar ?? false,
+          sidebar_tab_id: section.sidebar_tab_id ?? null
+        })),
+        deletedSectionIds
       };
 
-      const endpoint = buildApiUrl(`/page-content/${subcategoryId}/bulk-sync`);
-      debugLog('Bulk syncing page content', { endpoint, payloadSize: bulkPayload.sections.length });
+      const endpoint = buildApiUrl(`/page-content/${subcategoryId}/sections/sync`);
+      debugLog('Syncing sections', { endpoint, payloadSize: syncPayload.sections.length, deleted: deletedSectionIds.length });
       const response = await fetch(endpoint, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(bulkPayload)
+        body: JSON.stringify(syncPayload)
       });
 
       if (!response.ok) {
-        throw new Error('Bulk sync failed');
+        throw new Error('Section sync failed');
       }
 
       const revisionEndpoint = buildApiUrl(`/page-content/${subcategoryId}/revisions`);
@@ -1075,6 +1087,7 @@ export default function AdminSubcategoryEditorPage() {
             setReservedPositions(prev => ({ ...prev, [activeTabId]: position }));
           }
         }}
+        availableTabs={tabOptions.map((tab) => ({ id: tab.id, label: tab.title }))}
       />
 
       {/* SEO Settings Panel */}

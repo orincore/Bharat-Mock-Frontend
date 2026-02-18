@@ -86,11 +86,18 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
               const contentRes = await fetch(buildApiUrl(`/page-content/${subData.data.id}`));
               if (contentRes.ok) {
                 const contentData = await contentRes.json();
-                const customTabs = contentData?.data?.customTabs || [];
+                const customTabs = contentData?.customTabs || [];
+                const normalize = (value: string) =>
+                  value
+                    .toString()
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                const targetSlug = normalize(second);
                 const isCustomTab = customTabs.some((tab: any) => {
-                  const tabSlug = (tab.tab_key || tab.title || '')
-                    .toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-                  return tabSlug === second.toLowerCase();
+                  const tabSlug = normalize(tab?.tab_key || tab?.title || '');
+                  return tabSlug === targetSlug;
                 });
                 if (isCustomTab) {
                   if (!cancelled) setResolved('subcategory-tab');
