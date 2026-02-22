@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { subscriptionService, SubscriptionPlan } from '@/lib/api/subscriptionService';
 import { subscriptionPageService, SubscriptionPageContent } from '@/lib/api/subscriptionPageService';
+import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 
 declare global {
   interface Window {
@@ -299,7 +300,7 @@ export default function SubscriptionLandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {pageContent?.meta && (
         <Head>
           <title>{pageContent.meta.meta_title || 'Bharat Mock Premium'}</title>
@@ -327,6 +328,14 @@ export default function SubscriptionLandingPage() {
       <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]"></div>
         <div className="container mx-auto px-4 relative z-10">
+          <Breadcrumbs 
+            items={[
+              HomeBreadcrumb(),
+              { label: 'Subscriptions' }
+            ]}
+            variant="dark"
+            className="mb-8"
+          />
           <div className="text-center space-y-6 max-w-4xl mx-auto">
             {heroSection?.settings?.show_badge && (
               <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm text-sm px-4 py-1">

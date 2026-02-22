@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ExamCard } from '@/components/exam/ExamCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
+import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { examService } from '@/lib/api/examService';
 import { taxonomyService, Difficulty, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { Exam } from '@/types';
@@ -327,6 +328,11 @@ export default function PrevPapersPage() {
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="relative w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
           <div className="max-w-3xl">
+            <Breadcrumbs
+              items={[HomeBreadcrumb(), { label: 'Previous Year Papers' }]}
+              variant="dark"
+              className="mb-6"
+            />
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-semibold uppercase tracking-widest text-white/80 mb-4">
               <FileText className="h-3.5 w-3.5" />
               Previous Year Papers

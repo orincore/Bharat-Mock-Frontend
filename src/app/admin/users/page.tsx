@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { adminService } from '@/lib/api/adminService';
 import { User } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
+import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -65,6 +66,13 @@ export default function AdminUsersPage() {
   return (
     <div>
       <div className="mb-8">
+        <Breadcrumbs 
+          items={[
+            AdminBreadcrumb(),
+            { label: 'Users' }
+          ]}
+          className="mb-3"
+        />
         <h1 className="font-display text-3xl font-bold text-foreground mb-2">
           Manage Users
         </h1>

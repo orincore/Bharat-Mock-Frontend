@@ -22,6 +22,7 @@ import {
 } from '@/lib/api/subscriptionAdminService';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
 const defaultPlanForm = {
   name: '',
@@ -290,9 +291,18 @@ export default function AdminSubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-foreground">Subscription Management</h1>
-        <p className="text-muted-foreground">Configure plans, pricing, and promotional offers.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <Breadcrumbs 
+            items={[
+              AdminBreadcrumb(),
+              { label: 'Subscriptions' }
+            ]}
+            className="mb-3"
+          />
+          <h1 className="font-display text-3xl font-bold text-foreground">Subscription Management</h1>
+          <p className="text-muted-foreground">Configure plans, pricing, and promotional offers.</p>
+        </div>
       </div>
 
       <Card className="border-dashed">

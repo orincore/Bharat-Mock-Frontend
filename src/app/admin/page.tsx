@@ -6,6 +6,7 @@ import { FileText, Users, CheckCircle, Clock } from 'lucide-react';
 import { examService } from '@/lib/api/examService';
 import { adminService } from '@/lib/api/adminService';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -70,6 +71,12 @@ export default function AdminDashboard() {
   return (
     <div>
       <div className="mb-8">
+        <Breadcrumbs 
+          items={[
+            AdminBreadcrumb()
+          ]}
+          className="mb-3"
+        />
         <h1 className="font-display text-3xl font-bold text-foreground mb-2">
           Admin Dashboard
         </h1>

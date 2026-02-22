@@ -18,7 +18,9 @@ import {
   ChevronRight,
   CreditCard,
   Home,
-  PhoneCall
+  PhoneCall,
+  Layers,
+  MessageSquareHeart
 } from 'lucide-react';
 
 const adminNavItems = [
@@ -27,6 +29,7 @@ const adminNavItems = [
   { name: 'Categories', href: '/admin/categories', icon: FolderTree },
   { name: 'Blogs', href: '/admin/blogs', icon: PenSquare },
   { name: 'Homepage', href: '/admin/homepage', icon: Home },
+  { name: 'Pages', href: '/admin/pages', icon: Layers },
   { name: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
   { name: 'Header', href: '/admin/navigation', icon: Settings },
   { name: 'Footer', href: '/admin/footer', icon: Settings },
@@ -34,6 +37,7 @@ const adminNavItems = [
   { name: 'Privacy Policy', href: '/admin/privacy', icon: Settings },
   { name: 'Disclaimer', href: '/admin/disclaimer', icon: Settings },
   { name: 'Contact', href: '/admin/contact', icon: PhoneCall },
+  { name: 'Testimonials', href: '/admin/testimonials', icon: MessageSquareHeart },
   { name: 'Users', href: '/admin/users', icon: Users },
 ];
 

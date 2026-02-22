@@ -23,6 +23,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 import { blogService, Blog } from "@/lib/api/blogService";
 import { blogAdminService } from "@/lib/api/blogAdminService";
+import { Breadcrumbs, AdminBreadcrumb } from "@/components/ui/breadcrumbs";
 
 type StatusFilter = "all" | "published" | "pending" | "draft";
 
@@ -215,13 +216,13 @@ export default function AdminBlogsPage() {
       <header className="bg-white border border-border rounded-3xl px-6 py-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Link href="/admin" className="text-primary hover:underline">
-                Admin
-              </Link>
-              /
-              <span>Blogs</span>
-            </p>
+            <Breadcrumbs 
+              items={[
+                AdminBreadcrumb(),
+                { label: 'Blogs' }
+              ]}
+              className="mb-2"
+            />
             <h1 className="text-3xl font-semibold text-foreground mt-2">Blogs</h1>
             <p className="text-muted-foreground">WordPress-style workflow for drafting, editing, and publishing your posts.</p>
           </div>

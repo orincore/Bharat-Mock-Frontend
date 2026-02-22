@@ -30,6 +30,7 @@ import {
   SubscriptionPageBlock,
   SubscriptionPageMeta,
 } from '@/lib/api/subscriptionPageService';
+import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
 const SECTION_TYPES = [
   { value: 'hero', label: 'Hero Section' },
@@ -245,6 +246,13 @@ export default function SubscriptionPageAdminPage() {
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       <div className="flex items-center justify-between mb-8">
         <div>
+          <Breadcrumbs 
+            items={[
+              AdminBreadcrumb(),
+              { label: 'Subscription Page' }
+            ]}
+            className="mb-3"
+          />
           <h1 className="text-3xl font-bold text-gray-900">Subscription Page Editor</h1>
           <p className="text-gray-600 mt-2">Manage all content on the subscription landing page</p>
         </div>

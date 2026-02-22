@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { examService } from '@/lib/api/examService';
 import { taxonomyService } from '@/lib/api/taxonomyService';
 import { Exam } from '@/types';
@@ -233,6 +234,11 @@ export default function LiveTestsPage() {
         <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
+              <Breadcrumbs
+                items={[HomeBreadcrumb(), { label: 'Live Tests' }]}
+                variant="dark"
+                className="mb-6"
+              />
               <p className="uppercase text-sm tracking-[0.4em] text-background/70 mb-3">Weekly Live Fixtures</p>
               <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
                 Join the <span className="text-secondary">scheduled</span> live tests curated by Bharat Mock

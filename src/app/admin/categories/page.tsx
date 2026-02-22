@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { categoryAdminService } from '@/lib/api/categoryAdminService';
+import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,9 +95,16 @@ export default function AdminCategoriesPage() {
 
 
   return (
-    <div>
-      <div className="mb-8 flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
+          <Breadcrumbs 
+            items={[
+              AdminBreadcrumb(),
+              { label: 'Categories' }
+            ]}
+            className="mb-3"
+          />
           <h1 className="font-display text-3xl font-bold text-foreground mb-2">
             Exam Categories
           </h1>

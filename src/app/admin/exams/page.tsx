@@ -9,6 +9,7 @@ import { adminService } from '@/lib/api/adminService';
 import { Exam } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatExamSummary } from '@/lib/utils/examSummary';
+import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
 export default function AdminExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
@@ -85,6 +86,13 @@ export default function AdminExamsPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
+          <Breadcrumbs 
+            items={[
+              AdminBreadcrumb(),
+              { label: 'Exams' }
+            ]}
+            className="mb-3"
+          />
           <h1 className="font-display text-3xl font-bold text-foreground mb-2">
             Manage Exams
           </h1>

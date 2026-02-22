@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ExamCard } from '@/components/exam/ExamCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
+import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { examService } from '@/lib/api/examService';
 import { taxonomyService, Difficulty, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { Exam } from '@/types';
@@ -244,6 +245,11 @@ export default function QuizzesPage() {
       <section className="gradient-hero py-16">
         <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
           <div className="max-w-3xl">
+            <Breadcrumbs
+              items={[HomeBreadcrumb(), { label: 'Quizzes' }]}
+              variant="dark"
+              className="mb-6"
+            />
             <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
               Practice Quick Quizzes
             </h1>

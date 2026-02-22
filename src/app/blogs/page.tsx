@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { blogService, Blog } from '@/lib/api/blogService';
+import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 
 export default function BlogsPage() {
   const [articles, setArticles] = useState<Blog[]>([]);
@@ -108,7 +109,21 @@ export default function BlogsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/20">
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-16">
+        <div className="container mx-auto px-4">
+          <Breadcrumbs 
+            items={[
+              HomeBreadcrumb(),
+              { label: 'Blogs' }
+            ]}
+            variant="dark"
+            className="mb-6"
+          />
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Blog & Articles</h1>
+          <p className="text-xl text-blue-100 max-w-2xl">Insights, tips, and updates to help you excel in your exam preparation</p>
+        </div>
+      </div>
       <section className="border-b border-border bg-white/80">
         <div className="container-main py-10 flex flex-col gap-4">
           <div className="space-y-2">
