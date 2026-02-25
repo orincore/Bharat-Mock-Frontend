@@ -331,6 +331,47 @@ export default function ExamFormPage() {
     }
   }, []);
 
+  const uploadPendingImages = async () => {
+    const updatedSections = [...sections];
+    let uploadCount = 0;
+
+    for (let sIdx = 0; sIdx < updatedSections.length; sIdx++) {
+      const section = updatedSections[sIdx];
+      for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
+        const question = section.questions[qIdx];
+        
+        // Upload question image if it's a File object
+        if (question.image && question.image instanceof File) {
+          try {
+            const questionImageData = await adminService.uploadQuestionImage(question.id, question.image);
+            updatedSections[sIdx].questions[qIdx].image_url = questionImageData?.image_url;
+            updatedSections[sIdx].questions[qIdx].image = null;
+            uploadCount++;
+          } catch (error) {
+            console.error(`Failed to upload image for question ${question.id}:`, error);
+          }
+        }
+
+        // Upload option images if they're File objects
+        for (let oIdx = 0; oIdx < question.options.length; oIdx++) {
+          const option = question.options[oIdx];
+          if (option.image && option.image instanceof File) {
+            try {
+              const optionImageData = await adminService.uploadOptionImage(option.id, option.image);
+              updatedSections[sIdx].questions[qIdx].options[oIdx].image_url = optionImageData?.image_url;
+              updatedSections[sIdx].questions[qIdx].options[oIdx].image = null;
+              uploadCount++;
+            } catch (error) {
+              console.error(`Failed to upload image for option ${option.id}:`, error);
+            }
+          }
+        }
+      }
+    }
+
+    return { updatedSections, uploadCount };
+  };
+
   const serializeSectionsForDraft = useCallback(() => {
     return sections.map((section, sectionIdx) => ({
       id: section.id,
@@ -1047,12 +1088,13 @@ export default function ExamFormPage() {
       });
       
       setSections(updatedSections);
-      setToastMessage('Image updated successfully');
+      setToastMessage('Image uploaded successfully');
       setToastType('success');
       setShowToast(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Image upload error:', error);
-      setToastMessage('Image upload failed');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Image upload failed';
+      setToastMessage(errorMessage);
       setToastType('error');
       setShowToast(true);
     }
@@ -1078,6 +1120,9 @@ export default function ExamFormPage() {
         markUnsavedChanges();
         return updatedSections;
       });
+      setToastMessage('Image removed');
+      setToastType('success');
+      setShowToast(true);
       return;
     }
 
@@ -1109,9 +1154,10 @@ export default function ExamFormPage() {
       setToastMessage('Image removed successfully');
       setToastType('success');
       setShowToast(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Remove image error:', error);
-      setToastMessage('Failed to remove image');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to remove image';
+      setToastMessage(errorMessage);
       setToastType('error');
       setShowToast(true);
     }
@@ -1189,12 +1235,13 @@ export default function ExamFormPage() {
       });
       
       setSections(updatedSections);
-      setToastMessage('Image updated successfully');
+      setToastMessage('Option image uploaded successfully');
       setToastType('success');
       setShowToast(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Option image upload error:', error);
-      setToastMessage('Option image upload failed');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Option image upload failed';
+      setToastMessage(errorMessage);
       setToastType('error');
       setShowToast(true);
     }
@@ -1227,6 +1274,9 @@ export default function ExamFormPage() {
         return updatedSections;
       });
       setHasUnsavedChanges(true);
+      setToastMessage('Image removed');
+      setToastType('success');
+      setShowToast(true);
       return;
     }
 
@@ -1261,12 +1311,13 @@ export default function ExamFormPage() {
         return updatedSections;
       });
       
-      setToastMessage('Image removed successfully');
+      setToastMessage('Option image removed successfully');
       setToastType('success');
       setShowToast(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Remove option image error:', error);
-      setToastMessage('Failed to remove image');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to remove option image';
+      setToastMessage(errorMessage);
       setToastType('error');
       setShowToast(true);
     }
@@ -1539,9 +1590,14 @@ export default function ExamFormPage() {
       status: formData.allow_anytime ? 'anytime' : formData.status
     };
 
-    const sanitizedSections = serializeSectionsForDraft();
-
     try {
+      // Upload pending images before saving draft
+      const { updatedSections, uploadCount } = await uploadPendingImages();
+      if (uploadCount > 0) {
+        setSections(updatedSections);
+      }
+
+      const sanitizedSections = serializeSectionsForDraft();
       if (persistedExamId) {
         await adminService.updateExamWithContent(
           persistedExamId,
@@ -1586,7 +1642,7 @@ export default function ExamFormPage() {
 
     setFormData(prev => ({ ...prev, is_published: true }));
 
-    setUploadProgress({ total: 3, completed: 0, current: 'Preparing exam data...' });
+    setUploadProgress({ total: 4, completed: 0, current: 'Preparing exam data...' });
 
     try {
       const normalizeDate = (value: string) => {
@@ -1611,10 +1667,21 @@ export default function ExamFormPage() {
         payload.end_date = null;
       }
 
-      setUploadProgress({ total: 3, completed: 1, current: 'Saving exam via REST...' });
+      setUploadProgress({ total: 4, completed: 1, current: 'Uploading pending images...' });
+
+      // Upload all pending images before saving exam
+      const { updatedSections, uploadCount } = await uploadPendingImages();
+      if (uploadCount > 0) {
+        setSections(updatedSections);
+        setToastMessage(`Uploaded ${uploadCount} pending image(s)`);
+        setToastType('success');
+        setShowToast(true);
+      }
+
+      setUploadProgress({ total: 4, completed: 2, current: 'Saving exam via REST...' });
 
       if (logoFile || thumbnailFile) {
-        setUploadProgress(prev => ({ ...prev, completed: 2, current: 'Uploading media files...' }));
+        setUploadProgress(prev => ({ ...prev, completed: 3, current: 'Uploading media files...' }));
       }
 
       const sanitizedSections = serializeSectionsForDraft();
@@ -1628,7 +1695,7 @@ export default function ExamFormPage() {
           thumbnailFile || undefined
         );
         
-        setUploadProgress({ total: 3, completed: 3, current: 'Exam updated successfully!' });
+        setUploadProgress({ total: 4, completed: 4, current: 'Exam updated successfully!' });
 
         if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
           setToastMessage(`Exam updated but only ${result.questionCount}/${result.expectedQuestionCount} questions saved. Please re-save.`);
@@ -1647,7 +1714,7 @@ export default function ExamFormPage() {
           logoFile || undefined,
           thumbnailFile || undefined
         );
-        setUploadProgress({ total: 3, completed: 3, current: 'Exam created successfully!' });
+        setUploadProgress({ total: 4, completed: 4, current: 'Exam created successfully!' });
 
         if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
           setToastMessage(`Exam created but only ${result.questionCount}/${result.expectedQuestionCount} questions saved. Please re-save.`);
