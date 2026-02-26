@@ -331,45 +331,133 @@ export default function ExamFormPage() {
     }
   }, []);
 
-  const uploadPendingImages = async () => {
-    const updatedSections = [...sections];
+  const uploadImagesAfterSave = async (questionIdMap: any[]) => {
     let uploadCount = 0;
+    const errors: string[] = [];
 
-    for (let sIdx = 0; sIdx < updatedSections.length; sIdx++) {
-      const section = updatedSections[sIdx];
-      for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
-        const question = section.questions[qIdx];
-        
-        // Upload question image if it's a File object
-        if (question.image && question.image instanceof File) {
-          try {
-            const questionImageData = await adminService.uploadQuestionImage(question.id, question.image);
-            updatedSections[sIdx].questions[qIdx].image_url = questionImageData?.image_url;
-            updatedSections[sIdx].questions[qIdx].image = null;
-            uploadCount++;
-          } catch (error) {
-            console.error(`Failed to upload image for question ${question.id}:`, error);
-          }
+    // Validate input
+    if (!questionIdMap || !Array.isArray(questionIdMap) || questionIdMap.length === 0) {
+      console.log('No questionIdMap provided for image upload');
+      return { uploadCount: 0, errors: [] };
+    }
+
+    console.log(`Processing ${questionIdMap.length} question mappings for image upload`);
+
+    // Create a mutable copy of sections to avoid state mutation issues
+    const updatedSections = [...sections];
+
+    for (const mapping of questionIdMap) {
+      // Validate mapping structure
+      if (!mapping || !mapping.oldId || !mapping.newId) {
+        console.warn('Invalid mapping structure:', mapping);
+        continue;
+      }
+
+      console.log(`Processing mapping: oldId=${mapping.oldId}, newId=${mapping.newId}`);
+
+      // Find the question in sections by old ID
+      let questionFile: File | null = null;
+      let sectionIdx = -1;
+      let questionIdx = -1;
+
+      for (let sIdx = 0; sIdx < updatedSections.length; sIdx++) {
+        const qIdx = updatedSections[sIdx].questions.findIndex(q => q.id === mapping.oldId);
+        if (qIdx >= 0) {
+          sectionIdx = sIdx;
+          questionIdx = qIdx;
+          questionFile = updatedSections[sIdx].questions[qIdx].image as File;
+          console.log(`Found question at section ${sIdx}, question ${qIdx}, has image file: ${!!questionFile}`);
+          break;
         }
+      }
 
-        // Upload option images if they're File objects
-        for (let oIdx = 0; oIdx < question.options.length; oIdx++) {
-          const option = question.options[oIdx];
-          if (option.image && option.image instanceof File) {
+      // Skip if question not found
+      if (sectionIdx < 0 || questionIdx < 0) {
+        console.warn(`Question with oldId ${mapping.oldId} not found in sections`);
+        continue;
+      }
+
+      // Upload question image if it's a File object
+      if (questionFile && questionFile instanceof File) {
+        try {
+          console.log(`Uploading question image for newId: ${mapping.newId}`);
+          const questionImageData = await adminService.uploadQuestionImage(mapping.newId, questionFile);
+          if (questionImageData?.image_url) {
+            console.log(`Question image uploaded successfully: ${questionImageData.image_url}`);
+            updatedSections[sectionIdx].questions[questionIdx].image_url = questionImageData.image_url;
+            updatedSections[sectionIdx].questions[questionIdx].image = null;
+            updatedSections[sectionIdx].questions[questionIdx].imagePreview = questionImageData.image_url;
+            updatedSections[sectionIdx].questions[questionIdx].id = mapping.newId;
+            uploadCount++;
+          } else {
+            console.error('Question image upload returned no URL');
+            errors.push(`Question image upload returned no URL`);
+          }
+        } catch (error: any) {
+          console.error(`Failed to upload image for question ${mapping.newId}:`, error);
+          const errorMsg = error?.response?.data?.message || error?.message || 'Upload failed';
+          errors.push(`Question image: ${errorMsg}`);
+        }
+      } else {
+        // Update question ID even if no image
+        updatedSections[sectionIdx].questions[questionIdx].id = mapping.newId;
+      }
+
+      // Upload option images
+      if (mapping.options && Array.isArray(mapping.options)) {
+        for (const optMapping of mapping.options) {
+          // Validate option mapping
+          if (!optMapping || !optMapping.oldId || !optMapping.newId) {
+            console.warn('Invalid option mapping structure:', optMapping);
+            continue;
+          }
+
+          const optIdx = updatedSections[sectionIdx].questions[questionIdx].options.findIndex(
+            o => o.id === optMapping.oldId
+          );
+          
+          if (optIdx < 0) {
+            console.warn(`Option with oldId ${optMapping.oldId} not found`);
+            continue;
+          }
+
+          const optionFile = updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image as File;
+          if (optionFile && optionFile instanceof File) {
             try {
-              const optionImageData = await adminService.uploadOptionImage(option.id, option.image);
-              updatedSections[sIdx].questions[qIdx].options[oIdx].image_url = optionImageData?.image_url;
-              updatedSections[sIdx].questions[qIdx].options[oIdx].image = null;
-              uploadCount++;
-            } catch (error) {
-              console.error(`Failed to upload image for option ${option.id}:`, error);
+              console.log(`Uploading option image for newId: ${optMapping.newId}`);
+              const optionImageData = await adminService.uploadOptionImage(optMapping.newId, optionFile);
+              if (optionImageData?.image_url) {
+                console.log(`Option image uploaded successfully: ${optionImageData.image_url}`);
+                updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image_url = optionImageData.image_url;
+                updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image = null;
+                updatedSections[sectionIdx].questions[questionIdx].options[optIdx].imagePreview = optionImageData.image_url;
+                updatedSections[sectionIdx].questions[questionIdx].options[optIdx].id = optMapping.newId;
+                uploadCount++;
+              } else {
+                console.error('Option image upload returned no URL');
+                errors.push(`Option image upload returned no URL`);
+              }
+            } catch (error: any) {
+              console.error(`Failed to upload image for option ${optMapping.newId}:`, error);
+              const errorMsg = error?.response?.data?.message || error?.message || 'Upload failed';
+              errors.push(`Option image: ${errorMsg}`);
             }
+          } else {
+            // Update option ID even if no image
+            updatedSections[sectionIdx].questions[questionIdx].options[optIdx].id = optMapping.newId;
           }
         }
       }
     }
 
-    return { updatedSections, uploadCount };
+    console.log(`Image upload complete. Uploaded: ${uploadCount}, Errors: ${errors.length}`);
+
+    // Update state with all changes at once
+    if (uploadCount > 0 || questionIdMap.length > 0) {
+      setSections(updatedSections);
+    }
+
+    return { uploadCount, errors };
   };
 
   const serializeSectionsForDraft = useCallback(() => {
@@ -1039,6 +1127,7 @@ export default function ExamFormPage() {
 
     const isLocalOnly = isClientGeneratedId(questionId);
 
+    // For new questions, always attach locally
     if (isLocalOnly) {
       const previewUrl = URL.createObjectURL(file);
       const updatedSections = sections.map(section => {
@@ -1056,7 +1145,7 @@ export default function ExamFormPage() {
       setSections(updatedSections);
       markUnsavedChanges();
       setHasUnsavedChanges(true);
-      setToastMessage('Image attached. It will upload once the question is saved.');
+      setToastMessage('Image attached. Save the exam to upload it.');
       setToastType('success');
       setShowToast(true);
       return;
@@ -1174,6 +1263,7 @@ export default function ExamFormPage() {
 
     const isLocalOnly = isClientGeneratedId(optionId);
 
+    // For new options, always attach locally
     if (isLocalOnly) {
       const previewUrl = URL.createObjectURL(file);
       const updatedSections = sections.map(section => {
@@ -1197,7 +1287,7 @@ export default function ExamFormPage() {
       setSections(updatedSections);
       markUnsavedChanges();
       setHasUnsavedChanges(true);
-      setToastMessage('Image attached. It will upload once the option is saved.');
+      setToastMessage('Image attached. Save the exam to upload it.');
       setToastType('success');
       setShowToast(true);
       return;
@@ -1571,9 +1661,6 @@ export default function ExamFormPage() {
     setFormData(prev => ({ ...prev, is_published: false }));
     setDraftSaving(true);
     setAutosaveEnabled(false);
-    setToastMessage('Saving draft…');
-    setToastType('loading');
-    setShowToast(true);
 
     const normalizeDate = (value: string) => {
       if (!value) return null;
@@ -1591,44 +1678,78 @@ export default function ExamFormPage() {
     };
 
     try {
-      // Upload pending images before saving draft
-      const { updatedSections, uploadCount } = await uploadPendingImages();
-      if (uploadCount > 0) {
-        setSections(updatedSections);
-      }
+      // Step 1: Save the exam
+      setToastMessage('Saving draft...');
+      setToastType('loading');
+      setShowToast(true);
 
       const sanitizedSections = serializeSectionsForDraft();
+      let result;
+      
       if (persistedExamId) {
-        await adminService.updateExamWithContent(
+        result = await adminService.updateExamWithContent(
           persistedExamId,
           { ...draftPayload, is_published: false },
           sanitizedSections,
           logoFile || undefined,
           thumbnailFile || undefined
         );
-        setToastMessage('Draft updated successfully.');
       } else {
-        const response = await adminService.saveDraftExam(
+        result = await adminService.saveDraftExam(
           draftPayload,
           sanitizedSections,
           logoFile || undefined,
           thumbnailFile || undefined
         );
 
-        if (response?.exam?.id) {
-          setPersistedExamId(response.exam.id);
+        if (result?.exam?.id) {
+          setPersistedExamId(result.exam.id);
         }
-        setToastMessage('Draft saved successfully.');
       }
 
-      setToastType('success');
+      // Step 2: Upload images using the new IDs
+      const questionIdMap = result?.questionIdMap || [];
+      let uploadCount = 0;
+      let errors: string[] = [];
+
+      if (questionIdMap.length > 0) {
+        setToastMessage('Uploading images...');
+        setToastType('loading');
+        setShowToast(true);
+
+        const uploadResult = await uploadImagesAfterSave(questionIdMap);
+        uploadCount = uploadResult.uploadCount;
+        errors = uploadResult.errors;
+
+        // Step 3: Refresh data if images were uploaded
+        if (uploadCount > 0) {
+          setToastMessage('Finalizing...');
+          setToastType('loading');
+          setShowToast(true);
+          await loadExamData();
+        }
+      }
+
+      // Step 4: Show final result
+      if (errors.length > 0) {
+        setToastMessage(`Draft saved but ${errors.length} image(s) failed to upload`);
+        setToastType('warning');
+      } else if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
+        setToastMessage(`Draft saved but only ${result.questionCount}/${result.expectedQuestionCount} questions saved. Please re-save.`);
+        setToastType('warning');
+      } else {
+        setToastMessage(`Draft saved successfully${uploadCount > 0 ? ` with ${uploadCount} image(s)` : ''}!`);
+        setToastType('success');
+      }
+
       setShowToast(true);
       setHasUnsavedChanges(false);
       hasUnsavedChangesRef.current = false;
     } catch (error: any) {
-      console.error('Failed to save draft via REST:', error);
+      console.error('Failed to save draft:', error);
       setAutosaveEnabled(true);
-      setToastMessage(error?.message || 'Failed to save draft');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to save draft';
+      setToastMessage(errorMessage);
       setToastType('error');
       setShowToast(true);
     } finally {
@@ -1667,18 +1788,7 @@ export default function ExamFormPage() {
         payload.end_date = null;
       }
 
-      setUploadProgress({ total: 4, completed: 1, current: 'Uploading pending images...' });
-
-      // Upload all pending images before saving exam
-      const { updatedSections, uploadCount } = await uploadPendingImages();
-      if (uploadCount > 0) {
-        setSections(updatedSections);
-        setToastMessage(`Uploaded ${uploadCount} pending image(s)`);
-        setToastType('success');
-        setShowToast(true);
-      }
-
-      setUploadProgress({ total: 4, completed: 2, current: 'Saving exam via REST...' });
+      setUploadProgress({ total: 4, completed: 1, current: 'Saving exam...' });
 
       if (logoFile || thumbnailFile) {
         setUploadProgress(prev => ({ ...prev, completed: 3, current: 'Uploading media files...' }));
@@ -1695,13 +1805,29 @@ export default function ExamFormPage() {
           thumbnailFile || undefined
         );
         
+        setUploadProgress({ total: 4, completed: 2, current: 'Uploading images...' });
+
+        // Upload images using the new IDs
+        const questionIdMap = result?.questionIdMap || [];
+        const { uploadCount, errors } = await uploadImagesAfterSave(questionIdMap);
+        
+        setUploadProgress({ total: 4, completed: 3, current: 'Finalizing...' });
+        
+        // Refresh the exam data to get updated state
+        if (uploadCount > 0) {
+          await loadExamData();
+        }
+        
         setUploadProgress({ total: 4, completed: 4, current: 'Exam updated successfully!' });
 
-        if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
+        if (errors.length > 0) {
+          setToastMessage(`Exam updated but ${errors.length} image(s) failed to upload`);
+          setToastType('warning');
+        } else if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
           setToastMessage(`Exam updated but only ${result.questionCount}/${result.expectedQuestionCount} questions saved. Please re-save.`);
           setToastType('warning');
         } else {
-          setToastMessage('Exam updated successfully!');
+          setToastMessage(`Exam updated successfully${uploadCount > 0 ? ` with ${uploadCount} image(s)` : ''}!`);
           setToastType('success');
         }
         setShowToast(true);
@@ -1714,13 +1840,25 @@ export default function ExamFormPage() {
           logoFile || undefined,
           thumbnailFile || undefined
         );
+        
+        setUploadProgress({ total: 4, completed: 2, current: 'Uploading images...' });
+
+        // Upload images using the new IDs
+        const questionIdMap = result?.questionIdMap || [];
+        const { uploadCount, errors } = await uploadImagesAfterSave(questionIdMap);
+        
+        setUploadProgress({ total: 4, completed: 3, current: 'Finalizing...' });
+        
         setUploadProgress({ total: 4, completed: 4, current: 'Exam created successfully!' });
 
-        if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
+        if (errors.length > 0) {
+          setToastMessage(`Exam created but ${errors.length} image(s) failed to upload`);
+          setToastType('warning');
+        } else if (result?.questionCount != null && result?.expectedQuestionCount != null && result.questionCount !== result.expectedQuestionCount) {
           setToastMessage(`Exam created but only ${result.questionCount}/${result.expectedQuestionCount} questions saved. Please re-save.`);
           setToastType('warning');
         } else {
-          setToastMessage('Exam created successfully with all sections and questions!');
+          setToastMessage(`Exam created successfully${uploadCount > 0 ? ` with ${uploadCount} image(s)` : ''}!`);
           setToastType('success');
         }
         setShowToast(true);
