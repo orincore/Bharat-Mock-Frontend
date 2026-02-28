@@ -13,6 +13,42 @@
   display: none;
 }
 
+/* Google Translate Customization */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
+
+/* Keep the widget accessible but invisible */
+#google_translate_element {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  pointer-events: none;
+}
+
+.goog-te-gadget {
+  font-size: 0 !important;
+}
+
+.goog-te-gadget img {
+  display: none !important;
+}
+
+body > .skiptranslate {
+  display: none !important;
+}
+
+/* Fix body positioning when Google Translate is active */
+body.translated-ltr,
+body.translated-rtl {
+  top: 0 !important;
+}
+
 @layer base {
   :root {
     /* Client Brand Colors: #00aeef (Blue) and #f7941d (Orange) */
@@ -153,11 +189,11 @@
 
 @layer components {
   .container-main {
-    @apply mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16;
+    @apply mx-auto w-full max-w-[1200px] px-6 sm:px-10 lg:px-16 xl:px-24 2xl:px-32;
   }
 
   .section-padding {
-    @apply py-16 md:py-24;
+    @apply py-6 md:py-8;
   }
 
   .card-elevated {

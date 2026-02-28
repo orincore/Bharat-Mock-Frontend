@@ -287,7 +287,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <div className="border-b border-border bg-primary text-white">
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 py-16 flex flex-col lg:flex-row gap-12 items-center">
+        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 py-10 flex flex-col lg:flex-row gap-12 items-center">
           {category.logo_url && (
             <div className="w-32 h-32 rounded-3xl bg-white/10 shadow-xl flex items-center justify-center overflow-hidden border border-white/30">
               <img src={category.logo_url} alt={category.name} className="w-full h-full object-contain" />

@@ -4,10 +4,30 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { apiClient } from '@/lib/api/client';
 import { NavigationLink, FooterLink, ContactInfo } from '@/types';
 
+interface ExamCategory {
+  id: string;
+  name: string;
+  slug: string;
+  icon?: string;
+  logo_url?: string;
+  display_order?: number;
+}
+
+interface ExamSubcategory {
+  id: string;
+  name: string;
+  slug: string;
+  category_id: string;
+  logo_url?: string;
+  display_order?: number;
+}
+
 interface AppInitData {
   navigation: NavigationLink[];
   footer: FooterLink[];
   contact: ContactInfo | null;
+  categories: ExamCategory[];
+  subcategories: ExamSubcategory[];
   profile: any | null;
 }
 
@@ -15,6 +35,8 @@ interface AppDataContextType {
   navigation: NavigationLink[];
   footer: FooterLink[];
   contact: ContactInfo | null;
+  categories: ExamCategory[];
+  subcategories: ExamSubcategory[];
   profile: any | null;
   isLoading: boolean;
   error: string | null;
@@ -27,6 +49,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [navigation, setNavigation] = useState<NavigationLink[]>([]);
   const [footer, setFooter] = useState<FooterLink[]>([]);
   const [contact, setContact] = useState<ContactInfo | null>(null);
+  const [categories, setCategories] = useState<ExamCategory[]>([]);
+  const [subcategories, setSubcategories] = useState<ExamSubcategory[]>([]);
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +70,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setNavigation(data.navigation || []);
       setFooter(data.footer || []);
       setContact(data.contact || null);
+      setCategories(data.categories || []);
+      setSubcategories(data.subcategories || []);
       setProfile(data.profile || null);
     } catch (err: any) {
       console.error('App init failed:', err);
@@ -65,6 +91,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         navigation,
         footer,
         contact,
+        categories,
+        subcategories,
         profile,
         isLoading,
         error,

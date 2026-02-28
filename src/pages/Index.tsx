@@ -7,7 +7,9 @@ import { getExamUrl } from '@/lib/utils/examUrl';
 import { 
   ArrowRight, ArrowUpRight, Award, BookOpen, CheckCircle, Sparkles, Users, 
   Smartphone, Download, Apple, Play, Target, TrendingUp, Shield,
-  ChevronDown, ChevronUp, ChevronLeft, ChevronRight
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
+  CheckCircle2, Clock, GraduationCap, BookOpenCheck, LineChart, UserCheck, Zap,
+  Flame, BarChart3, Languages, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,11 +47,11 @@ const fallbackHero = {
   mediaLayout: 'single'
 };
 
-const stats = [
-  { icon: BookOpen, value: '500+', label: 'Mock Tests' },
-  { icon: CheckCircle, value: '120+', label: 'Study Plans' },
-  { icon: Users, value: '1M+', label: 'Students' },
-  { icon: Award, value: '95%', label: 'Success Rate' },
+const impactStats = [
+  { label: 'Mock Tests', value: '500+', gradient: 'from-[#fed7aa] via-[#fef3c7] to-[#fde68a]', icon: BookOpenCheck },
+  { label: 'Study Plans', value: '120+', gradient: 'from-[#bfdbfe] via-[#dbeafe] to-[#eef2ff]', icon: LineChart },
+  { label: 'Students', value: '1M+', gradient: 'from-[#e9d5ff] via-[#f5d0fe] to-[#fde2ff]', icon: UserCheck },
+  { label: 'Success Rate', value: '95%', gradient: 'from-[#bbf7d0] via-[#dcfce7] to-[#f0fdf4]', icon: Award }
 ];
 
 const whyChooseFeatures = [
@@ -72,6 +74,48 @@ const whyChooseFeatures = [
     icon: Award,
     title: 'Expert Designed Prep',
     description: 'Study plans curated by exam experts so every mock, note, and quiz follows the actual syllabus pattern'
+  }
+];
+
+const passStats = [
+  { label: 'Exams Covered', value: '670+' },
+  { label: 'Mock Tests Solved', value: '3.2M+' },
+  { label: 'Avg. Score Boost', value: '18%' }
+];
+
+const featuredPartners = [
+  { name: 'Aaj Tak', url: 'https://logowik.com/content/uploads/images/aaj-tak1841.jpg' },
+  { name: 'The Times of India', url: 'https://twoheadmarketing.wordpress.com/wp-content/uploads/2020/07/1546517908_1bhj7d_time-of-india.jpg' },
+  { name: 'Mint', url: 'https://logowik.com/content/uploads/images/mint-magazine8794.jpg' },
+  { name: 'The Economic Times', url: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/The_Economic_Times_logo.png' },
+  { name: 'Startup India', url: 'https://cdn-prod.mybharats.in/events/17052955243640.png' },
+  { name: 'YourStory', url: 'https://polarity.in/wp-content/uploads/2020/01/YourStory-Logo.png' }
+];
+
+const passHighlights = [
+  {
+    icon: Shield,
+    title: 'All India Rank',
+    description: 'Benchmark yourself against lakhs of serious aspirants.',
+    accent: 'bg-amber-50 text-amber-600'
+  },
+  {
+    icon: TrendingUp,
+    title: 'Latest Exam Patterns',
+    description: 'Mocks updated weekly to match SSC, Banking, and State exams.',
+    accent: 'bg-indigo-50 text-indigo-600'
+  },
+  {
+    icon: BarChart3,
+    title: 'In-depth Performance',
+    description: 'Topic heatmaps, speed charts, and accuracy meters.',
+    accent: 'bg-emerald-50 text-emerald-600'
+  },
+  {
+    icon: Languages,
+    title: 'Multi-lingual Tests',
+    description: 'Attempt seamlessly in English and हिंदी with one pass.',
+    accent: 'bg-sky-50 text-sky-600'
   }
 ];
 
@@ -161,6 +205,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [showAllSubcategories, setShowAllSubcategories] = useState(false);
   const [activeHeroMedia, setActiveHeroMedia] = useState(0);
+  const [mostAttemptedExams, setMostAttemptedExams] = useState<Exam[]>([]);
+  const [mostAttemptedLoading, setMostAttemptedLoading] = useState(true);
 
   const heroData = initialHero || initialData?.hero || null;
   const heroTitle = heroData?.title ?? fallbackHero.title;
@@ -286,6 +332,30 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   }, [selectedCategoryId, subcategoryMap]);
 
   useEffect(() => {
+    const fetchMostAttempted = async () => {
+      setMostAttemptedLoading(true);
+      try {
+        const response = await examService.getExams({
+          limit: 8,
+          status: 'ongoing'
+        });
+        const sorted = (response.data || [])
+          .slice()
+          .sort((a, b) => (b.attempts ?? 0) - (a.attempts ?? 0))
+          .slice(0, 4);
+        setMostAttemptedExams(sorted);
+      } catch (error) {
+        console.error('Failed to fetch most attempted exams:', error);
+        setMostAttemptedExams([]);
+      } finally {
+        setMostAttemptedLoading(false);
+      }
+    };
+
+    fetchMostAttempted();
+  }, []);
+
+  useEffect(() => {
     setShowAllSubcategories(false);
   }, [selectedCategoryId]);
 
@@ -320,7 +390,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
     <div className="min-h-screen">
       {/* Dynamic Hero Section */}
       <section className="relative w-full bg-[#e7f1ff]">
-        <div className="container mx-auto px-4 py-12 md:py-20">
+        <div className="container-main py-8 md:py-12">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
             <div className="space-y-6 order-2 lg:order-1">
@@ -407,57 +477,27 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         </div>
       </section>
 
-      {heroBanners.length > 0 && (
-        <section className="py-10 bg-background border-b border-border">
-          <div className="container-main space-y-6">
-            <div className="space-y-6">
-              {heroBanners.map((banner) => (
-                <div
-                  key={banner.id}
-                  className="rounded-[36px] bg-muted/40 px-6 py-8 lg:px-10 lg:py-12"
-                >
-                  <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
-                    <div className="flex-1 space-y-4">
-                      <div className="space-y-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">Featured</p>
-                        <h3 className="font-display text-3xl font-bold text-foreground leading-tight">
-                          {banner.title}
-                        </h3>
-                        {banner.subtitle && (
-                          <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
-                            {banner.subtitle}
-                          </p>
-                        )}
-                      </div>
-                      {banner.button_text && banner.link_url && (
-                        <Button
-                          asChild
-                          className="inline-flex items-center gap-2 text-base h-12 px-6 rounded-full"
-                        >
-                          <Link href={banner.link_url}>
-                            {banner.button_text}
-                            <ArrowRight className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex-1 w-full">
-                      <div className="relative w-full h-60 lg:h-72">
-                        <img
-                          src={banner.image_url}
-                          alt={banner.title}
-                          className="h-full w-full object-contain"
-                          loading="lazy"
-                        />
-                      </div>
-                    </div>
-                  </div>
+      {/* Impact Stats Strip */}
+      <section className="py-6 bg-background">
+        <div className="container-main">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {impactStats.map((stat) => (
+              <div
+                key={stat.label}
+                className={`flex items-center gap-3 rounded-2xl border border-white/70 bg-gradient-to-br ${stat.gradient} p-4 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg`}
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/85 text-primary">
+                  <stat.icon className="h-6 w-6" />
                 </div>
-              ))}
-            </div>
+                <div className="text-left">
+                  <p className="font-display text-2xl text-slate-900 leading-none">{stat.value}</p>
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-600">{stat.label}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* Categories Section */}
       <section className="py-14 bg-background border-b border-border">
@@ -566,99 +606,179 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         </div>
       </section>
 
-      {/* Why Choose BharatMock - Sixth Section */}
-      <section className="py-24">
-        <div className="container-main">
-          <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-sky-50 via-white to-blue-100 border border-blue-100/70">
-            <div className="absolute inset-x-0 -top-10 flex justify-center opacity-40 blur-3xl">
-              <div className="w-2/3 h-40 bg-gradient-to-r from-sky-200 via-indigo-200 to-purple-200" />
-            </div>
-
-            <div className="relative px-6 py-12 sm:px-10 lg:px-16">
-              <div className="text-center max-w-3xl mx-auto mb-16">
-                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold bg-white/80 text-sky-700 border border-sky-200 shadow-sm">
-                  <Shield className="h-4 w-4" /> Built around actual exam patterns
-                </span>
-                <h2 className="font-display text-4xl sm:text-5xl font-bold text-gray-900 mt-6">
-                  Why Choose <span className="text-primary">BharatMock</span>
-                </h2>
-                <p className="text-lg text-gray-600 mt-4">
-                  Reliable preparation, live mentorship, and carefully curated resources that mirror the real exam experience.
-                </p>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-12">
-                <div className="lg:col-span-7 grid md:grid-cols-2 gap-5">
-                  {whyChooseFeatures.map((feature, index) => (
-                    <div
-                      key={feature.title}
-                      className="group relative rounded-2xl border border-slate-100 bg-white/80 p-6 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-                          <feature.icon className="h-7 w-7" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-500">Advantage #{index + 1}</p>
-                          <h3 className="font-display text-xl text-slate-900">{feature.title}</h3>
-                        </div>
+      {heroBanners.length > 0 && (
+        <section className="py-10 bg-background border-b border-border">
+          <div className="container-main space-y-6">
+            <div className="space-y-6">
+              {heroBanners.map((banner) => (
+                <div
+                  key={banner.id}
+                  className="rounded-[36px] bg-muted/40 px-6 py-8 lg:px-10 lg:py-12"
+                >
+                  <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
+                    <div className="flex-1 space-y-4">
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">Featured</p>
+                        <h3 className="font-display text-3xl font-bold text-foreground leading-tight">
+                          {banner.title}
+                        </h3>
+                        {banner.subtitle && (
+                          <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
+                            {banner.subtitle}
+                          </p>
+                        )}
                       </div>
-                      <p className="mt-4 text-slate-600 leading-relaxed">{feature.description}</p>
-                      <div className="mt-6 h-1 w-16 rounded-full bg-gradient-to-r from-primary/60 to-sky-400 transition group-hover:w-24" />
+                      {banner.button_text && banner.link_url && (
+                        <Button
+                          asChild
+                          className="inline-flex items-center gap-2 text-base h-12 px-6 rounded-full"
+                        >
+                          <Link href={banner.link_url}>
+                            {banner.button_text}
+                            <ArrowRight className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
                     </div>
-                  ))}
-                </div>
-
-                <div className="lg:col-span-5">
-                  <div className="rounded-3xl bg-white/80 border border-blue-100/60 p-6 shadow-lg backdrop-blur">
-                    <h3 className="font-display text-2xl font-bold text-slate-900 mb-4">Why learners stay with us</h3>
-                    <p className="text-slate-600 mb-8">
-                      A structured journey that blends expert guidance, analytics, and mock drills so you remain ahead of the cut-off curve.
-                    </p>
-                    <div className="space-y-6">
-                      {benefits.map((benefit) => (
-                        <div key={benefit.number} className="flex gap-4">
-                          <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-primary text-white font-semibold flex items-center justify-center shadow">
-                            {benefit.number}
-                          </div>
-                          <div>
-                            <p className="text-sm uppercase tracking-wide text-slate-500">Reason {benefit.number}</p>
-                            <h4 className="font-display text-lg text-slate-900">{benefit.title}</h4>
-                            <p className="text-sm text-slate-600 leading-relaxed">{benefit.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-8 rounded-2xl border border-primary/30 bg-white/70 p-5 flex flex-col gap-3">
-                      <p className="text-sm text-slate-600">
-                        Ready to dive deeper into guided learning, free mocks, and expert-designed practice? Browse the latest exam-wise mock tests directly from BharatMock.
-                      </p>
-                      <Link
-                        href="/exams"
-                        className="inline-flex items-center gap-2 self-start rounded-full bg-primary text-white px-5 py-2 font-semibold shadow hover:bg-primary/90"
-                      >
-                        Explore mock tests
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
+                    <div className="flex-1 w-full">
+                      <div className="relative w-full h-60 lg:h-72">
+                        <img
+                          src={banner.image_url}
+                          alt={banner.title}
+                          className="h-full w-full object-contain"
+                          loading="lazy"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Learning Journey CTA */}
-      <section className="py-20">
+      {(mostAttemptedLoading || mostAttemptedExams.length > 0) && (
+        <section className="py-12 bg-background border-b border-border">
+          <div className="container-main space-y-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/80">Community Pulse</p>
+                <h2 className="font-display text-3xl font-bold text-slate-900 mt-2">Most Attempted Exams</h2>
+                <p className="text-muted-foreground mt-2">Live ranking of the exams BharatMock students attempt the most.</p>
+              </div>
+              <Link href="/exams" className="inline-flex">
+                <Button variant="secondary" className="gap-2">
+                  Browse all exams
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+
+            {mostAttemptedLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="rounded-2xl border border-border bg-card p-4">
+                    <Skeleton className="h-40 w-full rounded-xl" />
+                    <Skeleton className="h-4 w-3/4 mt-4" />
+                    <Skeleton className="h-4 w-1/2 mt-2" />
+                  </div>
+                ))}
+              </div>
+            ) : mostAttemptedExams.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-muted-foreground">
+                Attempt stats will appear here as soon as students start attempting exams this week.
+              </div>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                {mostAttemptedExams.map((exam, index) => {
+                  const statusLabel = exam.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Ongoing';
+                  const difficultyLabel = exam.difficulty ? exam.difficulty.charAt(0).toUpperCase() + exam.difficulty.slice(1) : 'Medium';
+                  const languageLabel = exam.supports_hindi ? 'English + हिंदी' : 'English only';
+                  const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
+
+                  return (
+                    <div
+                      key={exam.id || index}
+                      className="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.08)] hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:border-slate-300 transition-all duration-300 hover:-translate-y-1"
+                    >
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500" />
+                      
+                      <div className="p-4 bg-gradient-to-br from-slate-50/50 via-white to-white">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                          <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold shadow-sm">{statusLabel}</span>
+                          <span className="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold shadow-sm">{difficultyLabel}</span>
+                        </div>
+
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <span className="px-2.5 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 text-xs font-semibold shadow-sm">{exam.is_free ? 'Free' : 'Premium'}</span>
+                          {exam.category && (
+                            <span className="px-2.5 py-0.5 rounded-md border border-slate-200/60 bg-white text-slate-600 text-xs font-medium shadow-sm">
+                              {exam.category}
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="font-display text-base font-semibold text-slate-900 leading-snug mb-3 line-clamp-2 group-hover:text-primary transition-colors">
+                          {exam.title}
+                        </h3>
+                      </div>
+
+                      <div className="px-4 pb-4 flex flex-col gap-3 flex-1">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50/80 border border-sky-100 text-xs text-sky-700 w-fit">
+                          <Languages className="h-3.5 w-3.5" />
+                          <span className="font-medium">{languageLabel}</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-600">
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
+                              <Clock className="h-3.5 w-3.5 text-sky-600" />
+                            </div>
+                            <span className="font-medium">{exam.duration} mins</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
+                              <FileText className="h-3.5 w-3.5 text-sky-600" />
+                            </div>
+                            <span className="font-medium">{exam.total_questions} Qs</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
+                              <TrendingUp className="h-3.5 w-3.5 text-sky-600" />
+                            </div>
+                            <span className="font-medium">{exam.total_marks} Marks</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-auto pt-2">
+                          <Link href={examUrl} className="inline-flex w-full">
+                            <Button className="w-full rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-white font-semibold shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-amber-500 hover:via-orange-600 hover:to-orange-700 transition-all duration-300 group/btn" size="sm">
+                              View Details
+                              <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-0.5" />
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+       {/* Learning Journey CTA */}
+      <section className="py-6 -mt-6 bg-background">
         <div className="container-main">
-          <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-primary/15 via-blue-100 to-sky-50 border border-primary/20 px-6 py-12 sm:px-10 text-center shadow-lg">
-            <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
-            <div className="relative">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-slate-900">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/10 via-blue-100 to-sky-50 border border-primary/15 px-5 py-9 sm:px-8 text-center shadow-lg">
+            <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
+            <div className="relative space-y-6">
+              <h2 className="font-display text-2xl md:text-3xl font-bold text-slate-900">
                 Start preparing for your dream government job
               </h2>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 {learningJourneySteps.map((step, index) => (
                   <div key={step.label} className="flex items-center gap-2">
                     <div
@@ -673,8 +793,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                 ))}
               </div>
 
-              <Link href="/exams" className="inline-flex mt-10">
-                <Button size="lg" className="shadow-xl">
+              <Link href="/exams" className="inline-flex">
+                <Button size="sm" className="rounded-full px-6 shadow-xl">
                   Get Free Mock
                 </Button>
               </Link>
@@ -683,8 +803,172 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         </div>
       </section>
 
+      {/* Why Choose BharatMock - Sixth Section */}
+      <section className="py-12 bg-background">
+        <div className="container-main">
+          <div className="rounded-3xl border border-slate-200 bg-white/90 shadow-sm px-6 py-10 sm:px-10">
+            <div className="flex flex-col gap-4 text-center max-w-3xl mx-auto">
+              <span className="inline-flex items-center justify-center gap-2 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-primary/80">
+                <Shield className="h-4 w-4" /> Trusted by toppers
+              </span>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-slate-900">
+                Why students pick <span className="text-primary">BharatMock</span>
+              </h2>
+              <p className="text-slate-600">
+                Simple, reliable prep blocks— curated tests, instant analytics, and fast revision loops.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              {whyChooseFeatures.slice(0, 4).map((feature) => (
+                <div
+                  key={feature.title}
+                  className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 text-left hover:border-primary/30 hover:bg-white transition"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                    <feature.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-display text-lg text-slate-900 mb-2">{feature.title}</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+{/* Featured On */}
+      <section className="py-2 border-b border-slate-100 bg-background">
+        <div className="container-main">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3 sm:px-6 sm:py-4 overflow-hidden">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Featured On</p>
+                <h3 className="font-display text-lg font-semibold text-slate-800">Trusted by India’s leading media and hiring partners</h3>
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl border border-white/60 bg-gradient-to-r from-white via-slate-50 to-primary/5 px-2 py-2">
+              <div className="flex gap-8 animate-featured-marquee">
+                {[...featuredPartners, ...featuredPartners].map((partner, index) => (
+                  <div
+                    key={`${partner.name}-${index}`}
+                    className="h-16 sm:h-20 flex items-center opacity-95 hover:opacity-100 transition drop-shadow-sm"
+                  >
+                    <img
+                      src={partner.url}
+                      alt={partner.name}
+                      className="h-full w-auto max-w-[240px] object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <style jsx>{`
+          @keyframes featured-marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          .animate-featured-marquee {
+            width: max-content;
+            animation: featured-marquee 25s linear infinite;
+          }
+        `}</style>
+      </section>
+      
+      {/* BharatMock Pass Feature Section */}
+      <section className="py-12 bg-background border-y border-slate-100">
+        <div className="container-main">
+          <div className="relative isolate overflow-hidden rounded-[44px] bg-white shadow-[0_40px_80px_-60px_rgba(15,23,42,0.8)]">
+            <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-b from-primary/10 via-transparent to-transparent pointer-events-none" />
+            <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center p-8 sm:p-12 relative z-10">
+              <div className="space-y-8">
+                <div className="space-y-3">
+                  <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em] text-primary/80">
+                    <Sparkles className="h-4 w-4" /> Power Prep Bundle
+                  </p>
+                  <h2 className="font-display text-3xl md:text-4xl font-bold text-slate-900 leading-tight">
+                    Enroll in Test Series for <span className="text-primary">670+ exams</span> with BharatMock Pass
+                  </h2>
+                  <p className="text-slate-600 max-w-2xl">
+                    Unlock bilingual mock tests, structured analysis, and guided revision loops built for serious aspirants. One pass, unlimited high-quality attempts.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {passStats.map((stat) => (
+                    <div key={stat.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-center">
+                      <p className="font-display text-2xl font-bold text-slate-900">{stat.value}</p>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {passHighlights.map((perk) => (
+                    <div key={perk.title} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm flex gap-3">
+                      <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${perk.accent}`}>
+                        <perk.icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900">{perk.title}</p>
+                        <p className="text-sm text-slate-500">{perk.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <Button size="lg" className="gap-2 rounded-full px-8 shadow-lg">
+                    Explore BharatMock Pass
+                    <ArrowRight className="h-5 w-5" />
+                  </Button>
+                  <Button variant="ghost" size="lg" className="rounded-full text-slate-500 hover:text-slate-900">
+                    View plan comparison
+                  </Button>
+                </div>
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Unlimited attempts • Instant activation • Cancel anytime</p>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -top-6 right-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
+                <div className="relative mx-auto max-w-md rounded-[36px] bg-gradient-to-br from-sky-100 via-white to-indigo-50 p-6 shadow-2xl">
+                  <div className="rounded-[28px] bg-white/80 p-4 border border-white/60 backdrop-blur">
+                    <Image
+                      src="/assets/image1.png"
+                      alt="Learner reviewing BharatMock pass dashboard"
+                      width={640}
+                      height={480}
+                      className="w-full h-auto"
+                    />
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-600">
+                      <div className="rounded-2xl border border-slate-100 bg-white p-3 text-center">
+                        <p className="text-lg font-semibold text-primary">24</p>
+                        <p>Mock sets unlocked</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-100 bg-white p-3 text-center">
+                        <p className="text-lg font-semibold text-emerald-600">92%</p>
+                        <p>Accuracy streak</p>
+                      </div>
+                      <div className="col-span-2 rounded-2xl border border-dashed border-slate-200 p-4 text-center">
+                        <p className="text-sm font-semibold text-slate-800">Daily revision track ready • 4 subjects pending</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      
+
       {/* Featured Exams */}
-      <section className="section-padding bg-muted/30">
+      <section className="section-padding bg-background">
         <div className="container-main">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -701,130 +985,113 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
           {isLoading ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6" aria-live="polite" aria-busy="true">
               {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="card-interactive overflow-hidden h-full flex flex-col border border-border rounded-xl p-5 space-y-4">
-                  <Skeleton className="h-40 w-full rounded-lg" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                  <div className="flex items-center justify-between pt-4 border-t border-border">
-                    <Skeleton className="h-8 w-24 rounded-full" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
+                <div key={index} className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm">
+                  <Skeleton className="h-4 w-32 mb-4" />
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-20 w-full mt-4" />
+                  <Skeleton className="h-10 w-full mt-6 rounded-full" />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {exams.map((exam) => (
-                <ExamCard key={exam.id} exam={exam} />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-20 bg-background">
-        <div className="container-main">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="font-display text-4xl font-bold text-foreground mb-12 text-center">
-              FAQ's
-            </h2>
-            <div className="space-y-4">
-              {faqs.map((faq, index) => (
-                <div 
-                  key={index}
-                  className="bg-card border border-border rounded-lg overflow-hidden"
-                >
-                  <button
-                    onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {exams.map((exam) => {
+                const statusLabel = exam.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Ongoing';
+                const difficultyLabel = exam.difficulty ? exam.difficulty.charAt(0).toUpperCase() + exam.difficulty.slice(1) : 'Medium';
+                const languageLabel = exam.supports_hindi ? 'English + हिंदी' : 'English only';
+                const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
+                
+                return (
+                  <div
+                    key={exam.id}
+                    className="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.08)] hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:border-slate-300 transition-all duration-300 hover:-translate-y-1"
                   >
-                    <span className="font-medium text-foreground">
-                      {index + 1}. {faq}
-                    </span>
-                    {expandedFaq === index ? (
-                      <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    )}
-                  </button>
-                  {expandedFaq === index && (
-                    <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                      <p className="text-muted-foreground">
-                        This is a detailed answer to the question. Our platform provides comprehensive solutions for all your exam preparation needs.
-                      </p>
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500" />
+                    
+                    <div className="p-4 bg-gradient-to-br from-slate-50/50 via-white to-white">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold shadow-sm">{statusLabel}</span>
+                        <span className="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold shadow-sm">{difficultyLabel}</span>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <span className="px-2.5 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 text-xs font-semibold shadow-sm">{exam.is_free ? 'Free' : 'Premium'}</span>
+                        {exam.category && (
+                          <span className="px-2.5 py-0.5 rounded-md border border-slate-200/60 bg-white text-slate-600 text-xs font-medium shadow-sm">
+                            {exam.category}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="font-display text-base font-semibold text-slate-900 leading-snug mb-3 line-clamp-2 group-hover:text-primary transition-colors">
+                        {exam.title}
+                      </h3>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Latest Blogs */}
-      <section className="section-padding bg-muted/30">
-        <div className="container-main">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="font-display text-3xl font-bold text-foreground mb-2">Latest Blogs</h2>
-              <p className="text-muted-foreground">Expert tips and preparation strategies</p>
-            </div>
-            <Link href="/blogs">
-              <Button variant="outline">
-                View All <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
+                    <div className="px-4 pb-4 flex flex-col gap-3 flex-1">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50/80 border border-sky-100 text-xs text-sky-700 w-fit">
+                        <Languages className="h-3.5 w-3.5" />
+                        <span className="font-medium">{languageLabel}</span>
+                      </div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-12"><LoadingSpinner size="lg" /></div>
-          ) : (
-            <div className="grid md:grid-cols-3 gap-6">
-              {articles.map((article) => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-600">
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
+                            <Clock className="h-3.5 w-3.5 text-sky-600" />
+                          </div>
+                          <span className="font-medium">{exam.duration} mins</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
+                            <FileText className="h-3.5 w-3.5 text-sky-600" />
+                          </div>
+                          <span className="font-medium">{exam.total_questions} Qs</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
+                            <TrendingUp className="h-3.5 w-3.5 text-sky-600" />
+                          </div>
+                          <span className="font-medium">{exam.total_marks} Marks</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-auto pt-2">
+                        <Link href={examUrl} className="inline-flex w-full">
+                          <Button className="w-full rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-white font-semibold shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-amber-500 hover:via-orange-600 hover:to-orange-700 transition-all duration-300 group/btn" size="sm">
+                            View Details
+                            <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-0.5" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-12 bg-card border-y border-border">
-        <div className="container-main">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-3">
-                  <stat.icon className="h-6 w-6" />
-                </div>
-                <p className="font-display text-3xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-muted-foreground text-sm">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+  
+
 
       {/* Final CTA Section */}
-      <section className="py-20 gradient-hero">
-        <div className="container-main text-center">
-          <div className="flex justify-center mb-6">
+      <section className="py-10 bg-gradient-to-r from-primary via-indigo-600 to-sky-500 text-white">
+        <div className="container-main text-center space-y-2">
+          <div className="flex justify-center">
             
           </div>
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-background mb-4">
+          <h2 className="font-display text-3xl md:text-4xl font-bold">
             Ready to Start Your Journey?
           </h2>
-          <p className="text-background/80 max-w-2xl mx-auto mb-8">
+          <p className="text-white/90 max-w-2xl mx-auto">
             Join thousands of successful students who have achieved their dreams with Bharat Mock.
           </p>
           <Link href="/register">
             <Button
               size="xl"
-              className="bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-xl shadow-secondary/30 transition-all duration-300 hover:-translate-y-0.5"
+              className="bg-white text-primary hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-0.5"
             >
               Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
             </Button>

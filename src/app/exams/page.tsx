@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Search, Filter, BookOpen, Clock, Award, ChevronRight, Flame, Star, StarOff } from 'lucide-react';
+import { Search, Filter, BookOpen, Clock, Award, ChevronRight, Flame, Star, StarOff, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -43,15 +43,20 @@ export default function ExamsPage() {
   const [testimonialSaving, setTestimonialSaving] = useState(false);
   const [testimonialDeleting, setTestimonialDeleting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const popularTestsScrollRef = useRef<HTMLDivElement>(null);
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
+  const newTestSeriesScrollRef = useRef<HTMLDivElement>(null);
+  const testimonialsScrollRef = useRef<HTMLDivElement>(null);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
+  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [difficultiesLoading, setDifficultiesLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   
   const [filters, setFilters] = useState({
     search: '',
@@ -60,7 +65,7 @@ export default function ExamsPage() {
     difficulty: '',
     status: DEFAULT_STATUS
   });
-  const [selectedDifficultyId, setSelectedDifficultyId] = useState('');
+  const [selectedDifficultyIds, setSelectedDifficultyIds] = useState<string[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const activeRequestRef = useRef(0);
   
@@ -132,6 +137,15 @@ export default function ExamsPage() {
   }, [isAuthenticated]);
 
   const handleTestimonialFormChange = (field: 'title' | 'content' | 'rating', value: string | number) => {
+    if (field === 'content' && typeof value === 'string') {
+      const limited = limitWords(value, 100);
+      setTestimonialForm(prev => ({
+        ...prev,
+        content: limited
+      }));
+      return;
+    }
+
     setTestimonialForm(prev => ({
       ...prev,
       [field]: field === 'rating' ? Number(value) : value
@@ -209,13 +223,14 @@ export default function ExamsPage() {
   };
 
   useEffect(() => {
-    if (selectedCategoryId) {
-      fetchSubcategories(selectedCategoryId);
+    if (selectedCategoryIds.length > 0) {
+      fetchSubcategories(selectedCategoryIds);
     } else {
       setSubcategories([]);
-      setSelectedSubcategoryId('');
+      setSelectedSubcategoryIds([]);
+      handleFilterChange('subcategory', '');
     }
-  }, [selectedCategoryId]);
+  }, [selectedCategoryIds]);
 
   useEffect(() => {
     fetchExams();
@@ -230,11 +245,14 @@ export default function ExamsPage() {
 
   useEffect(() => {
     if (!filters.difficulty) {
-      setSelectedDifficultyId('');
+      setSelectedDifficultyIds([]);
       return;
     }
-    const matched = difficultyOptions.find(option => option.name === filters.difficulty);
-    setSelectedDifficultyId(matched ? matched.id : '');
+    const names = filters.difficulty.split(',').map(name => name.trim()).filter(Boolean);
+    const matched = difficultyOptions
+      .filter(option => names.includes(option.name))
+      .map(option => option.id);
+    setSelectedDifficultyIds(matched);
   }, [filters.difficulty, difficultyOptions]);
 
   const fetchCategories = async () => {
@@ -252,11 +270,22 @@ export default function ExamsPage() {
     }
   };
 
-  const fetchSubcategories = async (categoryId: string) => {
+  const fetchSubcategories = async (categoryIds: string[]) => {
     setSubcategoriesLoading(true);
     try {
-      const data = await taxonomyService.getSubcategories(categoryId);
-      setSubcategories(data.filter(sub => sub.name));
+      const responses = await Promise.all(
+        categoryIds.map(async (categoryId) => {
+          try {
+            return await taxonomyService.getSubcategories(categoryId);
+          } catch (err) {
+            console.error(`Failed to fetch subcategories for category ${categoryId}:`, err);
+            return [];
+          }
+        })
+      );
+      const merged = responses.flat().filter(sub => sub && sub.name) as Subcategory[];
+      const unique = merged.filter((sub, index, self) => self.findIndex(item => item.id === sub.id) === index);
+      setSubcategories(unique);
     } catch (err) {
       console.error('Failed to fetch subcategories:', err);
       setSubcategories([]);
@@ -329,45 +358,82 @@ export default function ExamsPage() {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  const handleCategorySelect = (value: string) => {
-    setSelectedCategoryId(value);
-    const selectedCategory = categories.find(category => category.id === value);
-    handleFilterChange('category', selectedCategory ? selectedCategory.name : '');
-    setSelectedSubcategoryId('');
+  const syncCategoryFilters = (ids: string[]) => {
+    if (ids.length === 0) {
+      handleFilterChange('category', '');
+      setSelectedSubcategoryIds([]);
+      handleFilterChange('subcategory', '');
+      return;
+    }
+
+    const selectedCategories = categories.filter(category => ids.includes(category.id));
+    const slugs = selectedCategories.map(category => category.slug || category.name).filter(Boolean).join(',');
+    handleFilterChange('category', slugs);
+    setSelectedSubcategoryIds([]);
     handleFilterChange('subcategory', '');
   };
 
   const toggleCategory = (categoryId: string) => {
-    if (selectedCategoryId === categoryId) {
-      handleCategorySelect('');
-    } else {
-      handleCategorySelect(categoryId);
-    }
+    setSelectedCategoryIds(prev => {
+      const exists = prev.includes(categoryId);
+      const next = exists ? prev.filter(id => id !== categoryId) : [...prev, categoryId];
+      syncCategoryFilters(next);
+      return next;
+    });
   };
 
-  const handleSubcategorySelect = (value: string) => {
-    setSelectedSubcategoryId(value);
-    const selectedSubcategory = subcategories.find(sub => sub.id === value);
-    handleFilterChange('subcategory', selectedSubcategory ? selectedSubcategory.name : '');
+  const clearCategorySelection = () => {
+    setSelectedCategoryIds([]);
+    syncCategoryFilters([]);
+  };
+
+  const syncSubcategoryFilters = (ids: string[]) => {
+    if (ids.length === 0) {
+      handleFilterChange('subcategory', '');
+      return;
+    }
+
+    const selectedSubs = subcategories.filter(sub => ids.includes(sub.id));
+    const slugs = selectedSubs.map(sub => sub.slug || sub.name).filter(Boolean).join(',');
+    handleFilterChange('subcategory', slugs);
   };
 
   const toggleSubcategory = (subcategoryId: string) => {
-    if (selectedSubcategoryId === subcategoryId) {
-      handleSubcategorySelect('');
-    } else {
-      handleSubcategorySelect(subcategoryId);
-    }
+    setSelectedSubcategoryIds(prev => {
+      const exists = prev.includes(subcategoryId);
+      const next = exists ? prev.filter(id => id !== subcategoryId) : [...prev, subcategoryId];
+      syncSubcategoryFilters(next);
+      return next;
+    });
   };
 
-  const toggleDifficulty = (difficultyId: string) => {
-    if (selectedDifficultyId === difficultyId) {
-      setSelectedDifficultyId('');
+  const clearSubcategorySelection = () => {
+    setSelectedSubcategoryIds([]);
+    syncSubcategoryFilters([]);
+  };
+
+  const syncDifficultyFilters = (ids: string[]) => {
+    if (ids.length === 0) {
       handleFilterChange('difficulty', '');
       return;
     }
-    setSelectedDifficultyId(difficultyId);
-    const selectedDifficulty = difficultyOptions.find(option => option.id === difficultyId);
-    handleFilterChange('difficulty', selectedDifficulty ? selectedDifficulty.name : '');
+    const selected = difficultyOptions.filter(option => ids.includes(option.id));
+    const names = selected.map(option => option.name).filter(Boolean).join(',');
+    handleFilterChange('difficulty', names);
+  };
+
+  const toggleDifficulty = (difficultyId: string) => {
+    setSelectedDifficultyIds(prev => {
+      const exists = prev.includes(difficultyId);
+      const next = exists ? prev.filter(id => id !== difficultyId) : [...prev, difficultyId];
+      syncDifficultyFilters(next);
+      return next;
+    });
+  };
+
+  const clearDifficultySelection = () => {
+    setSelectedDifficultyIds([]);
+    syncDifficultyFilters([]);
   };
 
   const clearFilters = () => {
@@ -378,9 +444,9 @@ export default function ExamsPage() {
       difficulty: '',
       status: DEFAULT_STATUS
     });
-    setSelectedCategoryId('');
-    setSelectedSubcategoryId('');
-    setSelectedDifficultyId('');
+    setSelectedCategoryIds([]);
+    setSelectedSubcategoryIds([]);
+    setSelectedDifficultyIds([]);
     setSubcategories([]);
     setPagination(prev => ({ ...prev, page: 1 }));
   };
@@ -394,10 +460,43 @@ export default function ExamsPage() {
     filters.status !== DEFAULT_STATUS
   );
 
+  const getWordCount = (content: string) => {
+    if (!content.trim()) return 0;
+    return content.trim().split(/\s+/).length;
+  };
+
+  const limitWords = (content: string, limit = 100) => {
+    if (!content) return '';
+    const words = content.trim().split(/\s+/);
+    if (words.length <= limit) {
+      return content.trim();
+    }
+    return words.slice(0, limit).join(' ');
+  };
+
+  const formatTestimonialContent = (content: string, limit = 100) => {
+    const limited = limitWords(content, limit);
+    if (!content) return '';
+    const originalWords = content.trim().split(/\s+/);
+    return originalWords.length > limit ? `${limited}…` : limited;
+  };
+
+  const scrollLeft = (ref: React.RefObject<HTMLDivElement>) => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = (ref: React.RefObject<HTMLDivElement>) => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-16">
-        <div className="container mx-auto px-4">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-10">
+        <div className="container-main">
           <Breadcrumbs 
             items={[
               HomeBreadcrumb(),
@@ -406,7 +505,7 @@ export default function ExamsPage() {
             variant="dark"
             className="mb-6"
           />
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Explore Exams</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Exams</h1>
           <p className="text-xl text-blue-100 max-w-2xl">Find and attempt mock tests from various categories and difficulty levels</p>
         </div>
       </div>
@@ -438,7 +537,7 @@ export default function ExamsPage() {
       {/* Popular Mock Test Series Section */}
       {popularTests.length > 0 && (
         <section className="bg-white border-b border-border">
-          <div className="container mx-auto px-4 py-12">
+          <div className="container-main py-12">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Popular Mock Test Series</h2>
@@ -456,14 +555,28 @@ export default function ExamsPage() {
                 ))}
               </div>
             ) : (
-              <div className="relative">
-                <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
+              <div className="relative group">
+                <button
+                  onClick={() => scrollLeft(popularTestsScrollRef)}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft className="h-5 w-5 text-slate-700" />
+                </button>
+                <div ref={popularTestsScrollRef} className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
                   {popularTests.map((popularTest) => (
-                    <div key={popularTest.id} className="flex-shrink-0 w-80 snap-start">
-                      <ExamCard exam={popularTest.exam} />
+                    <div key={popularTest.id} className="flex-shrink-0 w-72 snap-start">
+                      <ExamCard exam={popularTest.exam} size="compact" />
                     </div>
                   ))}
                 </div>
+                <button
+                  onClick={() => scrollRight(popularTestsScrollRef)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight className="h-5 w-5 text-slate-700" />
+                </button>
               </div>
             )}
           </div>
@@ -471,7 +584,7 @@ export default function ExamsPage() {
       )}
 
       <section className="bg-slate-900 text-white border-b border-slate-800">
-        <div className="container mx-auto px-4 py-12 space-y-6">
+        <div className="container-main py-6 space-y-3">
           <div className="flex flex-col gap-2">
             <p className="text-xs uppercase tracking-[0.3em] text-white/70 font-semibold">Browse</p>
             <div className="flex flex-wrap items-center gap-3">
@@ -494,9 +607,17 @@ export default function ExamsPage() {
           ) : categories.length === 0 ? (
             <p className="text-white/60 text-sm">No categories available right now. Please check back later.</p>
           ) : (
-            <div className="flex gap-5 overflow-x-auto hide-scrollbar pb-3">
-              {categories.map((category, index) => {
-                const isSelected = selectedCategoryId === category.id;
+            <div className="relative group">
+              <button
+                onClick={() => scrollLeft(categoriesScrollRef)}
+                className="absolute left-0 inset-y-0 my-auto z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="h-5 w-5 text-slate-700" />
+              </button>
+              <div ref={categoriesScrollRef} className="flex gap-5 overflow-x-auto hide-scrollbar pb-3">
+                {categories.map((category, index) => {
+                const isSelected = selectedCategoryIds.includes(category.id);
                 const badgeBackgrounds = [
                   'from-[#E6FBFF] to-[#F8FFFF]',
                   'from-[#FFF5E1] to-[#FFFDF3]',
@@ -512,10 +633,10 @@ export default function ExamsPage() {
                   <Link
                     key={category.id}
                     href={categoryHref}
-                    className="flex-shrink-0 w-36 text-center group"
+                    className="flex-shrink-0 w-32 text-center group"
                   >
                     <div
-                      className={`w-28 h-28 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform duration-200 ${
+                      className={`w-24 h-24 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform duration-200 ${
                         isSelected ? 'ring-2 ring-white scale-105' : 'group-hover:scale-105'
                       }`}
                     >
@@ -524,7 +645,7 @@ export default function ExamsPage() {
                         <img
                           src={category.logo_url}
                           alt={category.name}
-                          className="h-full w-full object-cover rounded-2xl p-3"
+                          className="h-full w-full object-cover rounded-2xl p-2"
                           loading="lazy"
                         />
                       ) : (
@@ -542,13 +663,21 @@ export default function ExamsPage() {
                     </span>
                   </Link>
                 );
-              })}
+                })}
+              </div>
+              <button
+                onClick={() => scrollRight(categoriesScrollRef)}
+                className="absolute right-0 inset-y-0 my-auto z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="h-5 w-5 text-slate-700" />
+              </button>
             </div>
           )}
         </div>
       </section>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container-main py-8">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Filters Sidebar */}
           <aside className="lg:w-64 xl:w-72 flex-shrink-0">
@@ -592,8 +721,8 @@ export default function ExamsPage() {
                           <input
                             type="checkbox"
                             className="h-4 w-4 accent-primary"
-                            checked={selectedCategoryId === ''}
-                            onChange={() => handleCategorySelect('')}
+                            checked={selectedCategoryIds.length === 0}
+                            onChange={clearCategorySelection}
                           />
                           <span>All Categories</span>
                         </label>
@@ -602,7 +731,7 @@ export default function ExamsPage() {
                             <input
                               type="checkbox"
                               className="h-4 w-4 accent-primary"
-                              checked={selectedCategoryId === category.id}
+                              checked={selectedCategoryIds.includes(category.id)}
                               onChange={() => toggleCategory(category.id)}
                             />
                             <span>{category.name}</span>
@@ -624,20 +753,20 @@ export default function ExamsPage() {
                             <input
                               type="checkbox"
                               className="h-4 w-4 accent-primary"
-                              checked={selectedSubcategoryId === ''}
-                              onChange={() => handleSubcategorySelect('')}
-                              disabled={!selectedCategoryId || subcategories.length === 0}
+                              checked={selectedSubcategoryIds.length === 0}
+                              onChange={clearSubcategorySelection}
+                              disabled={selectedCategoryIds.length === 0 || subcategories.length === 0}
                             />
-                            <span>{selectedCategoryId ? 'All Sub-categories' : 'Select category first'}</span>
+                            <span>{selectedCategoryIds.length > 0 ? 'All Sub-categories' : 'Select category first'}</span>
                           </label>
                           {subcategories.map((subcategory) => (
                             <label key={subcategory.id} className="flex items-center gap-2 text-sm text-foreground">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 accent-primary"
-                                checked={selectedSubcategoryId === subcategory.id}
+                                checked={selectedSubcategoryIds.includes(subcategory.id)}
                                 onChange={() => toggleSubcategory(subcategory.id)}
-                                disabled={!selectedCategoryId}
+                                disabled={selectedCategoryIds.length === 0}
                               />
                               <span>{subcategory.name}</span>
                             </label>
@@ -656,8 +785,8 @@ export default function ExamsPage() {
                           <input
                             type="checkbox"
                             className="h-4 w-4 accent-primary"
-                            checked={selectedDifficultyId === ''}
-                            onChange={() => toggleDifficulty('')}
+                            checked={selectedDifficultyIds.length === 0}
+                            onChange={clearDifficultySelection}
                           />
                           <span>All Tiers</span>
                         </label>
@@ -666,7 +795,7 @@ export default function ExamsPage() {
                             <input
                               type="checkbox"
                               className="h-4 w-4 accent-primary"
-                              checked={selectedDifficultyId === difficulty.id}
+                              checked={selectedDifficultyIds.includes(difficulty.id)}
                               onChange={() => toggleDifficulty(difficulty.id)}
                             />
                             <span>{difficulty.name}</span>
@@ -761,7 +890,7 @@ export default function ExamsPage() {
               <>
                 <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {exams.map((exam) => (
-                    <ExamCard key={exam.id} exam={exam} />
+                    <ExamCard key={exam.id} exam={exam} size="compact" />
                   ))}
                 </div>
 
@@ -844,12 +973,12 @@ export default function ExamsPage() {
             )}
 
             {/* Why Take Test Series Section */}
-            <div className="mt-12 mb-8">
-              <h2 className="font-display text-3xl font-bold text-foreground mb-8 text-center">
+            <div className="mt-12 mb-8 rounded-3xl border border-border/60 bg-white shadow-sm p-6 sm:p-8 lg:p-10">
+              <h2 className="font-display text-3xl font-bold text-foreground mb-6 text-center">
                 Why take Bharat Mock Test Series?
               </h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {/* Card 1 - Latest Exam Patterns */}
                 <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-2xl p-8 border border-blue-100 dark:border-blue-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                   <div className="absolute top-6 right-6">
@@ -939,7 +1068,7 @@ export default function ExamsPage() {
                 </div>
                 
                 {newTestSeriesLoading ? (
-                  <div className="flex gap-6 overflow-x-auto pb-4 hide-scrollbar">
+                  <div className="flex gap-0 overflow-x-auto pb-4 hide-scrollbar">
                     {Array.from({ length: 4 }).map((_, index) => (
                       <div key={index} className="flex-shrink-0 w-80">
                         <Skeleton className="h-64 w-full rounded-xl" />
@@ -947,14 +1076,28 @@ export default function ExamsPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="relative">
-                    <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
+                  <div className="relative group">
+                    <button
+                      onClick={() => scrollLeft(newTestSeriesScrollRef)}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                      aria-label="Scroll left"
+                    >
+                      <ChevronLeft className="h-5 w-5 text-slate-700" />
+                    </button>
+                    <div ref={newTestSeriesScrollRef} className="flex gap-0 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
                       {newTestSeries.map((test) => (
-                        <div key={test.id} className="flex-shrink-0 w-80 snap-start">
-                          <ExamCard exam={test.exam} />
+                        <div key={test.id} className="flex-shrink-0 w-72 snap-start">
+                          <ExamCard exam={test.exam} size="compact" />
                         </div>
                       ))}
                     </div>
+                    <button
+                      onClick={() => scrollRight(newTestSeriesScrollRef)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                      aria-label="Scroll right"
+                    >
+                      <ChevronRight className="h-5 w-5 text-slate-700" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -1000,8 +1143,16 @@ export default function ExamsPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
-                    {testimonials.map((item) => (
+                  <div className="relative group">
+                    <button
+                      onClick={() => scrollLeft(testimonialsScrollRef)}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                      aria-label="Scroll left"
+                    >
+                      <ChevronLeft className="h-5 w-5 text-slate-700" />
+                    </button>
+                    <div ref={testimonialsScrollRef} className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
+                      {testimonials.map((item) => (
                       <div
                         key={item.id}
                         className="flex-shrink-0 w-[22rem] snap-start bg-white border border-border rounded-2xl p-6 shadow-sm"
@@ -1028,22 +1179,21 @@ export default function ExamsPage() {
                         {item.title && (
                           <p className="text-sm font-semibold text-foreground mb-1">{item.title}</p>
                         )}
-                        <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-5">
-                          {item.content}
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">
+                          {formatTestimonialContent(item.content || '')}
                         </p>
-                        {item.highlight && (
-                          <div className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-full">
-                            <Flame className="w-3.5 h-3.5" />
-                            Featured
-                          </div>
-                        )}
                       </div>
                     ))}
+                    </div>
+                    <button
+                      onClick={() => scrollRight(testimonialsScrollRef)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                      aria-label="Scroll right"
+                    >
+                      <ChevronRight className="h-5 w-5 text-slate-700" />
+                    </button>
                   </div>
                 )}
-              </div>
-
-              <div className="mt-12" id="testimonial-form">
                 <Card className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -1071,7 +1221,12 @@ export default function ExamsPage() {
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-foreground">Your experience</label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium text-foreground">Your experience</label>
+                          <span className="text-xs text-muted-foreground">
+                            {getWordCount(testimonialForm.content)} / 100 words
+                          </span>
+                        </div>
                         <Textarea
                           value={testimonialForm.content}
                           onChange={(e) => handleTestimonialFormChange('content', e.target.value)}
@@ -1224,70 +1379,83 @@ export default function ExamsPage() {
             </section>
 
             {/* FAQ Section */}
-            <section className="mt-16 mb-20">
-              <div className="text-center mb-10">
-                <p className="text-sm uppercase tracking-[0.35em] text-emerald-500 font-semibold">FAQs</p>
-                <h2 className="font-display text-3xl font-bold text-foreground mt-2">
-                  Everything about Bharat Mock free test series
-                </h2>
-                <p className="text-muted-foreground mt-1 max-w-4xl mx-auto">
-                  We’ve compiled answers to the most searched questions from aspirants preparing for SSC, Banking, Railways, Defence, and State exams.
-                </p>
-              </div>
-
-              <div className="grid gap-4">
-                {[
-                  {
-                    q: 'Are Bharat Mock tests really free to attempt?',
-                    a: 'Yes. Every registered user gets instant access to curated free tests across SSC, IBPS, SBI, Railways, NDA, and more. Premium series exist for deeper analytics, but the entry tier is always free.'
-                  },
-                  {
-                    q: 'How often are exam patterns updated?',
-                    a: 'Our content team refreshes question banks every time TCS/NTA updates the blueprint or releases a new notification, ensuring alignment with 2026 exam trends.'
-                  },
-                  {
-                    q: 'Can I attempt tests anytime on mobile?',
-                    a: 'Absolutely. The platform is responsive and supports Android/iOS browsers. You can attempt, pause, and resume on any device with stable internet.'
-                  },
-                  {
-                    q: 'Do I get AIR (All India Rank) after each mock?',
-                    a: 'Yes. After submitting, you receive All India Rank, percentile, accuracy, and topic-level insights driven by our analytics engine.'
-                  },
-                  {
-                    q: 'How many exams are covered right now?',
-                    a: 'We cover 80+ central and state exams—from SSC CGL, CHSL, JE to SBI PO, IBPS Clerk, Railway NTPC, Group D, CDS, AFCAT, and more.'
-                  },
-                  {
-                    q: 'Can I download solutions or explanations?',
-                    a: 'Each question carries explainers, shortcuts, and PDF exports so you can revise offline and share notes with friends.'
-                  },
-                  {
-                    q: 'Is there sectional timing like the actual CBT?',
-                    a: 'Yes, our mock engine simulates sectional timing, negative marking, and auto-submit behavior exactly like SSC and Banking CBTs.'
-                  },
-                  {
-                    q: 'How do I track progress across attempts?',
-                    a: 'Navigate to your dashboard to view attempt history, accuracy trendlines, and topic heatmaps that highlight weak zones.'
-                  },
-                  {
-                    q: 'Can I retake the same mock?',
-                    a: 'You can retake most free tests multiple times. Scores are stored separately so you can benchmark improvement.'
-                  },
-                  {
-                    q: 'Do you provide bilingual tests?',
-                    a: 'Yes. Most of our mock tests support English and Hindi, and we continue to add more regional language support based on demand.'
-                  }
-                ].map((item, index) => (
-                  <div key={item.q} className="bg-white border border-border rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-start gap-4">
-                      <div className="text-emerald-600 font-semibold">{String(index + 1).padStart(2, '0')}</div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground">{item.q}</h3>
-                        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{item.a}</p>
+            <section className="py-10">
+              <div className="container-main">
+                <div className="max-w-4xl mx-auto">
+                  <h2 className="font-display text-4xl font-bold text-foreground mb-12 text-center">
+                    FAQ's
+                  </h2>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        q: 'Are Bharat Mock tests really free to attempt?',
+                        a: 'Yes. Every registered user gets instant access to curated free tests across SSC, IBPS, SBI, Railways, NDA, and more. Premium series exist for deeper analytics, but the entry tier is always free.'
+                      },
+                      {
+                        q: 'How often are exam patterns updated?',
+                        a: 'Our content team refreshes question banks every time TCS/NTA updates the blueprint or releases a new notification, ensuring alignment with 2026 exam trends.'
+                      },
+                      {
+                        q: 'Can I attempt tests anytime on mobile?',
+                        a: 'Absolutely. The platform is responsive and supports Android/iOS browsers. You can attempt, pause, and resume on any device with stable internet.'
+                      },
+                      {
+                        q: 'Do I get AIR (All India Rank) after each mock?',
+                        a: 'Yes. After submitting, you receive All India Rank, percentile, accuracy, and topic-level insights driven by our analytics engine.'
+                      },
+                      {
+                        q: 'How many exams are covered right now?',
+                        a: 'We cover 80+ central and state exams—from SSC CGL, CHSL, JE to SBI PO, IBPS Clerk, Railway NTPC, Group D, CDS, AFCAT, and more.'
+                      },
+                      {
+                        q: 'Can I download solutions or explanations?',
+                        a: 'Each question carries explainers, shortcuts, and PDF exports so you can revise offline and share notes with friends.'
+                      },
+                      {
+                        q: 'Is there sectional timing like the actual CBT?',
+                        a: 'Yes, our mock engine simulates sectional timing, negative marking, and auto-submit behavior exactly like SSC and Banking CBTs.'
+                      },
+                      {
+                        q: 'How do I track progress across attempts?',
+                        a: 'Navigate to your dashboard to view attempt history, accuracy trendlines, and topic heatmaps that highlight weak zones.'
+                      },
+                      {
+                        q: 'Can I retake the same mock?',
+                        a: 'You can retake most free tests multiple times. Scores are stored separately so you can benchmark improvement.'
+                      },
+                      {
+                        q: 'Do you provide bilingual tests?',
+                        a: 'Yes. Most of our mock tests support English and Hindi, and we continue to add more regional language support based on demand.'
+                      }
+                    ].map((item, index) => (
+                      <div 
+                        key={item.q}
+                        className="bg-card border border-border rounded-lg overflow-hidden"
+                      >
+                        <button
+                          onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+                          className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
+                        >
+                          <span className="font-medium text-foreground">
+                            {index + 1}. {item.q}
+                          </span>
+                          {expandedFaq === index ? (
+                            <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          )}
+                        </button>
+                        {expandedFaq === index && (
+                          <div className="px-6 py-4 bg-muted/30 border-t border-border">
+                            <p className="text-muted-foreground">
+                              {item.a}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
             </section>
           </main>

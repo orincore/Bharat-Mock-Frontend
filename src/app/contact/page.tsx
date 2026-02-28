@@ -117,7 +117,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-background">
       <section className="bg-slate-950 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.35),_transparent_55%)]" />
-        <div className="relative container-main py-16 lg:py-24">
+        <div className="relative container-main py-10 lg:py-14">
           <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Bharat Mock Support Desk</p>

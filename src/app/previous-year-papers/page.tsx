@@ -323,7 +323,7 @@ export default function PrevPapersPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#0a1833] via-[#0f2347] to-[#1a3a6b] text-white py-16">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#0a1833] via-[#0f2347] to-[#1a3a6b] text-white py-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,153,51,0.12),_transparent_55%)]" />
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="relative w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
@@ -588,7 +588,7 @@ export default function PrevPapersPage() {
                 <LoadingSpinner size="lg" />
               </div>
             ) : exams.length === 0 ? (
-              <div className="text-center py-20 bg-card rounded-2xl border border-border">
+              <div className="text-center py-12 bg-card rounded-2xl border border-border">
                 <h3 className="font-display text-2xl font-bold mb-2">
                   {activeTab === 'premium' ? 'No premium papers found' : 'No previous papers found'}
                 </h3>

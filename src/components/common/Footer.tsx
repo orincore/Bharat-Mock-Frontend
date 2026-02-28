@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import { useAppData } from '@/context/AppDataContext';
 import { fallbackContactInfo, socialIconMap } from '@/lib/constants/contact';
@@ -26,10 +26,38 @@ export function Footer() {
         .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)),
     [info.contact_social_links]
   );
+  const visibleSocialLinks = socialLinks.length ? socialLinks : fallbackContactInfo.contact_social_links || [];
+
+  const resolveSocialIcon = (link: { icon?: string | null; platform?: string | null; label?: string | null; url?: string | null }) => {
+    const explicitKey = (link.icon || link.platform || link.label || '').toLowerCase().trim();
+    if (explicitKey && socialIconMap[explicitKey]) {
+      return socialIconMap[explicitKey];
+    }
+
+    const url = link.url?.toLowerCase() || '';
+    const keywordMap: Record<string, keyof typeof socialIconMap> = {
+      twitter: 'twitter',
+      x: 'twitter',
+      instagram: 'instagram',
+      whatsapp: 'whatsapp',
+      telegram: 'telegram',
+      youtube: 'youtube',
+      facebook: 'facebook',
+      linkedin: 'linkedin'
+    };
+
+    const found = Object.entries(keywordMap).find(([keyword]) => explicitKey === keyword || url.includes(keyword));
+    if (found) {
+      const mapped = socialIconMap[found[1]];
+      if (mapped) return mapped;
+    }
+
+    return Mail;
+  };
 
   return (
     <footer className="bg-foreground text-background/90">
-      <div className="container-main py-16">
+      <div className="container-main py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand Section */}
           <div className="lg:col-span-2">
@@ -69,6 +97,29 @@ export function Footer() {
                 <p className="text-xs text-background/60">Showing fallback contact details.</p>
               )}
             </div>
+
+            {visibleSocialLinks.length > 0 && (
+              <div className="mt-6 space-y-2">
+                <p className="text-xs uppercase tracking-widest text-background/60">Follow us</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {visibleSocialLinks.map((link) => {
+                    const Icon = resolveSocialIcon(link);
+                    return (
+                      <a
+                        key={link.id ?? link.url}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2 rounded-lg bg-background/10 hover:bg-primary hover:text-primary-foreground transition-colors"
+                        aria-label={link.label || link.platform}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {renderedSections.map((section) => (
@@ -96,34 +147,10 @@ export function Footer() {
         </div>
 
         {/* Bottom Section */}
-        <div className="mt-12 pt-8 border-t border-background/10 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="mt-12 pt-8 border-t border-background/10 flex flex-col items-center text-center">
           <p className="text-background/60 text-sm">
             © {new Date().getFullYear()} Bharat Mock. All rights reserved.
           </p>
-          <p className="text-background/60 text-sm">
-            Powered by{' '}
-            <Link href="https://orincore.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">
-              ORINCORE Technologies
-            </Link>
-          </p>
-          
-          <div className="flex items-center gap-4">
-            {(socialLinks.length ? socialLinks : fallbackContactInfo.contact_social_links || []).map((link) => {
-              const Icon = socialIconMap[link.icon || link.platform?.toLowerCase()] ?? Mail;
-              return (
-                <a
-                  key={link.id ?? link.url}
-                  href={link.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-2 rounded-lg bg-background/10 hover:bg-primary hover:text-primary-foreground transition-colors"
-                  aria-label={link.label || link.platform}
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              );
-            })}
-          </div>
         </div>
       </div>
     </footer>

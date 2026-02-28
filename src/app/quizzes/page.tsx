@@ -242,7 +242,7 @@ export default function QuizzesPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <section className="gradient-hero py-16">
+      <section className="gradient-hero py-10">
         <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
           <div className="max-w-3xl">
             <Breadcrumbs
@@ -430,7 +430,7 @@ export default function QuizzesPage() {
                 <LoadingSpinner size="lg" />
               </div>
             ) : exams.length === 0 ? (
-              <div className="text-center py-20 bg-card rounded-2xl border border-border">
+              <div className="text-center py-12 bg-card rounded-2xl border border-border">
                 <h3 className="font-display text-2xl font-bold mb-2">No quizzes found</h3>
                 <p className="text-muted-foreground mb-6">
                   Try adjusting your filters or search term to find more quizzes.

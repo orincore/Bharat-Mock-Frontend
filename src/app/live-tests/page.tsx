@@ -230,7 +230,7 @@ export default function LiveTestsPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Hero */}
-      <section className="gradient-hero py-16">
+      <section className="gradient-hero py-10">
         <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>

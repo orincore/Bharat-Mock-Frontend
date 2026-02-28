@@ -110,7 +110,7 @@ export default function BlogsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-16">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-10">
         <div className="container mx-auto px-4">
           <Breadcrumbs 
             items={[

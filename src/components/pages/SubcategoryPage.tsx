@@ -196,7 +196,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-[#0f92ff] via-[#437cff] to-[#0047c5] text-white">
         <div className="absolute inset-0 opacity-60" style={{ background: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.35), transparent 55%)' }}></div>
-        <div className="relative max-w-screen-2xl mx-auto px-6 lg:px-12 py-16 flex flex-col lg:flex-row gap-10">
+        <div className="relative max-w-screen-2xl mx-auto px-6 lg:px-12 py-10 flex flex-col lg:flex-row gap-10">
           <div className="flex-1 space-y-6 text-center lg:text-left">
             <nav className="flex items-center justify-center lg:justify-start gap-2 text-sm text-white/80">
               <Link href="/" className="hover:underline">Home</Link>

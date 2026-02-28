@@ -11,6 +11,8 @@ import { AppDataProvider, useAppData } from "@/context/AppDataContext";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
 import { AuthReminderDialog } from "@/components/common/AuthReminderDialog";
+import { GoogleTranslate } from "@/components/common/GoogleTranslate";
+import { SubscriptionPromoBanner } from "@/components/common/SubscriptionPromoBanner";
 import { apolloClient } from "@/lib/graphql/client";
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -29,9 +31,19 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <GoogleTranslate />
           <div className="flex flex-col min-h-screen">
-            {!hideChrome && <Navbar />}
-            <main className={`flex-grow ${hideChrome ? "min-h-screen bg-background" : ""}`}>
+            {!hideChrome && (
+              <>
+                <Navbar />
+                <SubscriptionPromoBanner />
+              </>
+            )}
+            <main
+              className={`flex-grow ${
+                hideChrome ? "min-h-screen bg-background" : ""
+              }`}
+            >
               {children}
             </main>
             {!hideChrome && <Footer />}

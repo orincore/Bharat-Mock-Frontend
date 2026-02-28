@@ -325,7 +325,7 @@ export default function SubscriptionLandingPage() {
         </Head>
       )}
 
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white py-20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white py-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]"></div>
         <div className="container mx-auto px-4 relative z-10">
           <Breadcrumbs 
@@ -366,7 +366,7 @@ export default function SubscriptionLandingPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-16 space-y-20">
+      <div className="container mx-auto px-4 py-10 space-y-20">
 
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
@@ -501,7 +501,7 @@ export default function SubscriptionLandingPage() {
         </div>
 
         {featuresSection && featuresSection.blocks && featuresSection.blocks.length > 0 && (
-          <section className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl">
+          <section className="py-10 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl">
             <div className="container mx-auto px-4">
               <div className="text-center mb-12">
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">

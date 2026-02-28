@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { GraduationCap, Menu, X, User, LogOut, FileText } from 'lucide-react';
+import { GraduationCap, Menu, X, User, LogOut, FileText, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppData } from '@/context/AppDataContext';
+import { LanguageSelector } from './LanguageSelector';
 
 type NavigationItem = {
   label: string;
@@ -28,9 +29,12 @@ const renderNavLabel = (item: NavigationItem) => item.label;
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isExploreOpen, setIsExploreOpen] = useState(false);
+  const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
+  const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
-  const { navigation: rawNavLinks, isLoading: loadingNav } = useAppData();
+  const { navigation: rawNavLinks, categories, subcategories, isLoading: loadingNav } = useAppData();
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -54,6 +58,39 @@ export function Navbar() {
 
   const desktopNavItems = useMemo(() => navLinks, [navLinks]);
 
+  const categoriesWithSubcategories = useMemo(() => {
+    return categories.map(category => ({
+      ...category,
+      subcategories: subcategories.filter(sub => sub.category_id === category.id)
+    }));
+  }, [categories, subcategories]);
+
+  const handleExploreMouseEnter = () => {
+    if (closeTimeout) {
+      clearTimeout(closeTimeout);
+      setCloseTimeout(null);
+    }
+    setIsExploreOpen(true);
+  };
+
+  const handleExploreMouseLeave = () => {
+    const timeout = setTimeout(() => {
+      setIsExploreOpen(false);
+      setHoveredCategoryId(null);
+    }, 300);
+    setCloseTimeout(timeout);
+  };
+
+  const currentCategorySubcategories = useMemo(() => {
+    if (!hoveredCategoryId) return [];
+    return subcategories.filter(sub => sub.category_id === hoveredCategoryId);
+  }, [hoveredCategoryId, subcategories]);
+
+  const currentCategory = useMemo(() => {
+    if (!hoveredCategoryId) return null;
+    return categories.find(cat => cat.id === hoveredCategoryId);
+  }, [hoveredCategoryId, categories]);
+
   return (
     <nav className="sticky top-0 z-50 glass-effect border-b border-border/50">
       <div className="w-full px-4 sm:px-6 lg:px-10">
@@ -75,30 +112,136 @@ export function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1 min-h-[40px]">
             {loadingNav ? (
-              Array.from({ length: 4 }).map((_, index) => (
+              Array.from({ length: 5 }).map((_, index) => (
                 <Skeleton key={`nav-skel-${index}`} className="h-9 w-20 rounded-lg" />
               ))
             ) : (
-              desktopNavItems.map((item, index) => (
-                <Link
-                  key={`${item.href}-${index}`}
-                  href={item.href}
-                  target={item.open_in_new_tab ? '_blank' : undefined}
-                  rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive(item.href)
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
+              <>
+                {/* Explore Exams Dropdown */}
+                <div 
+                  className="relative"
+                  onMouseEnter={handleExploreMouseEnter}
+                  onMouseLeave={handleExploreMouseLeave}
                 >
-                  {item.label}
-                </Link>
-              ))
+                  <button
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    Exams
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isExploreOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {isExploreOpen && categoriesWithSubcategories.length > 0 && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-border/60 rounded-xl shadow-2xl overflow-hidden z-50 animate-slide-down">
+                      <div className="flex min-w-[700px] max-h-[500px]">
+                        {/* Categories Column */}
+                        <div className="w-1/3 bg-gray-50 border-r border-border/40 overflow-y-auto">
+                          {categoriesWithSubcategories.map((category) => (
+                            <div
+                              key={category.id}
+                              onMouseEnter={() => setHoveredCategoryId(category.id)}
+                              className="relative"
+                            >
+                              <Link
+                                href={`/${category.slug}`}
+                                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b border-border/30 last:border-b-0 ${
+                                  hoveredCategoryId === category.id
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-gray-700 hover:bg-primary/5 hover:text-primary'
+                                }`}
+                                onClick={() => {
+                                  setIsExploreOpen(false);
+                                  setHoveredCategoryId(null);
+                                }}
+                              >
+                                <div className="h-10 w-10 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
+                                  {category.logo_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={category.logo_url} alt={category.name} className="h-full w-full object-contain p-1.5" />
+                                  ) : (
+                                    <span className="text-xs font-bold text-gray-500">
+                                      {category.name.slice(0, 3).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-sm leading-tight">{category.name}</p>
+                                  <p className="text-xs text-gray-500">{category.subcategories.length} exams</p>
+                                </div>
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Subcategories Column */}
+                        <div className="w-2/3 p-4 overflow-y-auto bg-white">
+                          {hoveredCategoryId && currentCategorySubcategories.length > 0 ? (
+                            <>
+                              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-2">
+                                {currentCategory?.name}
+                              </h3>
+                              <div className="flex flex-wrap gap-2">
+                                {currentCategorySubcategories.map(sub => (
+                                  <Link
+                                    key={sub.id}
+                                    href={`/${currentCategory?.slug}/${sub.slug}`}
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-border px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors bg-white"
+                                    onClick={() => {
+                                      setIsExploreOpen(false);
+                                      setHoveredCategoryId(null);
+                                    }}
+                                  >
+                                    <div className="h-7 w-7 rounded-xl bg-slate-50 border border-border/40 flex items-center justify-center overflow-hidden">
+                                      {sub.logo_url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={sub.logo_url} alt={sub.name} className="h-full w-full object-contain p-1" />
+                                      ) : currentCategory?.logo_url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={currentCategory.logo_url} alt={currentCategory.name || ''} className="h-full w-full object-contain p-1" />
+                                      ) : (
+                                        <span className="text-[10px] font-semibold text-gray-500">
+                                          {sub.name.slice(0, 2).toUpperCase()}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span>{sub.name}</span>
+                                  </Link>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-sm text-gray-400">
+                              Hover over a category to see exams
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Regular Navigation Items */}
+                {desktopNavItems.map((item, index) => (
+                  <Link
+                    key={`${item.href}-${index}`}
+                    href={item.href}
+                    target={item.open_in_new_tab ? '_blank' : undefined}
+                    rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActive(item.href)
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </>
             )}
           </div>
 
-          {/* Auth Section */}
-          <div className="hidden md:flex items-center gap-3 min-w-[160px] justify-end">
+          {/* Language Selector & Auth Section */}
+          <div className="hidden md:flex items-center gap-2 min-w-[200px] justify-end">
+            <LanguageSelector />
             {!hasMounted || isLoading ? (
               <div className="flex items-center gap-3">
                 <Skeleton className="h-9 w-24" />

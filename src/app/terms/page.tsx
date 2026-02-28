@@ -32,7 +32,7 @@ const refundRules = [
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
-      <section className="gradient-hero py-20">
+      <section className="gradient-hero py-12">
         <div className="container-main">
           <div className="max-w-3xl mx-auto text-center">
             <FileText className="h-16 w-16 text-primary mx-auto mb-6" />

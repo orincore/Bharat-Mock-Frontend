@@ -21,7 +21,7 @@ export default async function AboutPage() {
     <div className="min-h-screen bg-background text-foreground">
       <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900 text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.35),_transparent_55%)]" />
-        <div className="relative container-main py-20">
+        <div className="relative container-main py-12">
           <div className="flex justify-center mb-8">
             <div className="relative h-16 w-48">
               <Image

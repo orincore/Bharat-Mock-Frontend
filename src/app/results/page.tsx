@@ -83,7 +83,7 @@ export default function ResultsPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <section className="gradient-hero py-16">
+      <section className="gradient-hero py-10">
         <div className="container-main">
           <div className="max-w-3xl">
             <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
