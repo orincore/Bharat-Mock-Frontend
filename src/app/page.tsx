@@ -10,7 +10,8 @@ const DEFAULT_DESCRIPTION =
 async function fetchHomepageData(): Promise<HomepageData | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/homepage/data`, {
-      next: { revalidate: 60 }
+      cache: 'no-store',
+      next: { revalidate: 0 }
     });
     if (!response.ok) {
       throw new Error(`Failed to load homepage data: ${response.status}`);

@@ -178,6 +178,10 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   const [exams, setExams] = useState<Exam[]>(initialData?.featuredExams || []);
   const [articles, setArticles] = useState<(Article | Blog)[]>(initialData?.featuredArticles || []);
   const heroBanners: HomepageBanner[] = initialData?.banners?.filter((banner) => banner.is_active) ?? [];
+  const resolvePlacement = (banner: HomepageBanner) =>
+    banner.placement?.toLowerCase?.() === 'mid' ? 'mid' : 'top';
+  const topBanners = heroBanners.filter((banner) => resolvePlacement(banner) === 'top');
+  const midBanners = heroBanners.filter((banner) => resolvePlacement(banner) === 'mid');
   const hasInitialData = Boolean(initialData?.categories?.length);
   const initialCategories = useMemo((): Category[] => {
     if (!initialData?.categories) return [];
@@ -415,22 +419,6 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
               {/* Exam Buttons Grid */}
               <div className="relative pt-3">
-                <button
-                  type="button"
-                  onClick={() => scrollContainer(heroButtonsScrollRef, 'left')}
-                  className="absolute -left-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 sm:hidden"
-                  aria-label="Scroll hero exams left"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollContainer(heroButtonsScrollRef, 'right')}
-                  className="absolute -right-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 sm:hidden"
-                  aria-label="Scroll hero exams right"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
                 <div
                   ref={heroButtonsScrollRef}
                   className="flex gap-3 overflow-x-auto pb-2 pr-4 -ml-4 pl-4 hide-scrollbar sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:p-0"
@@ -555,22 +543,6 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
           ) : (
             <>
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => scrollContainer(categoryPillsScrollRef, 'left')}
-                  className="absolute left-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white text-slate-700 shadow-sm transition hover:bg-muted sm:hidden"
-                  aria-label="Scroll categories left"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollContainer(categoryPillsScrollRef, 'right')}
-                  className="absolute right-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white text-slate-700 shadow-sm transition hover:bg-muted sm:hidden"
-                  aria-label="Scroll categories right"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
                 <div
                   ref={categoryPillsScrollRef}
                   className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 px-6 -mx-6 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:flex lg:flex-wrap lg:overflow-visible"
@@ -656,53 +628,32 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         </div>
       </section>
 
-      {heroBanners.length > 0 && (
+      {topBanners.length > 0 && (
         <section className="py-10 bg-background border-b border-border">
           <div className="container-main space-y-6">
             <div className="space-y-6">
-              {heroBanners.map((banner) => (
-                <div
-                  key={banner.id}
-                  className="rounded-[36px] bg-muted/40 px-6 py-8 lg:px-10 lg:py-12"
-                >
-                  <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
-                    <div className="flex-1 space-y-4">
-                      <div className="space-y-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">Featured</p>
-                        <h3 className="font-display text-3xl font-bold text-foreground leading-tight">
-                          {banner.title}
-                        </h3>
-                        {banner.subtitle && (
-                          <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
-                            {banner.subtitle}
-                          </p>
-                        )}
-                      </div>
-                      {banner.button_text && banner.link_url && (
-                        <Button
-                          asChild
-                          className="inline-flex items-center gap-2 text-base h-12 px-6 rounded-full"
-                        >
-                          <Link href={banner.link_url}>
-                            {banner.button_text}
-                            <ArrowRight className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex-1 w-full">
-                      <div className="relative w-full h-60 lg:h-72">
-                        <img
-                          src={banner.image_url}
-                          alt={banner.title}
-                          className="h-full w-full object-contain"
-                          loading="lazy"
-                        />
-                      </div>
-                    </div>
+              {topBanners.map((banner) => {
+                const card = (
+                  <div
+                    className="group relative block overflow-hidden"
+                  >
+                    <img
+                      src={banner.image_url}
+                      alt={banner.title || 'Featured banner'}
+                      className="h-[260px] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] sm:h-[340px] lg:h-[420px]"
+                      loading="lazy"
+                    />
                   </div>
-                </div>
-              ))}
+                );
+
+                return banner.link_url ? (
+                  <Link key={banner.id} href={banner.link_url} aria-label={banner.title || 'Featured banner'}>
+                    {card}
+                  </Link>
+                ) : (
+                  <div key={banner.id}>{card}</div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -824,20 +775,20 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         <div className="container-main">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/10 via-blue-100 to-sky-50 border border-primary/15 px-5 py-9 sm:px-8 text-center shadow-lg">
             <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
-            <div className="relative space-y-6">
-              <h2 className="font-display text-2xl md:text-3xl font-bold text-slate-900">
+            <div className="relative space-y-5 sm:space-y-6">
+              <h2 className="font-display text-xl leading-tight md:text-3xl font-bold text-slate-900">
                 Start preparing for your dream government job
               </h2>
-              <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs sm:gap-2 sm:text-sm">
                 {learningJourneySteps.map((step, index) => (
                   <div key={step.label} className="flex items-center gap-2">
                     <div
-                      className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm flex items-center gap-2 border ${step.pillClass}`}
+                      className={`rounded-full px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold shadow-sm flex items-center gap-1.5 sm:gap-2 border ${step.pillClass}`}
                     >
                       {step.label}
                     </div>
                     {index < learningJourneySteps.length - 1 && (
-                      <ChevronRight className={`h-4 w-4 ${step.arrowClass}`} />
+                      <ChevronRight className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${step.arrowClass}`} />
                     )}
                   </div>
                 ))}
@@ -933,14 +884,15 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
       <section className="py-12 bg-background border-y border-slate-100">
         <div className="container-main">
           <div className="relative isolate overflow-hidden rounded-[44px] bg-white shadow-[0_40px_80px_-60px_rgba(15,23,42,0.8)]">
-            <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-b from-primary/10 via-transparent to-transparent pointer-events-none" />
-            <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center p-8 sm:p-12 relative z-10">
+            <div className="absolute inset-0 bg-gradient-to-br from-sky-50 via-transparent to-white" />
+            <div className="absolute -top-10 -right-4 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
+            <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] items-center p-6 sm:p-10 lg:p-14 relative z-10">
               <div className="space-y-8">
                 <div className="space-y-3">
-                  <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em] text-primary/80">
+                  <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/80">
                     <Sparkles className="h-4 w-4" /> Power Prep Bundle
                   </p>
-                  <h2 className="font-display text-3xl md:text-4xl font-bold text-slate-900 leading-tight">
+                  <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 leading-tight">
                     Enroll in Test Series for <span className="text-primary">670+ exams</span> with BharatMock Pass
                   </h2>
                   <p className="text-slate-600 max-w-2xl">
@@ -948,19 +900,25 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                   </p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3">
                   {passStats.map((stat) => (
-                    <div key={stat.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-center">
-                      <p className="font-display text-2xl font-bold text-slate-900">{stat.value}</p>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">{stat.label}</p>
+                    <div
+                      key={stat.label}
+                      className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-center shadow-sm"
+                    >
+                      <p className="font-display text-2xl lg:text-3xl font-bold text-slate-900">{stat.value}</p>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{stat.label}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {passHighlights.map((perk) => (
-                    <div key={perk.title} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm flex gap-3">
-                      <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${perk.accent}`}>
+                    <div
+                      key={perk.title}
+                      className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm flex gap-3"
+                    >
+                      <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 ${perk.accent}`}>
                         <perk.icon className="h-5 w-5" />
                       </div>
                       <div>
@@ -984,9 +942,9 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
               </div>
 
               <div className="relative">
-                <div className="absolute -top-6 right-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
-                <div className="relative mx-auto max-w-md rounded-[36px] bg-gradient-to-br from-sky-100 via-white to-indigo-50 p-6 shadow-2xl">
-                  <div className="rounded-[28px] bg-white/80 p-4 border border-white/60 backdrop-blur">
+                <div className="absolute -top-6 right-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
+                <div className="relative mx-auto max-w-sm rounded-[36px] bg-gradient-to-b from-white via-slate-50 to-sky-50 p-6 shadow-2xl">
+                  <div className="rounded-[28px] bg-white/90 p-4 border border-white/70 backdrop-blur">
                     <Image
                       src="/assets/image1.png"
                       alt="Learner reviewing BharatMock pass dashboard"
@@ -1123,8 +1081,34 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         </div>
       </section>
 
-  
+      {midBanners.length > 0 && (
+        <section className="py-10 bg-background border-b border-border">
+          <div className="container-main space-y-6">
+            <div className="space-y-6">
+              {midBanners.map((banner) => {
+                const card = (
+                  <div className="group relative block overflow-hidden">
+                    <img
+                      src={banner.image_url}
+                      alt={banner.title || 'Featured banner'}
+                      className="h-[240px] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] sm:h-[320px] lg:h-[400px]"
+                      loading="lazy"
+                    />
+                  </div>
+                );
 
+                return banner.link_url ? (
+                  <Link key={banner.id} href={banner.link_url} aria-label={banner.title || 'Featured banner'}>
+                    {card}
+                  </Link>
+                ) : (
+                  <div key={banner.id}>{card}</div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Final CTA Section */}
       <section className="py-10 bg-gradient-to-r from-primary via-indigo-600 to-sky-500 text-white">

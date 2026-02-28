@@ -9,6 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import {
   ArrowDown,
@@ -108,7 +115,11 @@ export default function HomepageAdminPage() {
   const fetchBanners = useCallback(async () => {
     try {
       const list = await homepageAdminService.getBanners();
-      const withTempIds = list.map((banner) => ({ ...banner, tempId: banner.id }));
+      const withTempIds = list.map((banner) => ({
+        ...banner,
+        placement: banner.placement ?? 'top',
+        tempId: banner.id
+      }));
       setBanners(withTempIds);
     } catch (error: any) {
       toast({
@@ -176,7 +187,8 @@ export default function HomepageAdminPage() {
         link_url: '',
         button_text: '',
         display_order: prev.length,
-        is_active: true
+        is_active: true,
+        placement: 'top'
       }
     ]);
   };
@@ -230,6 +242,7 @@ export default function HomepageAdminPage() {
           button_text: banner.button_text,
           display_order: banner.display_order,
           is_active: banner.is_active,
+          placement: banner.placement ?? 'top'
         };
         if (banner.id) {
           return homepageAdminService.updateBanner(banner.id, payload);
@@ -237,7 +250,11 @@ export default function HomepageAdminPage() {
         return homepageAdminService.createBanner(payload);
       });
       const saved = await Promise.all(promises);
-      const refreshed = saved.map((banner) => ({ ...banner, tempId: banner.id }));
+      const refreshed = saved.map((banner, index) => ({
+        ...banner,
+        placement: sorted[index].placement ?? banner.placement ?? 'top',
+        tempId: banner.id
+      }));
       setBanners(refreshed);
       toast({ title: 'Banners saved' });
     } catch (error: any) {
@@ -774,6 +791,21 @@ export default function HomepageAdminPage() {
                       <span className="text-sm text-muted-foreground">
                         {banner.is_active ? 'Visible to users' : 'Hidden from homepage'}
                       </span>
+                    </div>
+                    <div className="space-y-2 pt-3">
+                      <Label>Placement</Label>
+                      <Select
+                        value={banner.placement ?? 'top'}
+                        onValueChange={(value) => handleBannerFieldChange(banner.tempId, 'placement', value as 'top' | 'mid')}
+                      >
+                        <SelectTrigger className="bg-card text-foreground border border-border">
+                          <SelectValue placeholder="Select placement" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card text-foreground border border-border shadow-lg">
+                          <SelectItem value="top">Top (below hero)</SelectItem>
+                          <SelectItem value="mid">Mid (above final CTA)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>

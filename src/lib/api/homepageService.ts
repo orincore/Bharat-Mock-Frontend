@@ -63,6 +63,8 @@ export interface HomepageCategory {
   subcategories: HomepageSubcategory[];
 }
 
+export type HomepageBannerPlacement = 'top' | 'mid';
+
 export interface HomepageBanner {
   id: string;
   title: string;
@@ -72,6 +74,7 @@ export interface HomepageBanner {
   button_text?: string;
   display_order: number;
   is_active: boolean;
+  placement?: HomepageBannerPlacement;
 }
 
 export interface HomepageData {
@@ -93,9 +96,10 @@ export const homepageService = {
     }
   },
 
-  async getHomepageData(): Promise<HomepageData | null> {
+  async getHomepageData(force = false): Promise<HomepageData | null> {
     try {
-      const response = await apiClient.get<{ success: boolean; data: HomepageData }>('/homepage/data');
+      const url = force ? '/homepage/data?ts=' + Date.now() : '/homepage/data';
+      const response = await apiClient.get<{ success: boolean; data: HomepageData }>(url);
       return response.data;
     } catch (error) {
       console.error('Failed to fetch homepage data:', error);
