@@ -30,6 +30,7 @@ const renderNavLabel = (item: NavigationItem) => item.label;
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isExploreOpen, setIsExploreOpen] = useState(false);
+  const [isMobileExamsOpen, setIsMobileExamsOpen] = useState(false);
   const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -349,13 +350,73 @@ export function Navbar() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background animate-slide-down">
+        <div className="md:hidden border-t border-border bg-background animate-slide-down max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="container-main py-4 space-y-2">
-            {loadingNav
-              ? Array.from({ length: 4 }).map((_, index) => (
-                  <Skeleton key={`mobile-nav-skel-${index}`} className="h-12 w-full rounded-lg" />
-                ))
-              : desktopNavItems.map((item, index) => (
+            {loadingNav ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={`mobile-nav-skel-${index}`} className="h-12 w-full rounded-lg" />
+              ))
+            ) : (
+              <>
+                {/* Mobile Exams Dropdown */}
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setIsMobileExamsOpen(!isMobileExamsOpen)}
+                    className="flex items-center justify-between w-full px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <span>Exams</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isMobileExamsOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {isMobileExamsOpen && categoriesWithSubcategories.length > 0 && (
+                    <div className="pl-4 space-y-3 animate-slide-down">
+                      {categoriesWithSubcategories.map((category) => (
+                        <div key={category.id} className="space-y-2">
+                          <Link
+                            href={`/${category.slug}`}
+                            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors"
+                            onClick={() => {
+                              setIsMobileMenuOpen(false);
+                              setIsMobileExamsOpen(false);
+                            }}
+                          >
+                            <div className="h-8 w-8 rounded-lg bg-white border border-border/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {category.logo_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={category.logo_url} alt={category.name} className="h-full w-full object-contain p-1" />
+                              ) : (
+                                <span className="text-xs font-bold text-gray-500">
+                                  {category.name.slice(0, 2).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-semibold">{category.name}</span>
+                          </Link>
+                          {category.subcategories.length > 0 && (
+                            <div className="pl-11 flex flex-wrap gap-2">
+                              {category.subcategories.map(sub => (
+                                <Link
+                                  key={sub.id}
+                                  href={`/${category.slug}/${sub.slug}`}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors bg-white"
+                                  onClick={() => {
+                                    setIsMobileMenuOpen(false);
+                                    setIsMobileExamsOpen(false);
+                                  }}
+                                >
+                                  {sub.name}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Regular Navigation Items */}
+                {desktopNavItems.map((item, index) => (
                   <Link
                     key={`${item.href}-${index}`}
                     href={item.href}
@@ -371,6 +432,13 @@ export function Navbar() {
                     {renderNavLabel(item)}
                   </Link>
                 ))}
+              </>
+            )}
+            
+            {/* Language Selector */}
+            <div className="pt-2">
+              <LanguageSelector />
+            </div>
             
             <div className="pt-4 border-t border-border space-y-2">
               {!hasMounted || isLoading ? (

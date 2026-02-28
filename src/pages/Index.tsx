@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getExamUrl } from '@/lib/utils/examUrl';
@@ -207,6 +207,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   const [activeHeroMedia, setActiveHeroMedia] = useState(0);
   const [mostAttemptedExams, setMostAttemptedExams] = useState<Exam[]>([]);
   const [mostAttemptedLoading, setMostAttemptedLoading] = useState(true);
+  const heroButtonsScrollRef = useRef<HTMLDivElement>(null);
+  const categoryPillsScrollRef = useRef<HTMLDivElement>(null);
 
   const heroData = initialHero || initialData?.hero || null;
   const heroTitle = heroData?.title ?? fallbackHero.title;
@@ -386,40 +388,66 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   const visibleSubcategories = selectedCategorySubcategories.slice(0, 10);
   const remainingSubcategoryCount = Math.max(selectedCategorySubcategories.length - visibleSubcategories.length, 0);
 
+  const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (!ref.current) return;
+    const delta = direction === 'left' ? -260 : 260;
+    ref.current.scrollBy({ left: delta, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen">
       {/* Dynamic Hero Section */}
       <section className="relative w-full bg-[#e7f1ff]">
-        <div className="container-main py-8 md:py-12">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="container-main py-3 md:py-12">
+          <div className="grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
             {/* Left Content */}
-            <div className="space-y-6 order-2 lg:order-1">
-              <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+            <div className="space-y-4 order-2 lg:order-1">
+              <h1 className="font-display text-[1.6rem] sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-snug sm:leading-tight">
                 {heroTitle}
               </h1>
-              <div className="space-y-3">
+              <div className="space-y-1.5 text-[0.95rem] sm:text-base">
                 {heroDescriptions.map((paragraph, idx) => (
-                  <p key={idx} className="text-base sm:text-lg text-gray-600 leading-relaxed">
+                  <p key={idx} className="text-gray-600 leading-relaxed">
                     {paragraph}
                   </p>
                 ))}
               </div>
 
               {/* Exam Buttons Grid */}
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-4">
-                {buttonCardMedia.slice(0, 4).map((item, idx) => {
-                  const examIcons = ['📋', '📚', '📅', '📊'];
-                  const examLabels = item.headline || ['Delhi Police Head Constable', 'RRB Group D', 'Exam Calendar', 'My Test Series'][idx];
-                  const examDates = item.description || ['Exam Date: 7th January 2026', 'Exam Date: 8th January 2026', '', ''][idx];
-                  
-                  return (
-                    <Link
-                      key={idx}
-                      href={item.cta_url || heroPrimaryCta?.url || '/exams'}
-                      className="group relative bg-white rounded-2xl p-4 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200"
-                    >
-                      <div className="flex items-start gap-3">
-                        {item.url ? (
+              <div className="relative pt-3">
+                <button
+                  type="button"
+                  onClick={() => scrollContainer(heroButtonsScrollRef, 'left')}
+                  className="absolute -left-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 sm:hidden"
+                  aria-label="Scroll hero exams left"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollContainer(heroButtonsScrollRef, 'right')}
+                  className="absolute -right-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 sm:hidden"
+                  aria-label="Scroll hero exams right"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <div
+                  ref={heroButtonsScrollRef}
+                  className="flex gap-3 overflow-x-auto pb-2 pr-4 -ml-4 pl-4 hide-scrollbar sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:p-0"
+                >
+                  {buttonCardMedia.slice(0, 4).map((item, idx) => {
+                    const examIcons = ['📋', '📚', '📅', '📊'];
+                    const examLabels = item.headline || ['Delhi Police Head Constable', 'RRB Group D', 'Exam Calendar', 'My Test Series'][idx];
+                    const examDates = item.description || ['Exam Date: 7th January 2026', 'Exam Date: 8th January 2026', '', ''][idx];
+                    
+                    return (
+                      <Link
+                        key={idx}
+                        href={item.cta_url || heroPrimaryCta?.url || '/exams'}
+                        className="group relative min-w-[200px] flex-shrink-0 bg-white rounded-2xl p-4 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200 sm:min-w-0"
+                      >
+                        <div className="flex items-start gap-3">
+                          {item.url ? (
                           <div className="w-10 h-10 flex-shrink-0">
                             <img src={item.url} alt={item.alt_text || examLabels} className="w-full h-full object-contain" />
                           </div>
@@ -438,17 +466,18 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                     </Link>
                   );
                 })}
+                </div>
               </div>
             </div>
 
             {/* Right Illustration */}
-            <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
-              <div className="relative w-full max-w-md lg:max-w-lg">
+            <div className="order-1 lg:order-2 flex justify-center lg:justify-end mt-1 sm:mt-4 lg:mt-0">
+              <div className="relative w-full max-w-[260px] sm:max-w-md lg:max-w-lg">
                 {heroMediaPrimary ? (
                   renderMediaAsset(heroMediaPrimary, 'w-full h-auto object-contain', { disableShadow: true })
                 ) : (
-                  <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 p-8">
-                    <div className="bg-white/10 backdrop-blur p-6 border border-white/20">
+                  <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 p-4 sm:p-8">
+                    <div className="bg-white/10 backdrop-blur p-3 sm:p-6 border border-white/20">
                       <h3 className="text-white text-xl font-bold mb-6 text-center">My board</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-white/20 backdrop-blur rounded-xl p-4 text-white">
@@ -525,20 +554,41 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-2 pb-2 sm:grid-cols-3 md:grid-cols-4 lg:flex lg:flex-wrap lg:overflow-x-visible">
-                {categories.map((category) => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategoryId(category.id)}
-                    className={`px-5 py-2 rounded-full text-sm font-semibold transition border ${
-                      selectedCategoryId === category.id
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
-                    }`}
-                  >
-                    {category.name}
-                  </button>
-                ))}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => scrollContainer(categoryPillsScrollRef, 'left')}
+                  className="absolute left-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white text-slate-700 shadow-sm transition hover:bg-muted sm:hidden"
+                  aria-label="Scroll categories left"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollContainer(categoryPillsScrollRef, 'right')}
+                  className="absolute right-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white text-slate-700 shadow-sm transition hover:bg-muted sm:hidden"
+                  aria-label="Scroll categories right"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <div
+                  ref={categoryPillsScrollRef}
+                  className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 px-6 -mx-6 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:flex lg:flex-wrap lg:overflow-visible"
+                >
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategoryId(category.id)}
+                      className={`px-5 py-2 rounded-full text-sm font-semibold transition border flex-shrink-0 ${
+                        selectedCategoryId === category.id
+                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                          : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {selectedCategory ? (
