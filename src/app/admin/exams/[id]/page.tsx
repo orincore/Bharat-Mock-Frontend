@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToastNotification } from '@/components/ui/toast-notification';
 import { InlineRichTextEditor } from '@/components/PageEditor/BlockEditor';
 import { adminService } from '@/lib/api/adminService';
+import { testSeriesService, TestSeries, TestSeriesSection, TestSeriesTopic } from '@/lib/api/testSeriesService';
 
 interface Option {
   id: string;
@@ -129,7 +130,13 @@ export default function ExamFormPage() {
     exam_type: 'mock_test' as 'past_paper' | 'mock_test' | 'short_quiz',
     show_in_mock_tests: false,
     is_premium: false,
-    syllabus: [] as string[]
+    syllabus: [] as string[],
+    is_test_series: false,
+    test_series_id: '',
+    test_series_section_id: '',
+    test_series_topic_id: '',
+    exam_date: '',
+    display_order: 0
   });
 
   const [sections, setSections] = useState<Section[]>([]);
@@ -140,7 +147,8 @@ export default function ExamFormPage() {
       'total_marks',
       'total_questions',
       'pass_percentage',
-      'negative_mark_value'
+      'negative_mark_value',
+      'display_order'
     ]),
     []
   );
@@ -193,6 +201,20 @@ export default function ExamFormPage() {
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [showNewSubcategory, setShowNewSubcategory] = useState(false);
   const [showNewDifficulty, setShowNewDifficulty] = useState(false);
+  const [testSeriesOptions, setTestSeriesOptions] = useState<TestSeries[]>([]);
+  const [testSeriesLoading, setTestSeriesLoading] = useState(false);
+  const [testSeriesError, setTestSeriesError] = useState('');
+  const [showNewTestSeries, setShowNewTestSeries] = useState(false);
+  const [newTestSeriesData, setNewTestSeriesData] = useState({ title: '', description: '' });
+  const [creatingTestSeries, setCreatingTestSeries] = useState(false);
+  const [seriesSections, setSeriesSections] = useState<TestSeriesSection[]>([]);
+  const [sectionTopics, setSectionTopics] = useState<TestSeriesTopic[]>([]);
+  const [showNewSeriesSection, setShowNewSeriesSection] = useState(false);
+  const [newSeriesSectionName, setNewSeriesSectionName] = useState('');
+  const [creatingSeriesSection, setCreatingSeriesSection] = useState(false);
+  const [showNewSeriesTopic, setShowNewSeriesTopic] = useState(false);
+  const [newSeriesTopicName, setNewSeriesTopicName] = useState('');
+  const [creatingSeriesTopic, setCreatingSeriesTopic] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [showCSVImport, setShowCSVImport] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ total: 0, completed: 0, current: '' });
@@ -323,13 +345,31 @@ export default function ExamFormPage() {
 
   useEffect(() => {
     fetchTaxonomies();
+    fetchTestSeries();
     if (isEditMode && examId) {
       loadExamData();
     } else {
-      // For new exams, load any existing draft data
       loadDraftData();
     }
   }, []);
+
+  useEffect(() => {
+    if (formData.is_test_series && formData.test_series_id) {
+      fetchSeriesSections(formData.test_series_id);
+    } else {
+      setSeriesSections([]);
+      setFormData(prev => ({ ...prev, test_series_section_id: '', test_series_topic_id: '' }));
+    }
+  }, [formData.is_test_series, formData.test_series_id]);
+
+  useEffect(() => {
+    if (formData.test_series_section_id) {
+      fetchSectionTopics(formData.test_series_section_id);
+    } else {
+      setSectionTopics([]);
+      setFormData(prev => ({ ...prev, test_series_topic_id: '' }));
+    }
+  }, [formData.test_series_section_id]);
 
   const uploadImagesAfterSave = async (questionIdMap: any[]) => {
     let uploadCount = 0;
@@ -610,7 +650,13 @@ export default function ExamFormPage() {
           exam_type: (examData.exam_type || 'mock_test') as 'past_paper' | 'mock_test' | 'short_quiz',
           show_in_mock_tests: examData.show_in_mock_tests ?? false,
           is_premium: examData.is_premium ?? false,
-          syllabus: examData.syllabus || []
+          syllabus: examData.syllabus || [],
+          is_test_series: (examData as any).is_test_series ?? false,
+          test_series_id: (examData as any).test_series_id || '',
+          test_series_section_id: (examData as any).test_series_section_id || '',
+          test_series_topic_id: (examData as any).test_series_topic_id || '',
+          exam_date: (examData as any).exam_date ? new Date((examData as any).exam_date).toISOString().slice(0, 10) : '',
+          display_order: (examData as any).display_order || 0
         });
 
         if (examData.logo_url) setLogoPreview(examData.logo_url);
@@ -806,6 +852,106 @@ export default function ExamFormPage() {
     }
   };
 
+  const fetchTestSeries = async () => {
+    setTestSeriesLoading(true);
+    setTestSeriesError('');
+    try {
+      const response = await testSeriesService.getTestSeries({ is_published: true, limit: 100 });
+      setTestSeriesOptions(response.data);
+    } catch (error: any) {
+      setTestSeriesError(error.message || 'Failed to load test series');
+      console.error('Failed to fetch test series:', error);
+    } finally {
+      setTestSeriesLoading(false);
+    }
+  };
+
+  const fetchSeriesSections = async (testSeriesId: string) => {
+    try {
+      const sections = await testSeriesService.getSectionsByTestSeries(testSeriesId);
+      setSeriesSections(sections);
+    } catch (error) {
+      console.error('Failed to fetch sections:', error);
+    }
+  };
+
+  const fetchSectionTopics = async (sectionId: string) => {
+    try {
+      const topics = await testSeriesService.getTopicsBySection(sectionId);
+      setSectionTopics(topics);
+    } catch (error) {
+      console.error('Failed to fetch topics:', error);
+    }
+  };
+
+  const handleCreateSeriesSection = async () => {
+    if (!newSeriesSectionName.trim() || !formData.test_series_id) return;
+    setCreatingSeriesSection(true);
+    try {
+      const newSection = await testSeriesService.createSection({
+        test_series_id: formData.test_series_id,
+        name: newSeriesSectionName,
+        display_order: seriesSections.length
+      });
+      setSeriesSections([...seriesSections, newSection]);
+      setFormData(prev => ({ ...prev, test_series_section_id: newSection.id }));
+      setNewSeriesSectionName('');
+      setShowNewSeriesSection(false);
+    } catch (error) {
+      alert('Failed to create section');
+    } finally {
+      setCreatingSeriesSection(false);
+    }
+  };
+
+  const handleCreateSeriesTopic = async () => {
+    if (!newSeriesTopicName.trim() || !formData.test_series_section_id) return;
+    setCreatingSeriesTopic(true);
+    try {
+      const newTopic = await testSeriesService.createTopic({
+        section_id: formData.test_series_section_id,
+        name: newSeriesTopicName,
+        display_order: sectionTopics.length
+      });
+      setSectionTopics([...sectionTopics, newTopic]);
+      setFormData(prev => ({ ...prev, test_series_topic_id: newTopic.id }));
+      setNewSeriesTopicName('');
+      setShowNewSeriesTopic(false);
+    } catch (error) {
+      alert('Failed to create topic');
+    } finally {
+      setCreatingSeriesTopic(false);
+    }
+  };
+
+  const handleCreateTestSeries = async () => {
+    if (!newTestSeriesData.title.trim()) return;
+    setCreatingTestSeries(true);
+    try {
+      const newSeries = await testSeriesService.createTestSeries({
+        title: newTestSeriesData.title,
+        description: newTestSeriesData.description,
+        category_id: formData.category_id || undefined,
+        subcategory_id: formData.subcategory_id || undefined,
+        difficulty_id: formData.difficulty_id || undefined,
+        is_published: true
+      });
+      setTestSeriesOptions([...testSeriesOptions, newSeries]);
+      setFormData(prev => ({ 
+        ...prev, 
+        test_series_id: newSeries.id,
+        test_series_section_id: '',
+        test_series_topic_id: ''
+      }));
+      setNewTestSeriesData({ title: '', description: '' });
+      setShowNewTestSeries(false);
+    } catch (error) {
+      alert('Failed to create test series');
+    } finally {
+      setCreatingTestSeries(false);
+    }
+  };
+
   useEffect(() => {
     hasUnsavedChangesRef.current = hasUnsavedChanges;
   }, [hasUnsavedChanges]);
@@ -860,6 +1006,15 @@ export default function ExamFormPage() {
             status: checked ? ('anytime' as const) : fallbackStatus,
             start_date: checked ? '' : prev.start_date,
             end_date: checked ? '' : prev.end_date
+          };
+        }
+        if (name === 'is_test_series') {
+          return {
+            ...prev,
+            is_test_series: checked,
+            test_series_id: checked ? prev.test_series_id : '',
+            test_series_section_id: checked ? prev.test_series_section_id : '',
+            test_series_topic_id: checked ? prev.test_series_topic_id : ''
           };
         }
         return { ...prev, [name]: checked };
@@ -2240,6 +2395,252 @@ export default function ExamFormPage() {
               </div>
             </div>
 
+            <div className="md:col-span-2">
+              <div className="p-4 rounded-xl border border-blue-300/40 bg-blue-50/50">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    name="is_test_series"
+                    checked={formData.is_test_series}
+                    onChange={handleChange}
+                    className="h-5 w-5 accent-blue-500 mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <label className="text-sm font-semibold text-foreground cursor-pointer">
+                      Part of Test Series
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enable this to add this exam to a test series with organized sections and topics.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {formData.is_test_series && (
+                <div className="mt-4 space-y-4 p-4 rounded-xl border border-border bg-muted/30">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Test Series *
+                    </label>
+                    <div className="space-y-2">
+                      <select
+                        value={formData.test_series_id}
+                        onChange={(e) => {
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            test_series_id: e.target.value,
+                            test_series_section_id: '',
+                            test_series_topic_id: ''
+                          }));
+                        }}
+                        required={formData.is_test_series}
+                        disabled={testSeriesLoading}
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                      >
+                        <option value="">Select Test Series</option>
+                        {testSeriesOptions.map(series => (
+                          <option key={series.id} value={series.id}>{series.title}</option>
+                        ))}
+                      </select>
+                      {testSeriesLoading && (
+                        <p className="text-xs text-muted-foreground mt-1">Loading test series...</p>
+                      )}
+                      {testSeriesError && (
+                        <p className="text-xs text-destructive mt-1">{testSeriesError}</p>
+                      )}
+                      {!showNewTestSeries ? (
+                        <Button 
+                          type="button" 
+                          onClick={() => setShowNewTestSeries(true)} 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Create New Test Series
+                        </Button>
+                      ) : (
+                        <div className="space-y-2 p-3 border border-border rounded-lg bg-background">
+                          <Input
+                            value={newTestSeriesData.title}
+                            onChange={(e) => setNewTestSeriesData(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="Test Series Title *"
+                            className="w-full"
+                          />
+                          <Input
+                            value={newTestSeriesData.description}
+                            onChange={(e) => setNewTestSeriesData(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Description (optional)"
+                            className="w-full"
+                          />
+                          <div className="flex gap-2">
+                            <Button 
+                              type="button" 
+                              onClick={handleCreateTestSeries} 
+                              size="sm"
+                              disabled={creatingTestSeries || !newTestSeriesData.title.trim()}
+                              className="flex-1"
+                            >
+                              {creatingTestSeries ? 'Creating...' : 'Create'}
+                            </Button>
+                            <Button 
+                              type="button" 
+                              onClick={() => {
+                                setShowNewTestSeries(false);
+                                setNewTestSeriesData({ title: '', description: '' });
+                              }} 
+                              variant="outline" 
+                              size="sm"
+                              className="flex-1"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {formData.test_series_id && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Section
+                        </label>
+                        <div className="space-y-2">
+                          <select
+                            value={formData.test_series_section_id}
+                            onChange={(e) => {
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                test_series_section_id: e.target.value,
+                                test_series_topic_id: ''
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">Select Section (Optional)</option>
+                            {seriesSections.map(section => (
+                              <option key={section.id} value={section.id}>{section.name}</option>
+                            ))}
+                          </select>
+                          {!showNewSeriesSection ? (
+                            <Button 
+                              type="button" 
+                              onClick={() => setShowNewSeriesSection(true)} 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full"
+                            >
+                              <Plus className="h-3 w-3 mr-1" /> Create New Section
+                            </Button>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Input
+                                value={newSeriesSectionName}
+                                onChange={(e) => setNewSeriesSectionName(e.target.value)}
+                                placeholder="e.g., Full Test, Sectional Test"
+                                className="flex-1"
+                              />
+                              <Button 
+                                type="button" 
+                                onClick={handleCreateSeriesSection} 
+                                size="sm"
+                                disabled={creatingSeriesSection}
+                              >
+                                {creatingSeriesSection ? 'Adding...' : 'Add'}
+                              </Button>
+                              <Button 
+                                type="button" 
+                                onClick={() => setShowNewSeriesSection(false)} 
+                                variant="outline" 
+                                size="sm"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {formData.test_series_section_id && (
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">
+                            Topic
+                          </label>
+                          <div className="space-y-2">
+                            <select
+                              value={formData.test_series_topic_id}
+                              onChange={(e) => {
+                                setFormData(prev => ({ ...prev, test_series_topic_id: e.target.value }));
+                              }}
+                              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                              <option value="">Select Topic (Optional)</option>
+                              {sectionTopics.map(topic => (
+                                <option key={topic.id} value={topic.id}>{topic.name}</option>
+                              ))}
+                            </select>
+                            {!showNewSeriesTopic ? (
+                              <Button 
+                                type="button" 
+                                onClick={() => setShowNewSeriesTopic(true)} 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full"
+                              >
+                                <Plus className="h-3 w-3 mr-1" /> Create New Topic
+                              </Button>
+                            ) : (
+                              <div className="flex gap-2">
+                                <Input
+                                  value={newSeriesTopicName}
+                                  onChange={(e) => setNewSeriesTopicName(e.target.value)}
+                                  placeholder="e.g., Paper I, Paper II"
+                                  className="flex-1"
+                                />
+                                <Button 
+                                  type="button" 
+                                  onClick={handleCreateSeriesTopic} 
+                                  size="sm"
+                                  disabled={creatingSeriesTopic}
+                                >
+                                  {creatingSeriesTopic ? 'Adding...' : 'Add'}
+                                </Button>
+                                <Button 
+                                  type="button" 
+                                  onClick={() => setShowNewSeriesTopic(false)} 
+                                  variant="outline" 
+                                  size="sm"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Display Order
+                        </label>
+                        <Input
+                          type="number"
+                          name="display_order"
+                          value={formData.display_order}
+                          onChange={handleChange}
+                          min="0"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Lower numbers appear first (0 = highest priority)
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
 
 
             <div>
@@ -2498,6 +2899,21 @@ export default function ExamFormPage() {
                 </div>
               </>
             )}
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Exam Date
+              </label>
+              <Input
+                type="date"
+                name="exam_date"
+                value={formData.exam_date}
+                onChange={handleChange}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional: Used for ordering or showing the original exam schedule
+              </p>
+            </div>
           </div>
         </div>
 

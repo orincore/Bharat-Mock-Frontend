@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { ExamCard } from '@/components/exam/ExamCard';
+import { TestSeriesCard } from '@/components/exam/TestSeriesCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
-import { examService } from '@/lib/api/examService';
-import { taxonomyService, Difficulty, Category, Subcategory } from '@/lib/api/taxonomyService';
+import { testSeriesService, TestSeries } from '@/lib/api/testSeriesService';
+import { taxonomyService, Category } from '@/lib/api/taxonomyService';
 import { pagePopularTestsService, PopularTest } from '@/lib/api/pagePopularTestsService';
 import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
 import { testimonialsService, Testimonial } from '@/lib/api/testimonialsService';
@@ -24,7 +25,8 @@ const DEFAULT_STATUS = 'anytime';
 
 export default function ExamsPage() {
   const { user, isAuthenticated } = useAuth();
-  const [exams, setExams] = useState<Exam[]>([]);
+  const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
+  const [testSeriesLoading, setTestSeriesLoading] = useState(true);
   const [popularTests, setPopularTests] = useState<PopularTest[]>([]);
   const [popularTestsLoading, setPopularTestsLoading] = useState(true);
   const [newTestSeries, setNewTestSeries] = useState<PopularTest[]>([]);
@@ -33,27 +35,13 @@ export default function ExamsPage() {
   const [bannersLoading, setBannersLoading] = useState(true);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
-  const [myTestimonial, setMyTestimonial] = useState<Testimonial | null>(null);
-  const [myTestimonialLoading, setMyTestimonialLoading] = useState(true);
-  const [testimonialForm, setTestimonialForm] = useState({
-    title: '',
-    content: '',
-    rating: 5
-  });
-  const [testimonialSaving, setTestimonialSaving] = useState(false);
-  const [testimonialDeleting, setTestimonialDeleting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const popularTestsScrollRef = useRef<HTMLDivElement>(null);
   const categoriesScrollRef = useRef<HTMLDivElement>(null);
   const newTestSeriesScrollRef = useRef<HTMLDivElement>(null);
   const testimonialsScrollRef = useRef<HTMLDivElement>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
-  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
-  const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [difficultiesLoading, setDifficultiesLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
@@ -61,11 +49,8 @@ export default function ExamsPage() {
   const [filters, setFilters] = useState({
     search: '',
     category: '',
-    subcategory: '',
-    difficulty: '',
     status: DEFAULT_STATUS
   });
-  const [selectedDifficultyIds, setSelectedDifficultyIds] = useState<string[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const activeRequestRef = useRef(0);
   
@@ -78,11 +63,11 @@ export default function ExamsPage() {
 
   useEffect(() => {
     fetchCategories();
-    fetchDifficulties();
     fetchPopularTests();
     fetchNewTestSeries();
     fetchBanners();
     fetchTestimonials();
+    fetchTestSeriesData();
   }, []);
 
   const fetchPopularTests = async () => {
@@ -109,94 +94,6 @@ export default function ExamsPage() {
     }
   };
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setMyTestimonial(null);
-      setMyTestimonialLoading(false);
-      return;
-    }
-
-    const loadOwn = async () => {
-      setMyTestimonialLoading(true);
-      try {
-        const data = await testimonialsService.getMyTestimonial();
-        setMyTestimonial(data);
-        setTestimonialForm({
-          title: data?.title || '',
-          content: data?.content || '',
-          rating: data?.rating || 5
-        });
-      } catch (err) {
-        console.error('Failed to fetch my testimonial:', err);
-      } finally {
-        setMyTestimonialLoading(false);
-      }
-    };
-
-    loadOwn();
-  }, [isAuthenticated]);
-
-  const handleTestimonialFormChange = (field: 'title' | 'content' | 'rating', value: string | number) => {
-    if (field === 'content' && typeof value === 'string') {
-      const limited = limitWords(value, 100);
-      setTestimonialForm(prev => ({
-        ...prev,
-        content: limited
-      }));
-      return;
-    }
-
-    setTestimonialForm(prev => ({
-      ...prev,
-      [field]: field === 'rating' ? Number(value) : value
-    }));
-  };
-
-  const handleSubmitTestimonial = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isAuthenticated) return;
-
-    if (!testimonialForm.content.trim()) {
-      alert('Please share a quick note about your experience.');
-      return;
-    }
-
-    setTestimonialSaving(true);
-    try {
-      if (myTestimonial) {
-        const updated = await testimonialsService.updateTestimonial(myTestimonial.id, testimonialForm);
-        setMyTestimonial(updated);
-        setTestimonials(prev => prev.map(t => (t.id === updated.id ? updated : t)));
-      } else {
-        const created = await testimonialsService.createTestimonial(testimonialForm);
-        setMyTestimonial(created);
-        setTestimonials(prev => [created, ...prev]);
-      }
-    } catch (err: any) {
-      console.error('Failed to save testimonial:', err);
-      alert(err.message || 'Failed to save testimonial');
-    } finally {
-      setTestimonialSaving(false);
-    }
-  };
-
-  const handleDeleteTestimonial = async () => {
-    if (!myTestimonial) return;
-    if (!confirm('Delete your testimonial?')) return;
-
-    setTestimonialDeleting(true);
-    try {
-      await testimonialsService.deleteTestimonial(myTestimonial.id);
-      setTestimonials(prev => prev.filter(t => t.id !== myTestimonial.id));
-      setMyTestimonial(null);
-      setTestimonialForm({ title: '', content: '', rating: 5 });
-    } catch (err: any) {
-      console.error('Failed to delete testimonial:', err);
-      alert(err.message || 'Failed to delete testimonial');
-    } finally {
-      setTestimonialDeleting(false);
-    }
-  };
 
   const fetchNewTestSeries = async () => {
     setNewTestSeriesLoading(true);
@@ -222,19 +119,25 @@ export default function ExamsPage() {
     }
   };
 
-  useEffect(() => {
-    if (selectedCategoryIds.length > 0) {
-      fetchSubcategories(selectedCategoryIds);
-    } else {
-      setSubcategories([]);
-      setSelectedSubcategoryIds([]);
-      handleFilterChange('subcategory', '');
+  const fetchTestSeriesData = async () => {
+    setTestSeriesLoading(true);
+    try {
+      const response = await testSeriesService.getTestSeries({
+        is_published: true,
+        limit: 12,
+        page: 1
+      });
+      setTestSeries(response.data);
+    } catch (err) {
+      console.error('Failed to fetch test series:', err);
+    } finally {
+      setTestSeriesLoading(false);
     }
-  }, [selectedCategoryIds]);
+  };
 
   useEffect(() => {
-    fetchExams();
-  }, [filters.category, filters.subcategory, filters.difficulty, filters.status, pagination.page, debouncedSearch]);
+    fetchFilteredSeries();
+  }, [filters.category, filters.status, pagination.page, debouncedSearch]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -242,18 +145,6 @@ export default function ExamsPage() {
     }, 400);
     return () => clearTimeout(handle);
   }, [filters.search]);
-
-  useEffect(() => {
-    if (!filters.difficulty) {
-      setSelectedDifficultyIds([]);
-      return;
-    }
-    const names = filters.difficulty.split(',').map(name => name.trim()).filter(Boolean);
-    const matched = difficultyOptions
-      .filter(option => names.includes(option.name))
-      .map(option => option.id);
-    setSelectedDifficultyIds(matched);
-  }, [filters.difficulty, difficultyOptions]);
 
   const fetchCategories = async () => {
     setCategoriesLoading(true);
@@ -270,66 +161,32 @@ export default function ExamsPage() {
     }
   };
 
-  const fetchSubcategories = async (categoryIds: string[]) => {
-    setSubcategoriesLoading(true);
-    try {
-      const responses = await Promise.all(
-        categoryIds.map(async (categoryId) => {
-          try {
-            return await taxonomyService.getSubcategories(categoryId);
-          } catch (err) {
-            console.error(`Failed to fetch subcategories for category ${categoryId}:`, err);
-            return [];
-          }
-        })
-      );
-      const merged = responses.flat().filter(sub => sub && sub.name) as Subcategory[];
-      const unique = merged.filter((sub, index, self) => self.findIndex(item => item.id === sub.id) === index);
-      setSubcategories(unique);
-    } catch (err) {
-      console.error('Failed to fetch subcategories:', err);
-      setSubcategories([]);
-    } finally {
-      setSubcategoriesLoading(false);
-    }
-  };
-
-  const fetchDifficulties = async () => {
-    setDifficultiesLoading(true);
-    try {
-      const response = await taxonomyService.getDifficulties();
-      setDifficultyOptions(response);
-    } catch (err) {
-      console.error('Failed to fetch difficulties:', err);
-    } finally {
-      setDifficultiesLoading(false);
-    }
-  };
-
-  const fetchExams = async () => {
+  const fetchFilteredSeries = async () => {
     const requestId = ++activeRequestRef.current;
     setIsLoading(true);
     setError('');
     
     try {
-      const response = await examService.getExams({
-        ...filters,
-        search: debouncedSearch,
+      const categoryIds = filters.category ? filters.category.split(',').map(id => id.trim()).filter(Boolean) : [];
+      const response = await testSeriesService.getTestSeries({
         page: pagination.page,
-        limit: pagination.limit
+        limit: pagination.limit,
+        search: debouncedSearch,
+        category: categoryIds[0],
+        is_published: true
       });
 
       if (requestId !== activeRequestRef.current) {
         return;
       }
 
-      const sortedExams = [...response.data].sort((a, b) => {
+      const sortedSeries = [...response.data].sort((a, b) => {
         const aDate = a.created_at || a.updated_at || '';
         const bDate = b.created_at || b.updated_at || '';
         return new Date(bDate).getTime() - new Date(aDate).getTime();
       });
 
-      setExams(sortedExams);
+      setTestSeries(sortedSeries);
       setPagination(prev => ({
         ...prev,
         total: response.total,
@@ -339,7 +196,7 @@ export default function ExamsPage() {
       if (requestId !== activeRequestRef.current) {
         return;
       }
-      setError(err.message || 'Failed to load exams');
+      setError(err.message || 'Failed to load test series');
     } finally {
       if (requestId !== activeRequestRef.current) {
         return;
@@ -361,22 +218,17 @@ export default function ExamsPage() {
   const syncCategoryFilters = (ids: string[]) => {
     if (ids.length === 0) {
       handleFilterChange('category', '');
-      setSelectedSubcategoryIds([]);
-      handleFilterChange('subcategory', '');
       return;
     }
 
-    const selectedCategories = categories.filter(category => ids.includes(category.id));
-    const slugs = selectedCategories.map(category => category.slug || category.name).filter(Boolean).join(',');
-    handleFilterChange('category', slugs);
-    setSelectedSubcategoryIds([]);
-    handleFilterChange('subcategory', '');
+    const idString = ids.join(',');
+    handleFilterChange('category', idString);
   };
 
   const toggleCategory = (categoryId: string) => {
     setSelectedCategoryIds(prev => {
       const exists = prev.includes(categoryId);
-      const next = exists ? prev.filter(id => id !== categoryId) : [...prev, categoryId];
+      const next = exists ? [] : [categoryId];
       syncCategoryFilters(next);
       return next;
     });
@@ -387,76 +239,20 @@ export default function ExamsPage() {
     syncCategoryFilters([]);
   };
 
-  const syncSubcategoryFilters = (ids: string[]) => {
-    if (ids.length === 0) {
-      handleFilterChange('subcategory', '');
-      return;
-    }
-
-    const selectedSubs = subcategories.filter(sub => ids.includes(sub.id));
-    const slugs = selectedSubs.map(sub => sub.slug || sub.name).filter(Boolean).join(',');
-    handleFilterChange('subcategory', slugs);
-  };
-
-  const toggleSubcategory = (subcategoryId: string) => {
-    setSelectedSubcategoryIds(prev => {
-      const exists = prev.includes(subcategoryId);
-      const next = exists ? prev.filter(id => id !== subcategoryId) : [...prev, subcategoryId];
-      syncSubcategoryFilters(next);
-      return next;
-    });
-  };
-
-  const clearSubcategorySelection = () => {
-    setSelectedSubcategoryIds([]);
-    syncSubcategoryFilters([]);
-  };
-
-  const syncDifficultyFilters = (ids: string[]) => {
-    if (ids.length === 0) {
-      handleFilterChange('difficulty', '');
-      return;
-    }
-    const selected = difficultyOptions.filter(option => ids.includes(option.id));
-    const names = selected.map(option => option.name).filter(Boolean).join(',');
-    handleFilterChange('difficulty', names);
-  };
-
-  const toggleDifficulty = (difficultyId: string) => {
-    setSelectedDifficultyIds(prev => {
-      const exists = prev.includes(difficultyId);
-      const next = exists ? prev.filter(id => id !== difficultyId) : [...prev, difficultyId];
-      syncDifficultyFilters(next);
-      return next;
-    });
-  };
-
-  const clearDifficultySelection = () => {
-    setSelectedDifficultyIds([]);
-    syncDifficultyFilters([]);
-  };
-
   const clearFilters = () => {
     setFilters({
       search: '',
       category: '',
-      subcategory: '',
-      difficulty: '',
       status: DEFAULT_STATUS
     });
     setSelectedCategoryIds([]);
-    setSelectedSubcategoryIds([]);
-    setSelectedDifficultyIds([]);
-    setSubcategories([]);
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  const isFilterDataLoading = categoriesLoading || difficultiesLoading;
+  const isFilterDataLoading = categoriesLoading;
   const hasCustomFilters = Boolean(
     filters.search ||
     filters.category ||
-    filters.subcategory ||
-    filters.difficulty ||
     filters.status !== DEFAULT_STATUS
   );
 
@@ -495,23 +291,18 @@ export default function ExamsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-10">
-        <div className="container-main">
-          <Breadcrumbs 
-            items={[
-              HomeBreadcrumb(),
-              { label: 'Exams' }
-            ]}
-            variant="dark"
-            className="mb-6"
-          />
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Exams</h1>
-          <p className="text-xl text-blue-100 max-w-2xl">Find and attempt mock tests from various categories and difficulty levels</p>
-        </div>
-      </div>
+      
       <section className="border-b border-border bg-white/80">
         <div className="container-main py-10 flex flex-col gap-4">
           <div className="space-y-2">
+            <Breadcrumbs 
+            items={[
+              HomeBreadcrumb(),
+              { label: 'Mock Test Series' }
+            ]}
+            variant="light"
+            className="mb-6"
+          />
             <p className="text-xs uppercase tracking-wide text-primary font-semibold">Bharat Mock Exams</p>
             <h1 className="font-display text-3xl font-bold text-slate-900">Practice with thousands of mock tests</h1>
             <p className="text-slate-600 max-w-3xl">Filter by category, difficulty, and status to find the perfect exam for your preparation.</p>
@@ -586,14 +377,12 @@ export default function ExamsPage() {
       <section className="bg-slate-900 text-white border-b border-slate-800">
         <div className="container-main py-6 space-y-3">
           <div className="flex flex-col gap-2">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/70 font-semibold">Browse</p>
-            <div className="flex flex-wrap items-center gap-3">
+            
+            <div className="flex flex-wrap items-center gap-3 justify-center text-center">
               <h2 className="text-2xl font-bold">Government exams by categories</h2>
-              <span className="text-sm text-white/60">Explore {categories.length}+ niche tracks</span>
+              
             </div>
-            <p className="text-white/70 max-w-3xl text-sm">
-              Jump straight into the domain you care about. These quick filters instantly tighten the exam list below.
-            </p>
+            
           </div>
 
           {categoriesLoading ? (
@@ -678,10 +467,10 @@ export default function ExamsPage() {
       </section>
 
       <div className="container-main py-8">
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
-          <aside className="lg:w-64 xl:w-72 flex-shrink-0">
-            <div className="bg-card rounded-xl border border-border p-6 sticky top-20">
+          <aside className="lg:w-60 xl:w-64 flex-shrink-0">
+            <div className="bg-card rounded-xl border border-border p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
                   <Filter className="h-5 w-5 text-primary" />
@@ -739,87 +528,8 @@ export default function ExamsPage() {
                         ))}
                       </div>
                     </div>
-
-                    {/* Subcategory Filter */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Sub-category
-                      </label>
-                      {subcategoriesLoading ? (
-                        <Skeleton className="h-10 w-full rounded-lg" />
-                      ) : (
-                        <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
-                          <label className="flex items-center gap-2 text-sm text-foreground">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 accent-primary"
-                              checked={selectedSubcategoryIds.length === 0}
-                              onChange={clearSubcategorySelection}
-                              disabled={selectedCategoryIds.length === 0 || subcategories.length === 0}
-                            />
-                            <span>{selectedCategoryIds.length > 0 ? 'All Sub-categories' : 'Select category first'}</span>
-                          </label>
-                          {subcategories.map((subcategory) => (
-                            <label key={subcategory.id} className="flex items-center gap-2 text-sm text-foreground">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 accent-primary"
-                                checked={selectedSubcategoryIds.includes(subcategory.id)}
-                                onChange={() => toggleSubcategory(subcategory.id)}
-                                disabled={selectedCategoryIds.length === 0}
-                              />
-                              <span>{subcategory.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Difficulty Filter */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Tier
-                      </label>
-                      <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
-                        <label className="flex items-center gap-2 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-primary"
-                            checked={selectedDifficultyIds.length === 0}
-                            onChange={clearDifficultySelection}
-                          />
-                          <span>All Tiers</span>
-                        </label>
-                        {difficultyOptions.map((difficulty) => (
-                          <label key={difficulty.id} className="flex items-center gap-2 text-sm text-foreground">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 accent-primary"
-                              checked={selectedDifficultyIds.includes(difficulty.id)}
-                              onChange={() => toggleDifficulty(difficulty.id)}
-                            />
-                            <span>{difficulty.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    
                   </div>
 
-                  {/* Stats */}
-                  <div className="mt-8 pt-6 border-t border-border">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Total Exams</span>
-                        <span className="font-semibold text-foreground">{pagination.total}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Categories</span>
-                        <span className="font-semibold text-foreground">{categories.length}</span>
-                      </div>
-                    </div>
-                  </div>
                 </>
               )}
             </div>
@@ -831,28 +541,29 @@ export default function ExamsPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="font-display text-2xl font-bold text-foreground">
-                  {hasCustomFilters ? 'Filtered Results' : 'Anytime Exams'}
+                  Test Series
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Showing {exams.length} of {pagination.total} exams
+                  Showing {testSeries.length} test series
                 </p>
               </div>
             </div>
 
             {/* Loading State */}
-            {isLoading && (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-live="polite" aria-busy="true">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <div key={index} className="card-interactive overflow-hidden h-full flex flex-col border border-border rounded-xl p-5 space-y-4">
-                    <Skeleton className="h-32 w-full rounded-lg" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-24" />
+            {testSeriesLoading && (
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite" aria-busy="true">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="card-interactive overflow-hidden h-full flex flex-col border border-border rounded-xl">
+                    <Skeleton className="h-32 w-full" />
+                    <div className="p-5 space-y-4">
                       <Skeleton className="h-6 w-3/4" />
                       <Skeleton className="h-4 w-full" />
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-border">
-                      <Skeleton className="h-8 w-24 rounded-full" />
-                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-full" />
+                      <div className="grid grid-cols-2 gap-3">
+                        <Skeleton className="h-16 w-full rounded-lg" />
+                        <Skeleton className="h-16 w-full rounded-lg" />
+                      </div>
+                      <Skeleton className="h-10 w-full rounded-full" />
                     </div>
                   </div>
                 ))}
@@ -860,120 +571,72 @@ export default function ExamsPage() {
             )}
 
             {/* Error State */}
-            {error && !isLoading && (
+            {error && !testSeriesLoading && (
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
                 <p className="text-destructive">{error}</p>
-                <Button onClick={fetchExams} variant="outline" className="mt-4">
+                <Button onClick={fetchTestSeriesData} variant="outline" className="mt-4">
                   Try Again
                 </Button>
               </div>
             )}
 
             {/* Empty State */}
-            {!isLoading && !error && exams.length === 0 && (
+            {!testSeriesLoading && !error && testSeries.length === 0 && (
               <div className="bg-card rounded-xl border border-border p-12 text-center">
                 <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                  No exams found
+                  No test series found
                 </h3>
                 <p className="text-muted-foreground mb-6">
-                  Try adjusting your filters or search query
+                  Check back soon for new test series
                 </p>
-                <Button onClick={clearFilters} variant="outline">
-                  Clear Filters
-                </Button>
               </div>
             )}
 
-            {/* Exams Grid */}
-            {!isLoading && !error && exams.length > 0 && (
-              <>
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                  {exams.map((exam) => (
-                    <ExamCard key={exam.id} exam={exam} size="compact" />
-                  ))}
-                </div>
-
-                {/* Pagination */}
-                {pagination.totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-2 mt-12">
-                    <Button
-                      variant="outline"
-                      onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                      disabled={pagination.page === 1}
-                    >
-                      Previous
-                    </Button>
-                    
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={pagination.page === pageNum ? 'default' : 'outline'}
-                            onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
-                            className="w-10"
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                      {pagination.totalPages > 5 && (
-                        <>
-                          <span className="text-muted-foreground">...</span>
-                          <Button
-                            variant={pagination.page === pagination.totalPages ? 'default' : 'outline'}
-                            onClick={() => setPagination(prev => ({ ...prev, page: pagination.totalPages }))}
-                            className="w-10"
-                          >
-                            {pagination.totalPages}
-                          </Button>
-                        </>
-                      )}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                      disabled={pagination.page === pagination.totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Dynamic Banner Section */}
-            {!bannersLoading && banners.length > 0 && (
-              <div className="mt-8">
-                {banners.map((banner) => (
-                  <div key={banner.id} className="w-full">
-                    {banner.link_url ? (
-                      <Link href={banner.link_url} className="block w-full">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={banner.image_url}
-                          alt={banner.alt_text || 'Banner'}
-                          className="w-full h-auto rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-                        />
-                      </Link>
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={banner.image_url}
-                        alt={banner.alt_text || 'Banner'}
-                        className="w-full h-auto rounded-lg shadow-md"
-                      />
-                    )}
-                  </div>
+            {/* Test Series Grid */}
+            {!testSeriesLoading && !error && testSeries.length > 0 && (
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-2">
+                {testSeries.map((series) => (
+                  <TestSeriesCard key={series.id} testSeries={series} />
                 ))}
               </div>
             )}
+          </main>
+        </div>
+      </div>
 
-            {/* Why Take Test Series Section */}
-            <div className="mt-12 mb-8 rounded-3xl border border-border/60 bg-white shadow-sm p-6 sm:p-8 lg:p-10">
+      {/* Dynamic Banner Section */}
+      {!bannersLoading && banners.length > 0 && (
+        <div className="container-main mt-8">
+          <div className="rounded-2xl overflow-hidden">
+            {banners.map((banner) => (
+              <div key={banner.id} className="w-full">
+                {banner.link_url ? (
+                  <Link href={banner.link_url} className="block w-full">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={banner.image_url}
+                      alt={banner.alt_text || 'Banner'}
+                      className="w-full h-auto object-cover"
+                    />
+                  </Link>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={banner.image_url}
+                    alt={banner.alt_text || 'Banner'}
+                    className="w-full h-auto object-cover"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Why Take Test Series Section */}
+      <div className="container-main mt-12 mb-8">
+            <div className="rounded-3xl border border-border/60 bg-white shadow-sm p-6 sm:p-8 lg:p-10">
               <h2 className="font-display text-3xl font-bold text-foreground mb-6 text-center">
                 Why take Bharat Mock Test Series?
               </h2>
@@ -1051,10 +714,11 @@ export default function ExamsPage() {
                 </div>
               </div>
             </div>
+      </div>
 
-            {/* New Test Series For You Section */}
-            {newTestSeries.length > 0 && (
-              <div className="mt-12 mb-8">
+      {/* New Test Series For You Section */}
+      {newTestSeries.length > 0 && (
+        <div className="container-main mt-12 mb-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-sm text-orange-600 dark:text-orange-300 mb-2">
@@ -1100,195 +764,118 @@ export default function ExamsPage() {
                     </button>
                   </div>
                 )}
-              </div>
-            )}
+        </div>
+      )}
 
-            {/* Testimonials Section */}
-            <div className="mt-12">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.35em] text-orange-500 font-semibold">Social Proof</p>
-                  <h2 className="font-display text-3xl font-bold text-foreground mt-2">
-                    Loved by serious aspirants
-                  </h2>
-                  <p className="text-muted-foreground mt-1">
-                    Highest-rated experiences show up first. Share yours once you try Bharat Mock.
-                  </p>
+      {/* Testimonials Section */}
+      <section className="container-main mt-16">
+        <div className="relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] p-8 md:p-10">
+          <div className="pointer-events-none absolute inset-0 opacity-70">
+            <div className="absolute -top-16 -right-24 h-64 w-64 rounded-full bg-orange-200 blur-3xl" />
+            <div className="absolute bottom-0 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-pink-200 blur-3xl" />
+          </div>
+
+          <div className="relative z-10 space-y-10">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl space-y-4">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
+                  Social Proof
                 </div>
-
-                {isAuthenticated && !myTestimonialLoading && (
-                  <Button variant="outline" onClick={() => {
-                    const formAnchor = document.getElementById('testimonial-form');
-                    formAnchor?.scrollIntoView({ behavior: 'smooth' });
-                  }}>
-                    Share Your Experience
-                  </Button>
-                )}
+                <h2 className="font-display text-4xl font-semibold text-slate-900">
+                  Aspirants can't stop talking about Bharat Mock
+                </h2>
+                
+                <div className="flex flex-wrap gap-6 text-sm text-slate-600">
+                  
+                </div>
               </div>
 
-              <div className="relative">
-                {testimonialsLoading ? (
-                  <div className="flex gap-4 overflow-x-auto hide-scrollbar">
-                    {Array.from({ length: 3 }).map((_, idx) => (
-                      <div key={idx} className="flex-shrink-0 w-80">
-                        <Skeleton className="h-48 w-full rounded-2xl" />
-                      </div>
-                    ))}
-                  </div>
-                ) : testimonials.length === 0 ? (
-                  <div className="border border-dashed border-border rounded-2xl p-10 text-center">
-                    <h3 className="font-display text-xl font-semibold text-foreground mb-2">No testimonials yet</h3>
-                    <p className="text-muted-foreground">
-                      Be the first to talk about your preparation journey with Bharat Mock.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="relative group">
-                    <button
-                      onClick={() => scrollLeft(testimonialsScrollRef)}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
-                      aria-label="Scroll left"
-                    >
-                      <ChevronLeft className="h-5 w-5 text-slate-700" />
-                    </button>
-                    <div ref={testimonialsScrollRef} className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
-                      {testimonials.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex-shrink-0 w-[22rem] snap-start bg-white border border-border rounded-2xl p-6 shadow-sm"
-                      >
-                        <div className="flex items-center gap-3 mb-3">
-                          <div>
-                            <p className="text-base font-semibold text-foreground">
-                              {item.user?.name || 'Anonymous Aspirant'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(item.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="ml-auto flex items-center gap-1">
-                            {Array.from({ length: 5 }).map((_, idx) =>
-                              idx < item.rating ? (
-                                <Star key={idx} className="w-4 h-4 text-amber-400 fill-current" />
-                              ) : (
-                                <StarOff key={idx} className="w-4 h-4 text-gray-300" />
-                              )
-                            )}
-                          </div>
-                        </div>
-                        {item.title && (
-                          <p className="text-sm font-semibold text-foreground mb-1">{item.title}</p>
-                        )}
-                        <p className="text-sm text-muted-foreground whitespace-pre-line">
-                          {formatTestimonialContent(item.content || '')}
-                        </p>
-                      </div>
-                    ))}
-                    </div>
-                    <button
-                      onClick={() => scrollRight(testimonialsScrollRef)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
-                      aria-label="Scroll right"
-                    >
-                      <ChevronRight className="h-5 w-5 text-slate-700" />
-                    </button>
-                  </div>
-                )}
-                <Card className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">Share your testimonial</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Only logged-in aspirants can post. You can update or delete it anytime.
-                      </p>
-                    </div>
-                    {!isAuthenticated && (
-                      <Link href="/login" className="text-blue-600 text-sm font-semibold">
-                        Log in to share
-                      </Link>
-                    )}
-                  </div>
-
-                  {isAuthenticated ? (
-                    <form onSubmit={handleSubmitTestimonial} className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium text-foreground">Title (optional)</label>
-                        <Input
-                          value={testimonialForm.title}
-                          onChange={(e) => handleTestimonialFormChange('title', e.target.value)}
-                          placeholder="e.g. Perfect mock experience"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium text-foreground">Your experience</label>
-                          <span className="text-xs text-muted-foreground">
-                            {getWordCount(testimonialForm.content)} / 100 words
-                          </span>
-                        </div>
-                        <Textarea
-                          value={testimonialForm.content}
-                          onChange={(e) => handleTestimonialFormChange('content', e.target.value)}
-                          placeholder="Share how Bharat Mock helped in your preparation"
-                          rows={4}
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium text-foreground">Rating</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          {Array.from({ length: 5 }).map((_, idx) => (
-                            <button
-                              type="button"
-                              key={idx}
-                              onClick={() => handleTestimonialFormChange('rating', idx + 1)}
-                              className="focus:outline-none"
-                            >
-                              {idx < testimonialForm.rating ? (
-                                <Star className="w-6 h-6 text-amber-400 fill-current" />
-                              ) : (
-                                <StarOff className="w-6 h-6 text-gray-300" />
-                              )}
-                            </button>
-                          ))}
-                          <span className="text-sm text-muted-foreground">{testimonialForm.rating} / 5</span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Button type="submit" disabled={testimonialSaving}>
-                          {testimonialSaving ? 'Saving...' : myTestimonial ? 'Update testimonial' : 'Submit testimonial'}
-                        </Button>
-                        {myTestimonial && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleDeleteTestimonial}
-                            disabled={testimonialDeleting}
-                          >
-                            {testimonialDeleting ? 'Deleting...' : 'Delete testimonial'}
-                          </Button>
-                        )}
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="border border-dashed border-border rounded-lg p-6 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Please log in to post your testimonial and help other aspirants.
-                      </p>
-                      <Button asChild className="mt-4">
-                        <Link href="/login">Log in to share</Link>
-                      </Button>
-                    </div>
-                  )}
-                </Card>
-              </div>
+              
             </div>
 
-            {/* Access Steps Section */}
-            <div className="mt-16 mb-12">
+            <div className="relative">
+              {testimonialsLoading ? (
+                <div className="flex gap-4 overflow-x-auto hide-scrollbar">
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="flex-shrink-0 w-80">
+                      <Skeleton className="h-56 w-full rounded-2xl bg-white/60" />
+                    </div>
+                  ))}
+                </div>
+              ) : testimonials.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/70 bg-white/70 p-10 text-center">
+                  <h3 className="font-display text-2xl font-semibold text-slate-900 mb-2">No stories yet</h3>
+                  <p className="text-slate-600">New testimonials will appear here as admins publish them.</p>
+                </div>
+              ) : (
+                <div className="relative group">
+                  <button
+                    onClick={() => scrollLeft(testimonialsScrollRef)}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-slate-700" />
+                  </button>
+                  <div
+                    ref={testimonialsScrollRef}
+                    className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth"
+                  >
+                    {testimonials.map((item) => (
+                      <div key={item.id} className="flex-shrink-0 w-[22rem] snap-start">
+                        <div className="relative h-full rounded-3xl bg-gradient-to-br from-white via-white to-white/80 p-[1px] shadow-lg">
+                          <div className="h-full rounded-[calc(1.5rem-1px)] bg-white/95 p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                              {item.profilePhotoUrl ? (
+                                <img
+                                  src={item.profilePhotoUrl}
+                                  alt={item.name}
+                                  className="h-12 w-12 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-base font-semibold text-orange-600">
+                                  {item.name?.slice(0, 1) || 'A'}
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-base font-semibold text-slate-900">{item.name}</p>
+                                {item.exam && (
+                                  <p className="text-xs font-medium uppercase tracking-wide text-orange-500">{item.exam}</p>
+                                )}
+                              </div>
+                              {item.highlight && (
+                                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-600">
+                                  Featured
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-line">
+                              “{formatTestimonialContent(item.review || '')}”
+                            </p>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                              
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => scrollRight(testimonialsScrollRef)}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight className="h-5 w-5 text-slate-700" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Access Steps Section */}
+      <div className="container-main mt-16 mb-12">
               <div className="text-center mb-10">
                 <p className="text-sm uppercase tracking-[0.35em] text-blue-500 font-semibold">Get Started Fast</p>
                 <h2 className="font-display text-3xl font-bold text-foreground mt-2">
@@ -1346,10 +933,11 @@ export default function ExamsPage() {
                   </div>
                 ))}
               </div>
-            </div>
+      </div>
 
-            {/* SEO Content Block */}
-            <section className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
+      {/* SEO Content Block */}
+      <div className="container-main">
+        <section className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
               <div className="max-w-5xl mx-auto space-y-4">
                 <p className="text-xs uppercase tracking-[0.4em] text-blue-300">Master your exams</p>
                 <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
@@ -1376,11 +964,12 @@ export default function ExamsPage() {
                   </div>
                 </div>
               </div>
-            </section>
+        </section>
+      </div>
 
-            {/* FAQ Section */}
-            <section className="py-10">
-              <div className="container-main">
+      {/* FAQ Section */}
+      <section className="py-10">
+        <div className="container-main">
                 <div className="max-w-4xl mx-auto">
                   <h2 className="font-display text-4xl font-bold text-foreground mb-12 text-center">
                     FAQ's
@@ -1456,11 +1045,8 @@ export default function ExamsPage() {
                     ))}
                   </div>
                 </div>
-              </div>
-            </section>
-          </main>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

@@ -18,6 +18,8 @@ export interface Exam {
   end_date?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  exam_date?: string | null;
+  exam_year?: number | null;
   pass_percentage: number;
   passPercentage?: number;
   is_free: boolean;
@@ -601,11 +603,19 @@ export interface PaginatedResponse<T> {
 export interface FilterOptions {
   search?: string;
   category?: string;
+  category_id?: string;
   subcategory?: string;
+  subcategory_id?: string;
   status?: string;
   difficulty?: string;
+  difficulty_id?: string;
   exam_type?: string;
   is_premium?: string;
+  year?: string;
+  is_published?: string;
+  is_free?: string;
+  date_from?: string;
+  date_to?: string;
   location?: string;
   type?: string;
   level?: string;

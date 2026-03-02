@@ -928,27 +928,15 @@ export default function ExamPageAdmin() {
                         <div className="flex items-center gap-3 mb-2">
                           <div>
                             <p className="text-sm font-semibold text-gray-900">
-                              {testimonial.user?.name || 'Unknown User'}
+                              {testimonial.name || 'Unnamed testimonial'}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {testimonial.user?.email || 'No email provided'}
+                              {testimonial.exam ? `Exam: ${testimonial.exam}` : 'Exam not specified'}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1 text-amber-500 ml-2">
-                            {Array.from({ length: 5 }).map((_, index) =>
-                              index < testimonial.rating ? (
-                                <Star key={index} className="w-4 h-4 fill-current" />
-                              ) : (
-                                <StarOff key={index} className="w-4 h-4 text-gray-300" />
-                              )
-                            )}
-                          </div>
                         </div>
-                        {testimonial.title && (
-                          <p className="text-sm font-medium text-gray-800 mb-1">{testimonial.title}</p>
-                        )}
-                        <p className="text-sm text-gray-600 whitespace-pre-line line-clamp-3">
-                          {testimonial.content}
+                        <p className="text-sm text-gray-600 whitespace-pre-line">
+                          {testimonial.review}
                         </p>
                       </div>
 

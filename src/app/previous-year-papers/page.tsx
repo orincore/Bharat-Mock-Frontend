@@ -17,15 +17,19 @@ const PAPER_EXAM_TYPE = 'past_paper';
 type PremiumTab = 'all' | 'premium';
 type ExamWithDerivedYear = Exam & { derivedYear?: string | null };
 
-const extractYearFromTitle = (title: string): string | null => {
-  if (!title) return null;
-  const match = title.match(/\b(19|20)\d{2}\b/);
-  return match ? match[0] : null;
+const deriveYear = (exam: Exam): string | null => {
+  if (typeof exam.exam_year === 'number') {
+    return String(exam.exam_year);
+  }
+
+  if (!exam.exam_date) return null;
+  const parsed = new Date(exam.exam_date);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return String(parsed.getFullYear());
 };
 
 export default function PrevPapersPage() {
   const [exams, setExams] = useState<ExamWithDerivedYear[]>([]);
-  const [allExams, setAllExams] = useState<ExamWithDerivedYear[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -68,7 +72,16 @@ export default function PrevPapersPage() {
 
   useEffect(() => {
     fetchExams();
-  }, [filters.category, filters.subcategory, filters.difficulty, filters.status, filters.is_premium, pagination.page, debouncedSearch]);
+  }, [
+    filters.category,
+    filters.subcategory,
+    filters.difficulty,
+    filters.status,
+    filters.is_premium,
+    pagination.page,
+    debouncedSearch,
+    selectedYears
+  ]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -116,15 +129,6 @@ export default function PrevPapersPage() {
     }
   };
 
-  const applyYearFilter = (dataset: ExamWithDerivedYear[], years: string[]) => {
-    if (!years.length) {
-      setExams(dataset);
-      return;
-    }
-    const filtered = dataset.filter((exam) => exam.derivedYear && years.includes(exam.derivedYear));
-    setExams(filtered);
-  };
-
   const fetchExams = async () => {
     const requestId = ++activeRequestRef.current;
     setIsLoading(true);
@@ -136,13 +140,14 @@ export default function PrevPapersPage() {
         search: debouncedSearch,
         page: pagination.page,
         limit: pagination.limit,
+        year: selectedYears.join(',') || undefined,
       });
 
       if (requestId !== activeRequestRef.current) return;
 
       const enrichedExams: ExamWithDerivedYear[] = [...response.data].map((exam) => ({
         ...exam,
-        derivedYear: extractYearFromTitle(exam.title),
+        derivedYear: deriveYear(exam),
       }));
 
       const sortedExams = enrichedExams.sort((a, b) => {
@@ -151,13 +156,14 @@ export default function PrevPapersPage() {
         return new Date(bDate).getTime() - new Date(aDate).getTime();
       });
 
-      const uniqueYears = Array.from(
-        new Set(sortedExams.map((exam) => exam.derivedYear).filter((year): year is string => Boolean(year)))
-      ).sort((a, b) => Number(b) - Number(a));
+      const backendYearOptions = (response.years || [])
+        .filter((year) => typeof year === 'number')
+        .map((year) => String(year))
+        .sort((a, b) => Number(b) - Number(a));
 
-      setYearOptions(uniqueYears);
-      setAllExams(sortedExams);
-      applyYearFilter(sortedExams, selectedYears);
+      setYearOptions(backendYearOptions);
+      setExams(sortedExams);
+
       setPagination((prev) => ({
         ...prev,
         total: response.total,
@@ -276,10 +282,6 @@ export default function PrevPapersPage() {
     }));
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
-
-  useEffect(() => {
-    applyYearFilter(allExams, selectedYears);
-  }, [selectedYears, allExams]);
 
   const clearFilters = () => {
     setFilters({

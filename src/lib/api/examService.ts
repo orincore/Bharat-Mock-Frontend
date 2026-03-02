@@ -4,6 +4,7 @@ import { Exam, Question, FilterOptions, PaginatedResponse, ExamHistoryEntry } fr
 interface ExamResponse {
   success: boolean;
   data: Exam[];
+  years?: number[];
   pagination: {
     page: number;
     limit: number;
@@ -64,8 +65,10 @@ interface QuestionsResponse {
   };
 }
 
+type ExamListResult = PaginatedResponse<Exam> & { years?: number[] };
+
 export const examService = {
-  async getExams(options?: FilterOptions): Promise<PaginatedResponse<Exam>> {
+  async getExams(options?: FilterOptions): Promise<ExamListResult> {
     const params = new URLSearchParams();
     
     if (options?.page) params.append('page', options.page.toString());
@@ -77,6 +80,7 @@ export const examService = {
     if (options?.difficulty) params.append('difficulty', options.difficulty);
     if (options?.exam_type) params.append('exam_type', options.exam_type);
     if (options?.is_premium) params.append('is_premium', options.is_premium);
+    if (options?.year) params.append('year', options.year);
 
     const response = await apiClient.get<ExamResponse>(
       `/exams?${params.toString()}`
@@ -84,6 +88,7 @@ export const examService = {
 
     return {
       data: response.data,
+      years: response.years,
       total: response.pagination.total,
       page: response.pagination.page,
       limit: response.pagination.limit,

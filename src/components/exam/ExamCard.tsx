@@ -182,7 +182,7 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
               variant={isPremiumVariant ? 'default' : 'secondary'}
               size={isCompact ? 'sm' : 'default'}
             >
-              View Details
+              Attempt Now
               <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
             </Button>
           </Link>

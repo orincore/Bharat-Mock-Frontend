@@ -1,23 +1,32 @@
 import { apiClient } from './client';
 
-export interface TestimonialUser {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-  avatarUrl?: string | null;
-}
-
 export interface Testimonial {
   id: string;
-  userId: string;
-  title?: string | null;
-  content: string;
-  rating: number;
+  name: string;
+  profilePhotoUrl?: string;
+  review: string;
+  exam?: string;
   highlight: boolean;
   isPublished: boolean;
+  displayOrder: number;
   createdAt: string;
   updatedAt: string;
-  user?: TestimonialUser | null;
+}
+
+export interface CreateTestimonialData {
+  name: string;
+  review: string;
+  exam?: string;
+  displayOrder?: number;
+}
+
+export interface UpdateTestimonialData {
+  name?: string;
+  review?: string;
+  exam?: string;
+  highlight?: boolean;
+  isPublished?: boolean;
+  displayOrder?: number;
 }
 
 interface ApiResponse<T> {
@@ -27,58 +36,45 @@ interface ApiResponse<T> {
 }
 
 export const testimonialsService = {
-  async getPublicTestimonials(limit?: number): Promise<Testimonial[]> {
-    const params = limit ? `?limit=${limit}` : '';
-    const response = await apiClient.get<ApiResponse<Testimonial[]>>(
-      `/testimonials${params}`
-    );
+  async getPublicTestimonials(limit = 12): Promise<Testimonial[]> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    const response = await apiClient.get<ApiResponse<Testimonial[]>>(`/testimonials?${params}`, false);
     return response.data;
   },
 
-  async getMyTestimonial(): Promise<Testimonial | null> {
-    const response = await apiClient.get<ApiResponse<Testimonial | null>>(
-      '/testimonials/me',
-      true
-    );
+  async adminList(highlight?: boolean): Promise<Testimonial[]> {
+    const params = highlight !== undefined ? `?highlight=${highlight}` : '';
+    const response = await apiClient.get<ApiResponse<Testimonial[]>>(`/testimonials/admin/list${params}`, true);
     return response.data;
   },
 
-  async createTestimonial(payload: { title?: string; content: string; rating: number }): Promise<Testimonial> {
-    const response = await apiClient.post<ApiResponse<Testimonial>>(
-      '/testimonials',
-      payload,
-      true
-    );
+  async adminCreate(data: CreateTestimonialData, profilePhoto?: File): Promise<Testimonial> {
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('review', data.review);
+    if (data.exam) formData.append('exam', data.exam);
+    if (data.displayOrder !== undefined) formData.append('displayOrder', String(data.displayOrder));
+    if (profilePhoto) formData.append('profilePhoto', profilePhoto);
+
+    const response = await apiClient.postFormData<ApiResponse<Testimonial>>('/testimonials/admin', formData, true);
     return response.data;
   },
 
-  async updateTestimonial(id: string, payload: Partial<{ title: string; content: string; rating: number }>): Promise<Testimonial> {
-    const response = await apiClient.put<ApiResponse<Testimonial>>(
-      `/testimonials/${id}`,
-      payload,
-      true
-    );
+  async adminUpdate(id: string, data: UpdateTestimonialData, profilePhoto?: File): Promise<Testimonial> {
+    const formData = new FormData();
+    if (data.name) formData.append('name', data.name);
+    if (data.review) formData.append('review', data.review);
+    if (data.exam !== undefined) formData.append('exam', data.exam || '');
+    if (data.highlight !== undefined) formData.append('highlight', String(data.highlight));
+    if (data.isPublished !== undefined) formData.append('isPublished', String(data.isPublished));
+    if (data.displayOrder !== undefined) formData.append('displayOrder', String(data.displayOrder));
+    if (profilePhoto) formData.append('profilePhoto', profilePhoto);
+
+    const response = await apiClient.putFormData<ApiResponse<Testimonial>>(`/testimonials/admin/${id}`, formData, true);
     return response.data;
   },
 
-  async deleteTestimonial(id: string): Promise<void> {
-    await apiClient.delete(`/testimonials/${id}`, true);
-  },
-
-  async adminList(): Promise<Testimonial[]> {
-    const response = await apiClient.get<ApiResponse<Testimonial[]>>(
-      '/testimonials/admin/list',
-      true
-    );
-    return response.data;
-  },
-
-  async adminUpdate(id: string, payload: Partial<{ highlight: boolean; isPublished: boolean }>): Promise<Testimonial> {
-    const response = await apiClient.patch<ApiResponse<Testimonial>>(
-      `/testimonials/admin/${id}`,
-      payload,
-      true
-    );
-    return response.data;
+  async adminDelete(id: string): Promise<void> {
+    await apiClient.delete<ApiResponse<void>>(`/testimonials/admin/${id}`, true);
   }
 };

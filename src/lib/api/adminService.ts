@@ -112,6 +112,12 @@ interface CreateExamData {
   negative_mark_value: number;
   is_published?: boolean;
   syllabus?: string[];
+  is_test_series?: boolean;
+  test_series_id?: string;
+  test_series_section_id?: string;
+  test_series_topic_id?: string;
+  exam_date?: string;
+  display_order?: number;
 }
 
 interface CreateSectionData {
@@ -151,7 +157,14 @@ export const adminService = {
     if (options?.search) params.append('search', options.search);
     if (options?.status) params.append('status', options.status);
     if (options?.category) params.append('category', options.category);
+    if (options?.subcategory) params.append('subcategory', options.subcategory);
     if (options?.difficulty) params.append('difficulty', options.difficulty);
+    if (options?.exam_type) params.append('exam_type', options.exam_type);
+    if (options?.is_premium) params.append('is_premium', options.is_premium);
+    if (options?.is_published) params.append('is_published', options.is_published);
+    if (options?.is_free) params.append('is_free', options.is_free);
+    if (options?.date_from) params.append('date_from', options.date_from);
+    if (options?.date_to) params.append('date_to', options.date_to);
 
     const response = await apiClient.get<{
       success: boolean;
