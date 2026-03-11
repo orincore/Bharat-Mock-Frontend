@@ -1,14 +1,20 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FileText, Users, CheckCircle, Clock } from 'lucide-react';
 import { examService } from '@/lib/api/examService';
 import { adminService } from '@/lib/api/adminService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
+import { useAuth } from '@/context/AuthContext';
+import ActivityLogsSection from '@/components/admin/ActivityLogsSection';
+import ActivityLogsViewer from '@/components/admin/ActivityLogsViewer';
 
 export default function AdminDashboard() {
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [stats, setStats] = useState({
     totalExams: 0,
     totalUsers: 0,
@@ -16,21 +22,46 @@ export default function AdminDashboard() {
     upcomingExams: 0
   });
   const [loading, setLoading] = useState(true);
+  const [showLogsViewer, setShowLogsViewer] = useState(false);
+
+  const allowedRoles = ['admin', 'editor', 'author'];
+  const hasDashboardAccess = useMemo(
+    () => (user?.role ? allowedRoles.includes(user.role) : false),
+    [user?.role]
+  );
+  const isAdmin = user?.role === 'admin';
+  const canViewActivityLogs = isAdmin;
 
   useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    if (!hasDashboardAccess) {
+      setLoading(false);
+      return;
+    }
     const fetchStats = async () => {
       try {
-        const [examsResponse, usersResponse] = await Promise.all([
-          examService.getExams({ page: 1, limit: 1 }),
-          adminService.getAllUsers(1, 1)
-        ]);
+        const examsResponse = await examService.getExams({ page: 1, limit: 1 });
+        let totalUsers = 0;
 
-        setStats({
+        if (isAdmin) {
+          try {
+            const usersResponse = await adminService.getAllUsers(1, 1);
+            totalUsers = usersResponse.pagination.total;
+          } catch (userError) {
+            console.warn('User stats unavailable for current role:', userError);
+          }
+        }
+
+        setStats((prev) => ({
+          ...prev,
           totalExams: examsResponse.total,
-          totalUsers: usersResponse.pagination.total,
-          publishedExams: 0,
-          upcomingExams: 0
-        });
+          totalUsers
+        }));
       } catch (error) {
         console.error('Failed to fetch stats:', error);
       } finally {
@@ -39,34 +70,61 @@ export default function AdminDashboard() {
     };
 
     fetchStats();
-  }, []);
+  }, [hasDashboardAccess, isAdmin]);
 
-  const statCards = [
-    {
-      title: 'Total Exams',
-      value: stats.totalExams,
-      icon: FileText,
-      color: 'bg-primary/10 text-primary'
-    },
-    {
-      title: 'Total Users',
-      value: stats.totalUsers,
-      icon: Users,
-      color: 'bg-secondary/10 text-secondary'
-    },
-    {
-      title: 'Published Exams',
-      value: stats.publishedExams,
-      icon: CheckCircle,
-      color: 'bg-success/10 text-success'
-    },
-    {
-      title: 'Upcoming Exams',
-      value: stats.upcomingExams,
-      icon: Clock,
-      color: 'bg-warning/10 text-warning'
+  const statCards = useMemo(() => {
+    const baseCards = [
+      {
+        title: 'Total Exams',
+        value: stats.totalExams,
+        icon: FileText,
+        color: 'bg-primary/10 text-primary'
+      },
+      {
+        title: 'Published Exams',
+        value: stats.publishedExams,
+        icon: CheckCircle,
+        color: 'bg-success/10 text-success'
+      },
+      {
+        title: 'Upcoming Exams',
+        value: stats.upcomingExams,
+        icon: Clock,
+        color: 'bg-warning/10 text-warning'
+      }
+    ];
+
+    if (isAdmin) {
+      baseCards.splice(1, 0, {
+        title: 'Total Users',
+        value: stats.totalUsers,
+        icon: Users,
+        color: 'bg-secondary/10 text-secondary'
+      });
     }
-  ];
+
+    return baseCards;
+  }, [stats, isAdmin]);
+
+  if (!isLoading && isAuthenticated && !hasDashboardAccess) {
+    return (
+      <div className="bg-card border border-destructive/40 rounded-2xl p-8 text-center space-y-4">
+        <h1 className="text-2xl font-bold text-destructive">Access Restricted</h1>
+        <p className="text-muted-foreground">
+          This workspace is available only for Admin, Editor, or Author roles. You currently have the <strong>{user?.role}</strong> role.
+        </p>
+        <p className="text-sm text-muted-foreground">Please contact support if you need access to the content tools.</p>
+      </div>
+    );
+  }
+
+  if (isLoading || !hasDashboardAccess) {
+    return (
+      <div className="flex justify-center py-16">
+        <Skeleton className="h-16 w-16 rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -151,6 +209,16 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {canViewActivityLogs && (
+        <div className="mt-8">
+          <ActivityLogsSection onViewAll={() => setShowLogsViewer(true)} />
+        </div>
+      )}
+
+      {canViewActivityLogs && showLogsViewer && (
+        <ActivityLogsViewer onClose={() => setShowLogsViewer(false)} />
+      )}
     </div>
   );
 }

@@ -52,6 +52,15 @@ export interface SubscriptionPageContent {
   meta: SubscriptionPageMeta | null;
 }
 
+export interface SubscriptionPageMediaUploadResponse {
+  success: boolean;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+  mime_type: string;
+  file_size: number;
+}
+
 const asData = <T>(response: { success: boolean; data: T }): T => response.data;
 
 export const subscriptionPageService = {
@@ -113,5 +122,19 @@ export const subscriptionPageService = {
       true
     );
     return asData(response);
+  },
+
+  async uploadMedia(file: File, folder?: string): Promise<SubscriptionPageMediaUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (folder) {
+      formData.append('folder', folder);
+    }
+
+    return apiClient.postFormData<SubscriptionPageMediaUploadResponse>(
+      '/subscription-page/media',
+      formData,
+      true
+    );
   }
 };

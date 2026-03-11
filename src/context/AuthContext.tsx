@@ -15,6 +15,7 @@ interface AuthContextType {
   completePasswordReset: (token: string, newPassword: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setUserContext: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -184,6 +185,11 @@ export function AuthProvider({ children, initProfile, initProfileLoading }: Auth
     }
   };
 
+  const setUserContext = (userData: User | null) => {
+    setUser(userData);
+    persistUser(userData);
+  };
+
   const updateProfile = async (data: Partial<User>) => {
     setIsLoading(true);
     try {
@@ -208,7 +214,8 @@ export function AuthProvider({ children, initProfile, initProfileLoading }: Auth
         requestPasswordReset,
         completePasswordReset,
         updateProfile,
-        refreshProfile
+        refreshProfile,
+        setUserContext
       }}
     >
       {children}

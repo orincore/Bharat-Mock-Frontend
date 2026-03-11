@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -15,7 +16,8 @@ import {
   BookOpen,
   Layers,
   History,
-  Target
+  Target,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,11 +26,24 @@ import { testSeriesService, TestSeries } from '@/lib/api/testSeriesService';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { ExamCard } from '@/components/exam/ExamCard';
 import { Exam } from '@/types';
+import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type NormalizedEntry = {
   raw: any;
   card: Exam;
 };
+
+const SIDEBAR_BANNER_IDENTIFIER = 'test_series_sidebar';
+
+function shuffleArray<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
 export default function TestSeriesDetailPage() {
   const params = useParams();
@@ -40,10 +55,14 @@ export default function TestSeriesDetailPage() {
   const [activeTab, setActiveTab] = useState<string>('');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarSeries, setSidebarSeries] = useState<TestSeries[]>([]);
+  const [sidebarBanner, setSidebarBanner] = useState<PageBanner | null>(null);
+  const [sidebarLoading, setSidebarLoading] = useState(true);
 
   useEffect(() => {
     if (slug) {
       fetchTestSeries();
+      fetchSidebarContent();
     }
   }, [slug]);
 
@@ -57,6 +76,53 @@ export default function TestSeriesDetailPage() {
       setError(err.message || 'Failed to load test series');
     } finally {
       setLoading(false);
+    }
+  };
+
+    const faqItems = useMemo(
+    () => [
+      {
+        question: 'How often should I attempt a Bharat Mock test series exam?',
+        answer:
+          'For most competitive exams, we recommend attempting one full-length mock test every 3 to 4 days. This cadence gives you enough time to analyse results, revise weak topics, and maintain momentum without burning out.'
+      },
+      {
+        question: 'Can I pause a test series attempt and resume later?',
+        answer:
+          'Each mock replicates the official exam environment, so pausing is disabled by default. If you need flexible practice, use the custom practice sets or section drills, then return to the timed mock when you are ready for a complete simulation.'
+      },
+      {
+        question: 'What insights do I get after submitting a mock test?',
+        answer:
+          'Your dashboard highlights accuracy by topic, speed metrics, percentile comparisons, and personalised study nudges. You can also download detailed solutions, bookmark tricky questions, and convert mistakes into revision cards.'
+      },
+      {
+        question: 'Does the test series support bilingual exams?',
+        answer:
+          'Yes. Many Bharat Mock test series provide both English and Hindi interfaces along with bilingual question explanations. Check the language badges on the test detail cards before starting your attempt.'
+      }
+    ],
+    []
+  );
+
+  const fetchSidebarContent = async () => {
+    setSidebarLoading(true);
+    try {
+      const [seriesResponse, banners] = await Promise.all([
+        testSeriesService.getTestSeries({ limit: 50, is_published: true }),
+        pageBannersService.getBanners(SIDEBAR_BANNER_IDENTIFIER)
+      ]);
+
+      const allSeries = seriesResponse?.data || [];
+      const otherSeries = allSeries.filter(series => series.slug !== slug);
+      setSidebarSeries(shuffleArray(otherSeries).slice(0, 5));
+
+      const activeBanner = banners.find(banner => banner.is_active) || banners[0] || null;
+      setSidebarBanner(activeBanner || null);
+    } catch (err) {
+      console.error('Failed to load sidebar content:', err);
+    } finally {
+      setSidebarLoading(false);
     }
   };
 
@@ -347,22 +413,22 @@ export default function TestSeriesDetailPage() {
                     <p className="text-slate-600 mt-3 max-w-3xl">{testSeries.description}</p>
                   )}
 
-                  <div className="flex flex-wrap gap-3 mt-4">
+                  <div className="flex flex-wrap gap-2 mt-4">
                     {heroStats.map((stat) => (
                       <div
                         key={stat.label}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-2xl"
+                        className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm"
                       >
-                        {stat.icon}
-                        <div>
-                          <p className="text-base font-semibold text-slate-900">{stat.value}</p>
-                          <p className="text-xs uppercase tracking-wide text-slate-500">{stat.label}</p>
-                        </div>
+                        <span className="flex items-center gap-1 text-blue-600">
+                          <span className="h-3.5 w-3.5 text-blue-500">{stat.icon}</span>
+                          {stat.label}
+                        </span>
+                        <span className="text-slate-900 text-sm">{stat.value}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex flex-wrap gap-4 text-sm text-slate-600 mt-4">
+                  <div className="flex flex-wrap gap-4 text-sm text-slate-600 mt-5">
                     <div className="flex items-center gap-2">
                       <BookOpen className="h-4 w-4 text-green-600" />
                       <span>{sectionFilters.length} Sections</span>
@@ -393,106 +459,233 @@ export default function TestSeriesDetailPage() {
       </div>
 
       {/* Test Series Content */}
-      <div className="container-main py-6 space-y-6">
-        <div className="flex flex-col lg:flex-row gap-4 items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3">
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <Search className="h-4 w-4 text-slate-400" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search Tests"
-              className="border-0 focus-visible:ring-0 text-base"
-            />
-          </div>
-          <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
-            <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-600">
-              <Layers className="h-3.5 w-3.5" /> {sectionFilters.length} Sections
-            </span>
-            <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">
-              <BookOpen className="h-3.5 w-3.5" /> {normalizedEntries.length} Tests
-            </span>
-            <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-600">
-              <Globe className="h-3.5 w-3.5" /> {availableLanguages.join(', ')}
-            </span>
-          </div>
-        </div>
+      <div className="container-main py-6">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] items-start">
+          <div className="space-y-5">
+            <div className="flex flex-col lg:flex-row gap-4 items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3">
+              <div className="flex items-center gap-3 text-sm text-slate-500">
+                <Search className="h-4 w-4 text-slate-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search Tests"
+                  className="border-0 focus-visible:ring-0 text-base"
+                />
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
+                <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-600">
+                  <Layers className="h-3.5 w-3.5" /> {sectionFilters.length} Sections
+                </span>
+                <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">
+                  <BookOpen className="h-3.5 w-3.5" /> {normalizedEntries.length} Tests
+                </span>
+                <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-600">
+                  <Globe className="h-3.5 w-3.5" /> {availableLanguages.join(', ')}
+                </span>
+              </div>
+            </div>
 
-        {/* Section/Topic Tabs & Listings */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
-          <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 pb-3">
-            {sectionFilters.map(section => (
-              <button
-                key={section.id}
-                onClick={() => setActiveTab(section.id)}
-                className={`relative pb-2 text-sm font-semibold transition-colors ${
-                  activeTab === section.id ? 'text-blue-600' : 'text-slate-500'
-                }`}
-              >
-                {section.name} ({section.count})
-                {activeTab === section.id && (
-                  <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
-                )}
-              </button>
-            ))}
-          </div>
-
-          {currentSection ? (
-            <>
-              <div className="flex flex-wrap gap-3">
-                {(sectionTopicFilters.get(currentSection.id) || []).map(topic => (
+            {/* Section/Topic Tabs & Listings */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
+              <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 pb-3">
+                {sectionFilters.map(section => (
                   <button
-                    key={topic.id}
-                    onClick={() =>
-                      setSelectedTopicId(prev => (prev === topic.id ? null : topic.id))
-                    }
-                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                      selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                    key={section.id}
+                    onClick={() => setActiveTab(section.id)}
+                    className={`relative pb-2 text-sm font-semibold transition-colors ${
+                      activeTab === section.id ? 'text-blue-600' : 'text-slate-500'
                     }`}
                   >
-                    {topic.name} ({topic.count})
+                    {section.name} ({section.count})
+                    {activeTab === section.id && (
+                      <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
+                    )}
                   </button>
                 ))}
-                {sectionTopicFilters.get(currentSection.id)?.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No topics available for this section.</p>
-                )}
               </div>
 
-              {searchedSectionEntries.length > 0 ? (
+              {currentSection ? (
+                <>
+                  <div className="flex flex-wrap gap-3">
+                    {(sectionTopicFilters.get(currentSection.id) || []).map(topic => (
+                      <button
+                        key={topic.id}
+                        onClick={() =>
+                          setSelectedTopicId(prev => (prev === topic.id ? null : topic.id))
+                        }
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                          selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {topic.name} ({topic.count})
+                      </button>
+                    ))}
+                    {sectionTopicFilters.get(currentSection.id)?.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No topics available for this section.</p>
+                    )}
+                  </div>
+
+                  {searchedSectionEntries.length > 0 ? (
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                      {searchedSectionEntries.map(entry => (
+                        <ExamCard key={entry.raw.id} exam={entry.card} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 rounded-xl border border-slate-200 p-10 text-center">
+                      <p className="text-muted-foreground">No tests match your filters yet.</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No sections available.</p>
+              )}
+            </div>
+
+            {/* Uncategorized Exams */}
+            {currentSection && activeTab && uncategorized.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold text-slate-900">Other Tests</h2>
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {searchedSectionEntries.map(entry => (
+                  {uncategorized.map((entry) => (
                     <ExamCard key={entry.raw.id} exam={entry.card} />
                   ))}
                 </div>
-              ) : (
-                <div className="bg-slate-50 rounded-xl border border-slate-200 p-10 text-center">
-                  <p className="text-muted-foreground">No tests match your filters yet.</p>
+              </div>
+            )}
+
+            {!currentSection && normalizedEntries.length === 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-foreground mb-2">No tests available yet</h3>
+                <p className="text-muted-foreground">Tests will be added soon to this series</p>
+              </div>
+            )}
+          </div>
+
+          <aside className="space-y-5">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Keep exploring</p>
+                  <h3 className="text-lg font-semibold text-slate-900">More Test Series</h3>
                 </div>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">No sections available.</p>
-          )}
-        </div>
-
-        {/* Uncategorized Exams */}
-        {currentSection && activeTab && uncategorized.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-slate-900">Other Tests</h2>
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {uncategorized.map((entry) => (
-                <ExamCard key={entry.raw.id} exam={entry.card} />
-              ))}
+              </div>
+              <div className="space-y-3">
+                {sidebarLoading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <div key={`sidebar-skeleton-${index}`} className="flex flex-col gap-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  ))
+                ) : sidebarSeries.length ? (
+                  sidebarSeries.map(series => (
+                    <Link
+                      key={series.id}
+                      href={`/test-series/${series.slug}`}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-blue-200 hover:bg-blue-50/40 transition"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 line-clamp-1">{series.title}</p>
+                        <p className="text-xs text-slate-500">
+                          {series.total_tests || 0} tests · {series.category?.name || 'General'}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-blue-500" />
+                    </Link>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Fresh recommendations coming soon.</p>
+                )}
+              </div>
             </div>
-          </div>
-        )}
 
-        {!currentSection && normalizedEntries.length === 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-            <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-foreground mb-2">No tests available yet</h3>
-            <p className="text-muted-foreground">Tests will be added soon to this series</p>
+            {sidebarBanner && (
+              sidebarBanner.link_url ? (
+                <Link
+                  href={sidebarBanner.link_url}
+                  className="block"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <div className="rounded-2xl border border-slate-200 shadow-sm bg-white">
+                    <div className="flex items-center justify-center bg-slate-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={sidebarBanner.image_url}
+                        alt={sidebarBanner.alt_text || 'Featured banner'}
+                        className="w-full h-auto object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                    
+                      
+                  </div>
+                </Link>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 shadow-sm bg-white">
+                  <div className="flex items-center justify-center bg-slate-50">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={sidebarBanner.image_url}
+                      alt={sidebarBanner.alt_text || 'Featured banner'}
+                      className="w-full h-auto object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              )
+            )}
+          </aside>
+        </div>
+        <section className="mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+          <h2 className="text-2xl font-bold text-slate-900">Mastering Test Series Preparation: Detailed Guide</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Building momentum with a structured test series is one of the surest ways to move from passive reading to confident performance. When aspirants attempt carefully curated mock exams, they replicate every nuance of the eventual challenge—timing pressure, question diversity, evolving difficulty, and post-exam analysis. The Bharat Mock approach to test series emphasises this end-to-end simulation mindset. Aspirants are encouraged to treat each scheduled test like a rehearsal of the main stage: wake up at the same time, sit in a distraction-free environment, and log every micro-learning immediately after submission. Over weeks, this rhythm transforms assessment anxiety into a familiar companion. It is also the fastest way to expose topic blind spots. Every test highlights a new pattern, whether it is misreading multi-step reasoning problems or hesitating on direct recall questions that demand instant retrieval. Recognising these micro-patterns early prevents knowledge leakage during the final sprint.
+          </p>
+          <p className="text-slate-600 leading-relaxed">
+            Serious aspirants also know that a test series is more than the sum of its question papers. The surrounding ecosystem matters just as much. Quality editorial summaries, exam-wise notes, and community-driven doubt-clearing channels add extra value with minimal effort. Bharat Mock test series weave these elements into each release so learners can double-click into complex solutions, mark them for revision, or bookmark them as collaborative flashcards. The goal is to avoid the trap of passive review. Instead of simply reading answer keys, aspirants should rewrite mistaken solutions in their own words, attach a voice note explaining the concept, or design a short quiz for peers. These activities convert a one-time failure into a portfolio of custom assets. Over 1000+ aspirants reported that this strategy alone improved retention by more than 40%, especially when paired with spaced repetition alerts from the dashboard.
+          </p>
+          <p className="text-slate-600 leading-relaxed">
+            Time management remains the decisive differentiator in competitive exams, so every test series attempt should be monitored with meticulous precision. Before attempting a mock, aspirants should outline mini-goals for each section: number of questions to attempt in the first 15 minutes, buffer time for review, and must-attempt topics. During analysis, they should compare the intended allocation with the actual timeline captured in the submission report. If an aspirant spent ten minutes on a puzzle that typically requires four, the dashboard will surface that anomaly. Bharat Mock analytics not only highlight these deviations but also suggest alternative approaches: skipping heuristics, elimination-first strategies, or partial marking techniques. By reflecting on this timeline after every test, aspirants can calibrate their instincts. Within three weeks, most learners find they can predict completion times with near-perfect accuracy, which reduces panic on the final day.
+          </p>
+          <p className="text-slate-600 leading-relaxed">
+            Strategic syllabus coverage is another pillar of successful test series participation. It is tempting to only focus on familiar subjects, but real progress comes from allocating extra attempts to weak zones. Bharat Mock recommends the 3-2-1 rotation rule: three practice sessions for high-scoring strengths, two for average topics, and one for the weakest area. When this cadence is mirrored inside the test series schedule, aspirants experience a balanced diet of questions. Each test automatically tags sections with colour-coded heat maps so learners can visualise improvement. For example, a candidate preparing for banking exams might see data interpretation turning green over time while descriptive English remains amber. Instead of feeling overwhelmed, they can pause the default schedule, deep-dive into remedial modules, and rejoin the flow once confidence rebounds. This adaptive loop keeps motivation high without compromising overall consistency.
+          </p>
+          <p className="text-slate-600 leading-relaxed">
+            Collaboration plays an underrated role in sustaining long-term preparation. When aspirants discuss mock test experiences with peers, they gain fresh perspectives on question framing, test-taking psychology, and evolving trends. The Bharat Mock community portal encourages sharing personalised debriefs after every exam: what strategy worked, which surprise topic appeared, and how nerves were handled. Over time, these micro-stories form a living knowledge base. Newcomers can read archived debriefs to understand the emotional arc of the journey, while veterans can mentor juniors with targeted advice. This sense of accountability ensures that aspirants do not disappear after one bad test—they re-enter the arena with community backing.
+          </p>
+          <p className="text-slate-600 leading-relaxed">
+            Expert faculty insights further enrich the test series ecosystem. After every major release, Bharat Mock mentors host breakdown sessions where they dissect tricky questions, highlight most probable areas for upcoming exams, and share note-making hacks. Learners are encouraged to revisit these sessions while analysing their own scripts. By cross-referencing faculty reasoning with personal attempts, aspirants develop nuance and recognise subtle cues—like when to skip a question despite knowing the concept, or how to decode pattern shifts in newly introduced sections. These insights accumulate into a mental toolkit that proves priceless during actual exams, especially when patterns deviate from previous years.
+          </p>
+          <p className="text-slate-600 leading-relaxed">
+            It is equally important to build resilience through healthy routines. Test series fatigue is real; constant evaluation can feel draining if not balanced with reflection and rest. Bharat Mock recommends scheduling deliberate downtime after every two mocks. During this window, aspirants should revisit wins, celebrate subtle improvements, and engage in light revision activities like flashcards or short-form quizzes. This prevents burnout and ensures that motivation remains sustainable over the multi-month preparation arc. Data from thousands of aspirants shows that those who followed structured rest cycles maintained higher accuracy rates compared to peers who attempted back-to-back mocks without breathing space.
+          </p>
+          <p className="text-slate-600 leading-relaxed">
+            Finally, aspirants should treat the test series dashboard as a living roadmap. Every insight—accuracy graphs, percentile rankings, or topic mastery indicators—offers a clue about what to prioritise next. Instead of chasing a perfect score in isolation, learners should aim for progressive milestones: consistent 80% accuracy, sub-5 minute review windows, or error-free attempts in critical sections. Bharat Mock surfaces these micro-goals within the UI, nudging users to focus on actionable improvements. Over time, these small wins converge into exam-day readiness. When aspirants eventually sit for the actual test, they carry thousands of simulated decisions, refined strategies, and community-backed confidence. That is the power of a well-designed test series: it converts uncertainty into measurable growth and turns preparation into a decisive competitive edge.
+          </p>
+        </section>
+
+        <section className="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+          <div className="mb-4">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">FAQs</p>
+            <h2 className="text-2xl font-bold text-slate-900">Test Series Frequently Asked Questions</h2>
+            <p className="text-slate-600">Detailed answers to the most common queries about Bharat Mock test series.</p>
           </div>
-        )}
+          <Accordion type="single" collapsible className="divide-y divide-slate-200">
+            {faqItems.map((item, idx) => (
+              <AccordionItem key={item.question} value={`faq-${idx}`}>
+                <AccordionTrigger className="text-left text-base font-semibold text-slate-800">
+                  {item.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-slate-600 leading-relaxed">
+                  {item.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </section>
       </div>
     </div>
   );

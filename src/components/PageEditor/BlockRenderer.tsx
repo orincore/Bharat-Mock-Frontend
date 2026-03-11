@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { stripLineBreakTags } from '@/lib/utils';
 import {
   ResponsiveContainer,
   BarChart,
@@ -141,14 +142,15 @@ const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =
   );
 };
 
-const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { text, alignment = 'left', fontSize = '16px' } = content;
-  
+  const sanitized = stripLineBreakTags(text);
+
   return (
-    <p 
+    <p
       className={`text-${alignment} mb-4 text-gray-700 leading-relaxed`}
       style={{ fontSize }}
-      dangerouslySetInnerHTML={{ __html: text }}
+      dangerouslySetInnerHTML={{ __html: sanitized }}
     />
   );
 };

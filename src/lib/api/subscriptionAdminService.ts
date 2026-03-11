@@ -7,6 +7,8 @@ export interface SubscriptionPlan {
   description?: string;
   duration_days: number;
   price_cents: number;
+  normal_price_cents: number;
+  sale_price_cents?: number | null;
   currency_code: string;
   is_active: boolean;
   features?: string[];
@@ -19,7 +21,8 @@ export interface SubscriptionPlanPayload {
   slug: string;
   description?: string;
   duration_days: number;
-  price_cents: number;
+  normal_price_cents: number;
+  sale_price_cents?: number | null;
   currency_code?: string;
   features?: string[];
 }
@@ -73,7 +76,7 @@ export interface SubscriptionTransaction {
     name?: string | null;
     email?: string | null;
   };
-  plan?: Pick<SubscriptionPlan, 'id' | 'name' | 'price_cents' | 'currency_code'>;
+  plan?: Pick<SubscriptionPlan, 'id' | 'name' | 'price_cents' | 'currency_code' | 'normal_price_cents' | 'sale_price_cents'>;
   promocode?: {
     id: string;
     code: string;

@@ -103,6 +103,12 @@ export default function ExamFormPage() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
+  const [pdfFileEn, setPdfFileEn] = useState<File | null>(null);
+  const [pdfFileHi, setPdfFileHi] = useState<File | null>(null);
+  const [pdfUrlEn, setPdfUrlEn] = useState<string>('');
+  const [pdfUrlHi, setPdfUrlHi] = useState<string>('');
+  const [uploadingPdfEn, setUploadingPdfEn] = useState(false);
+  const [uploadingPdfHi, setUploadingPdfHi] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [autosaveEnabled, setAutosaveEnabled] = useState(true);
   
@@ -661,6 +667,8 @@ export default function ExamFormPage() {
 
         if (examData.logo_url) setLogoPreview(examData.logo_url);
         if (examData.thumbnail_url) setThumbnailPreview(examData.thumbnail_url);
+        if ((examData as any).pdf_url_en) setPdfUrlEn((examData as any).pdf_url_en);
+        if ((examData as any).pdf_url_hi) setPdfUrlHi((examData as any).pdf_url_hi);
       }
 
       const apiSections = Array.isArray(sectionsData)
@@ -1563,6 +1571,134 @@ export default function ExamFormPage() {
       console.error('Remove option image error:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to remove option image';
       setToastMessage(errorMessage);
+      setToastType('error');
+      setShowToast(true);
+    }
+  };
+
+  const handlePdfEnChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      setToastMessage('Please select a PDF file');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    if (!persistedExamId) {
+      setToastMessage('Please save the exam first before uploading PDFs');
+      setToastType('warning');
+      setShowToast(true);
+      return;
+    }
+
+    try {
+      setUploadingPdfEn(true);
+      setToastMessage('Uploading English PDF...');
+      setToastType('loading');
+      setShowToast(true);
+
+      const result = await adminService.uploadExamPdfEn(persistedExamId, file);
+      setPdfUrlEn(result.pdf_url_en);
+      setPdfFileEn(file);
+
+      setToastMessage('English PDF uploaded successfully');
+      setToastType('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error('PDF upload error:', error);
+      setToastMessage(error?.response?.data?.message || 'Failed to upload PDF');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setUploadingPdfEn(false);
+    }
+  };
+
+  const handlePdfHiChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      setToastMessage('Please select a PDF file');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    if (!persistedExamId) {
+      setToastMessage('Please save the exam first before uploading PDFs');
+      setToastType('warning');
+      setShowToast(true);
+      return;
+    }
+
+    try {
+      setUploadingPdfHi(true);
+      setToastMessage('Uploading Hindi PDF...');
+      setToastType('loading');
+      setShowToast(true);
+
+      const result = await adminService.uploadExamPdfHi(persistedExamId, file);
+      setPdfUrlHi(result.pdf_url_hi);
+      setPdfFileHi(file);
+
+      setToastMessage('Hindi PDF uploaded successfully');
+      setToastType('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error('PDF upload error:', error);
+      setToastMessage(error?.response?.data?.message || 'Failed to upload PDF');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setUploadingPdfHi(false);
+    }
+  };
+
+  const removePdfEn = async () => {
+    if (!persistedExamId) return;
+
+    try {
+      setToastMessage('Removing English PDF...');
+      setToastType('loading');
+      setShowToast(true);
+
+      await adminService.removeExamPdfEn(persistedExamId);
+      setPdfUrlEn('');
+      setPdfFileEn(null);
+
+      setToastMessage('English PDF removed successfully');
+      setToastType('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error('PDF removal error:', error);
+      setToastMessage(error?.response?.data?.message || 'Failed to remove PDF');
+      setToastType('error');
+      setShowToast(true);
+    }
+  };
+
+  const removePdfHi = async () => {
+    if (!persistedExamId) return;
+
+    try {
+      setToastMessage('Removing Hindi PDF...');
+      setToastType('loading');
+      setShowToast(true);
+
+      await adminService.removeExamPdfHi(persistedExamId);
+      setPdfUrlHi('');
+      setPdfFileHi(null);
+
+      setToastMessage('Hindi PDF removed successfully');
+      setToastType('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error('PDF removal error:', error);
+      setToastMessage(error?.response?.data?.message || 'Failed to remove PDF');
       setToastType('error');
       setShowToast(true);
     }
@@ -2995,6 +3131,169 @@ export default function ExamFormPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* PDF Upload Section */}
+        <div className="bg-card rounded-xl border border-border p-6">
+          <h2 className="font-display text-xl font-bold text-foreground mb-6">Exam PDF Files</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* English PDF Upload */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-foreground">
+                English PDF
+              </label>
+              <div className="border-2 border-dashed border-border rounded-lg p-4 bg-muted/30">
+                {pdfUrlEn ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
+                      <FileText className="h-8 w-8 text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {pdfFileEn?.name || 'Exam_English.pdf'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">PDF Document</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(pdfUrlEn, '_blank')}
+                        className="flex-1"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Preview
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={removePdfEn}
+                        className="flex-1"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {!persistedExamId ? 'Save exam first to upload PDF' : 'Upload English exam PDF'}
+                    </p>
+                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      !persistedExamId || uploadingPdfEn
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                        : 'bg-primary text-white hover:bg-primary/90 cursor-pointer'
+                    }`}>
+                      {uploadingPdfEn ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Choose PDF
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        onChange={handlePdfEnChange}
+                        disabled={!persistedExamId || uploadingPdfEn}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Upload the exam paper in English (PDF format, max 10MB)
+              </p>
+            </div>
+
+            {/* Hindi PDF Upload */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-foreground">
+                Hindi PDF (हिंदी)
+              </label>
+              <div className="border-2 border-dashed border-border rounded-lg p-4 bg-muted/30">
+                {pdfUrlHi ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
+                      <FileText className="h-8 w-8 text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {pdfFileHi?.name || 'Exam_Hindi.pdf'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">PDF Document</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(pdfUrlHi, '_blank')}
+                        className="flex-1"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Preview
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={removePdfHi}
+                        className="flex-1"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {!persistedExamId ? 'Save exam first to upload PDF' : 'Upload Hindi exam PDF'}
+                    </p>
+                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      !persistedExamId || uploadingPdfHi
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                        : 'bg-primary text-white hover:bg-primary/90 cursor-pointer'
+                    }`}>
+                      {uploadingPdfHi ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Choose PDF
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        onChange={handlePdfHiChange}
+                        disabled={!persistedExamId || uploadingPdfHi}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Upload the exam paper in Hindi (PDF format, max 10MB)
+              </p>
+            </div>
           </div>
         </div>
 

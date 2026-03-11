@@ -5,34 +5,34 @@ import Link from 'next/link';
 import {
   CalendarDays,
   Clock,
-  Flame,
   ArrowRight,
-  Trophy,
   Filter,
   Search,
   Tag,
-  BookOpen
+  ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { examService } from '@/lib/api/examService';
 import { taxonomyService } from '@/lib/api/taxonomyService';
+import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
 import { Exam } from '@/types';
 import { ExamCard, getCountdownLabel } from '@/components/exam/ExamCard';
 import { formatExamSummary } from '@/lib/utils/examSummary';
+import { TestimonialsSection } from '@/components/sections/TestimonialsSection';
 
 const STATUS_TABS: { label: string; value: 'upcoming' | 'ongoing' | 'completed'; helper: string }[] = [
   { label: 'Upcoming Tests', value: 'upcoming', helper: 'Reserve a slot before it fills up' },
   { label: 'Live Now', value: 'ongoing', helper: 'Jump into the live window right away' },
   { label: 'Recently Completed', value: 'completed', helper: 'Analyze previous live tests' }
-];
-
-const QUICK_METRICS = [
-  { label: 'Live Test Formats', value: '45+', icon: BookOpen },
-  { label: 'Average Participants', value: '12k+', icon: Trophy },
-  { label: 'Weekend Fixtures', value: '18', icon: CalendarDays }
 ];
 
 const SCHEDULE_FALLBACK = {
@@ -105,6 +105,8 @@ const getGoogleCalendarUrl = (exam: Exam) => {
   return `${base}&${params.toString()}`;
 };
 
+const HERO_BANNER_IDENTIFIER = 'live_tests_hero';
+
 export default function LiveTestsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +117,36 @@ export default function LiveTestsPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [heroSearch, setHeroSearch] = useState('');
   const [activeCalendarExam, setActiveCalendarExam] = useState<Exam | null>(null);
+  const [heroBanner, setHeroBanner] = useState<PageBanner | null>(null);
+  const [bannerLoading, setBannerLoading] = useState(true);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  const faqItems = useMemo(
+    () => [
+      {
+        q: 'What makes a Bharat Mock live test different from standard mocks?',
+        a: 'Live tests run in real-time windows with leaderboards, proctored timers, and restriction policies that mirror actual exam centers. You compete alongside thousands of aspirants, so percentile and AIR insights are more representative of the real cutoffs.'
+      },
+      {
+        q: 'Can I revisit a live test after the window closes?',
+        a: 'Yes. Once the window closes you can reattempt the same paper as an anytime mock or review the full explanation set. The Save Tests & Questions feature also lets you bookmark specific items for later revision.'
+      },
+      {
+        q: 'How often are new live quizzes or mocks added?',
+        a: 'The content team schedules fresh fixtures every week across SSC, banking, railways, defence, and state exams. Tap the filters or search bar to discover upcoming slots relevant to your target category.'
+      },
+      {
+        q: 'Do I need a paid subscription to join live tests?',
+        a: 'Most live quizzes are free and rotating mock fixtures are included in standard plans. Premium badges indicate advanced analytics or mentor-led reviews; everything else can be attempted with a free Bharat Mock account.'
+      },
+      {
+        q: 'Will my analytics sync with the main Bharat Mock dashboard?',
+        a: 'Absolutely. Every live attempt feeds into your profile. Accuracy, sectional speed, and percentile trends are visible on the analytics tab so you can measure improvements over time.'
+      }
+    ],
+    []
+  );
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -129,6 +161,23 @@ export default function LiveTestsPage() {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    const fetchHeroBanner = async () => {
+      setBannerLoading(true);
+      try {
+        const banners = await pageBannersService.getBanners(HERO_BANNER_IDENTIFIER);
+        const active = banners.find((banner) => banner.is_active) || banners[0] || null;
+        setHeroBanner(active ?? null);
+      } catch (err) {
+        console.error('Failed to load live tests hero banner', err);
+      } finally {
+        setBannerLoading(false);
+      }
+    };
+
+    fetchHeroBanner();
+  }, []);
+
   const fetchScheduledExams = useCallback(async () => {
     setIsLoading(true);
     setError('');
@@ -136,7 +185,8 @@ export default function LiveTestsPage() {
       const response = await examService.getExams({
         status: selectedStatus,
         category: selectedCategory,
-        search
+        search,
+        exam_type: 'all'
       });
       const scheduledOnly = response.data.filter((exam) => !exam.allow_anytime && exam.status !== 'anytime');
       setExams(scheduledOnly);
@@ -151,22 +201,27 @@ export default function LiveTestsPage() {
     fetchScheduledExams();
   }, [fetchScheduledExams]);
 
-  const featuredExam = exams[0];
-  const scheduleList = useMemo(() => {
-    return exams
-      .slice(1)
-      .sort((a, b) => getScheduleTimestamp(a.start_date) - getScheduleTimestamp(b.start_date));
-  }, [exams]);
-
   const nextUpcomingExam = useMemo(() => {
     return exams
       .filter((exam) => exam.status === 'upcoming' && !!exam.start_date)
       .sort((a, b) => getScheduleTimestamp(a.start_date) - getScheduleTimestamp(b.start_date))[0];
   }, [exams]);
 
-  const filteredForTimeline = scheduleList.slice(0, 6);
-  const featuredCalendarWindow = useMemo(() => buildCalendarWindow(featuredExam), [featuredExam]);
-  const featuredGoogleUrl = useMemo(() => (featuredExam ? getGoogleCalendarUrl(featuredExam) : ''), [featuredExam]);
+  const [activeTab, setActiveTab] = useState<'mock' | 'quiz'>('mock');
+
+  const mockExams = useMemo(() => {
+    return exams.filter((exam) => {
+      const type = exam.exam_type?.toLowerCase();
+      return type === 'mock_test' || type === 'past_paper';
+    });
+  }, [exams]);
+
+  const quizExams = useMemo(() => {
+    return exams.filter((exam) => {
+      const type = exam.exam_type?.toLowerCase();
+      return type === 'short_quiz';
+    });
+  }, [exams]);
 
   const handleAddToCalendar = useCallback((exam: Exam) => {
     const window = buildCalendarWindow(exam);
@@ -227,11 +282,60 @@ export default function LiveTestsPage() {
     setSearch(heroSearch);
   };
 
+  const FiltersContent = ({ closeOnSelect = false }: { closeOnSelect?: boolean }) => (
+    <>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm uppercase tracking-wide text-primary font-semibold mb-1 flex items-center gap-2">
+            <Filter className="h-4 w-4" /> Schedule Filters
+          </p>
+          <h2 className="font-display text-3xl font-bold text-foreground">Curate your live test calendar</h2>
+        </div>
+        <div className="flex gap-3">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-4 py-2 rounded-lg border border-border bg-background text-sm"
+          >
+            <option value="">All Categories</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <Button variant="ghost" onClick={() => setSelectedCategory('')} disabled={!selectedCategory}>
+            Reset
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => {
+              setSelectedStatus(tab.value);
+              if (closeOnSelect) setMobileFiltersOpen(false);
+            }}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              selectedStatus === tab.value
+                ? 'bg-secondary text-secondary-foreground shadow'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Hero */}
       <section className="gradient-hero py-10">
-        <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
+        <div className="container-main">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <Breadcrumbs
@@ -247,74 +351,60 @@ export default function LiveTestsPage() {
                 Reserve your slot, compete with thousands of aspirants in real time, and receive instant analytics after every live test.
               </p>
 
-              <div className="flex flex-wrap gap-4 mb-8">
-                {QUICK_METRICS.map((metric) => (
-                  <div key={metric.label} className="bg-background/15 backdrop-blur border border-background/20 rounded-2xl px-5 py-4 flex items-center gap-3">
-                    <metric.icon className="h-6 w-6 text-secondary" />
-                    <div>
-                      <p className="text-xl font-bold text-background">{metric.value}</p>
-                      <p className="text-sm text-background/80">{metric.label}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
               <form onSubmit={handleHeroSearch} className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground" />
                   <Input
                     type="text"
                     placeholder="Search live tests, e.g., SSC CHSL"
                     value={heroSearch}
                     onChange={(e) => setHeroSearch(e.target.value)}
-                    className="pl-10 bg-background"
+                    className="h-11 pl-10 bg-background"
                   />
                 </div>
-                <Button type="submit" size="lg">
+                <Button type="submit" className="h-11 px-6 font-semibold">
                   Explore Schedule
                 </Button>
               </form>
             </div>
 
             <div>
-              <div className="bg-background rounded-3xl p-6 shadow-2xl border border-border/40">
-                <p className="text-sm font-semibold text-secondary mb-3 flex items-center gap-2">
-                  <Flame className="h-4 w-4" /> Trending Live Windows
-                </p>
-                <div className="space-y-4">
-                  {STATUS_TABS.map((tab) => (
-                    <div key={tab.value} className={`p-4 rounded-2xl border ${selectedStatus === tab.value ? 'border-secondary bg-secondary/10' : 'border-border'}`}>
-                      <p className="text-sm text-muted-foreground mb-1">{tab.helper}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-display text-lg text-foreground">{tab.label}</span>
-                        <Button
-                          variant={selectedStatus === tab.value ? 'secondary' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedStatus(tab.value)}
-                        >
-                          {selectedStatus === tab.value ? 'Selected' : 'View'}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="bg-background rounded-3xl shadow-2xl border border-border/40 overflow-hidden">
+                
+                {bannerLoading ? (
+                  <Skeleton className="w-full h-64" />
+                ) : heroBanner ? (
+                  <div className="bg-slate-50 flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={heroBanner.image_url}
+                      alt={heroBanner.alt_text || 'Live tests highlight banner'}
+                      className="w-full h-auto object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                    No live tests banner uploaded yet.
+                  </div>
+                )}
               </div>
-              <div className="mt-6 bg-secondary text-secondary-foreground rounded-2xl p-4 shadow-lg">
-                <p className="text-sm uppercase tracking-wide">Next mega slot</p>
+              <div className="mt-6 bg-secondary text-secondary-foreground rounded-2xl p-3 shadow-md">
+                <p className="text-xs uppercase tracking-wide text-secondary-foreground/80">Next mega slot</p>
                 {nextUpcomingExam ? (
-                  <div className="space-y-1">
-                    <p className="text-2xl font-bold">
+                  <div className="space-y-0.5">
+                    <p className="text-xl font-semibold">
                       {getScheduleMeta(nextUpcomingExam.start_date).full}
                     </p>
-                    <p className="text-sm font-semibold line-clamp-1">{nextUpcomingExam.title}</p>
-                    <p className="text-xs text-secondary-foreground/80 flex items-center gap-2">
+                    <p className="text-xs font-medium line-clamp-1 text-secondary-foreground/90">{nextUpcomingExam.title}</p>
+                    <p className="text-[11px] text-secondary-foreground/80 flex items-center gap-2">
                       Limited seats • Starts in {getCountdownLabel(nextUpcomingExam.start_date)}
                     </p>
                   </div>
                 ) : (
-                  <div>
-                    <p className="text-2xl font-bold">Schedule TBA</p>
-                    <p className="text-xs text-secondary-foreground/80">Stay tuned for the next live slot</p>
+                  <div className="space-y-0.5">
+                    <p className="text-xl font-semibold">Schedule TBA</p>
+                    <p className="text-[11px] text-secondary-foreground/80">Stay tuned for the next live slot</p>
                   </div>
                 )}
               </div>
@@ -323,50 +413,16 @@ export default function LiveTestsPage() {
         </div>
       </section>
 
-      <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 py-12 space-y-12">
-        {/* Filters */}
-        <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-wide text-primary font-semibold mb-1 flex items-center gap-2">
-                <Filter className="h-4 w-4" /> Schedule Filters
-              </p>
-              <h2 className="font-display text-3xl font-bold text-foreground">Curate your live test calendar</h2>
-            </div>
-            <div className="flex gap-3">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-border bg-background text-sm"
-              >
-                <option value="">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-              <Button variant="ghost" onClick={() => setSelectedCategory('')} disabled={!selectedCategory}>
-                Reset
-              </Button>
-            </div>
-          </div>
+      <div className="container-main py-12 space-y-12">
+        <div className="md:hidden flex justify-end">
+          <Button variant="outline" onClick={() => setMobileFiltersOpen(true)} className="flex items-center gap-2">
+            <Filter className="h-4 w-4" /> Filters
+          </Button>
+        </div>
 
-          <div className="flex flex-wrap gap-3">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setSelectedStatus(tab.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedStatus === tab.value
-                    ? 'bg-secondary text-secondary-foreground shadow'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        {/* Filters */}
+        <div className="hidden md:block bg-card rounded-2xl border border-border p-6 space-y-4">
+          <FiltersContent />
         </div>
 
         {error && (
@@ -380,123 +436,232 @@ export default function LiveTestsPage() {
 
         {isLoading ? (
           renderLoadingState()
-        ) : exams.length === 0 ? (
-          <div className="bg-card border border-border rounded-3xl p-12 text-center">
-            <CalendarDays className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-            <h3 className="font-display text-2xl font-bold mb-2">No live tests found for this filter</h3>
-            <p className="text-muted-foreground mb-6">Try switching the category or status to discover more scheduled windows.</p>
-            <Button onClick={() => setSelectedStatus('upcoming')}>Back to Upcoming</Button>
-          </div>
         ) : (
-          <div className="space-y-12">
-            {/* Featured */}
-            {featuredExam && (
-              <div className="grid gap-6 lg:grid-cols-5">
-                <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-sm">
-                  <p className="text-sm uppercase tracking-wide text-primary font-semibold mb-2">Featured Slot</p>
-                  <h3 className="font-display text-3xl font-bold text-foreground mb-3">{featuredExam.title}</h3>
-                  <p className="text-muted-foreground mb-4 line-clamp-3">{formatExamSummary(featuredExam)}</p>
-                  {(() => {
-                    const meta = getScheduleMeta(featuredExam.start_date);
-                    const countdown = featuredExam.status === 'upcoming' ? getCountdownLabel(featuredExam.start_date) : null;
-                    return (
-                      <div className="space-y-3 text-sm">
-                        <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-secondary" /> {meta.full}</div>
-                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-secondary" /> Duration: {featuredExam.duration ?? '--'} mins</div>
-                        <div className="flex items-center gap-2"><Tag className="h-4 w-4 text-secondary" /> {featuredExam.category}</div>
-                        {countdown && (
-                          <div className="flex items-center gap-2 text-secondary font-semibold text-xs">
-                            <Clock className="h-3.5 w-3.5" /> Starts in {countdown}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  <div className="mt-6 flex gap-3">
-                    <Link href={`/exams/${featuredExam.slug}`}>
-                      <Button>
-                        View Details <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleAddToCalendar(featuredExam)}
-                      disabled={!featuredCalendarWindow}
-                    >
-                      Add to Calendar
-                    </Button>
-                  </div>
-                  {featuredCalendarWindow && featuredGoogleUrl && (
-                    <Button
-                      variant="ghost"
-                      asChild
-                      className="mt-3 text-primary"
-                    >
-                      <a href={featuredGoogleUrl} target="_blank" rel="noreferrer">
-                        Sync via Google Calendar
-                      </a>
-                    </Button>
-                  )}
-                </div>
-                <div className="lg:col-span-3 bg-card border border-border rounded-3xl p-6">
-                  <p className="text-sm font-semibold text-muted-foreground mb-4">Timeline</p>
-                  <div className="space-y-6">
-                    {filteredForTimeline.map((exam) => {
-                      const meta = getScheduleMeta(exam.start_date);
-                      const countdown = exam.status === 'upcoming' ? getCountdownLabel(exam.start_date) : null;
-                      return (
-                        <div key={exam.id} className="flex gap-4 items-start">
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-primary">{meta.date}</p>
-                            <p className="text-xs text-muted-foreground">{meta.time}</p>
-                          </div>
-                          <div className="w-2 h-2 rounded-full bg-primary mt-2" />
-                          <div className="flex-1 border border-border rounded-2xl p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-semibold text-foreground">{exam.title}</h4>
-                              <Button asChild variant="ghost" size="sm" className="text-primary">
-                                <Link href={`/exams/${exam.slug}`}>Register</Link>
-                              </Button>
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{formatExamSummary(exam)}</p>
-                            {countdown && (
-                              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-secondary">
-                                <Clock className="h-3 w-3" /> Starts in {countdown}
-                              </div>
-                            )}
-                            <div className="mt-3 text-xs text-muted-foreground flex flex-wrap gap-4">
-                              <span>Category: {exam.category}</span>
-                              <span>Tier: {exam.difficulty || 'General'}</span>
-                              <span>Marks: {exam.total_marks ?? exam.totalMarks ?? '—'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
+          <div className="space-y-6">
+            <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'mock' | 'quiz')} className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="mock">Live Mock Tests</TabsTrigger>
+              <TabsTrigger value="quiz">Live Quizzes</TabsTrigger>
+            </TabsList>
 
-            {/* Grid */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-2xl font-bold">All scheduled live tests</h3>
-                <Link href="/exams">
-                  <Button variant="outline">
-                    Browse Anytime Exams
-                  </Button>
-                </Link>
+            <TabsContent value="mock">
+              {mockExams.length === 0 ? (
+                <div className="bg-card border border-border rounded-3xl p-12 text-center">
+                  <h3 className="font-display text-xl font-bold mb-2">No live mock tests</h3>
+                  <p className="text-muted-foreground mb-6">Switch to Live Quizzes to see other fixtures.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-2xl font-bold">Live Mock Tests</h3>
+                    <Link href="/exams">
+                      <Button variant="outline">Browse Anytime Exams</Button>
+                    </Link>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {mockExams.map((exam) => (
+                      <ExamCard key={exam.id} exam={exam} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="quiz">
+              {quizExams.length === 0 ? (
+                <div className="bg-card border border-border rounded-3xl p-12 text-center">
+                  <h3 className="font-display text-xl font-bold mb-2">No live quizzes</h3>
+                  <p className="text-muted-foreground mb-6">Switch to Live Mock Tests to see other fixtures.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-2xl font-bold">Live Quizzes</h3>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {quizExams.map((exam) => (
+                      <ExamCard key={exam.id} exam={exam} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
+          <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
+            <header className="space-y-2">
+              <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
+              <h2 className="font-display text-3xl font-bold">Why the Live Tests calendar is your competitive advantage</h2>
+              <p className="text-base text-muted-foreground">
+                Settle in for a detailed narrative that connects the UI you are scrolling through with the discipline, analytics, and accountability needed to ace nationwide exams.
+              </p>
+            </header>
+            <div className="space-y-4 text-muted-foreground leading-relaxed text-base md:text-lg">
+              <p>
+                Bharat Mock live fixtures are built to replicate the electric tension of center-based exams while still giving you the convenience of attempting from wherever you are. Every timer tick, leaderboard update, and proctored checkpoint is meticulously choreographed so that your muscle memory for actual exam day is forged weeks in advance. Instead of passively reading notes, you are inserted into a vibrant arena where lakhs of aspirants jostle for the same selection and every mark reclaimed from negative marking counts toward a life-changing cutoff. The Live Tests page acts as a central pit lane where you configure your car, refuel, and preview the circuit before another blistering lap of competition.
+              </p>
+              <p>
+                To make those preparations tangible, each live test listing includes micro-details such as sectional timing, average accuracy benchmarks from the last cohort, and suggested buffer slots for revision. When you scroll through the Live Tests page after dinner or between coaching lectures, you are effectively building a personalized tournament bracket. Maybe you begin with a 30 minute reasoning duel on Tuesday, stack a bilingual GS sprint on Thursday, and close the week with a mega mock on Sunday morning. The platform stores these commitments so that reminder notifications and calendar nudges keep you honest even when fatigue tempts you to skip a session. Discipline, once scheduled, becomes simpler to execute.
+              </p>
+              <p>
+                Live quizzes deserve special mention because they weaponize the power of short, intense bursts of cognition. Ten to fifteen carefully balanced questions delivered in a ten minute window create the same adrenaline spike as the rapid-fire sections of SSC, banking, and state PSC prelims. On the quizzes tab you can filter by category, difficulty, or language preference and immediately see how many aspirants are queued for the next slot. The streak tracker sitting beside each card is more than a vanity metric; it is a behavioral nudge reminding you that consistency beats sporadic genius. Miss one day and the streak resets, but keep the chain alive for a month and your subconscious begins expecting victory.
+              </p>
+              <p>
+                Behind the interface sits an orchestration engine that quietly reconciles thousands of constraints pulled from the backend schedule service. When the admin team marks a new exam as live, the cache invalidates, the status propagates to the tabs, and your feed refreshes without needing a hard reload. If you belong to multiple categories—say BPSC and CTET—the recommendation logic alternates fixtures so you never go two weeks without facing pedagogy or reasoning. This dynamic feed is the opposite of a static PDF calendar; it reacts to your filters, search phrases, and completion history, serving up opportunities that match both your ambition and available bandwidth.
+              </p>
+              <p>
+                Preparation is not a solitary pursuit, and the long-form narrative attached to this page serves as a mentor whispering strategies in your ear. Imagine scanning the hero banner and noticing a note about limited seats—that is a cue to assemble your study circle, pick roles, and run a pre-test huddle. One friend might own vocabulary recaps, another could audit the formula sheet, while you simulate the online interface for the group. The moment the live window opens, you are not just answering questions; you are representing a team that will dissect the analytics afterward, celebrate percentile jumps, and draft counterplans for any topics that exposed gaps.
+              </p>
+              <p>
+                Speaking of analytics, Bharat Mock's post-test breakdowns dive deeper than generic scorecards. Once you finish a live mock or quiz, the dashboard overlays your timeline with the national average, highlights segments where hesitation taxes were paid, and points to remedial video lessons curated by faculty. Over time, these insights become a narrative arc: perhaps your accuracy in data interpretation rose from 52% to 71% after three weekend sprints, or your Hindi comprehension climbed once you toggled the bilingual view. The Live Tests page is essentially chapter zero of that arc, reminding you what the next experiment is and why the metrics will matter when the SSC, UPSC, or state board finally presses the bell.
+              </p>
+              <p>
+                Mental resilience is forged not in comfort but in controlled adversity. That is why many fixtures carry tags like High Pressure Window or Adaptive Difficulty. They intentionally stack above-average difficulty questions or shrink buffer times, forcing you to practice composure. When you enter such sessions straight from the Live Tests listing, you are consenting to a laboratory of stress, and that is a good thing. Your heart rate stabilizes faster with each exposure, your breathing returns to rhythm, and you learn to detach from a bad question within seconds instead of spiraling. The paragraph you are reading is a gentle reminder that mindset is as trainable as mathematics.
+              </p>
+              <p>
+                Another dimension worth appreciating is the orchestration between hero search, filters, and notifications. You can search for CHSL mega slot, narrow results to upcoming, and lock the filters so both desktop and mobile interfaces mirror each other. Once that configuration is saved, the backend understands your intent and surfaces similar fixtures near the top of the feed. Pair that with Google Calendar exports or ICS downloads and you suddenly possess a cross-device command center. A quick glance at your phone while commuting lets you know whether tonight's quiz is still scheduled, whether the attempt window shifted, and when to switch from passive note review to active recall drills.
+              </p>
+              <p>
+                The Live Tests ecosystem also integrates with teaching resources scattered across the platform. Each card can link to strategy articles, FAQ snippets, or even masterclass replays so that last-minute doubt clearing sits a single click away. Suppose you are anxious about the new descriptive writing segment; the Live Tests page may recommend a warm-up practice set published under the Teaching tab, ensuring you never face an unfamiliar question format cold. By centralizing knowledge and action, Bharat Mock shortens the lag between thinking you should revise a topic and testing yourself under live conditions right away.
+              </p>
+              <p>
+                In the end, this entire thousand-plus-word section exists to nudge you from passive intent to decisive action. Bookmark the page, build a ritual around reviewing the schedule every Sunday night, and treat each entry as a contract with your future self. Whether you are chasing AIR-1 or simply fighting to clear a stubborn cutoff, the Live Tests page is the arena where habits crystallize, weaknesses surface, and progress becomes visible. Step into the next slot with courage, respect the timer, and remember that every live attempt is simultaneously a rehearsal and a revelation. The nation's toughest exams await; let the Bharat Mock calendar be the drumbeat that keeps you marching.
+              </p>
+            </div>
+          </section>
+
+          <section className="bg-background border border-border/60 rounded-3xl shadow-sm p-8 md:p-12 space-y-8">
+            <div className="text-center space-y-3">
+              <p className="text-sm uppercase tracking-[0.3em] text-secondary font-semibold">Reasons to trust Bharat Mock</p>
+              <h2 className="font-display text-3xl font-bold text-foreground">Why take Bharat Mock Test Series?</h2>
+              <p className="text-muted-foreground max-w-3xl mx-auto">
+                Whether you attempt a live mock or a rapid-fire quiz, the Bharat Mock ecosystem goes beyond scores. Each pillar below mirrors what you might have seen on the Mock Test Series page, now embedded here so Live Tests aspirants can act on the same advantages without jumping across tabs.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-6 right-6">
+                  <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="absolute -top-2 -right-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-lg">
+                      NEW
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-20 space-y-3">
+                  <h3 className="font-display text-xl font-bold">Latest Exam Patterns</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    Live mocks and quizzes replicate the freshest shifts in exam blueprints so that the difficulty you face on test day feels familiar.
+                  </p>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                {exams.map((exam) => (
-                  <ExamCard key={exam.id} exam={exam} />
+
+              <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-6 right-6">
+                  <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="mt-20 space-y-3">
+                  <h3 className="font-display text-xl font-bold">Save Tests & Questions</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    Bookmark clutch attempts, tricky questions, or entire live fixtures to retake them when revision week arrives.
+                  </p>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+
+              <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-6 right-6">
+                  <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="mt-20 space-y-3">
+                  <h3 className="font-display text-xl font-bold">In-depth Performance Analysis</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    Access strength vs. weakness reports, percentile charts, and topper comparisons immediately after every live window.
+                  </p>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+            </div>
+          </section>
+
+          <TestimonialsSection
+            className="mt-16"
+            description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to remind you that live fixtures here translate into real selection stories."
+          />
+
+          <section className="py-12">
+            <div className="max-w-5xl mx-auto">
+              <div className="text-center space-y-3 mb-10">
+                <p className="text-sm uppercase tracking-[0.35em] text-primary font-semibold">Answers on demand</p>
+                <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">Live Tests FAQ</h2>
+                <p className="text-muted-foreground max-w-2xl mx-auto">
+                  Everything you need to know about schedules, analytics, and access—compiled from the questions aspirants ask our support mentors most often.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {faqItems.map((item, index) => (
+                  <div key={item.q} className="bg-card border border-border rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+                      className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
+                    >
+                      <span className="font-medium text-foreground">
+                        {index + 1}. {item.q}
+                      </span>
+                      {expandedFaq === index ? (
+                        <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </button>
+                    {expandedFaq === index && (
+                      <div className="px-6 py-4 bg-muted/30 border-t border-border">
+                        <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
+          </section>
           </div>
         )}
       </div>
+
+      <Dialog open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Filter live tests</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <FiltersContent closeOnSelect />
+          </div>
+          <div className="mt-4 flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => {
+              setSelectedCategory('');
+              setSelectedStatus('upcoming');
+            }}>
+              Reset
+            </Button>
+            <Button onClick={() => setMobileFiltersOpen(false)}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

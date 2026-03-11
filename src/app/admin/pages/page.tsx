@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
-import { FileText, ChevronRight } from 'lucide-react';
+import { FileText, ChevronRight, Layers } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
@@ -12,6 +12,20 @@ const PAGES = [
     description: 'Manage popular mock test series section on the exams page',
     href: '/admin/pages/exam-page',
     icon: FileText
+  },
+  {
+    id: 'test-series-sidebar',
+    title: 'Test Series Sidebar',
+    description: 'Manage sidebar banner for the test series detail page',
+    href: '/admin/pages/test-series-sidebar',
+    icon: Layers
+  },
+  {
+    id: 'live-tests-hero',
+    title: 'Live Tests Page',
+    description: 'Upload and configure the hero banner for live tests',
+    href: '/admin/pages/live-tests',
+    icon: Layers
   }
 ];
 

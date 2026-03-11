@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
+import { getRolePermissions } from '@/lib/constants/adminRoles';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -20,26 +21,28 @@ import {
   Home,
   PhoneCall,
   Layers,
-  MessageSquareHeart
+  MessageSquareHeart,
+  Sparkles
 } from 'lucide-react';
 
 const adminNavItems = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Exams', href: '/admin/exams', icon: FileText },
-  { name: 'Categories', href: '/admin/categories', icon: FolderTree },
-  { name: 'Blogs', href: '/admin/blogs', icon: PenSquare },
-  { name: 'Homepage', href: '/admin/homepage', icon: Home },
-  { name: 'Pages', href: '/admin/pages', icon: Layers },
-  { name: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
-  { name: 'Header', href: '/admin/navigation', icon: Settings },
-  { name: 'Footer', href: '/admin/footer', icon: Settings },
-  { name: 'About', href: '/admin/about', icon: Settings },
-  { name: 'Privacy Policy', href: '/admin/privacy', icon: Settings },
-  { name: 'Disclaimer', href: '/admin/disclaimer', icon: Settings },
-  { name: 'Contact', href: '/admin/contact', icon: PhoneCall },
-  { name: 'Testimonials', href: '/admin/testimonials', icon: MessageSquareHeart },
-  { name: 'Users', href: '/admin/users', icon: Users },
-];
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, permission: null },
+  { name: 'Exams', href: '/admin/exams', icon: FileText, permission: 'canAccessExams' },
+  { name: 'Categories', href: '/admin/categories', icon: FolderTree, permission: 'canAccessCategories' },
+  { name: 'Blogs', href: '/admin/blogs', icon: PenSquare, permission: 'canAccessBlogs' },
+  { name: 'Homepage', href: '/admin/homepage', icon: Home, permission: 'canAccessHomepage' },
+  { name: 'Pages', href: '/admin/pages', icon: Layers, permission: 'canAccessPages' },
+  { name: 'Current Affairs', href: '/admin/current-affairs', icon: Sparkles, permission: 'canAccessPages' },
+  { name: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard, permission: 'canAccessSubscriptions' },
+  { name: 'Header', href: '/admin/navigation', icon: Settings, permission: 'canAccessNavigation' },
+  { name: 'Footer', href: '/admin/footer', icon: Settings, permission: 'canAccessFooter' },
+  { name: 'About', href: '/admin/about', icon: Settings, permission: 'canAccessAbout' },
+  { name: 'Privacy Policy', href: '/admin/privacy', icon: Settings, permission: 'canAccessPrivacy' },
+  { name: 'Disclaimer', href: '/admin/disclaimer', icon: Settings, permission: 'canAccessDisclaimer' },
+  { name: 'Contact', href: '/admin/contact', icon: PhoneCall, permission: 'canAccessContact' },
+  { name: 'Testimonials', href: '/admin/testimonials', icon: MessageSquareHeart, permission: 'canAccessTestimonials' },
+  { name: 'Users', href: '/admin/users', icon: Users, permission: 'canAccessUsers' },
+] as const;
 
 export default function AdminLayout({
   children,
@@ -51,6 +54,16 @@ export default function AdminLayout({
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
 
+  const userRole = user?.role || 'user';
+  const permissions = useMemo(() => getRolePermissions(userRole), [userRole]);
+
+  const filteredNavItems = useMemo(() => {
+    return adminNavItems.filter(item => {
+      if (!item.permission) return true;
+      return permissions[item.permission as keyof typeof permissions];
+    });
+  }, [permissions]);
+
   useEffect(() => {
     setHasMounted(true);
   }, []);
@@ -59,7 +72,7 @@ export default function AdminLayout({
     if (!isLoading) {
       if (!isAuthenticated) {
         router.push('/login');
-      } else if (user?.role !== 'admin') {
+      } else if (!['admin', 'editor', 'author'].includes(user?.role || '')) {
         router.push('/');
       }
     }
@@ -73,7 +86,7 @@ export default function AdminLayout({
     );
   }
 
-  if (!isAuthenticated || user?.role !== 'admin') {
+  if (!isAuthenticated || !['admin', 'editor', 'author'].includes(user?.role || '')) {
     return null;
   }
 
@@ -108,7 +121,7 @@ export default function AdminLayout({
             </div>
 
             <nav className="space-y-1 flex-1">
-              {adminNavItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}

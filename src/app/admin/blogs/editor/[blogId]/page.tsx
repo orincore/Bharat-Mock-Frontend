@@ -42,6 +42,8 @@ interface BlogFormState {
   og_description: string;
   og_image_url: string;
   status: BlogStatus;
+  isCurrentAffairsNote: boolean;
+  currentAffairsTag: string;
 }
 
 const DEFAULT_FORM_STATE: BlogFormState = {
@@ -60,7 +62,9 @@ const DEFAULT_FORM_STATE: BlogFormState = {
   og_title: "",
   og_description: "",
   og_image_url: "",
-  status: "draft"
+  status: "draft",
+  isCurrentAffairsNote: false,
+  currentAffairsTag: ""
 };
 
 export default function AdminBlogEditorPage() {
@@ -130,7 +134,9 @@ export default function AdminBlogEditorPage() {
           og_title: blog.og_title || "",
           og_description: blog.og_description || "",
           og_image_url: blog.og_image_url || "",
-          status: (blog.status as BlogStatus) || (blog.is_published ? "published" : "draft")
+          status: (blog.status as BlogStatus) || (blog.is_published ? "published" : "draft"),
+          isCurrentAffairsNote: Boolean(blog.is_current_affairs_note),
+          currentAffairsTag: blog.current_affairs_tag || ""
         });
         setSections(blogSections || []);
       } catch (error: any) {
@@ -198,7 +204,9 @@ export default function AdminBlogEditorPage() {
     meta_keywords: formState.meta_keywords,
     og_title: formState.og_title,
     og_description: formState.og_description,
-    og_image_url: formState.og_image_url
+    og_image_url: formState.og_image_url,
+    is_current_affairs_note: formState.isCurrentAffairsNote,
+    current_affairs_tag: formState.currentAffairsTag?.trim() || null
   });
 
   const handleSave = async (nextStatus?: BlogStatus) => {
@@ -370,30 +378,28 @@ export default function AdminBlogEditorPage() {
               <p className="text-sm uppercase text-gray-500 font-semibold">Blog Details</p>
               <h2 className="text-xl font-bold text-gray-900">Metadata</h2>
             </div>
-            <span className="text-sm text-gray-500">
-              {effectiveBlogId ? `Blog ID: ${effectiveBlogId}` : "Draft not saved"}
-            </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Title</label>
-              <Input value={formState.title} onChange={(e) => handleFormChange("title", e.target.value)} />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700" htmlFor="blog-title">Title</label>
+              <Input
+                id="blog-title"
+                placeholder="Enter blog title"
+                value={formState.title}
+                onChange={(e) => handleFormChange("title", e.target.value)}
+              />
+              <p className="text-xs text-gray-500">Visible on the blog and used for SEO.</p>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Slug</label>
-              <Input value={formState.slug} onChange={(e) => handleFormChange("slug", e.target.value)} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Category</label>
-              <Input value={formState.category} onChange={(e) => handleFormChange("category", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Tags (comma separated)</label>
-              <Input value={formState.tags} onChange={(e) => handleFormChange("tags", e.target.value)} />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700" htmlFor="blog-slug">Slug (optional)</label>
+              <Input
+                id="blog-slug"
+                placeholder="auto-generated-if-empty"
+                value={formState.slug}
+                onChange={(e) => handleFormChange("slug", e.target.value)}
+              />
+              <p className="text-xs text-gray-500">Used for the URL, lowercase letters, numbers, and hyphens.</p>
             </div>
           </div>
 
@@ -403,6 +409,14 @@ export default function AdminBlogEditorPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Tags</label>
+              <Input
+                placeholder="Comma separated tags"
+                value={formState.tags}
+                onChange={(e) => handleFormChange("tags", e.target.value)}
+              />
+            </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Featured Image URL</label>
               <Input
@@ -459,6 +473,59 @@ export default function AdminBlogEditorPage() {
                 checked={formState.is_featured}
                 onCheckedChange={(checked) => handleFormChange("is_featured", checked)}
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-gray-200 p-4 space-y-4">
+              <div>
+                <p className="text-sm uppercase text-gray-500 font-semibold">Publishing Surface</p>
+                <h3 className="text-lg font-semibold text-gray-900">Where should this appear?</h3>
+                <p className="text-sm text-gray-500">
+                  Choose whether this stays a regular blog article or also shows up in Current Affairs notes.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={formState.isCurrentAffairsNote ? "outline" : "default"}
+                  onClick={() => handleFormChange("isCurrentAffairsNote", false)}
+                >
+                  Blog Post
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={formState.isCurrentAffairsNote ? "default" : "outline"}
+                  onClick={() => handleFormChange("isCurrentAffairsNote", true)}
+                >
+                  Current Affairs Note
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-gray-200 p-4">
+              {formState.isCurrentAffairsNote ? (
+                <>
+                  <label className="text-sm font-medium text-gray-700" htmlFor="current-affairs-tag">
+                    Current Affairs Tag (optional)
+                  </label>
+                  <Input
+                    id="current-affairs-tag"
+                    placeholder="e.g., Daily Digest, Budget 2026"
+                    value={formState.currentAffairsTag}
+                    onChange={(e) => handleFormChange("currentAffairsTag", e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">
+                    This label is shown on the Current Affairs page to highlight the type of note.
+                  </p>
+                </>
+              ) : (
+                <div className="text-sm text-gray-500">
+                  Enable “Current Affairs Note” to select a tag and surface this article in the notes list.
+                </div>
+              )}
             </div>
           </div>
         </div>

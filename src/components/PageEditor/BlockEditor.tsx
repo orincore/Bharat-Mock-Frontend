@@ -1138,8 +1138,28 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [draggingSectionId, setDraggingSectionId] = useState<string | null>(null);
   const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
+  const [sectionDragStart, setSectionDragStart] = useState<{ x: number; y: number } | null>(null);
   const [draggingBlock, setDraggingBlock] = useState<{ sectionId: string; blockId: string } | null>(null);
   const [dragOverBlock, setDragOverBlock] = useState<{ sectionId: string; blockId: string } | null>(null);
+  const [blockDragStart, setBlockDragStart] = useState<{ x: number; y: number } | null>(null);
+  const dragImageRef = useRef<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const img = new Image();
+    img.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxIiBoZWlnaHQ9IjEiLz4=';
+    dragImageRef.current = img;
+  }, []);
+
+  const isMostlyVerticalDrag = (
+    start: { x: number; y: number } | null,
+    event: React.DragEvent<HTMLDivElement>
+  ) => {
+    if (!start) return true;
+    const deltaX = Math.abs(event.clientX - start.x);
+    const deltaY = Math.abs(event.clientY - start.y);
+    return deltaY >= deltaX;
+  };
 
   useEffect(() => {
     if (!parentSectionsSignatureRef.current || parentSectionsSignatureRef.current === JSON.stringify(initialSections)) {
@@ -1335,12 +1355,19 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     if (isPreview) return;
     setDraggingSectionId(sectionId);
     setDragOverSectionId(null);
+    setSectionDragStart({ x: event.clientX, y: event.clientY });
     event.dataTransfer.setData('text/plain', sectionId);
     event.dataTransfer.effectAllowed = 'move';
+    if (dragImageRef.current) {
+      event.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
+    }
   };
 
   const handleSectionDragOver = (event: React.DragEvent<HTMLDivElement>, sectionId: string) => {
     if (!draggingSectionId || draggingSectionId === sectionId) return;
+    if (!isMostlyVerticalDrag(sectionDragStart, event)) {
+      return;
+    }
     event.preventDefault();
     setDragOverSectionId(sectionId);
   };
@@ -1348,14 +1375,18 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const handleSectionDrop = (event: React.DragEvent<HTMLDivElement>, sectionId: string) => {
     if (!draggingSectionId) return;
     event.preventDefault();
-    reorderSections(draggingSectionId, sectionId);
+    if (isMostlyVerticalDrag(sectionDragStart, event)) {
+      reorderSections(draggingSectionId, sectionId);
+    }
     setDraggingSectionId(null);
     setDragOverSectionId(null);
+    setSectionDragStart(null);
   };
 
   const handleSectionDragEnd = () => {
     setDraggingSectionId(null);
     setDragOverSectionId(null);
+    setSectionDragStart(null);
   };
 
   const updateSection = (sectionId: string, updates: Partial<Section>) => {
@@ -1468,8 +1499,12 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     if (isPreview) return;
     setDraggingBlock({ sectionId, blockId });
     setDragOverBlock(null);
+    setBlockDragStart({ x: event.clientX, y: event.clientY });
     event.dataTransfer.setData('text/plain', blockId);
     event.dataTransfer.effectAllowed = 'move';
+    if (dragImageRef.current) {
+      event.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
+    }
   };
 
   const handleBlockDragOver = (
@@ -1478,6 +1513,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     blockId: string
   ) => {
     if (!draggingBlock || draggingBlock.sectionId !== sectionId || draggingBlock.blockId === blockId) {
+      return;
+    }
+    if (!isMostlyVerticalDrag(blockDragStart, event)) {
       return;
     }
     event.preventDefault();
@@ -1491,14 +1529,18 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   ) => {
     if (!draggingBlock || draggingBlock.sectionId !== sectionId) return;
     event.preventDefault();
-    reorderBlocks(sectionId, draggingBlock.blockId, blockId);
+    if (isMostlyVerticalDrag(blockDragStart, event)) {
+      reorderBlocks(sectionId, draggingBlock.blockId, blockId);
+    }
     setDraggingBlock(null);
     setDragOverBlock(null);
+    setBlockDragStart(null);
   };
 
   const handleBlockDragEnd = () => {
     setDraggingBlock(null);
     setDragOverBlock(null);
+    setBlockDragStart(null);
   };
 
   const handleSave = () => {

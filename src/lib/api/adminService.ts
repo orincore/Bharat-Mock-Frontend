@@ -445,13 +445,14 @@ export const adminService = {
     return response;
   },
 
-  async updateUserRole(userId: string, role: 'user' | 'admin'): Promise<User> {
+  async updateUserRole(userId: string, role: 'user' | 'admin' | 'editor' | 'author'): Promise<User> {
     const response = await apiClient.put<{ success: boolean; data: User }>(`/admin/users/${userId}/role`, { role }, true);
     return response.data;
   },
 
-  async toggleUserBlock(userId: string): Promise<User> {
-    const response = await apiClient.put<{ success: boolean; data: User }>(`/admin/users/${userId}/toggle-block`, {}, true);
+  async toggleUserBlock(userId: string, reason?: string): Promise<User> {
+    const payload = reason ? { reason } : {};
+    const response = await apiClient.put<{ success: boolean; data: User }>(`/admin/users/${userId}/toggle-block`, payload, true);
     return response.data;
   },
 
@@ -554,5 +555,31 @@ export const adminService = {
   async upsertDisclaimer(payload: DisclaimerPayload): Promise<DisclaimerData> {
     const response = await apiClient.put<{ success: boolean; data: DisclaimerData }>('/admin/disclaimer', payload, true);
     return response.data;
+  },
+
+  async uploadExamPdfEn(examId: string, pdf: File) {
+    const formData = new FormData();
+    formData.append('pdf', pdf);
+
+    const response = await apiClient.postFormData<{ success: boolean; data: { pdf_url_en: string }; message: string }>(`/admin/exams/${examId}/upload-pdf-en`, formData, true);
+    return response.data;
+  },
+
+  async uploadExamPdfHi(examId: string, pdf: File) {
+    const formData = new FormData();
+    formData.append('pdf', pdf);
+
+    const response = await apiClient.postFormData<{ success: boolean; data: { pdf_url_hi: string }; message: string }>(`/admin/exams/${examId}/upload-pdf-hi`, formData, true);
+    return response.data;
+  },
+
+  async removeExamPdfEn(examId: string) {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/admin/exams/${examId}/remove-pdf-en`, true);
+    return response;
+  },
+
+  async removeExamPdfHi(examId: string) {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/admin/exams/${examId}/remove-pdf-hi`, true);
+    return response;
   }
 };

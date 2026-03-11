@@ -7,6 +7,8 @@ export interface SubscriptionPlan {
   description?: string | null;
   duration_days: number;
   price_cents: number;
+  normal_price_cents: number;
+  sale_price_cents?: number | null;
   currency_code: string;
   features?: string[];
   is_active?: boolean;
@@ -39,9 +41,11 @@ const asData = <T>(response: { success: boolean; data: T }): T => response.data;
 
 export const subscriptionService = {
   async getPlans(): Promise<SubscriptionPlan[]> {
+    console.log('[subscriptionService] Calling GET /subscriptions/plans');
     const response = await apiClient.get<{ success: boolean; data: SubscriptionPlan[] }>(
       '/subscriptions/plans'
     );
+    console.log('[subscriptionService] Response:', response);
     return asData(response);
   },
 

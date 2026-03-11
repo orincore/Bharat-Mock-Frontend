@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Clock, Calendar, BookOpen, Award, Users, TrendingUp, 
-  CheckCircle, AlertCircle, Play, ArrowLeft, FileText 
+  CheckCircle, AlertCircle, Play, ArrowLeft, FileText, Download 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
@@ -286,6 +286,51 @@ export default function ExamDetailPage() {
                       <span className="text-foreground">{topic}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* PDF Downloads */}
+            {((exam as any).pdf_url_en || (exam as any).pdf_url_hi) && (
+              <div className="bg-card rounded-xl border border-border p-6">
+                <h2 className="font-display text-2xl font-bold text-foreground mb-6">
+                  Download Exam Paper
+                </h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {(exam as any).pdf_url_en && (
+                    <a
+                      href={(exam as any).pdf_url_en}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg hover:bg-primary/10 transition-colors group"
+                    >
+                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                        <FileText className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground">English Version</p>
+                        <p className="text-sm text-muted-foreground">Download PDF</p>
+                      </div>
+                      <Download className="h-5 w-5 text-primary flex-shrink-0" />
+                    </a>
+                  )}
+                  {(exam as any).pdf_url_hi && (
+                    <a
+                      href={(exam as any).pdf_url_hi}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg hover:bg-primary/10 transition-colors group"
+                    >
+                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                        <FileText className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground">Hindi Version (हिंदी)</p>
+                        <p className="text-sm text-muted-foreground">Download PDF</p>
+                      </div>
+                      <Download className="h-5 w-5 text-primary flex-shrink-0" />
+                    </a>
+                  )}
                 </div>
               </div>
             )}

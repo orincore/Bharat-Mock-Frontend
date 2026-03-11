@@ -8,7 +8,7 @@ import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
-import { Download, Lock } from "lucide-react";
+import { Download, Lock, Filter } from 'lucide-react';
 import { useAuth } from "@/context/AuthContext";
 
 interface Block {
@@ -124,6 +124,40 @@ const resolvePaperYear = (paper: any): number | null => {
   return extractYearFromTitle(paper?.title || paper?.exam?.title || null);
 };
 
+const extractTierFromTitle = (title?: string | null): string | null => {
+  if (!title) return null;
+  const tierMatch = title.match(/tier[-\s]?([ivx]+|\d)/i);
+  if (tierMatch && tierMatch[1]) {
+    const raw = tierMatch[1].toUpperCase();
+    const numberMap: Record<string, string> = {
+      '1': 'I',
+      '2': 'II',
+      '3': 'III',
+      '4': 'IV',
+      '5': 'V'
+    };
+    const normalized = numberMap[raw] || raw.replace(/[^IVX]/g, '') || raw;
+    return `Tier-${normalized}`;
+  }
+
+  if (/prelims?/i.test(title)) return 'Tier-I';
+  if (/mains?/i.test(title)) return 'Tier-II';
+  return null;
+};
+
+const getExamTierLabel = (exam: any): string | null => {
+  if (!exam) return null;
+  if (exam.tier_label) return exam.tier_label;
+  if (typeof exam.tier === 'string' && exam.tier.trim()) return exam.tier.trim();
+
+  if (exam.exam) {
+    if (exam.exam.tier_label) return exam.exam.tier_label;
+    if (typeof exam.exam.tier === 'string' && exam.exam.tier.trim()) return exam.exam.tier.trim();
+  }
+
+  return extractTierFromTitle(exam.title || exam.exam?.title || '');
+};
+
 export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, combinedSlug, initialTabSlug }: ModernSubcategoryPageProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -146,12 +180,14 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const [questionPapersLoading, setQuestionPapersLoading] = useState(false);
   const [pastPaperLoading, setPastPaperLoading] = useState(false);
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
+  const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingExamId, setDownloadingExamId] = useState<string | null>(null);
   const [isTabListOpen, setIsTabListOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     const fetchSubcategory = async () => {
@@ -511,9 +547,16 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     const uniqueMap = new Map<string, any>();
     const registerExam = (exam: any, fallbackKey?: string) => {
       if (!exam) return;
-      const key = fallbackKey || exam.id || exam.slug || exam.exam_id || `${exam.title || 'exam'}-${uniqueMap.size}`;
+      const examData = exam?.exam ?? exam;
+      if (!examData) return;
+      const key =
+        fallbackKey ||
+        examData.id ||
+        examData.slug ||
+        examData.exam_id ||
+        `${examData.title || 'exam'}-${uniqueMap.size}`;
       if (!uniqueMap.has(key)) {
-        uniqueMap.set(key, exam);
+        uniqueMap.set(key, examData);
       }
     };
 
@@ -586,6 +629,15 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
   }, [extendedMockTests]);
 
+  const availableMockTestTiers = useMemo(() => {
+    const tiers = new Set<string>();
+    extendedMockTests.forEach((exam) => {
+      const tierLabel = getExamTierLabel(exam);
+      if (tierLabel) tiers.add(tierLabel);
+    });
+    return Array.from(tiers).sort();
+  }, [extendedMockTests]);
+
   const availablePreviousPaperYears = useMemo(() => {
     const years = new Set<string>();
     combinedQuestionPapers.forEach((exam) => {
@@ -595,21 +647,34 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
   }, [combinedQuestionPapers]);
 
+  const availablePreviousPaperTiers = useMemo(() => {
+    const tiers = new Set<string>();
+    combinedQuestionPapers.forEach((exam) => {
+      const tierLabel = getExamTierLabel(exam) || getExamTierLabel(exam.exam);
+      if (tierLabel) tiers.add(tierLabel);
+    });
+    return Array.from(tiers).sort();
+  }, [combinedQuestionPapers]);
+
   const filteredMockTests = useMemo(() => {
-    if (selectedYears.length === 0) return extendedMockTests;
     return extendedMockTests.filter((exam) => {
       const year = extractYearFromTitle(exam.title);
-      return year && selectedYears.includes(year);
+      const tierLabel = getExamTierLabel(exam);
+      const matchesYear = selectedYears.length === 0 || (year && selectedYears.includes(year));
+      const matchesTier = selectedTiers.length === 0 || (tierLabel && selectedTiers.includes(tierLabel));
+      return matchesYear && matchesTier;
     });
-  }, [extendedMockTests, selectedYears]);
+  }, [extendedMockTests, selectedYears, selectedTiers]);
 
   const filteredPreviousPapers = useMemo(() => {
-    if (selectedYears.length === 0) return combinedQuestionPapers;
     return combinedQuestionPapers.filter((exam) => {
       const year = extractYearFromTitle(exam.title);
-      return year && selectedYears.includes(year);
+      const tierLabel = getExamTierLabel(exam) || getExamTierLabel(exam.exam);
+      const matchesYear = selectedYears.length === 0 || (year && selectedYears.includes(year));
+      const matchesTier = selectedTiers.length === 0 || (tierLabel && selectedTiers.includes(tierLabel));
+      return matchesYear && matchesTier;
     });
-  }, [combinedQuestionPapers, selectedYears]);
+  }, [combinedQuestionPapers, selectedYears, selectedTiers]);
 
   const toggleYear = (year: string) => {
     setSelectedYears((prev) =>
@@ -619,42 +684,126 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
   const clearYearFilters = () => setSelectedYears([]);
 
-  const isYearFilterTab = activeTab === 'mock-tests' || activeTab === 'previous-papers';
-  const currentYearOptions = activeTab === 'mock-tests' ? availableMockTestYears : availablePreviousPaperYears;
-  const hasYearFilters = isYearFilterTab && currentYearOptions.length > 0;
+  const toggleTier = (tier: string) => {
+    setSelectedTiers((prev) =>
+      prev.includes(tier) ? prev.filter((t) => t !== tier) : [...prev, tier]
+    );
+  };
 
-  const yearFilterPanel = hasYearFilters ? (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
-      <div className="flex flex-col gap-2">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Filter by Year</h3>
-          <p className="text-sm text-gray-500">Select one or more years to refine the list.</p>
+  const clearTierFilters = () => setSelectedTiers([]);
+
+  const isFilterTab = activeTab === 'mock-tests' || activeTab === 'previous-papers';
+  const currentYearOptions = activeTab === 'mock-tests' ? availableMockTestYears : availablePreviousPaperYears;
+  const hasYearFilters = isFilterTab && currentYearOptions.length > 0;
+  const tierOptions = isFilterTab
+    ? activeTab === 'mock-tests'
+      ? availableMockTestTiers
+      : availablePreviousPaperTiers
+    : [];
+  const hasTierFilters = isFilterTab && tierOptions.length > 0;
+
+  const FiltersPanel = ({ className = '' }: { className?: string }) => {
+    if (!hasYearFilters && !hasTierFilters) return null;
+    return (
+      <div className={`rounded-2xl border border-slate-200 bg-white/90 shadow-sm p-5 space-y-6 ${className}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <Filter className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs  tracking-wide text-blue-600 font-semibold">Filters</p>
+              <p className="text-sm text-slate-500">Refine the list by year or tier</p>
+            </div>
+          </div>
+          {(selectedYears.length > 0 || selectedTiers.length > 0) && (
+            <button
+              type="button"
+              onClick={() => {
+                clearYearFilters();
+                clearTierFilters();
+              }}
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+            >
+              Reset
+            </button>
+          )}
         </div>
-        {selectedYears.length > 0 && (
-          <button
-            type="button"
-            onClick={clearYearFilters}
-            className="self-start text-sm font-medium text-blue-600 hover:text-blue-700"
-          >
-            Clear filters
-          </button>
+
+        {hasYearFilters && (
+          <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Year</p>
+                <p className="text-xs text-slate-500">Select multiple years</p>
+              </div>
+              {selectedYears.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearYearFilters}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {currentYearOptions.map((year) => (
+                <button
+                  key={year}
+                  type="button"
+                  onClick={() => toggleYear(year)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                    selectedYears.includes(year)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600'
+                  }`}
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {hasTierFilters && (
+          <div className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-emerald-900">Tier</p>
+                <p className="text-xs text-emerald-600">Choose exam tiers</p>
+              </div>
+              {selectedTiers.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearTierFilters}
+                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {tierOptions.map((tier) => (
+                <button
+                  key={tier}
+                  type="button"
+                  onClick={() => toggleTier(tier)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                    selectedTiers.includes(tier)
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'border-emerald-200 text-emerald-700 hover:border-emerald-400 hover:text-emerald-600'
+                  }`}
+                >
+                  {tier}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
-      <div className="flex flex-col gap-3">
-        {currentYearOptions.map((year) => (
-          <label key={year} className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={selectedYears.includes(year)}
-              onChange={() => toggleYear(year)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-700">{year}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  ) : null;
+    );
+  };
 
   const getSidebarSectionsForTab = (tabId: string) => {
     return sections.filter((section) => {
@@ -757,7 +906,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
             />
           </div>
         )}
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 relative z-10">
+        <div className="container-main relative z-10">
           <div className="text-left flex items-center gap-5">
             {subcategoryInfo?.logo_url && (
               <div className="flex-shrink-0 hidden sm:block">
@@ -788,7 +937,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       </div>
 
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="container-main">
           <div className="flex items-center gap-3 py-4">
             <div className="flex-1 overflow-x-auto hide-scrollbar">
               <div className="flex items-center space-x-6">
@@ -816,7 +965,40 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-10">
+      <div className="container-main py-10">
+        {isFilterTab && (hasYearFilters || hasTierFilters) && (
+          <div className="mb-6 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(prev => !prev)}
+              className="inline-flex items-center gap-2 rounded-full border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600"
+            >
+              <Filter className="h-4 w-4" />
+              {mobileFiltersOpen ? 'Hide Filters' : 'Show Filters'}
+            </button>
+            {mobileFiltersOpen && <FiltersPanel className="mt-4" />}
+          </div>
+        )}
+        {tableOfContents.length > 0 && (
+          <section className="lg:hidden mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+            <div className="p-4 border-b border-slate-100">
+              <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">On this page</p>
+              <p className="text-sm text-slate-500 mt-1">Jump to a section</p>
+            </div>
+            <div className="divide-y">
+              {tableOfContents.map((entry, tocIndex) => (
+                <button
+                  key={`${entry.id || 'toc-entry'}-mobile-${tocIndex}`}
+                  type="button"
+                  onClick={() => scrollToAnchor(entry.id)}
+                  className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-blue-50"
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             {isContentTab && (
@@ -834,9 +1016,10 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                 ) : (
                   <>
                     {visibleSections.map((section, sectionIndex) => {
+                      const sectionAnchor = buildSectionAnchor(section);
                       const renderReservedBefore = isSpecialTab && sectionIndex === reservedPosition;
                       const reservedContent = activeTab === 'mock-tests' ? (
-                        <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                           <h2 className="text-xl font-semibold mb-4">Mock Tests</h2>
                           {mockTestsLoading ? (
                             <p className="text-sm text-gray-500">Loading mock tests...</p>
@@ -844,28 +1027,73 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                             <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No mock tests found for selected years.' : 'No mock tests available yet.'}</p>
                           ) : (
                             <div className="space-y-4">
-                              {filteredMockTests.map((exam, examIndex) => {
-                                const examKey = exam.id || exam.slug || `mock-exam-${examIndex}`;
-                                const canAccess = exam.is_free || user?.is_premium;
+                              {filteredMockTests.map((rawExam, examIndex) => {
+                                const examData = rawExam?.exam ?? rawExam;
+                                if (!examData) {
+                                  return null;
+                                }
+
+                                const examKey = examData.id || examData.slug || `mock-exam-${examIndex}`;
+                                const canAccess = examData.is_free || user?.is_premium;
+                                const hasPdfEn = Boolean(examData.pdf_url_en);
+                                const hasPdfHi = Boolean(examData.pdf_url_hi);
+                                const fallbackPdf = examData.download_url || examData.pdf_url || examData.file_url;
                                 return (
                                   <div key={examKey} className="border rounded-xl p-4 flex flex-col gap-4">
                                     <div className="flex-1">
-                                      <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
+                                      <h3 className="text-lg font-semibold text-gray-900">{examData.title}</h3>
                                       <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                                        {exam.total_questions && <span>{exam.total_questions} Questions</span>}
-                                        {exam.duration && <span>{exam.duration} mins</span>}
-                                        {exam.total_marks && <span>{exam.total_marks} Marks</span>}
-                                        {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                        {examData.total_questions && <span>{examData.total_questions} Questions</span>}
+                                        {examData.duration && <span>{examData.duration} mins</span>}
+                                        {examData.total_marks && <span>{examData.total_marks} Marks</span>}
+                                        {examData.is_free && <span className="text-green-600 font-semibold">Free</span>}
                                       </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-3">
+                                    <div className="flex flex-wrap gap-3 w-full">
                                       <Link
-                                        href={exam.url_path || `/exams/${exam.slug || exam.id}`}
-                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                        href={examData.url_path || `/exams/${examData.slug || examData.id}`}
+                                        className={`inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full transition-colors w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
                                       >
                                         {!canAccess && <Lock className="w-4 h-4 mr-2" />}
                                         {canAccess ? 'Attempt Now' : 'Unlock Premium'}
                                       </Link>
+                                      {(hasPdfEn || hasPdfHi) && (
+                                        <div className="flex flex-wrap gap-2">
+                                          {hasPdfEn && (
+                                            <a
+                                              href={examData.pdf_url_en}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                            >
+                                              <Download className="w-4 h-4 mr-2" />
+                                              English PDF
+                                            </a>
+                                          )}
+                                          {hasPdfHi && (
+                                            <a
+                                              href={examData.pdf_url_hi}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                            >
+                                              <Download className="w-4 h-4 mr-2" />
+                                              Hindi PDF
+                                            </a>
+                                          )}
+                                        </div>
+                                      )}
+                                      {!hasPdfEn && !hasPdfHi && fallbackPdf && (
+                                        <a
+                                          href={fallbackPdf}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                        >
+                                          <Download className="w-4 h-4 mr-2" />
+                                          Download PDF
+                                        </a>
+                                      )}
                                     </div>
                                   </div>
                                 );
@@ -882,29 +1110,77 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                             <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No question papers found for selected years.' : 'No question papers available yet.'}</p>
                           ) : (
                             <div className="space-y-4">
-                              {filteredPreviousPapers.map((exam) => {
-                                const canAccess = exam.is_free || exam.exam?.is_free || user?.is_premium;
+                              {filteredPreviousPapers.map((paper) => {
+                                const examData = paper.exam ?? paper;
+                                if (!examData) return null;
+                                const paperKey = paper.id || examData.id;
+                                const canAccess = examData.is_free || user?.is_premium;
+                                const pdfEn = paper.pdf_url_en || examData.pdf_url_en;
+                                const pdfHi = paper.pdf_url_hi || examData.pdf_url_hi;
+                                const fallbackPdf = paper.download_url || paper.file_url;
+                                const hasPdfEn = Boolean(pdfEn);
+                                const hasPdfHi = Boolean(pdfHi);
+                                const totalQuestions = paper.total_questions ?? examData.total_questions;
+                                const duration = paper.duration ?? examData.duration;
+                                const totalMarks = paper.total_marks ?? examData.total_marks;
                                 return (
-                                <div key={exam.id} className="border rounded-xl p-4 flex flex-col gap-4">
-                                  <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
-                                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                                      {exam.total_questions && <span>{exam.total_questions} Questions</span>}
-                                      {exam.duration && <span>{exam.duration} mins</span>}
-                                      {exam.total_marks && <span>{exam.total_marks} Marks</span>}
-                                      {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                  <div key={paperKey} className="border rounded-xl p-4 flex flex-col gap-4">
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-semibold text-gray-900">{paper.title || examData.title}</h3>
+                                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                        {totalQuestions && <span>{totalQuestions} Questions</span>}
+                                        {duration && <span>{duration} mins</span>}
+                                        {totalMarks && <span>{totalMarks} Marks</span>}
+                                        {examData.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 w-full">
+                                      <Link
+                                        href={paper.url_path || examData.url_path || `/exams/${examData.slug || examData.id}`}
+                                        className={`inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full transition-colors w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                      >
+                                        {!canAccess && <Lock className="w-4 h-4 mr-2" />}
+                                        {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                      </Link>
+                                      {(hasPdfEn || hasPdfHi) && (
+                                        <div className="flex flex-wrap gap-2">
+                                          {hasPdfEn && (
+                                            <a
+                                              href={pdfEn}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                            >
+                                              <Download className="w-4 h-4 mr-2" />
+                                              English PDF
+                                            </a>
+                                          )}
+                                          {hasPdfHi && (
+                                            <a
+                                              href={pdfHi}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                            >
+                                              <Download className="w-4 h-4 mr-2" />
+                                              Hindi PDF
+                                            </a>
+                                          )}
+                                        </div>
+                                      )}
+                                      {!hasPdfEn && !hasPdfHi && fallbackPdf && (
+                                        <a
+                                          href={fallbackPdf}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                        >
+                                          <Download className="w-4 h-4 mr-2" />
+                                          Download PDF
+                                        </a>
+                                      )}
                                     </div>
                                   </div>
-                                  <div className="flex flex-wrap gap-3">
-                                    <Link
-                                      href={exam.url_path || `/exams/${exam.slug || exam.id}`}
-                                      className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
-                                    >
-                                      {!canAccess && <Lock className="w-4 h-4 mr-2" />}
-                                      {canAccess ? 'Attempt Now' : 'Unlock Premium'}
-                                    </Link>
-                                  </div>
-                                </div>
                                 );
                               })}
                             </div>
@@ -916,18 +1192,15 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                         <React.Fragment key={section.id}>
                           {renderReservedBefore && reservedContent}
                           <section
-                            id={buildSectionAnchor(section)}
-                            className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                            key={section.id}
+                            className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6 last:mb-0"
+                            id={sectionAnchor}
                             style={{
-                              backgroundColor: section.background_color || "white",
-                              color: section.text_color || "inherit"
+                              backgroundColor: section.background_color || 'white',
+                              color: section.text_color || 'inherit'
                             }}
                           >
-                            <div className="p-6 border-b border-gray-200 bg-gray-50">
-                              <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
-                              {section.subtitle && <p className="mt-2 text-gray-600">{section.subtitle}</p>}
-                            </div>
-                            <div className="p-6">
+                            <div className="p-4 sm:p-6">
                               {section.blocks.map((block) => (
                                 <div key={block.id} className="mb-4">
                                   <PageBlockRenderer block={block} />
@@ -940,7 +1213,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                     })}
                     {isSpecialTab && reservedPosition === visibleSections.length && (
                       activeTab === 'mock-tests' ? (
-                        <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                           <h2 className="text-xl font-semibold mb-4">Mock Tests</h2>
                           {mockTestsLoading ? (
                             <p className="text-sm text-gray-500">Loading mock tests...</p>
@@ -948,28 +1221,71 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                             <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No mock tests found for selected years.' : 'No mock tests available yet.'}</p>
                           ) : (
                             <div className="space-y-4">
-                              {filteredMockTests.map((exam, examIndex) => {
-                                const examKey = exam.id || exam.slug || `mock-exam-${examIndex}`;
-                                const canAccess = exam.is_free || user?.is_premium;
+                              {filteredMockTests.map((rawExam, examIndex) => {
+                                const examData = rawExam?.exam ?? rawExam;
+                                if (!examData) return null;
+
+                                const examKey = examData.id || examData.slug || `mock-exam-${examIndex}`;
+                                const canAccess = examData.is_free || user?.is_premium;
+                                const hasPdfEn = Boolean(examData.pdf_url_en);
+                                const hasPdfHi = Boolean(examData.pdf_url_hi);
+                                const fallbackPdf = examData.download_url || examData.pdf_url || examData.file_url;
                                 return (
                                   <div key={examKey} className="border rounded-xl p-4 flex flex-col gap-4">
                                     <div className="flex-1">
-                                      <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
+                                      <h3 className="text-lg font-semibold text-gray-900">{examData.title}</h3>
                                       <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                                        {exam.total_questions && <span>{exam.total_questions} Questions</span>}
-                                        {exam.duration && <span>{exam.duration} mins</span>}
-                                        {exam.total_marks && <span>{exam.total_marks} Marks</span>}
-                                        {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                        {examData.total_questions && <span>{examData.total_questions} Questions</span>}
+                                        {examData.duration && <span>{examData.duration} mins</span>}
+                                        {examData.total_marks && <span>{examData.total_marks} Marks</span>}
+                                        {examData.is_free && <span className="text-green-600 font-semibold">Free</span>}
                                       </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-3">
+                                    <div className="flex flex-wrap gap-3 w-full">
                                       <Link
-                                        href={exam.url_path || `/exams/${exam.slug || exam.id}`}
-                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                        href={examData.url_path || `/exams/${examData.slug || examData.id}`}
+                                        className={`inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full transition-colors w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
                                       >
                                         {!canAccess && <Lock className="w-4 h-4 mr-2" />}
                                         {canAccess ? 'Attempt Now' : 'Unlock Premium'}
                                       </Link>
+                                      {(hasPdfEn || hasPdfHi) && (
+                                        <div className="flex flex-wrap gap-2">
+                                          {hasPdfEn && (
+                                            <a
+                                              href={examData.pdf_url_en}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                            >
+                                              <Download className="w-4 h-4 mr-2" />
+                                              English PDF
+                                            </a>
+                                          )}
+                                          {hasPdfHi && (
+                                            <a
+                                              href={examData.pdf_url_hi}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                            >
+                                              <Download className="w-4 h-4 mr-2" />
+                                              Hindi PDF
+                                            </a>
+                                          )}
+                                        </div>
+                                      )}
+                                      {!hasPdfEn && !hasPdfHi && fallbackPdf && (
+                                        <a
+                                          href={fallbackPdf}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                        >
+                                          <Download className="w-4 h-4 mr-2" />
+                                          Download PDF
+                                        </a>
+                                      )}
                                     </div>
                                   </div>
                                 );
@@ -984,29 +1300,77 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                             <p className="text-sm text-gray-500">Loading question papers...</p>
                           ) : filteredPreviousPapers.length === 0 ? (
                             <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No question papers found for selected years.' : 'No question papers available yet.'}</p>
-          ) : (
+                          ) : (
                             <div className="space-y-4">
-                              {filteredPreviousPapers.map((exam) => {
-                                const canAccess = exam.is_free || exam.exam?.is_free || user?.is_premium;
+                              {filteredPreviousPapers.map((paper) => {
+                                const examData = paper.exam ?? paper;
+                                if (!examData) return null;
+                                const paperKey = paper.id || examData.id;
+                                const canAccess = examData.is_free || user?.is_premium;
+                                const pdfEn = paper.pdf_url_en || examData.pdf_url_en;
+                                const pdfHi = paper.pdf_url_hi || examData.pdf_url_hi;
+                                const fallbackPdf = paper.download_url || paper.file_url;
+                                const hasPdfEn = Boolean(pdfEn);
+                                const hasPdfHi = Boolean(pdfHi);
+                                const totalQuestions = paper.total_questions ?? examData.total_questions;
+                                const duration = paper.duration ?? examData.duration;
+                                const totalMarks = paper.total_marks ?? examData.total_marks;
                                 return (
-                                  <div key={exam.id} className="border rounded-xl p-4 flex flex-col gap-4">
+                                  <div key={paperKey} className="border rounded-xl p-4 flex flex-col gap-4">
                                     <div className="flex-1">
-                                      <h3 className="text-lg font-semibold text-gray-900">{exam.title || exam.exam?.title}</h3>
+                                      <h3 className="text-lg font-semibold text-gray-900">{paper.title || examData.title}</h3>
                                       <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                                        {exam.total_questions && <span>{exam.total_questions} Questions</span>}
-                                        {exam.duration && <span>{exam.duration} mins</span>}
-                                        {exam.total_marks && <span>{exam.total_marks} Marks</span>}
-                                        {exam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                        {totalQuestions && <span>{totalQuestions} Questions</span>}
+                                        {duration && <span>{duration} mins</span>}
+                                        {totalMarks && <span>{totalMarks} Marks</span>}
+                                        {examData.is_free && <span className="text-green-600 font-semibold">Free</span>}
                                       </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-3">
+                                    <div className="flex flex-wrap gap-3 w-full">
                                       <Link
-                                        href={exam.url_path || exam.exam?.url_path || `/exams/${exam.slug || exam.id}`}
-                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                        href={paper.url_path || examData.url_path || `/exams/${examData.slug || examData.id}`}
+                                        className={`inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full transition-colors w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
                                       >
                                         {!canAccess && <Lock className="w-4 h-4 mr-2" />}
                                         {canAccess ? 'Attempt Now' : 'Unlock Premium'}
                                       </Link>
+                                      {(pdfEn || pdfHi) && (
+                                        <div className="flex flex-wrap gap-2">
+                                          {pdfEn && (
+                                            <a
+                                              href={pdfEn}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                            >
+                                              <Download className="w-4 h-4 mr-2" />
+                                              English PDF
+                                            </a>
+                                          )}
+                                          {pdfHi && (
+                                            <a
+                                              href={pdfHi}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                            >
+                                              <Download className="w-4 h-4 mr-2" />
+                                              Hindi PDF
+                                            </a>
+                                          )}
+                                        </div>
+                                      )}
+                                      {!pdfEn && !pdfHi && fallbackPdf && (
+                                        <a
+                                          href={fallbackPdf}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                        >
+                                          <Download className="w-4 h-4 mr-2" />
+                                          Download PDF
+                                        </a>
+                                      )}
                                     </div>
                                   </div>
                                 );
@@ -1089,7 +1453,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
             {(sidebarSections.length > 0 || hasYearFilters || tableOfContents.length > 0) && (
               <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto">
                 {tableOfContents.length > 0 && (
-                  <section className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <section className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200 bg-gray-50">
                       <h3 className="text-lg font-semibold text-gray-900">Table of Contents</h3>
                       <p className="mt-1 text-sm text-gray-600">
@@ -1097,9 +1461,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                       </p>
                     </div>
                     <div className="divide-y">
-                      {tableOfContents.map((entry) => (
+                      {tableOfContents.map((entry, tocIndex) => (
                         <button
-                          key={entry.id}
+                          key={`${entry.id || 'toc-entry'}-${tocIndex}`}
                           type="button"
                           onClick={() => scrollToAnchor(entry.id)}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50"
@@ -1110,29 +1474,27 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                     </div>
                   </section>
                 )}
-                {hasYearFilters && yearFilterPanel}
-                {sidebarSections.map((section) => (
-                  <section
-                    key={section.id}
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-                    style={{
-                      backgroundColor: section.background_color || 'white',
-                      color: section.text_color || 'inherit'
-                    }}
-                  >
-                    <div className="p-4 border-b border-gray-200 bg-gray-50">
-                      <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
-                      {section.subtitle && <p className="mt-1 text-sm text-gray-600">{section.subtitle}</p>}
-                    </div>
-                    <div className="p-4 space-y-4">
-                      {section.blocks.map((block) => (
-                        <div key={block.id}>
-                          <PageBlockRenderer block={block} />
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                ))}
+                {isFilterTab && <FiltersPanel className="hidden lg:block" />}
+                {sidebarSections.map((section, sectionIndex) => {
+                  const sidebarAnchor = buildSectionAnchor(section);
+                  return (
+                    <section
+                      key={section.id}
+                      className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden ${sectionIndex !== sidebarSections.length - 1 ? 'mb-6' : ''}`}
+                      id={sidebarAnchor}
+                      style={{
+                        backgroundColor: section.background_color || 'white',
+                        color: section.text_color || 'inherit'
+                      }}
+                    >
+                      <div className="p-4 sm:p-5 space-y-4">
+                        {section.blocks.map((block) => (
+                          <PageBlockRenderer key={block.id} block={block} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             )}
           </aside>

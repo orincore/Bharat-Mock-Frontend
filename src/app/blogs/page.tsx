@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Search, Calendar, Tag, Bookmark, ArrowRight } from 'lucide-react';
+import { ArrowRight, Bookmark, Calendar, ChevronDown, Search, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { blogService, Blog } from '@/lib/api/blogService';
+import { stripLineBreakTags } from '@/lib/utils';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 
 export default function BlogsPage() {
@@ -83,7 +84,10 @@ export default function BlogsPage() {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  const listArticles = articles;
+  const visibleArticles = useMemo(
+    () => articles.filter((article) => !article.is_current_affairs_note),
+    [articles]
+  );
 
   const toggleCategory = (category: string) => {
     setFilters((prev) => {
@@ -210,7 +214,7 @@ export default function BlogsPage() {
         <main className="space-y-6">
           <div className="flex flex-col gap-1">
             <h2 className="font-display text-2xl font-bold text-slate-900">{filters.categories.length ? 'Filtered blogs' : 'All blogs'}</h2>
-            <p className="text-sm text-slate-500">Showing {articles.length} of {pagination.total} entries</p>
+            <p className="text-sm text-slate-500">Showing {visibleArticles.length} of {pagination.total} entries</p>
           </div>
 
           {isLoading && (
@@ -226,7 +230,7 @@ export default function BlogsPage() {
             </div>
           )}
 
-          {!isLoading && !error && listArticles.length === 0 && (
+          {!isLoading && !error && visibleArticles.length === 0 && (
             <div className="bg-white border border-dashed border-border rounded-2xl py-12 text-center">
               <p className="font-semibold text-slate-900 mb-2">No blogs found</p>
               <p className="text-sm text-muted-foreground mb-4">Adjust your search or category filters</p>
@@ -234,9 +238,9 @@ export default function BlogsPage() {
             </div>
           )}
 
-          {!isLoading && !error && listArticles.length > 0 && (
+          {!isLoading && !error && visibleArticles.length > 0 && (
             <div className="space-y-4">
-              {listArticles.map((article) => (
+              {visibleArticles.map((article) => (
                 <article key={article.id} className="bg-white border border-border rounded-2xl p-6 flex flex-col md:flex-row gap-5 hover:border-primary/40 transition">
                   <div className="flex-1 space-y-3">
                     <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-wide text-primary">
@@ -250,7 +254,11 @@ export default function BlogsPage() {
                         {article.title}
                       </h3>
                     </Link>
-                    {article.excerpt && <p className="text-sm text-slate-600 line-clamp-3">{article.excerpt}</p>}
+                    {article.excerpt && (
+                      <p className="text-sm text-slate-600 line-clamp-3">
+                        {stripLineBreakTags(article.excerpt)}
+                      </p>
+                    )}
                     <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
                       {article.published_at && (
                         <span className="inline-flex items-center gap-1">

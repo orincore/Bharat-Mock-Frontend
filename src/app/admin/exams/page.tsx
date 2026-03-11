@@ -17,6 +17,7 @@ import type { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { taxonomyService, Category, Subcategory } from '@/lib/api/taxonomyService';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 export default function AdminExamsPage() {
   const CLEAR_OPTION = '__all__';
@@ -49,6 +50,7 @@ export default function AdminExamsPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const limit = 10;
+  const { canDelete, userRole } = useRolePermissions();
 
   const fetchExams = async () => {
     setLoading(true);
@@ -172,6 +174,10 @@ export default function AdminExamsPage() {
   };
 
   const handleDelete = async (exam: Exam) => {
+    if (!canDelete) {
+      alert('Only admins can delete exams. Please contact an administrator.');
+      return;
+    }
     if (!confirm(`Ready to retire "${exam.title}"? This action cannot be undone.`)) {
       return;
     }
@@ -555,24 +561,28 @@ export default function AdminExamsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center gap-2">
                           <Link href={`/admin/exams/${exam.id}`}>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="outline" size="sm" className="gap-1">
                               <Edit className="h-4 w-4" />
+                              Edit
                             </Button>
                           </Link>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(exam)}
-                            className={`text-destructive hover:text-destructive hover:bg-destructive/10 relative ${isDeleting ? 'pointer-events-none' : ''}`}
-                          >
-                            {isDeleting ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
+                          {canDelete && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-destructive border-destructive/50"
+                              onClick={() => handleDelete(exam)}
+                              disabled={deletingExamId === exam.id}
+                            >
+                              {isDeleting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

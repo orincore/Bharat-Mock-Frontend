@@ -58,7 +58,10 @@ function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
 }
 
 const KNOWN_TAB_SLUGS = new Set([
-  'overview', 'mock-tests', 'question-papers'
+  'overview',
+  'mock-tests',
+  'previous-papers',
+  'question-papers'
 ]);
 
 type TwoSegmentResolved = 'exam' | 'subcategory-tab' | 'category-tab' | null;
@@ -71,6 +74,20 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
     const resolve = async () => {
       const isKnownTab = KNOWN_TAB_SLUGS.has(second.toLowerCase());
 
+      // First, check if this is an exam path
+      try {
+        const examPath = `/${first}/${second}`;
+        const examRes = await fetch(buildApiUrl(`/exams/path${examPath}`));
+        if (examRes.ok) {
+          const examData = await examRes.json();
+          if (examData?.data?.id) {
+            if (!cancelled) setResolved('exam');
+            return;
+          }
+        }
+      } catch { /* not an exam */ }
+
+      // If not an exam, check if first segment is a subcategory
       try {
         const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`));
         if (subRes.ok) {
@@ -112,6 +129,7 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
         }
       } catch { /* not a subcategory */ }
 
+      // Check if first segment is a category
       try {
         const catRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`));
         if (catRes.ok) {
@@ -123,6 +141,7 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
         }
       } catch { /* not a category */ }
 
+      // Default to exam if nothing else matches
       if (!cancelled) setResolved('exam');
     };
     resolve();

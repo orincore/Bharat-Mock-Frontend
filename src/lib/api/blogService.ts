@@ -21,6 +21,8 @@ export interface Blog {
   tags?: string[];
   is_published: boolean;
   is_featured: boolean;
+  is_current_affairs_note?: boolean;
+  current_affairs_tag?: string | null;
   published_at?: string;
   view_count: number;
   read_time?: number;

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Shield, Ban, CheckCircle, Eye } from 'lucide-react';
+import { Search, Ban, CheckCircle, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -10,6 +10,15 @@ import { adminService } from '@/lib/api/adminService';
 import { User } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
+
+const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'editor', label: 'Editor' },
+  { value: 'author', label: 'Author' },
+  { value: 'user', label: 'User' }
+] as const;
+
+type RoleValue = (typeof ROLE_OPTIONS)[number]['value'];
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -20,6 +29,8 @@ export default function AdminUsersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 20;
+
+  const roleFilterOptions = useMemo(() => [{ value: '', label: 'All Roles' }, ...ROLE_OPTIONS], []);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -39,7 +50,7 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, [page, search, roleFilter]);
 
-  const handleRoleChange = async (userId: string, newRole: 'user' | 'admin') => {
+  const handleRoleChange = async (userId: string, newRole: RoleValue) => {
     if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
       return;
     }
@@ -53,9 +64,18 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleToggleBlock = async (userId: string) => {
+  const handleToggleBlock = async (user: User) => {
     try {
-      await adminService.toggleUserBlock(userId);
+      let reason: string | undefined;
+      if (!user.is_blocked) {
+        reason = prompt('Enter the suspension reason to show the user:') || '';
+        if (!reason.trim()) {
+          alert('Block reason is required. Suspension aborted.');
+          return;
+        }
+      }
+
+      await adminService.toggleUserBlock(user.id, reason);
       fetchUsers();
     } catch (error) {
       console.error('Failed to toggle user block:', error);
@@ -104,9 +124,9 @@ export default function AdminUsersPage() {
               }}
               className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="">All Roles</option>
-              <option value="user">Users</option>
-              <option value="admin">Admins</option>
+              {roleFilterOptions.map((role) => (
+                <option key={role.value} value={role.value}>{role.label}</option>
+              ))}
             </select>
           </div>
 
@@ -175,15 +195,20 @@ export default function AdminUsersPage() {
                     <td className="px-6 py-4">
                       <select
                         value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value as 'user' | 'admin')}
+                        onChange={(e) => handleRoleChange(user.id, e.target.value as RoleValue)}
                         className={`px-3 py-1 rounded-lg text-xs font-medium border ${
-                          user.role === 'admin' 
-                            ? 'bg-secondary/10 text-secondary border-secondary/20' 
+                          user.role === 'admin'
+                            ? 'bg-secondary/10 text-secondary border-secondary/20'
+                            : user.role === 'editor'
+                            ? 'bg-blue-50 text-blue-600 border-blue-100'
+                            : user.role === 'author'
+                            ? 'bg-amber-50 text-amber-600 border-amber-100'
                             : 'bg-primary/10 text-primary border-primary/20'
                         }`}
                       >
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
+                        {ROLE_OPTIONS.map((role) => (
+                          <option key={role.value} value={role.value}>{role.label}</option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-6 py-4">
@@ -194,6 +219,9 @@ export default function AdminUsersPage() {
                       }`}>
                         {user.is_blocked ? 'Blocked' : 'Active'}
                       </span>
+                      {user.is_blocked && user.block_reason && (
+                        <p className="mt-1 text-xs text-destructive">Reason: {user.block_reason}</p>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {new Date(user.created_at).toLocaleDateString()}
@@ -213,7 +241,7 @@ export default function AdminUsersPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleToggleBlock(user.id)}
+                          onClick={() => handleToggleBlock(user)}
                           className={user.is_blocked ? 'text-success hover:text-success' : 'text-destructive hover:text-destructive'}
                         >
                           {user.is_blocked ? (

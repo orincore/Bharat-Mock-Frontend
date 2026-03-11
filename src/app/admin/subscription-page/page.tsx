@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, Trash2, Save, Eye, EyeOff, GripVertical, Edit2 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import { Plus, Trash2, Save, Eye, EyeOff, GripVertical, Edit2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,20 +32,28 @@ import {
   SubscriptionPageMeta,
 } from '@/lib/api/subscriptionPageService';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 const SECTION_TYPES = [
   { value: 'hero', label: 'Hero Section' },
-  { value: 'features', label: 'Features Section' },
-  { value: 'benefits', label: 'Benefits Section' },
-  { value: 'testimonials', label: 'Testimonials Section' },
+  { value: 'featured', label: 'Featured Benefits' },
+  { value: 'categories', label: 'Exam Categories' },
+  { value: 'curriculum', label: 'Course Curriculum' },
+  { value: 'curriculum_banners', label: 'Curriculum Banners' },
+  { value: 'banners', label: 'Attractive Banners' },
+  { value: 'why_us', label: 'Why Bharat Mock' },
+  { value: 'testimonials', label: 'Testimonials' },
   { value: 'faq', label: 'FAQ Section' },
-  { value: 'pricing_intro', label: 'Pricing Introduction' },
-  { value: 'cta', label: 'Call to Action' },
   { value: 'custom', label: 'Custom Section' },
 ];
 
 const BLOCK_TYPES = [
   { value: 'feature_item', label: 'Feature Item' },
+  { value: 'category_item', label: 'Category Item' },
+  { value: 'curriculum_item', label: 'Curriculum Item' },
+  { value: 'curriculum_banner', label: 'Curriculum Banner' },
+  { value: 'banner', label: 'Banner' },
   { value: 'benefit_item', label: 'Benefit Item' },
   { value: 'testimonial', label: 'Testimonial' },
   { value: 'faq_item', label: 'FAQ Item' },
@@ -53,11 +62,26 @@ const BLOCK_TYPES = [
   { value: 'text', label: 'Text Block' },
 ];
 
+const ICON_OPTIONS: string[] = [
+  'Activity', 'Award', 'Bell', 'BookOpen', 'Brain', 'Briefcase', 'Calendar', 'Camera', 'CheckCircle',
+  'Clock', 'Compass', 'Copy', 'CreditCard', 'Database', 'FileText', 'Filter', 'Flag', 'Folder',
+  'Globe', 'Grid', 'Headphones', 'Heart', 'HelpCircle', 'Home', 'Layers', 'Lightbulb', 'LineChart',
+  'ListChecks', 'Lock', 'Map', 'Megaphone', 'MessageSquare', 'Monitor', 'PieChart', 'PlayCircle',
+  'Rocket', 'Shield', 'ShoppingBag', 'Star', 'Target', 'ThumbsUp', 'Trophy', 'TrendingUp', 'Truck',
+  'Users', 'Wifi', 'Zap', 'Sparkles', 'GraduationCap', 'Server', 'ClipboardCheck'
+];
+
+type LucideIconComponent = React.ComponentType<{ className?: string }>
+
+const lucideIconRegistry = LucideIcons as unknown as Record<string, LucideIconComponent>;
+
 export default function SubscriptionPageAdminPage() {
   const [sections, setSections] = useState<SubscriptionPageSection[]>([]);
   const [meta, setMeta] = useState<SubscriptionPageMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [heroImageUploading, setHeroImageUploading] = useState(false);
+  const [blockImageUploading, setBlockImageUploading] = useState(false);
 
   const [editingSection, setEditingSection] = useState<SubscriptionPageSection | null>(null);
   const [editingBlock, setEditingBlock] = useState<SubscriptionPageBlock | null>(null);
@@ -65,6 +89,64 @@ export default function SubscriptionPageAdminPage() {
   const [showSectionDialog, setShowSectionDialog] = useState(false);
   const [showBlockDialog, setShowBlockDialog] = useState(false);
   const [showMetaDialog, setShowMetaDialog] = useState(false);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const heroImageInputRef = useRef<HTMLInputElement | null>(null);
+  const blockImageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const getIconComponent = (iconName?: string | null) => {
+    if (!iconName) return null;
+    return lucideIconRegistry[iconName] ?? null;
+  };
+
+  const getDefaultBlockTypeForSection = (sectionType?: string) => {
+    switch (sectionType) {
+      case 'featured':
+        return 'feature_item';
+      case 'categories':
+        return 'category_item';
+      case 'curriculum':
+        return 'curriculum_item';
+      case 'curriculum_banners':
+        return 'curriculum_banner';
+      case 'banners':
+        return 'banner';
+      case 'why_us':
+        return 'benefit_item';
+      case 'faq':
+        return 'faq_item';
+      default:
+        return 'text';
+    }
+  };
+
+  const handleBlockImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !editingBlock) {
+      event.target.value = '';
+      return;
+    }
+
+    setBlockImageUploading(true);
+    try {
+      const isBanner = editingBlock.block_type?.includes('banner');
+      const folder = isBanner ? 'subscription-page/banners' : 'subscription-page/blocks';
+      const upload = await subscriptionPageService.uploadMedia(file, folder);
+      setEditingBlock((prev) => (prev ? { ...prev, image_url: upload.file_url } : prev));
+      toast.success('Block image uploaded');
+    } catch (error: any) {
+      console.error('Failed to upload block image:', error);
+      toast.error(error?.message || 'Failed to upload block image');
+    } finally {
+      setBlockImageUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleSelectIcon = (iconName: string) => {
+    if (!editingBlock) return;
+    setEditingBlock((prev) => (prev ? { ...prev, icon: iconName } : prev));
+    setIconPickerOpen(false);
+  };
 
   useEffect(() => {
     loadPageContent();
@@ -105,8 +187,46 @@ export default function SubscriptionPageAdminPage() {
   };
 
   const handleEditSection = (section: SubscriptionPageSection) => {
-    setEditingSection({ ...section });
+    setEditingSection({ ...section, settings: section.settings || {} });
     setShowSectionDialog(true);
+  };
+
+  const updateEditingSectionSettings = (updates: Record<string, any>) => {
+    setEditingSection((prev) =>
+      prev
+        ? {
+            ...prev,
+            settings: {
+              ...(prev.settings || {}),
+              ...updates
+            }
+          }
+        : prev
+    );
+  };
+
+  const handleHeroImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !editingSection) {
+      event.target.value = '';
+      return;
+    }
+
+    setHeroImageUploading(true);
+    try {
+      const upload = await subscriptionPageService.uploadMedia(file, 'subscription-page/hero');
+      updateEditingSectionSettings({
+        hero_image_url: upload.file_url,
+        hero_image_alt: editingSection.settings?.hero_image_alt || file.name
+      });
+      toast.success('Hero image uploaded');
+    } catch (error: any) {
+      console.error('Failed to upload hero image:', error);
+      toast.error(error?.message || 'Failed to upload hero image');
+    } finally {
+      setHeroImageUploading(false);
+      event.target.value = '';
+    }
   };
 
   const handleSaveSection = async () => {
@@ -150,11 +270,12 @@ export default function SubscriptionPageAdminPage() {
 
   const handleCreateBlock = (sectionId: string) => {
     const section = sections.find((s) => s.id === sectionId);
+    const defaultBlockType = getDefaultBlockTypeForSection(section?.section_type);
     setEditingSectionId(sectionId);
     setEditingBlock({
       id: '',
       section_id: sectionId,
-      block_type: 'feature_item',
+      block_type: defaultBlockType,
       title: '',
       content: '',
       icon: '',
@@ -513,6 +634,61 @@ export default function SubscriptionPageAdminPage() {
                 />
                 <Label htmlFor="is_active">Section is active (visible on page)</Label>
               </div>
+
+              {editingSection.section_type === 'hero' && (
+                <div className="space-y-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 p-4">
+                  <div>
+                    <Label>Hero Image URL</Label>
+                    <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center">
+                      <Input
+                        value={editingSection.settings?.hero_image_url || ''}
+                        onChange={(e) =>
+                          updateEditingSectionSettings({ hero_image_url: e.target.value })
+                        }
+                        placeholder="https://..."
+                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={heroImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleHeroImageUpload}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => heroImageInputRef.current?.click()}
+                          disabled={heroImageUploading}
+                        >
+                          {heroImageUploading ? 'Uploading…' : 'Upload Image'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Hero Image Alt Text</Label>
+                    <Input
+                      className="mt-2"
+                      value={editingSection.settings?.hero_image_alt || ''}
+                      onChange={(e) =>
+                        updateEditingSectionSettings({ hero_image_alt: e.target.value })
+                      }
+                      placeholder="Describe the hero illustration"
+                    />
+                  </div>
+                  {editingSection.settings?.hero_image_url && (
+                    <div className="rounded-lg border bg-white p-3">
+                      <p className="text-xs font-medium text-gray-500 mb-2">Preview</p>
+                      <img
+                        src={editingSection.settings.hero_image_url}
+                        alt={editingSection.settings?.hero_image_alt || 'Hero preview'}
+                        className="w-full rounded-md object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -592,28 +768,100 @@ export default function SubscriptionPageAdminPage() {
                   placeholder="Block content"
                   rows={4}
                 />
+                {editingBlock.block_type === 'curriculum_banner' && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Leave the title or content empty to render a pure image banner.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="icon">Icon (Lucide name)</Label>
-                  <Input
-                    id="icon"
-                    value={editingBlock.icon || ''}
-                    onChange={(e) => setEditingBlock({ ...editingBlock, icon: e.target.value })}
-                    placeholder="e.g., Sparkles, Check"
-                  />
+                  <Label htmlFor="icon">Icon</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="icon"
+                      value={editingBlock.icon || ''}
+                      onChange={(e) => setEditingBlock({ ...editingBlock, icon: e.target.value })}
+                      placeholder="Start typing or pick below"
+                    />
+                    <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button type="button" variant="outline" className="h-11 w-12 p-0">
+                          {(() => {
+                            const IconComp = getIconComponent(editingBlock.icon);
+                            if (IconComp) {
+                              return <IconComp className="h-5 w-5" />;
+                            }
+                            return <HelpCircle className="h-5 w-5 text-muted-foreground" />;
+                          })()}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 bg-white text-foreground shadow-xl" align="end">
+                        <p className="text-xs text-muted-foreground mb-2">Pick an icon (Lucide)</p>
+                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                          {ICON_OPTIONS.map((iconName) => {
+                            const IconComp = getIconComponent(iconName);
+                            return (
+                              <button
+                                key={iconName}
+                                type="button"
+                                onClick={() => handleSelectIcon(iconName)}
+                                className={cn(
+                                  'flex items-center gap-2 rounded-lg border px-3 py-2 text-left hover:bg-muted transition',
+                                  editingBlock.icon === iconName ? 'border-primary bg-primary/5' : 'border-border'
+                                )}
+                              >
+                                {IconComp ? <IconComp className="h-5 w-5" /> : <HelpCircle className="h-5 w-5" />}
+                                <span className="text-sm font-medium">{iconName}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="image_url">Image URL</Label>
-                  <Input
-                    id="image_url"
-                    value={editingBlock.image_url || ''}
-                    onChange={(e) =>
-                      setEditingBlock({ ...editingBlock, image_url: e.target.value })
-                    }
-                    placeholder="https://..."
-                  />
+                  <div className="mt-2 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="image_url"
+                        className="flex-1"
+                        value={editingBlock.image_url || ''}
+                        onChange={(e) =>
+                          setEditingBlock({ ...editingBlock, image_url: e.target.value })
+                        }
+                        placeholder="https://..."
+                      />
+                      <input
+                        ref={blockImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleBlockImageUpload}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => blockImageInputRef.current?.click()}
+                        disabled={blockImageUploading}
+                      >
+                        {blockImageUploading ? 'Uploading…' : 'Upload'}
+                      </Button>
+                    </div>
+                    {editingBlock.image_url && (
+                      <div className="rounded-lg border bg-white p-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={editingBlock.image_url}
+                          alt={editingBlock.title || 'Banner preview'}
+                          className="w-full h-32 object-cover rounded-md"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

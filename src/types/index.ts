@@ -36,6 +36,10 @@ export interface Exam {
   updated_at: string;
   slug?: string;
   url_path?: string;
+  pdf_url_en?: string;
+  pdf_url_hi?: string;
+  download_url?: string;
+  file_url?: string;
   syllabus?: string[];
   pattern?: ExamPattern;
   attempts?: number;
@@ -544,9 +548,10 @@ export interface User {
   phone?: string;
   avatar_url?: string;
   date_of_birth?: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'editor' | 'author';
   is_verified: boolean;
   is_blocked: boolean;
+  block_reason?: string | null;
   is_onboarded?: boolean;
   auth_provider?: 'email' | 'google';
   password_hash?: string;
@@ -568,6 +573,20 @@ export interface SubscriptionPlanSummary {
   duration_days: number;
   price_cents: number;
   currency_code: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  duration_days: number;
+  price_cents: number;
+  normal_price_cents: number;
+  sale_price_cents?: number | null;
+  currency_code: string;
+  features?: string[];
+  is_active?: boolean;
 }
 
 export interface Education {

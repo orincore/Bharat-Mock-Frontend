@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { GraduationCap, Menu, X, User, LogOut, FileText, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import {
   DropdownMenu,
@@ -27,6 +26,56 @@ type NavigationItem = {
 
 const renderNavLabel = (item: NavigationItem) => item.label;
 
+const STATIC_NAV_LINKS: NavigationItem[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Mock Tests', href: '/mock-test-series' },
+  { label: 'Live Tests', href: '/live-tests' },
+  { label: 'Quizzes', href: '/quizzes' },
+  { label: 'Current Affairs', href: '/current-affairs' },
+  { label: 'Prev. Papers', href: '/previous-year-papers' },
+  { label: 'Blogs', href: '/blogs' }
+];
+
+type RoleTheme = {
+  label: string;
+  href: string;
+  desktopButtonClass: string;
+  mobileButtonClass: string;
+  avatarClass: string;
+};
+
+const ROLE_THEMES: Record<'admin' | 'editor' | 'author', RoleTheme> = {
+  admin: {
+    label: 'Admin Dashboard',
+    href: '/admin',
+    desktopButtonClass:
+      'border-secondary text-secondary bg-secondary/10 hover:bg-secondary hover:text-secondary-foreground',
+    mobileButtonClass:
+      'bg-secondary/10 text-secondary border border-secondary/30 hover:bg-secondary hover:text-secondary-foreground',
+    avatarClass: 'border-secondary/60 bg-secondary/15 text-secondary-foreground'
+  },
+  editor: {
+    label: 'Editor Dashboard',
+    href: '/admin',
+    desktopButtonClass:
+      'border-blue-500 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white',
+    mobileButtonClass:
+      'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white',
+    avatarClass: 'border-blue-500/60 bg-blue-50 text-blue-600'
+  },
+  author: {
+    label: 'Author Dashboard',
+    href: '/admin',
+    desktopButtonClass:
+      'border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-500 hover:text-white',
+    mobileButtonClass:
+      'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white',
+    avatarClass: 'border-amber-500/60 bg-amber-50 text-amber-700'
+  }
+};
+
+const DEFAULT_AVATAR_CLASS = 'border-primary/60 bg-primary/10 text-primary-foreground';
+
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isExploreOpen, setIsExploreOpen] = useState(false);
@@ -35,29 +84,21 @@ export function Navbar() {
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
-  const { navigation: rawNavLinks, categories, subcategories, isLoading: loadingNav } = useAppData();
+  const { categories, subcategories } = useAppData();
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  const navLinks: NavigationItem[] = useMemo(
-    () =>
-      (rawNavLinks || []).map((link) => ({
-        label: link.label,
-        href: link.href,
-        open_in_new_tab: link.open_in_new_tab,
-      })),
-    [rawNavLinks]
-  );
+  const navLinks: NavigationItem[] = STATIC_NAV_LINKS;
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   };
 
-  const desktopNavItems = useMemo(() => navLinks, [navLinks]);
+  const desktopNavItems = useMemo(() => navLinks, []);
 
   const categoriesWithSubcategories = useMemo(() => {
     return categories.map(category => ({
@@ -65,6 +106,8 @@ export function Navbar() {
       subcategories: subcategories.filter(sub => sub.category_id === category.id)
     }));
   }, [categories, subcategories]);
+
+  const roleTheme = user?.role && (ROLE_THEMES as Record<string, RoleTheme>)[user.role];
 
   const handleExploreMouseEnter = () => {
     if (closeTimeout) {
@@ -112,12 +155,7 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1 min-h-[40px]">
-            {loadingNav ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <Skeleton key={`nav-skel-${index}`} className="h-9 w-20 rounded-lg" />
-              ))
-            ) : (
-              <>
+            <>
                 {/* Explore Exams Dropdown */}
                 <div 
                   className="relative"
@@ -184,7 +222,7 @@ export function Navbar() {
                                 {currentCategorySubcategories.map(sub => (
                                   <Link
                                     key={sub.id}
-                                    href={`/${currentCategory?.slug}/${sub.slug}`}
+                                    href={`/${sub.slug}`}
                                     className="inline-flex items-center gap-2 rounded-2xl border border-border px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors bg-white"
                                     onClick={() => {
                                       setIsExploreOpen(false);
@@ -236,8 +274,7 @@ export function Navbar() {
                     {item.label}
                   </Link>
                 ))}
-              </>
-            )}
+            </>
           </div>
 
           {/* Language Selector & Auth Section */}
@@ -245,30 +282,25 @@ export function Navbar() {
             <LanguageSelector />
             {!hasMounted || isLoading ? (
               <div className="flex items-center gap-3">
-                <Skeleton className="h-9 w-24" />
-                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="h-9 w-24 rounded-lg bg-muted animate-pulse" />
+                <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
               </div>
             ) : isAuthenticated ? (
               <>
-                {user?.role === 'admin' && (
+                {roleTheme && (
                   <Button
                     asChild
-                    variant="outline"
                     size="sm"
-                    className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                    className={`font-semibold shadow-sm transition-colors ${roleTheme.desktopButtonClass}`}
                   >
-                    <Link href="/admin">Admin Dashboard</Link>
+                    <Link href={roleTheme.href}>{roleTheme.label}</Link>
                   </Button>
                 )}
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0">
                     <Avatar
-                      className={`h-11 w-11 border-2 ${
-                        user?.role === 'admin'
-                          ? 'border-secondary/60 bg-secondary/15 text-secondary-foreground'
-                          : 'border-primary/60 bg-primary/10 text-primary-foreground'
-                      }`}
+                      className={`h-11 w-11 border-2 ${roleTheme?.avatarClass ?? DEFAULT_AVATAR_CLASS}`}
                     >
                       <AvatarImage src={user?.avatar_url} alt={user?.name} />
                       <AvatarFallback>
@@ -284,11 +316,7 @@ export function Navbar() {
                 >
                   <div className="flex items-center gap-3 px-1 pb-3">
                     <Avatar
-                      className={`h-9 w-9 border ${
-                        user?.role === 'admin'
-                          ? 'border-secondary/50 bg-secondary/15 text-secondary-foreground'
-                          : 'border-primary/50 bg-primary/10 text-primary-foreground'
-                      }`}
+                      className={`h-9 w-9 border ${roleTheme?.avatarClass ?? DEFAULT_AVATAR_CLASS}`}
                     >
                       <AvatarImage src={user?.avatar_url} />
                       <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
@@ -352,12 +380,7 @@ export function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background animate-slide-down max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="container-main py-4 space-y-2">
-            {loadingNav ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={`mobile-nav-skel-${index}`} className="h-12 w-full rounded-lg" />
-              ))
-            ) : (
-              <>
+            <>
                 {/* Mobile Exams Dropdown */}
                 <div className="space-y-2">
                   <button
@@ -397,8 +420,8 @@ export function Navbar() {
                               {category.subcategories.map(sub => (
                                 <Link
                                   key={sub.id}
-                                  href={`/${category.slug}/${sub.slug}`}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors bg-white"
+                                  href={`/${sub.slug}`}
+                                  className="text-xs px-3 py-1.5 rounded-full border border-border text-gray-600 hover:text-primary hover:border-primary/40"
                                   onClick={() => {
                                     setIsMobileMenuOpen(false);
                                     setIsMobileExamsOpen(false);
@@ -432,8 +455,7 @@ export function Navbar() {
                     {renderNavLabel(item)}
                   </Link>
                 ))}
-              </>
-            )}
+            </>
             
             {/* Language Selector */}
             <div className="pt-2">
@@ -443,11 +465,21 @@ export function Navbar() {
             <div className="pt-4 border-t border-border space-y-2">
               {!hasMounted || isLoading ? (
                 <div className="space-y-2">
-                  <Skeleton className="h-10 w-full rounded-lg" />
-                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <div className="h-10 w-full rounded-lg bg-muted animate-pulse" />
+                  <div className="h-10 w-full rounded-lg bg-muted animate-pulse" />
                 </div>
               ) : isAuthenticated ? (
                 <>
+                  {roleTheme && (
+                    <Link
+                      href={roleTheme.href}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${roleTheme.mobileButtonClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <GraduationCap className="h-5 w-5" />
+                      {roleTheme.label}
+                    </Link>
+                  )}
                   <Link
                     href="/profile"
                     className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"

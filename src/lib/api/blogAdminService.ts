@@ -61,6 +61,8 @@ export interface BlogPayload {
   og_description?: string;
   og_image_url?: string;
   canonical_url?: string;
+  is_current_affairs_note?: boolean;
+  current_affairs_tag?: string | null;
 }
 
 export const blogAdminService = {

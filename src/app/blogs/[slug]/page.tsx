@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Clock, Eye, Tag, User, ChevronRight, ChevronLeft, Share2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Eye, Tag, User, ChevronRight, ChevronLeft, Share2, Facebook, Twitter, Linkedin, Copy, Mail, BookOpen, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { blogService, Blog, BlogSection } from '@/lib/api/blogService';
 import { PageBlockRenderer } from '@/components/PageEditor/PageBlockRenderer';
+import { useToast } from '@/hooks/use-toast';
 
 export default function BlogDetailPage() {
   const params = useParams();
@@ -16,11 +18,18 @@ export default function BlogDetailPage() {
   const [article, setArticle] = useState<Blog | null>(null);
   const [sections, setSections] = useState<BlogSection[]>([]);
   const [relatedArticles, setRelatedArticles] = useState<Blog[]>([]);
+  const [latestBlogs, setLatestBlogs] = useState<Blog[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchArticleDetails();
+    fetchLatestBlogs();
+    fetchCategories();
   }, [slug]);
 
   const fetchArticleDetails = async () => {
@@ -33,21 +42,86 @@ export default function BlogDetailPage() {
         setError('Blog not found');
         return;
       }
+      if (data.is_current_affairs_note) {
+        window.location.replace(`/current-affairs/${data.slug}`);
+        return;
+      }
       setArticle(data);
       
       // Fetch blog content (sections and blocks)
       const content = await blogService.getBlogContent(data.id);
       setSections(content);
       
-      // Optionally fetch related blogs by category
+      // Fetch related blogs by category
       if (data.category) {
-        const related = await blogService.getBlogs({ category: data.category, limit: 3 });
+        const related = await blogService.getBlogs({ category: data.category, limit: 6 });
         setRelatedArticles(related.data.filter(b => b.id !== data.id));
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load blog');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchLatestBlogs = async () => {
+    try {
+      const response = await blogService.getBlogs({ limit: 8 });
+      setLatestBlogs(response.data);
+    } catch (err) {
+      console.error('Failed to fetch latest blogs:', err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const cats = await blogService.getCategories();
+      setCategories(cats.slice(0, 8));
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  };
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast({
+      title: 'Subscribed!',
+      description: 'You have been subscribed to our newsletter.',
+    });
+    setEmail('');
+  };
+
+  const handleShare = (platform: string) => {
+    const url = window.location.href;
+    const title = article?.title || '';
+    
+    switch (platform) {
+      case 'twitter':
+        window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank');
+        break;
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+        break;
+      case 'linkedin':
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(url);
+        toast({
+          title: 'Link copied!',
+          description: 'Blog link copied to clipboard.',
+        });
+        break;
+    }
+  };
+
+  const scrollSlider = (direction: 'left' | 'right') => {
+    if (sliderRef.current) {
+      const scrollAmount = 320;
+      sliderRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
     }
   };
 
@@ -83,83 +157,179 @@ export default function BlogDetailPage() {
       })
     : null;
 
-  const featuredRelated = relatedArticles[0];
-  const remainingRelated = relatedArticles.slice(1);
-  const layoutContainer = "mx-auto w-full max-w-[1400px] px-3 sm:px-4 md:px-6";
+  const layoutContainer = "mx-auto w-full max-w-7xl px-4";
 
   return (
-    <div className="min-h-screen bg-[#f9fafc]">
-      {/* Breadcrumb + Title */}
-      <section className="bg-[#f3f6ff] border-b border-border/60">
-        <div className={`${layoutContainer} py-8 space-y-6`}>
-          <div className="flex items-center text-xs uppercase tracking-wide text-slate-500 gap-2">
-            <Link href="/" className="hover:text-primary transition-colors">Home</Link>
-            <ChevronRight className="h-3 w-3" />
-            <Link href={`/blogs?category=${article.category || ''}`} className="hover:text-primary transition-colors">
-              {article.category || 'Blogs'}
-            </Link>
-            <ChevronRight className="h-3 w-3" />
-            <span>News</span>
-          </div>
-
-          <div className="space-y-4">
-            <h1 className="font-display text-3xl md:text-[38px] font-bold leading-tight text-slate-900">
-              {article.title}
-            </h1>
-            <div className="flex flex-wrap gap-4 text-sm text-slate-600">
-              {article.author?.raw_user_meta_data?.name && (
-                <span className="font-semibold text-primary">{article.author.raw_user_meta_data.name}</span>
-              )}
-              {publishedDate && (
-                <span className="inline-flex items-center gap-2 text-slate-500">
-                  <Calendar className="h-4 w-4 text-slate-400" />
-                  {publishedDate}
-                </span>
-              )}
-              {article.read_time && (
-                <span className="inline-flex items-center gap-2 text-slate-500">
-                  <Clock className="h-4 w-4 text-slate-400" />
-                  {article.read_time} min read
-                </span>
-              )}
-              <span className="inline-flex items-center gap-2 text-slate-500">
-                <Eye className="h-4 w-4 text-slate-400" />
-                {article.view_count?.toLocaleString() || 0} views
-              </span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Latest Blogs Slider */}
+      <section className="bg-white border-b">
+        <div className={`${layoutContainer} py-6`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-1 bg-blue-600 rounded-full" />
+              <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wide">Latest News</h2>
             </div>
-            {article.excerpt && (
-              <p className="text-base md:text-lg text-slate-700 leading-relaxed max-w-3xl">
-                {article.excerpt}
-              </p>
-            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => scrollSlider('left')}
+                className="h-8 w-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition"
+              >
+                <ChevronLeft className="h-4 w-4 text-gray-600" />
+              </button>
+              <button
+                onClick={() => scrollSlider('right')}
+                className="h-8 w-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition"
+              >
+                <ChevronRight className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+          </div>
+          <div
+            ref={sliderRef}
+            className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {latestBlogs.map((blog) => (
+              <Link
+                key={blog.id}
+                href={`/blogs/${blog.slug}`}
+                className="flex-shrink-0 w-[300px] group"
+              >
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition">
+                  {blog.featured_image_url && (
+                    <div className="h-40 overflow-hidden">
+                      <img
+                        src={blog.featured_image_url}
+                        alt={blog.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+                  <div className="p-3">
+                    <span className="text-xs font-semibold text-blue-600 uppercase">{blog.category || 'News'}</span>
+                    <h3 className="text-sm font-semibold text-gray-900 mt-1 line-clamp-2">{blog.title}</h3>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(blog.published_at || blog.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Breadcrumb + Title */}
+      <section className="bg-white border-b">
+        <div className={`${layoutContainer} py-6`}>
+          <div className="flex items-center text-xs text-gray-500 gap-2 mb-4">
+            <Link href="/" className="hover:text-blue-600 transition-colors">Home</Link>
+            <ChevronRight className="h-3 w-3" />
+            <Link href="/blogs" className="hover:text-blue-600 transition-colors">Blogs</Link>
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-gray-900">{article.category || 'Article'}</span>
           </div>
 
-          <div className="h-px w-full bg-border/60" />
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            {article.title}
+          </h1>
+
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            {article.author?.raw_user_meta_data?.name && (
+              <div className="flex items-center gap-2">
+                {article.author.raw_user_meta_data.avatar_url && (
+                  <img
+                    src={article.author.raw_user_meta_data.avatar_url}
+                    alt={article.author.raw_user_meta_data.name}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                )}
+                <div>
+                  <p className="text-xs text-gray-500">Written by</p>
+                  <p className="font-semibold text-gray-900">{article.author.raw_user_meta_data.name}</p>
+                </div>
+              </div>
+            )}
+            <div className="h-8 w-px bg-gray-300" />
+            {publishedDate && (
+              <div className="flex items-center gap-1 text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span>{publishedDate}</span>
+              </div>
+            )}
+            {article.read_time && (
+              <div className="flex items-center gap-1 text-gray-600">
+                <Clock className="h-4 w-4" />
+                <span>{article.read_time} min read</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1 text-gray-600">
+              <Eye className="h-4 w-4" />
+              <span>{article.view_count?.toLocaleString() || 0} views</span>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Content */}
-      <section id="content" className="py-10">
-        <div className={`${layoutContainer} grid lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] gap-8`}>
+      <section className="py-8">
+        <div className={`${layoutContainer} grid lg:grid-cols-[1fr_340px] gap-6`}>
           {/* Main Content */}
-          <div className="space-y-8">
+          <div className="space-y-6">
+            {/* Social Share - Sticky */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-900">Share this article</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleShare('facebook')}
+                    className="h-9 w-9 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center transition"
+                    title="Share on Facebook"
+                  >
+                    <Facebook className="h-4 w-4 text-white" />
+                  </button>
+                  <button
+                    onClick={() => handleShare('twitter')}
+                    className="h-9 w-9 rounded-full bg-sky-500 hover:bg-sky-600 flex items-center justify-center transition"
+                    title="Share on Twitter"
+                  >
+                    <Twitter className="h-4 w-4 text-white" />
+                  </button>
+                  <button
+                    onClick={() => handleShare('linkedin')}
+                    className="h-9 w-9 rounded-full bg-blue-700 hover:bg-blue-800 flex items-center justify-center transition"
+                    title="Share on LinkedIn"
+                  >
+                    <Linkedin className="h-4 w-4 text-white" />
+                  </button>
+                  <button
+                    onClick={() => handleShare('copy')}
+                    className="h-9 w-9 rounded-full bg-gray-600 hover:bg-gray-700 flex items-center justify-center transition"
+                    title="Copy link"
+                  >
+                    <Copy className="h-4 w-4 text-white" />
+                  </button>
+                </div>
+              </div>
+            </div>
             {sections.length > 0 ? (
               sections.map((section) => (
                 <article
                   key={section.id}
-                  className="rounded-xl border border-slate-200 bg-white shadow-sm p-6"
+                  className="bg-white border border-gray-200 rounded-lg p-6 rich-text-content"
                   style={{
                     backgroundColor: section.background_color || undefined,
                     color: section.text_color || undefined
                   }}
                 >
                   {section.title && (
-                    <h2 className="text-xl font-semibold text-slate-900 mb-4">{section.title}</h2>
+                    <h2 className="text-xl font-bold text-gray-900 mb-3">{section.title}</h2>
                   )}
                   {section.subtitle && (
-                    <p className="text-slate-600 mb-6">{section.subtitle}</p>
+                    <p className="text-gray-600 mb-4">{section.subtitle}</p>
                   )}
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     {section.blocks.map((block) => (
                       <div key={block.id}>
                         <PageBlockRenderer block={block} />
@@ -169,14 +339,14 @@ export default function BlogDetailPage() {
                 </article>
               ))
             ) : (
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 text-center text-slate-500">
+              <div className="bg-white border border-gray-200 rounded-lg p-6 text-center text-gray-500">
                 No content available yet.
               </div>
             )}
 
             {article.tags && article.tags.length > 0 && (
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-                <div className="flex items-center gap-2 text-slate-500 mb-3">
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-gray-700 mb-3 font-semibold">
                   <Tag className="h-4 w-4" />
                   Tags
                 </div>
@@ -185,7 +355,7 @@ export default function BlogDetailPage() {
                     <Link
                       key={index}
                       href={`/blogs?search=${tag}`}
-                      className="px-3 py-1 rounded-full bg-slate-100 text-sm text-slate-600 hover:bg-slate-200"
+                      className="px-3 py-1 rounded-full bg-blue-50 text-sm text-blue-700 hover:bg-blue-100 transition"
                     >
                       #{tag}
                     </Link>
@@ -194,114 +364,172 @@ export default function BlogDetailPage() {
               </div>
             )}
 
-            {article.author?.raw_user_meta_data?.bio && (
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 flex gap-4">
-                {article.author.raw_user_meta_data.avatar_url && (
-                  <img
-                    src={article.author.raw_user_meta_data.avatar_url}
-                    alt={article.author.raw_user_meta_data.name || 'Author'}
-                    className="w-16 h-16 rounded-full object-cover"
-                  />
-                )}
-                <div>
-                  <p className="text-xs uppercase text-slate-500">Author</p>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {article.author.raw_user_meta_data.name || 'Author'}
-                  </h3>
-                  <p className="text-sm text-slate-600 mt-1">{article.author.raw_user_meta_data.bio}</p>
+            {article.author?.raw_user_meta_data && (
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <p className="text-xs uppercase text-gray-500 font-semibold mb-3">About the Author</p>
+                <div className="flex gap-4">
+                  {article.author.raw_user_meta_data.avatar_url && (
+                    <img
+                      src={article.author.raw_user_meta_data.avatar_url}
+                      alt={article.author.raw_user_meta_data.name || 'Author'}
+                      className="w-16 h-16 rounded-full object-cover flex-shrink-0"
+                    />
+                  )}
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {article.author.raw_user_meta_data.name || 'Author'}
+                    </h3>
+                    {article.author.raw_user_meta_data.bio && (
+                      <p className="text-sm text-gray-600 mt-1">{article.author.raw_user_meta_data.bio}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Sidebar */}
-          <aside className="space-y-5">
-            {featuredRelated && (
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-                <p className="text-xs uppercase font-semibold text-slate-500">{featuredRelated.category || 'Featured'}</p>
-                <h3 className="text-lg font-semibold text-slate-900 mt-2">
-                  {featuredRelated.title}
-                </h3>
-                {featuredRelated.excerpt && (
-                  <p className="text-sm text-slate-600 mt-2 line-clamp-3">
-                    {featuredRelated.excerpt}
-                  </p>
-                )}
-                <Button asChild className="mt-4 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold">
-                  <Link href={`/blogs/${featuredRelated.slug}`}>Attempt Now</Link>
+          <aside className="space-y-4">
+            {/* Newsletter */}
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-5 text-white">
+              <div className="flex items-center gap-2 mb-3">
+                <Mail className="h-5 w-5" />
+                <h3 className="text-lg font-bold">Newsletter</h3>
+              </div>
+              <p className="text-sm text-blue-100 mb-4">
+                Subscribe to get latest exam updates, tips, and exclusive content.
+              </p>
+              <form onSubmit={handleNewsletterSubmit} className="space-y-2">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-white text-gray-900 border-0"
+                />
+                <Button type="submit" className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold">
+                  Subscribe Now
                 </Button>
+              </form>
+            </div>
+
+            {/* Categories */}
+            {categories.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="h-4 w-4 text-gray-700" />
+                  <h3 className="text-base font-bold text-gray-900">Categories</h3>
+                </div>
+                <div className="space-y-2">
+                  {categories.map((cat, idx) => (
+                    <Link
+                      key={idx}
+                      href={`/blogs?category=${cat}`}
+                      className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50 transition group"
+                    >
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600">{cat}</span>
+                      <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
 
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">Quizzes</h3>
-                <div className="flex items-center gap-2">
-                  <button className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500">
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500">
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+            {/* Latest Blogs */}
+            {latestBlogs.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="h-4 w-4 text-gray-700" />
+                  <h3 className="text-base font-bold text-gray-900">Latest Blogs</h3>
+                </div>
+                <div className="space-y-3">
+                  {latestBlogs.slice(0, 4).map((blog) => (
+                    <Link
+                      key={blog.id}
+                      href={`/blogs/${blog.slug}`}
+                      className="block group"
+                    >
+                      <div className="flex gap-3">
+                        {blog.featured_image_url && (
+                          <img
+                            src={blog.featured_image_url}
+                            alt={blog.title}
+                            className="w-16 h-16 rounded object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition">
+                            {blog.title}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(blog.published_at || blog.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
-              <div className="mt-4 space-y-4">
-                {(remainingRelated.length ? remainingRelated : relatedArticles).slice(0, 2).map((entry) => (
-                  <Link
-                    key={entry.id}
-                    href={`/blogs/${entry.slug}`}
-                    className="block rounded-lg border border-slate-100 p-4 hover:border-primary/40"
-                  >
-                    <p className="text-xs text-emerald-600 font-semibold">Free</p>
-                    <h4 className="text-sm font-semibold text-slate-900 mt-1 line-clamp-2">{entry.title}</h4>
-                    <div className="flex flex-wrap gap-3 text-[11px] uppercase tracking-wide text-slate-500 mt-3">
-                      <span>{entry.read_time || 5} Minutes</span>
-                      <span>{entry.view_count?.toLocaleString() || 0} Views</span>
-                      <span>{entry.category || 'General'}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            )}
 
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-              <h3 className="text-base font-semibold text-slate-900 mb-4">Share this article</h3>
-              <div className="flex flex-col gap-2">
-                {['Twitter', 'Facebook', 'LinkedIn', 'Copy Link'].map((network) => (
-                  <Button key={network} variant="outline" size="sm" className="justify-start">
-                    <Share2 className="h-4 w-4 mr-2 text-slate-500" /> {network}
-                  </Button>
-                ))}
-              </div>
+            {/* Banner Ad */}
+            <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-lg p-6 text-white text-center">
+              <h3 className="text-lg font-bold mb-2">Premium Mock Tests</h3>
+              <p className="text-sm text-orange-100 mb-4">
+                Get access to 1000+ premium mock tests and detailed analytics.
+              </p>
+              <Button asChild className="w-full bg-white text-orange-600 hover:bg-orange-50 font-semibold">
+                <Link href="/subscriptions">Explore Plans</Link>
+              </Button>
             </div>
           </aside>
         </div>
 
         {relatedArticles.length > 0 && (
-          <div className={`${layoutContainer} mt-12`}>
-            <h2 className="text-2xl font-semibold text-slate-900 mb-6">Related Blogs</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {relatedArticles.map((relatedArticle) => (
+          <div className={`${layoutContainer} mt-8`}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="h-8 w-1 bg-blue-600 rounded-full" />
+              <h2 className="text-2xl font-bold text-gray-900">Related Articles</h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              {relatedArticles.slice(0, 3).map((relatedArticle) => (
                 <Link
                   key={relatedArticle.id}
                   href={`/blogs/${relatedArticle.slug}`}
-                  className="rounded-xl border border-slate-200 bg-white shadow-sm hover:-translate-y-1 transition-transform"
+                  className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition group"
                 >
                   {relatedArticle.featured_image_url && (
-                    <img
-                      src={relatedArticle.featured_image_url}
-                      alt={relatedArticle.title}
-                      className="w-full h-40 object-cover"
-                    />
+                    <div className="h-48 overflow-hidden">
+                      <img
+                        src={relatedArticle.featured_image_url}
+                        alt={relatedArticle.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
                   )}
-                  <div className="p-5 space-y-2">
-                    <span className="text-xs font-semibold uppercase text-primary/80">
+                  <div className="p-4">
+                    <span className="text-xs font-semibold text-blue-600 uppercase">
                       {relatedArticle.category || 'General'}
                     </span>
-                    <h3 className="text-base font-semibold text-slate-900 line-clamp-2">{relatedArticle.title}</h3>
+                    <h3 className="text-base font-bold text-gray-900 mt-2 line-clamp-2 group-hover:text-blue-600 transition">
+                      {relatedArticle.title}
+                    </h3>
                     {relatedArticle.excerpt && (
-                      <p className="text-sm text-slate-600 line-clamp-2">{relatedArticle.excerpt}</p>
+                      <p className="text-sm text-gray-600 mt-2 line-clamp-2">{relatedArticle.excerpt}</p>
                     )}
+                    <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
+                      {relatedArticle.author?.raw_user_meta_data?.name && (
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {relatedArticle.author.raw_user_meta_data.name}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(relatedArticle.published_at || relatedArticle.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
                   </div>
                 </Link>
               ))}

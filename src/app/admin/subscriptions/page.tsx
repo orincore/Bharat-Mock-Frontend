@@ -29,7 +29,8 @@ const defaultPlanForm = {
   slug: '',
   description: '',
   duration_days: 30,
-  price_cents: 0,
+  normal_price_cents: 0,
+  sale_price_cents: null as number | null,
   currency_code: 'INR',
   features: ''
 };
@@ -171,12 +172,25 @@ export default function AdminSubscriptionsPage() {
   const upsertPlan = async () => {
     setSavingPlan(true);
     try {
+      if (planForm.sale_price_cents !== null && planForm.sale_price_cents > planForm.normal_price_cents) {
+        toast({
+          title: 'Invalid pricing',
+          description: 'Sale price cannot exceed normal price.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const payload = {
         name: planForm.name.trim(),
         slug: planForm.slug.trim(),
         description: planForm.description.trim() || undefined,
         duration_days: Number(planForm.duration_days) || 30,
-        price_cents: Math.max(0, Number(planForm.price_cents) || 0),
+        normal_price_cents: Math.max(0, Number(planForm.normal_price_cents) || 0),
+        sale_price_cents:
+          planForm.sale_price_cents === null || planForm.sale_price_cents === undefined
+            ? null
+            : Math.max(0, Number(planForm.sale_price_cents)),
         currency_code: planForm.currency_code.trim() || 'INR',
         features: planForm.features
           .split(',')
@@ -228,7 +242,8 @@ export default function AdminSubscriptionsPage() {
       slug: plan.slug,
       description: plan.description || '',
       duration_days: plan.duration_days,
-      price_cents: plan.price_cents,
+      normal_price_cents: plan.normal_price_cents,
+      sale_price_cents: plan.sale_price_cents ?? null,
       currency_code: plan.currency_code,
       features: (plan.features || []).join(', ')
     });
@@ -375,10 +390,29 @@ export default function AdminSubscriptionsPage() {
                             </h3>
                             <p className="text-sm text-muted-foreground">{plan.description || 'No description set'}</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-2xl font-bold">
-                              ₹ {(plan.price_cents / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </p>
+                          <div className="text-right space-y-1">
+                            <div className="flex flex-col items-end">
+                              {plan.sale_price_cents ? (
+                                <>
+                                  <span className="text-lg line-through text-muted-foreground">
+                                    ₹ {(plan.normal_price_cents / 100).toLocaleString('en-IN', {
+                                      minimumFractionDigits: 2
+                                    })}
+                                  </span>
+                                  <span className="text-2xl font-bold text-green-700">
+                                    ₹ {(plan.sale_price_cents / 100).toLocaleString('en-IN', {
+                                      minimumFractionDigits: 2
+                                    })}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-2xl font-bold">
+                                  ₹ {(plan.normal_price_cents / 100).toLocaleString('en-IN', {
+                                    minimumFractionDigits: 2
+                                  })}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">{plan.duration_days} days</p>
                           </div>
                         </div>
@@ -453,16 +487,38 @@ export default function AdminSubscriptionsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Price (₹)</Label>
+                    <Label>Normal Price (₹)</Label>
                     <Input
                       type="number"
                       min={0}
-                      value={planForm.price_cents / 100}
-                      onChange={(e) => setPlanForm({ ...planForm, price_cents: Math.round(Number(e.target.value) * 100) })}
+                      value={planForm.normal_price_cents / 100}
+                      onChange={(e) =>
+                        setPlanForm({ ...planForm, normal_price_cents: Math.round(Number(e.target.value) * 100) || 0 })
+                      }
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Sale Price (₹)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={
+                        planForm.sale_price_cents !== null && planForm.sale_price_cents !== undefined
+                          ? planForm.sale_price_cents / 100
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const nextValue = e.target.value;
+                        setPlanForm({
+                          ...planForm,
+                          sale_price_cents: nextValue === '' ? null : Math.round(Number(nextValue) * 100)
+                        });
+                      }}
+                      placeholder="Leave blank if no sale"
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label>Currency</Label>
                     <Input
@@ -470,14 +526,14 @@ export default function AdminSubscriptionsPage() {
                       onChange={(e) => setPlanForm({ ...planForm, currency_code: e.target.value.toUpperCase() })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Features (comma separated)</Label>
-                    <Input
-                      placeholder="Unlimited exams, Analytics"
-                      value={planForm.features}
-                      onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })}
-                    />
-                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Features (comma separated)</Label>
+                  <Input
+                    placeholder="Unlimited exams, Analytics"
+                    value={planForm.features}
+                    onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })}
+                  />
                 </div>
               </CardContent>
               <CardFooter className="flex gap-3">

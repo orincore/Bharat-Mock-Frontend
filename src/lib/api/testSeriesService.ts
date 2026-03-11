@@ -42,6 +42,7 @@ export interface TestSeries {
   difficulty_id?: string;
   total_tests: number;
   total_attempts: number;
+  user_count?: number;
   logo_url?: string;
   thumbnail_url?: string;
   is_published: boolean;

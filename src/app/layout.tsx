@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "../index.css";
 import { Providers } from "./providers";
+import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -43,7 +44,10 @@ export default function RootLayout({
         <meta name="robots" content="noindex,nofollow" />
       </head>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <ScrollToTopButton />
+        </Providers>
       </body>
     </html>
   );

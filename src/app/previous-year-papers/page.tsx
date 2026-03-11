@@ -56,6 +56,7 @@ export default function PrevPapersPage() {
   const [selectedDifficultyIds, setSelectedDifficultyIds] = useState<string[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const activeRequestRef = useRef(0);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -300,6 +301,10 @@ export default function PrevPapersPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
+  const filteredSubcategories = selectedCategoryIds.length
+    ? subcategories.filter((sub) => selectedCategoryIds.includes(sub.category_id))
+    : subcategories;
+
   const isFilterDataLoading = categoriesLoading || difficultiesLoading || subcategoriesLoading;
   const hasCustomFilters = Boolean(
     filters.search ||
@@ -307,6 +312,155 @@ export default function PrevPapersPage() {
     selectedSubcategoryIds.length ||
     selectedDifficultyIds.length ||
     selectedYears.length
+  );
+
+  const FiltersPanel = () => (
+    <div className="bg-card rounded-xl border border-border p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+          <Filter className="h-5 w-5 text-primary" />
+          Filters
+        </h3>
+        {hasCustomFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            Clear
+          </Button>
+        )}
+      </div>
+
+      {isFilterDataLoading ? (
+        <div className="space-y-6" aria-live="polite" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Category
+            </label>
+            <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={selectedCategoryIds.length === 0}
+                  onChange={() => toggleCategory('')}
+                />
+                <span>All Categories</span>
+              </label>
+              {categories.map((category) => (
+                <label key={category.id} className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={selectedCategoryIds.includes(category.id)}
+                    onChange={() => toggleCategory(category.id)}
+                  />
+                  <span>{category.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Sub-category
+            </label>
+            {subcategoriesLoading ? (
+              <Skeleton className="h-10 w-full rounded-lg" />
+            ) : (
+              <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={selectedSubcategoryIds.length === 0}
+                    onChange={() => toggleSubcategory('')}
+                    disabled={filteredSubcategories.length === 0}
+                  />
+                  <span>All Sub-categories</span>
+                </label>
+                {filteredSubcategories.map((subcategory) => (
+                  <label key={subcategory.id} className="flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={selectedSubcategoryIds.includes(subcategory.id)}
+                      onChange={() => toggleSubcategory(subcategory.id)}
+                    />
+                    <span>{subcategory.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Difficulty
+            </label>
+            <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={selectedDifficultyIds.length === 0}
+                  onChange={() => toggleDifficulty('')}
+                />
+                <span>All Difficulties</span>
+              </label>
+              {difficultyOptions.map((difficulty) => (
+                <label key={difficulty.id} className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={selectedDifficultyIds.includes(difficulty.id)}
+                    onChange={() => toggleDifficulty(difficulty.id)}
+                  />
+                  <span>{difficulty.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Year
+            </label>
+            <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={selectedYears.length === 0}
+                  onChange={() => setSelectedYears([])}
+                />
+                <span>All Years</span>
+              </label>
+              {yearOptions.length === 0 && (
+                <p className="text-xs text-muted-foreground">Year data will appear once papers load.</p>
+              )}
+              {yearOptions.map((year) => (
+                <label key={year} className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={selectedYears.includes(year)}
+                    onChange={() => handleYearToggle(year)}
+                  />
+                  <span>{year}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 
   const handleYearToggle = (year: string) => {
@@ -318,10 +472,6 @@ export default function PrevPapersPage() {
     });
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
-
-  const filteredSubcategories = selectedCategoryIds.length
-    ? subcategories.filter((sub) => selectedCategoryIds.includes(sub.category_id))
-    : subcategories;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -365,153 +515,25 @@ export default function PrevPapersPage() {
       </section>
 
       <div className="relative w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 py-12">
+        <div className="lg:hidden mb-6">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((prev) => !prev)}
+            className="inline-flex items-center justify-center gap-2 w-full rounded-full border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600"
+          >
+            <Filter className="h-4 w-4" />
+            {mobileFiltersOpen ? 'Hide Filters' : 'Show Filters'}
+          </button>
+          {mobileFiltersOpen && (
+            <div className="mt-4">
+              <FiltersPanel />
+            </div>
+          )}
+        </div>
         <div className="flex flex-col lg:flex-row gap-8">
-          <aside className="lg:w-64 xl:w-72 flex-shrink-0">
-            <div className="bg-card rounded-xl border border-border p-6 sticky top-20">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
-                  <Filter className="h-5 w-5 text-primary" />
-                  Filters
-                </h3>
-                {hasCustomFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    Clear
-                  </Button>
-                )}
-              </div>
-
-              {isFilterDataLoading ? (
-                <div className="space-y-6" aria-live="polite" aria-busy="true">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="space-y-2">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-10 w-full rounded-lg" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Category
-                    </label>
-                    <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
-                      <label className="flex items-center gap-2 text-sm text-foreground">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-primary"
-                          checked={selectedCategoryIds.length === 0}
-                          onChange={() => toggleCategory('')}
-                        />
-                        <span>All Categories</span>
-                      </label>
-                      {categories.map((category) => (
-                        <label key={category.id} className="flex items-center gap-2 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-primary"
-                            checked={selectedCategoryIds.includes(category.id)}
-                            onChange={() => toggleCategory(category.id)}
-                          />
-                          <span>{category.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Sub-category
-                    </label>
-                    {subcategoriesLoading ? (
-                      <Skeleton className="h-10 w-full rounded-lg" />
-                    ) : (
-                      <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
-                        <label className="flex items-center gap-2 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-primary"
-                            checked={selectedSubcategoryIds.length === 0}
-                            onChange={() => toggleSubcategory('')}
-                            disabled={filteredSubcategories.length === 0}
-                          />
-                          <span>All Sub-categories</span>
-                        </label>
-                        {filteredSubcategories.map((subcategory) => (
-                          <label key={subcategory.id} className="flex items-center gap-2 text-sm text-foreground">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 accent-primary"
-                              checked={selectedSubcategoryIds.includes(subcategory.id)}
-                              onChange={() => toggleSubcategory(subcategory.id)}
-                            />
-                            <span>{subcategory.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Difficulty
-                    </label>
-                    <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
-                      <label className="flex items-center gap-2 text-sm text-foreground">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-primary"
-                          checked={selectedDifficultyIds.length === 0}
-                          onChange={() => toggleDifficulty('')}
-                        />
-                        <span>All Difficulties</span>
-                      </label>
-                      {difficultyOptions.map((difficulty) => (
-                        <label key={difficulty.id} className="flex items-center gap-2 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-primary"
-                            checked={selectedDifficultyIds.includes(difficulty.id)}
-                            onChange={() => toggleDifficulty(difficulty.id)}
-                          />
-                          <span>{difficulty.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Year
-                    </label>
-                    <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
-                      <label className="flex items-center gap-2 text-sm text-foreground">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-primary"
-                          checked={selectedYears.length === 0}
-                          onChange={() => setSelectedYears([])}
-                        />
-                        <span>All Years</span>
-                      </label>
-                      {yearOptions.length === 0 && (
-                        <p className="text-xs text-muted-foreground">Year data will appear once papers load.</p>
-                      )}
-                      {yearOptions.map((year) => (
-                        <label key={year} className="flex items-center gap-2 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-primary"
-                            checked={selectedYears.includes(year)}
-                            onChange={() => handleYearToggle(year)}
-                          />
-                          <span>{year}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+          <aside className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0">
+            <div className="sticky top-20">
+              <FiltersPanel />
             </div>
           </aside>
 
@@ -521,7 +543,7 @@ export default function PrevPapersPage() {
                 <button
                   type="button"
                   onClick={() => handleTabChange('all')}
-                  className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
                     activeTab === 'all'
                       ? 'border-primary text-primary'
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -533,7 +555,7 @@ export default function PrevPapersPage() {
                 <button
                   type="button"
                   onClick={() => handleTabChange('premium')}
-                  className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
                     activeTab === 'premium'
                       ? 'border-amber-500 text-amber-600'
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'

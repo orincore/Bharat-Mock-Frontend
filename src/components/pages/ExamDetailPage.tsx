@@ -103,31 +103,9 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
       return;
     }
 
-    const icsContent = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//Bharat Mock//Exam Scheduler//EN',
-      'BEGIN:VEVENT',
-      `UID:${exam.id}@bharatmock.com`,
-      `DTSTAMP:${formatCalendarDate(new Date())}`,
-      `DTSTART:${formatCalendarDate(calendarWindow.start)}`,
-      `DTEND:${formatCalendarDate(calendarWindow.end)}`,
-      `SUMMARY:${escapeICSValue(exam.title)}`,
-      `DESCRIPTION:${escapeICSValue(formatExamSummary(exam))}`,
-      'LOCATION:Online',
-      'END:VEVENT',
-      'END:VCALENDAR'
-    ].join('\n');
-
-    const blob = new Blob([icsContent], { type: 'text/calendar' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${exam.slug || exam.id}-bharat-mock.ics`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    if (googleCalendarUrl) {
+      window.open(googleCalendarUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const handleLanguageSelect = (lang: 'en' | 'hi' | null) => {
@@ -188,6 +166,12 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
   const isOngoing = exam?.status === 'ongoing';
   const isCompleted = exam?.status === 'completed';
   const isAnytime = isQuiz || exam?.status === 'anytime' || exam?.allow_anytime;
+  const startDate = exam?.start_date ? new Date(exam.start_date) : null;
+  const endDate = exam?.end_date ? new Date(exam.end_date) : null;
+  const nowTs = Date.now();
+  const windowStarted = Boolean(startDate && startDate.getTime() <= nowTs);
+  const windowEnded = Boolean(endDate && endDate.getTime() < nowTs);
+  const isWithinWindow = windowStarted && !windowEnded;
   const statusLabel = (() => {
     if (isQuiz) return 'Short Quiz';
     if (isAnytime) return 'Anytime';
@@ -196,10 +180,16 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
     if (isUpcoming) return 'Upcoming';
     return exam?.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Upcoming';
   })();
-  const canStartExam = isOngoing || isAnytime;
+  const isLiveExam = !isQuiz && (isOngoing || (isUpcoming && isWithinWindow));
+  const canStartExam = isOngoing || isAnytime || isWithinWindow;
   const userHasPremium = !!user?.is_premium;
   const requiresUnlock = !exam.is_free && !userHasPremium;
   const showAttemptCta = canStartExam && !requiresUnlock;
+  const showUpcomingNotice = isUpcoming && !windowStarted;
+  const showEndedNotice = windowEnded && !isLiveExam;
+  const attemptButtonGradient = isLiveExam
+    ? 'bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:to-red-800 shadow-[0_15px_35px_-20px_rgba(239,68,68,0.95)]'
+    : 'bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 shadow-[0_15px_35px_-20px_rgba(16,185,129,0.9)]';
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -222,19 +212,23 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20">
                   {exam.category}
                 </span>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    isQuiz
-                      ? 'bg-pink-500/20 text-pink-200 border border-pink-300/40'
-                      : (isAnytime || isUpcoming)
-                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/40'
-                        : isOngoing
-                          ? 'bg-blue-500/15 text-blue-200 border border-blue-300/40'
-                          : 'bg-slate-600/40 text-slate-200 border border-slate-400/30'
-                  }`}
-                >
+                <span className="px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold border border-white/30">
                   {statusLabel}
                 </span>
+                {isLiveExam && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/15 text-red-50 border border-red-400/40 font-semibold text-xs uppercase tracking-wide">
+                    <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+                      <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-red-400/70 animate-ping" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-300" />
+                    </span>
+                    Live
+                  </span>
+                )}
+                {isQuiz && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/15 text-pink-100 border border-pink-400/30 font-semibold text-xs uppercase tracking-wide">
+                    Quiz Mode
+                  </span>
+                )}
                 <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20 flex items-center gap-2">
                   <span role="img" aria-label="language">🗣️</span>
                   {exam.supports_hindi ? 'English + हिंदी' : 'English Only'}
@@ -254,20 +248,22 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 {formatExamSummary(exam)}
               </p>
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="flex flex-wrap gap-2.5 md:gap-3">
                 {[
                   { label: isQuiz ? 'Quiz Length' : 'Duration', value: `${exam.duration} Minutes`, icon: Clock },
                   { label: 'Questions', value: `${exam.total_questions}`, icon: FileText },
-                  { label: isQuiz ? 'Avg Score Weight' : 'Total Marks', value: `${exam.total_marks}`, icon: Award },
-                  { label: isQuiz ? 'Recommended Level' : 'Difficulty', value: exam.difficulty, icon: TrendingUp }
+                  { label: isQuiz ? 'Avg Score Weight' : 'Total Marks', value: `${exam.total_marks}`, icon: Award }
                 ].map((stat) => (
-                  <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/[0.08] p-4">
-                    <div className="flex items-center gap-3">
-                      <stat.icon className="h-5 w-5 text-amber-300" />
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-white/70">{stat.label}</p>
-                        <p className="text-lg font-semibold">{stat.value}</p>
-                      </div>
+                  <div
+                    key={stat.label}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-white shadow-[0_8px_25px_-20px_rgba(255,255,255,0.9)]"
+                  >
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 border border-white/30">
+                      <stat.icon className="h-3.5 w-3.5 text-amber-200" />
+                    </span>
+                    <div className="leading-tight">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-white/70">{stat.label}</p>
+                      <p className="text-sm font-semibold text-white">{stat.value}</p>
                     </div>
                   </div>
                 ))}
@@ -368,24 +364,38 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 ) : showAttemptCta ? (
                   <Button 
                     onClick={handleStartExam}
-                    className="w-full relative overflow-hidden bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white shadow-[0_15px_35px_-20px_rgba(16,185,129,0.9)] transition-all duration-200 disabled:from-slate-500 disabled:to-slate-600"
+                    className={`w-full relative overflow-hidden text-white ${attemptButtonGradient} transition-all duration-200 disabled:from-slate-500 disabled:to-slate-600`}
                     size="lg"
                     disabled={exam.supports_hindi && !languageSelected}
                   >
                     <span className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
                     <span className="relative flex items-center justify-center gap-2 font-semibold tracking-wide uppercase text-sm">
-                      <Play className="h-5 w-5" />
+                      {isLiveExam ? (
+                        <span className="relative flex h-4 w-4 items-center justify-center">
+                          <span className="absolute inline-flex h-4 w-4 rounded-full bg-white/40 animate-ping" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                        </span>
+                      ) : (
+                        <Play className="h-5 w-5" />
+                      )}
                       {exam.supports_hindi && !languageSelected
                         ? 'Select language to start'
-                        : isQuiz
-                          ? 'Start Quiz'
-                          : 'Begin Attempt'}
+                        : isLiveExam
+                          ? 'Join Live Attempt'
+                          : isQuiz
+                            ? 'Start Quiz'
+                            : 'Begin Attempt'}
                     </span>
                   </Button>
-                ) : isUpcoming ? (
+                ) : showUpcomingNotice ? (
                   <Button disabled className="w-full bg-white/10 text-white" size="lg">
                     <Calendar className="h-5 w-5 mr-2" />
                     Registration Opens Soon
+                  </Button>
+                ) : showEndedNotice ? (
+                  <Button disabled className="w-full bg-white/10 text-white" size="lg">
+                    <Calendar className="h-5 w-5 mr-2" />
+                    Attempt Window Closed
                   </Button>
                 ) : (
                   <Button disabled className="w-full bg-white/10 text-white" size="lg">

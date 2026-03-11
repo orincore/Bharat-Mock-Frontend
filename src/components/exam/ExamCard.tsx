@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Exam } from '@/types';
 import Link from 'next/link';
-import { Clock, FileText, Users, TrendingUp, ArrowRight, Languages, Crown, Gift } from 'lucide-react';
+import { Clock, FileText, Users, TrendingUp, ArrowRight, Languages, Crown, Gift, Download, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatExamSummary } from '@/lib/utils/examSummary';
@@ -49,12 +49,42 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
     ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
     : 'bg-amber-50 text-amber-600 border-amber-200';
   const pricingLabel = exam.is_free ? 'Free' : 'Premium';
+  const normalizedStatus = (exam.status || '').toLowerCase().trim();
+  const rawExamType = (exam.exam_type || '').toLowerCase().trim();
+  const startDate = exam.start_date ? new Date(exam.start_date) : null;
+  const endDate = exam.end_date ? new Date(exam.end_date) : null;
+  const nowTs = Date.now();
+  const windowStarted = Boolean(startDate && !Number.isNaN(startDate.getTime()) && startDate.getTime() <= nowTs);
+  const windowEnded = Boolean(endDate && !Number.isNaN(endDate.getTime()) && endDate.getTime() < nowTs);
+  const derivedExamType = (() => {
+    if (rawExamType === 'short_quiz') return 'short_quiz';
+    if (rawExamType === 'past_paper') return 'past_paper';
+    if (rawExamType === 'mock_test') return 'mock_test';
+    if (normalizedStatus === 'ongoing' || normalizedStatus === 'live' || normalizedStatus === 'live now') return 'live_window';
+    if (exam.allow_anytime) return 'mock_test';
+    return 'mock_test';
+  })();
+  const isQuizType = derivedExamType === 'short_quiz';
+  const isPastPaper = derivedExamType === 'past_paper';
+  const isLiveExam =
+    normalizedStatus === 'ongoing' ||
+    normalizedStatus.includes('live') ||
+    derivedExamType === 'live_window' ||
+    (windowStarted && !windowEnded && !isQuizType && !isPastPaper);
+  const isEndedWindow = windowEnded && !normalizedStatus.includes('live');
   
   const statusColors = {
     upcoming: 'bg-warning/10 text-warning border-warning/30',
     ongoing: 'bg-success/10 text-success border-success/30',
+    live: 'bg-success/10 text-success border-success/30',
     completed: 'bg-muted text-muted-foreground border-muted',
-  };
+    anytime: 'bg-primary/10 text-primary border-primary/30'
+  } as const;
+  type StatusColorKey = keyof typeof statusColors;
+  const normalizedStatusKey: StatusColorKey = normalizedStatus.includes('live') ? 'live' : (normalizedStatus as StatusColorKey);
+  const statusColorKey: StatusColorKey = (Object.keys(statusColors) as StatusColorKey[]).includes(normalizedStatusKey)
+    ? normalizedStatusKey
+    : 'upcoming';
 
   const difficultyColors = {
     easy: 'bg-success/10 text-success',
@@ -66,6 +96,9 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
   const difficultyLabel = difficultyKey.charAt(0).toUpperCase() + difficultyKey.slice(1);
 
   const [countdown, setCountdown] = useState<string | null>(() => getCountdownLabel(exam.start_date));
+  const pdfEn = exam.pdf_url_en || exam.download_url || exam.file_url;
+  const pdfHi = exam.pdf_url_hi;
+  const hasDownloads = Boolean(pdfEn || pdfHi);
 
   useEffect(() => {
     if (exam.status !== 'upcoming' || !exam.start_date) {
@@ -83,7 +116,11 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
     : 'border-border/80';
   const headerGradient = isPremiumVariant
     ? 'bg-gradient-to-tr from-amber-50 via-orange-50/60 to-white'
-    : 'bg-gradient-to-tr from-sky-50 via-white to-white';
+    : isQuizType
+      ? 'bg-gradient-to-tr from-pink-50 via-rose-50 to-white'
+      : isPastPaper
+        ? 'bg-gradient-to-tr from-slate-50 via-stone-50 to-white'
+        : 'bg-gradient-to-tr from-sky-50 via-white to-white';
   const accentColor = isPremiumVariant ? 'text-amber-500' : 'text-primary';
   const titleHoverColor = isPremiumVariant ? 'group-hover:text-amber-600' : 'group-hover:text-primary';
 
@@ -104,9 +141,28 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
               Premium
             </Badge>
           )}
-          <Badge className={`${statusColors[exam.status]} text-xs px-2.5 py-0.5`}>
-            {exam.status.charAt(0).toUpperCase() + exam.status.slice(1)}
+          <Badge className={`${statusColors[statusColorKey]} text-xs px-2.5 py-0.5`}>
+            {(exam.status || 'Upcoming').replace(/_/g, ' ').replace(/(^|\s)\w/g, (c) => c.toUpperCase())}
           </Badge>
+          {isLiveExam && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-red-300/60 bg-red-500/10 px-2.5 py-0.5 text-xs font-semibold text-red-600 uppercase tracking-wide">
+              <span className="relative flex h-3 w-3 items-center justify-center">
+                <span className="absolute inline-flex h-3 w-3 rounded-full bg-red-400/70 animate-ping" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+              </span>
+              Live
+            </span>
+          )}
+          {isQuizType && (
+            <Badge className="bg-pink-100 text-pink-700 border-pink-200 text-xs px-2.5 py-0.5">
+              Quiz Mode
+            </Badge>
+          )}
+          {isPastPaper && (
+            <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-xs px-2.5 py-0.5">
+              Previous Paper
+            </Badge>
+          )}
           <Badge className={`${difficultyColors[difficultyKey]} text-xs px-2.5 py-0.5`}>{difficultyLabel}</Badge>
         </div>
         
@@ -119,12 +175,23 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
               {exam.category}
             </span>
           )}
+          
         </div>
 
         {isPremiumVariant && exam.is_free && !isCompact && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200/60">
             <Gift className="h-3.5 w-3.5 text-emerald-500" />
             <span className="text-xs font-semibold text-emerald-700">This premium exam is free for you!</span>
+          </div>
+        )}
+        {isQuizType && !isCompact && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-pink-50 border border-pink-200/60 text-pink-800 text-xs">
+            <Play className="h-3.5 w-3.5" /> Rapid quiz • Instant scoring
+          </div>
+        )}
+        {isPastPaper && !isCompact && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200/60 text-slate-700 text-xs">
+            <FileText className="h-3.5 w-3.5" /> Authentic previous year paper
           </div>
         )}
 
@@ -174,19 +241,65 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
         <div className="mt-auto">
           <Link href={examUrl}>
             <Button
-              className={`w-full group/btn rounded-full ${
-                isPremiumVariant
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0'
-                  : ''
+              className={`w-full group/btn rounded-full relative overflow-hidden ${
+                isLiveExam
+                  ? 'bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:to-red-800 text-white border-0 shadow-[0_12px_30px_-15px_rgba(239,68,68,0.8)]'
+                  : isPremiumVariant
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0'
+                    : ''
               } ${isCompact ? 'h-9 text-sm' : ''}`}
-              variant={isPremiumVariant ? 'default' : 'secondary'}
+              variant={isPremiumVariant || isLiveExam ? 'default' : 'secondary'}
               size={isCompact ? 'sm' : 'default'}
+              disabled={isEndedWindow}
             >
-              Attempt Now
-              <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+              {isEndedWindow ? (
+                <span className="inline-flex items-center gap-2 font-semibold text-slate-600">
+                  Attempt Window Closed
+                </span>
+              ) : isLiveExam ? (
+                <span className="relative flex items-center justify-center gap-2 font-semibold uppercase">
+                  <span className="relative flex h-4 w-4 items-center justify-center">
+                    <span className="absolute inline-flex h-4 w-4 rounded-full bg-white/40 animate-ping" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                  </span>
+                  Join Live Attempt
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2">
+                  Attempt Now
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                </span>
+              )}
             </Button>
           </Link>
         </div>
+
+        {hasDownloads && (
+          <div className="mt-3 space-y-2">
+            {pdfEn && (
+              <a
+                href={pdfEn}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Download English PDF
+              </a>
+            )}
+            {pdfHi && (
+              <a
+                href={pdfHi}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Download Hindi PDF
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
