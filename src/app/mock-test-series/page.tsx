@@ -12,7 +12,7 @@ import { TestSeriesCard } from '@/components/exam/TestSeriesCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { testSeriesService, TestSeries } from '@/lib/api/testSeriesService';
-import { taxonomyService, Category } from '@/lib/api/taxonomyService';
+import { taxonomyService, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { pagePopularTestsService, PopularTest } from '@/lib/api/pagePopularTestsService';
 import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
 import { testimonialsService, Testimonial } from '@/lib/api/testimonialsService';
@@ -36,6 +36,9 @@ export default function ExamsPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
+  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const popularTestsScrollRef = useRef<HTMLDivElement>(null);
   const categoriesScrollRef = useRef<HTMLDivElement>(null);
   const newTestSeriesScrollRef = useRef<HTMLDivElement>(null);
@@ -50,6 +53,7 @@ export default function ExamsPage() {
   const [filters, setFilters] = useState({
     search: '',
     category: '',
+    subcategory: '',
     status: DEFAULT_STATUS
   });
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -138,7 +142,7 @@ export default function ExamsPage() {
 
   useEffect(() => {
     fetchFilteredSeries();
-  }, [filters.category, filters.status, pagination.page, debouncedSearch]);
+  }, [filters.category, filters.subcategory, filters.status, pagination.page, debouncedSearch]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -162,6 +166,22 @@ export default function ExamsPage() {
     }
   };
 
+  const fetchSubcategories = async (categoryId?: string) => {
+    setSubcategoriesLoading(true);
+    try {
+      const data = await taxonomyService.getSubcategories(categoryId);
+      const sorted = data
+        .filter(subcategory => subcategory.is_active !== false)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      setSubcategories(sorted);
+    } catch (err) {
+      console.error('Failed to fetch subcategories:', err);
+      setSubcategories([]);
+    } finally {
+      setSubcategoriesLoading(false);
+    }
+  };
+
   const fetchFilteredSeries = async () => {
     const requestId = ++activeRequestRef.current;
     setIsLoading(true);
@@ -169,11 +189,14 @@ export default function ExamsPage() {
     
     try {
       const categoryIds = filters.category ? filters.category.split(',').map(id => id.trim()).filter(Boolean) : [];
+      const subcategoryIds = filters.subcategory ? filters.subcategory.split(',').map(id => id.trim()).filter(Boolean) : [];
+      
       const response = await testSeriesService.getTestSeries({
         page: pagination.page,
         limit: pagination.limit,
         search: debouncedSearch,
         category: categoryIds[0],
+        subcategory: subcategoryIds[0],
         is_published: true
       });
 
@@ -219,11 +242,34 @@ export default function ExamsPage() {
   const syncCategoryFilters = (ids: string[]) => {
     if (ids.length === 0) {
       handleFilterChange('category', '');
+      // Clear subcategories when no category is selected
+      setSelectedSubcategoryIds([]);
+      handleFilterChange('subcategory', '');
+      setSubcategories([]);
+      setSubcategoriesLoading(false);
       return;
     }
 
     const idString = ids.join(',');
     handleFilterChange('category', idString);
+    
+    // Fetch subcategories for the first selected category
+    const firstCategoryId = ids[0];
+    fetchSubcategories(firstCategoryId);
+    
+    // Clear subcategory selection when category changes
+    setSelectedSubcategoryIds([]);
+    handleFilterChange('subcategory', '');
+  };
+
+  const syncSubcategoryFilters = (ids: string[]) => {
+    if (ids.length === 0) {
+      handleFilterChange('subcategory', '');
+      return;
+    }
+
+    const idString = ids.join(',');
+    handleFilterChange('subcategory', idString);
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -235,6 +281,21 @@ export default function ExamsPage() {
     });
   };
 
+  const toggleSubcategory = (subcategoryId: string) => {
+    setSelectedSubcategoryIds(prev => {
+      const updated = prev.includes(subcategoryId)
+        ? prev.filter(id => id !== subcategoryId)
+        : [...prev, subcategoryId];
+      syncSubcategoryFilters(updated);
+      return updated;
+    });
+  };
+
+  const clearSubcategorySelection = () => {
+    setSelectedSubcategoryIds([]);
+    syncSubcategoryFilters([]);
+  };
+
   const clearCategorySelection = () => {
     setSelectedCategoryIds([]);
     syncCategoryFilters([]);
@@ -244,9 +305,13 @@ export default function ExamsPage() {
     setFilters({
       search: '',
       category: '',
+      subcategory: '',
       status: DEFAULT_STATUS
     });
     setSelectedCategoryIds([]);
+    setSelectedSubcategoryIds([]);
+    setSubcategories([]);
+    setSubcategoriesLoading(false);
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
@@ -254,6 +319,7 @@ export default function ExamsPage() {
   const hasCustomFilters = Boolean(
     filters.search ||
     filters.category ||
+    filters.subcategory ||
     filters.status !== DEFAULT_STATUS
   );
 
@@ -314,6 +380,47 @@ export default function ExamsPage() {
               ))}
             </div>
           </div>
+
+          {/* Subcategory Filter - Show when a category is selected */}
+          {selectedCategoryIds.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Subcategory
+              </label>
+              <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={selectedSubcategoryIds.length === 0}
+                    onChange={clearSubcategorySelection}
+                  />
+                  <span>All Subcategories</span>
+                </label>
+                {subcategoriesLoading ? (
+                  <div className="text-sm text-muted-foreground py-2">
+                    Loading subcategories...
+                  </div>
+                ) : subcategories.length > 0 ? (
+                  subcategories.map((subcategory) => (
+                    <label key={subcategory.id} className="flex items-center gap-2 text-sm text-foreground">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-primary"
+                        checked={selectedSubcategoryIds.includes(subcategory.id)}
+                        onChange={() => toggleSubcategory(subcategory.id)}
+                      />
+                      <span>{subcategory.name}</span>
+                    </label>
+                  ))
+                ) : (
+                  <div className="text-sm text-muted-foreground py-2">
+                    No subcategories available for this category.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
