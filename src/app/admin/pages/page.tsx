@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
-import { FileText, ChevronRight, Layers, CreditCard, Home, Settings, Shield, FileX } from 'lucide-react';
+import { FileText, ChevronRight, Layers, CreditCard, Home, Settings, Shield, FileX, DollarSign } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
@@ -47,6 +47,13 @@ const PAGES = [
     description: 'Edit disclaimer content and legal notices',
     href: '/admin/disclaimer',
     icon: FileX
+  },
+  {
+    id: 'refund-policy',
+    title: 'Refund Policy',
+    description: 'Manage refund policy content, eligibility, and refund process',
+    href: '/admin/refund-policy',
+    icon: DollarSign
   },
   {
     id: 'exam-page',
