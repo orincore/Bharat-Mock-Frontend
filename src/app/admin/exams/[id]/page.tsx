@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion, Save, XCircle, Loader2, Eye, EyeOff, BookOpen } from 'lucide-react';
+import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion, Save, XCircle, Loader2, Eye, EyeOff, BookOpen, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { taxonomyService, Category, Subcategory, Difficulty } from '@/lib/api/taxonomyService';
@@ -1101,6 +1101,80 @@ export default function ExamFormPage() {
     markUnsavedChanges();
   };
 
+  const moveSectionUp = async (sectionIndex: number) => {
+    if (sectionIndex === 0) return;
+    
+    const currentSections = [...sectionsForDisplay];
+    const [movedSection] = currentSections.splice(sectionIndex, 1);
+    currentSections.splice(sectionIndex - 1, 0, movedSection);
+    
+    // Update section_order for all affected sections
+    const updatedSections = sections.map(section => {
+      const newIndex = currentSections.findIndex(s => s.id === section.id);
+      if (newIndex !== -1) {
+        return { ...section, section_order: newIndex + 1 };
+      }
+      return section;
+    });
+    
+    setSections(updatedSections);
+    setHasUnsavedChanges(true);
+    markUnsavedChanges();
+
+    // If exam is saved, update order on backend
+    if (persistedExamId) {
+      try {
+        const orderedIds = currentSections.map(s => s.id);
+        await testSeriesService.reorderSections(orderedIds);
+        setToastMessage('Section order updated');
+        setToastType('success');
+        setShowToast(true);
+      } catch (error) {
+        console.error('Failed to update section order:', error);
+        setToastMessage('Failed to update section order');
+        setToastType('error');
+        setShowToast(true);
+      }
+    }
+  };
+
+  const moveSectionDown = async (sectionIndex: number) => {
+    if (sectionIndex === sectionsForDisplay.length - 1) return;
+    
+    const currentSections = [...sectionsForDisplay];
+    const [movedSection] = currentSections.splice(sectionIndex, 1);
+    currentSections.splice(sectionIndex + 1, 0, movedSection);
+    
+    // Update section_order for all affected sections
+    const updatedSections = sections.map(section => {
+      const newIndex = currentSections.findIndex(s => s.id === section.id);
+      if (newIndex !== -1) {
+        return { ...section, section_order: newIndex + 1 };
+      }
+      return section;
+    });
+    
+    setSections(updatedSections);
+    setHasUnsavedChanges(true);
+    markUnsavedChanges();
+
+    // If exam is saved, update order on backend
+    if (persistedExamId) {
+      try {
+        const orderedIds = currentSections.map(s => s.id);
+        await testSeriesService.reorderSections(orderedIds);
+        setToastMessage('Section order updated');
+        setToastType('success');
+        setShowToast(true);
+      } catch (error) {
+        console.error('Failed to update section order:', error);
+        setToastMessage('Failed to update section order');
+        setToastType('error');
+        setShowToast(true);
+      }
+    }
+  };
+
   const updateSection = (sectionId: string, field: keyof Section, value: any) => {
     const updatedSections = sections.map(s => s.id === sectionId ? { ...s, [field]: value } : s);
     setSections(updatedSections);
@@ -1163,6 +1237,65 @@ export default function ExamFormPage() {
     if (updatedSection) {
       // Section updated
     }
+  };
+
+  const moveQuestionUp = async (sectionId: string, questionIndex: number) => {
+    if (questionIndex === 0) return;
+    
+    const updatedSections = sections.map(section => {
+      if (section.id === sectionId) {
+        const newQuestions = [...section.questions];
+        const [movedQuestion] = newQuestions.splice(questionIndex, 1);
+        newQuestions.splice(questionIndex - 1, 0, movedQuestion);
+        
+        // Update question_number for all questions
+        newQuestions.forEach((q, idx) => {
+          q.question_number = idx + 1;
+          q.question_order = idx + 1;
+        });
+        
+        return { ...section, questions: newQuestions };
+      }
+      return section;
+    });
+    
+    setSections(updatedSections);
+    setHasUnsavedChanges(true);
+    markUnsavedChanges();
+
+    setToastMessage('Question order updated. Save exam to persist changes.');
+    setToastType('success');
+    setShowToast(true);
+  };
+
+  const moveQuestionDown = async (sectionId: string, questionIndex: number) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section || questionIndex === section.questions.length - 1) return;
+    
+    const updatedSections = sections.map(section => {
+      if (section.id === sectionId) {
+        const newQuestions = [...section.questions];
+        const [movedQuestion] = newQuestions.splice(questionIndex, 1);
+        newQuestions.splice(questionIndex + 1, 0, movedQuestion);
+        
+        // Update question_number for all questions
+        newQuestions.forEach((q, idx) => {
+          q.question_number = idx + 1;
+          q.question_order = idx + 1;
+        });
+        
+        return { ...section, questions: newQuestions };
+      }
+      return section;
+    });
+    
+    setSections(updatedSections);
+    setHasUnsavedChanges(true);
+    markUnsavedChanges();
+
+    setToastMessage('Question order updated. Save exam to persist changes.');
+    setToastType('success');
+    setShowToast(true);
   };
 
   const updateQuestion = (sectionId: string, questionId: string, field: keyof Question, value: any) => {
@@ -3326,7 +3459,7 @@ export default function ExamFormPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {sectionsForDisplay.map((section) => (
+              {sectionsForDisplay.map((section, sectionIndex) => (
                 <div key={section.id} className="border border-border rounded-lg overflow-hidden">
                   <div className="bg-muted/30 p-4 flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">
@@ -3338,6 +3471,33 @@ export default function ExamFormPage() {
                       >
                         {section.expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </Button>
+                      
+                      {/* Section ordering buttons */}
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveSectionUp(sectionIndex)}
+                          disabled={sectionIndex === 0}
+                          className="h-8 w-8 p-0"
+                          title="Move section up"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveSectionDown(sectionIndex)}
+                          disabled={sectionIndex === sectionsForDisplay.length - 1}
+                          className="h-8 w-8 p-0"
+                          title="Move section down"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
                       <Input
                         value={selectedLanguage === 'en' ? section.name : (section.name_hi || '')}
                         onChange={(e) => updateSection(section.id, selectedLanguage === 'en' ? 'name' : 'name_hi', e.target.value)}
@@ -3421,6 +3581,33 @@ export default function ExamFormPage() {
                                   <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-2">
                                       <span className="font-bold text-base bg-white dark:bg-slate-900 px-3 py-1 rounded-lg border-2 border-current">Q{qIndex + 1}</span>
+                                      
+                                      {/* Question ordering buttons */}
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => moveQuestionUp(section.id, qIndex)}
+                                          disabled={qIndex === 0}
+                                          className="h-6 w-6 p-0"
+                                          title="Move question up"
+                                        >
+                                          <ArrowUp className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => moveQuestionDown(section.id, qIndex)}
+                                          disabled={qIndex === section.questions.length - 1}
+                                          className="h-6 w-6 p-0"
+                                          title="Move question down"
+                                        >
+                                          <ArrowDown className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      
                                       {hasErrors && (
                                         <span className="flex items-center gap-1 text-xs font-bold text-red-700 bg-red-100 px-2 py-1 rounded-full animate-pulse">
                                           <XCircle className="h-3 w-3" />

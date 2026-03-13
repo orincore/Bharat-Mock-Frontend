@@ -163,6 +163,18 @@ class TestSeriesService {
   async deleteTopic(id: string) {
     return this.client.delete(`/test-series/topics/${id}`, true);
   }
+
+  async reorderSections(orderedIds: string[]): Promise<void> {
+    await this.client.post('/test-series/sections/reorder', { orderedIds }, true);
+  }
+
+  async reorderTopics(orderedIds: string[]): Promise<void> {
+    await this.client.post('/test-series/topics/reorder', { orderedIds }, true);
+  }
+
+  async reorderExams(orderedIds: string[]): Promise<void> {
+    await this.client.post('/test-series/exams/reorder', { orderedIds }, true);
+  }
 }
 
 export const testSeriesService = new TestSeriesService();

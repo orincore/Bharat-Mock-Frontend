@@ -15,8 +15,8 @@ const PAGES = [
   },
   {
     id: 'test-series-sidebar',
-    title: 'Test Series Sidebar',
-    description: 'Manage sidebar banner for the test series detail page',
+    title: 'Test Series',
+    description: 'Manage Everything for the test series detail page',
     href: '/admin/pages/test-series-sidebar',
     icon: Layers
   },
