@@ -1,11 +1,53 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
-import { FileText, ChevronRight, Layers } from 'lucide-react';
+import { FileText, ChevronRight, Layers, CreditCard, Home, Settings, Shield, FileX } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
 const PAGES = [
+  {
+    id: 'homepage',
+    title: 'Homepage',
+    description: 'Manage homepage content, hero sections, and featured elements',
+    href: '/admin/homepage',
+    icon: Home
+  },
+  {
+    id: 'header',
+    title: 'Header & Navigation',
+    description: 'Configure site header, navigation menu, and top-level links',
+    href: '/admin/navigation',
+    icon: Settings
+  },
+  {
+    id: 'footer',
+    title: 'Footer',
+    description: 'Manage footer content, links, and site-wide footer elements',
+    href: '/admin/footer',
+    icon: Settings
+  },
+  {
+    id: 'about',
+    title: 'About Page',
+    description: 'Edit about us page content, team information, and company details',
+    href: '/admin/about',
+    icon: FileText
+  },
+  {
+    id: 'privacy-policy',
+    title: 'Privacy Policy',
+    description: 'Manage privacy policy content and data protection information',
+    href: '/admin/privacy',
+    icon: Shield
+  },
+  {
+    id: 'disclaimer',
+    title: 'Disclaimer',
+    description: 'Edit disclaimer content and legal notices',
+    href: '/admin/disclaimer',
+    icon: FileX
+  },
   {
     id: 'exam-page',
     title: 'Exam Page',
@@ -26,6 +68,13 @@ const PAGES = [
     description: 'Upload and configure the hero banner for live tests',
     href: '/admin/pages/live-tests',
     icon: Layers
+  },
+  {
+    id: 'subscription-page',
+    title: 'Subscription Page',
+    description: 'Manage subscription plans, pricing, and page content',
+    href: '/admin/subscription-page',
+    icon: CreditCard
   }
 ];
 
@@ -47,7 +96,7 @@ export default function PagesAdmin() {
             Page Management
           </h1>
           <p className="text-muted-foreground">
-            Configure content and sections for different pages across the platform
+            Configure content and sections for different pages across the platform. Manage site-wide pages, content sections, and page-specific settings.
           </p>
         </div>
       </header>

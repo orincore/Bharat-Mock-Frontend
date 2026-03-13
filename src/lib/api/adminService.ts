@@ -22,7 +22,11 @@ import {
   DisclaimerData,
   DisclaimerSection,
   DisclaimerPoint,
-  DisclaimerContent
+  DisclaimerContent,
+  RefundPolicyData,
+  RefundPolicySection,
+  RefundPolicyPoint,
+  RefundPolicyContent
 } from '@/types';
 
 interface AboutPayload extends Partial<AboutPageContent> {
@@ -44,6 +48,13 @@ interface PrivacyPolicyPayload extends Partial<PrivacyPolicyContent> {
 interface DisclaimerPayload extends Partial<DisclaimerContent> {
   sections?: DisclaimerSection[];
   points?: (DisclaimerPoint & { section_title?: string })[];
+  deleted_section_ids?: string[];
+  deleted_point_ids?: string[];
+}
+
+interface RefundPolicyPayload extends Partial<RefundPolicyContent> {
+  sections?: RefundPolicySection[];
+  points?: (RefundPolicyPoint & { section_title?: string })[];
   deleted_section_ids?: string[];
   deleted_point_ids?: string[];
 }
@@ -554,6 +565,16 @@ export const adminService = {
 
   async upsertDisclaimer(payload: DisclaimerPayload): Promise<DisclaimerData> {
     const response = await apiClient.put<{ success: boolean; data: DisclaimerData }>('/admin/disclaimer', payload, true);
+    return response.data;
+  },
+
+  async getRefundPolicyAdmin(): Promise<RefundPolicyData> {
+    const response = await apiClient.get<{ success: boolean; data: RefundPolicyData }>('/admin/refund-policy', true);
+    return response.data;
+  },
+
+  async upsertRefundPolicy(payload: RefundPolicyPayload): Promise<RefundPolicyData> {
+    const response = await apiClient.put<{ success: boolean; data: RefundPolicyData }>('/admin/refund-policy', payload, true);
     return response.data;
   },
 

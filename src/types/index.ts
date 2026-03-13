@@ -249,6 +249,44 @@ export interface DisclaimerData {
   sections: DisclaimerSection[];
 }
 
+export type RefundPolicyListItem = string | {
+  term?: string;
+  text?: string;
+};
+
+export interface RefundPolicyPoint {
+  id?: string;
+  section_id?: string;
+  heading?: string;
+  body?: string;
+  list_items?: RefundPolicyListItem[];
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface RefundPolicySection {
+  id?: string;
+  title: string;
+  description?: string;
+  display_order?: number;
+  is_active?: boolean;
+  points?: RefundPolicyPoint[];
+}
+
+export interface RefundPolicyContent {
+  id: string;
+  title: string;
+  last_updated: string;
+  intro_body?: string;
+  contact_email?: string;
+  contact_url?: string;
+}
+
+export interface RefundPolicyData {
+  content: RefundPolicyContent | null;
+  sections: RefundPolicySection[];
+}
+
 export interface ExamPattern {
   sections: ExamPatternSection[];
   negative_marking?: boolean;
