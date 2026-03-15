@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Award, Calendar, Clock, TrendingUp, FileText, Eye } from 'lucide-react';
+import { Award, Calendar, Clock, TrendingUp, FileText, Eye, Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { useAuth } from '@/context/AuthContext';
-import { resultService } from '@/lib/api/resultService';
+import { resultService, IncompleteAttempt } from '@/lib/api/resultService';
 import { Result } from '@/types';
 
 export default function ResultsPage() {
@@ -15,6 +15,7 @@ export default function ResultsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [results, setResults] = useState<Result[]>([]);
+  const [incompleteAttempts, setIncompleteAttempts] = useState<IncompleteAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -42,8 +43,12 @@ export default function ResultsPage() {
     setError('');
     
     try {
-      const response = await resultService.getResults(pagination.page, pagination.limit);
+      const [response, incomplete] = await Promise.all([
+        resultService.getResults(pagination.page, pagination.limit),
+        resultService.getIncompleteAttempts(),
+      ]);
       setResults(response.data);
+      setIncompleteAttempts(incomplete);
       setPagination(prev => ({
         ...prev,
         total: response.total,
@@ -178,9 +183,78 @@ export default function ResultsPage() {
             <p className="text-muted-foreground mb-6">
               Start taking exams to see your results here
             </p>
-            <Link href="/exams">
+            <Link href="/mock-test-series">
               <Button>Browse Exams</Button>
             </Link>
+          </div>
+        )}
+
+        {/* In Progress Exams */}
+        {incompleteAttempts.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <RotateCcw className="h-5 w-5 text-warning" />
+              <h2 className="font-display text-xl font-bold text-foreground">Resume In-Progress</h2>
+              <span className="px-2 py-0.5 rounded-full bg-warning/10 text-warning text-xs font-medium border border-warning/20">
+                {incompleteAttempts.length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {incompleteAttempts.map((attempt) => {
+                const progress = attempt.totalQuestions > 0
+                  ? Math.round((attempt.answeredQuestions / attempt.totalQuestions) * 100)
+                  : 0;
+                return (
+                  <div key={attempt.attemptId} className="bg-card rounded-xl border border-warning/30 p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-0.5 rounded-full bg-warning/10 text-warning text-xs font-medium border border-warning/20">
+                            In Progress
+                          </span>
+                          <span className="text-xs text-muted-foreground uppercase">{attempt.language === 'hi' ? 'हिंदी' : 'English'}</span>
+                        </div>
+                        <h3 className="font-semibold text-foreground truncate">{attempt.examTitle}</h3>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Started {new Date(attempt.startedAt).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            {attempt.answeredQuestions}/{attempt.totalQuestions} answered
+                          </span>
+                          {attempt.duration > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {attempt.duration} min
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-medium text-foreground">{progress}%</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-1.5">
+                            <div
+                              className="h-1.5 rounded-full bg-warning transition-all"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <Link href={`/exams/${attempt.examId}/attempt/${attempt.attemptId}?lang=${attempt.language}`}>
+                        <Button size="sm" className="shrink-0">
+                          <Play className="h-4 w-4 mr-1.5" />
+                          Resume
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

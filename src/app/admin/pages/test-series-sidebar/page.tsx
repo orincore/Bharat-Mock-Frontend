@@ -83,6 +83,13 @@ export default function TestSeriesSidebarAdmin() {
   const [editingBanner, setEditingBanner] = useState<PageBanner | null>(null);
   const [form, setForm] = useState({ imageUrl: '', linkUrl: '', altText: '' });
 
+  // Icon Management State
+  const [selectedSeries, setSelectedSeries] = useState<TestSeriesWithDetails | null>(null);
+  const [iconUploading, setIconUploading] = useState<{ logo: boolean; thumbnail: boolean }>({ logo: false, thumbnail: false });
+  const [showIconModal, setShowIconModal] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     if (activeTab === 'ordering') {
       fetchTestSeries();
@@ -508,6 +515,142 @@ export default function TestSeriesSidebarAdmin() {
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Icon Management Functions
+  const handleIconManagement = (series: TestSeriesWithDetails) => {
+    setSelectedSeries(series);
+    setShowIconModal(true);
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedSeries) return;
+
+    setIconUploading(prev => ({ ...prev, logo: true }));
+    try {
+      const result = await testSeriesService.uploadLogo(selectedSeries.id, file);
+      
+      // Update the series in state
+      setTestSeries(prev => prev.map(s => 
+        s.id === selectedSeries.id 
+          ? { ...s, logo_url: result.logo_url }
+          : s
+      ));
+      
+      // Update selected series
+      setSelectedSeries(prev => prev ? { ...prev, logo_url: result.logo_url } : null);
+      
+      toast({
+        title: 'Success',
+        description: 'Logo uploaded successfully'
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to upload logo',
+        variant: 'destructive'
+      });
+    } finally {
+      setIconUploading(prev => ({ ...prev, logo: false }));
+      event.target.value = '';
+    }
+  };
+
+  const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedSeries) return;
+
+    setIconUploading(prev => ({ ...prev, thumbnail: true }));
+    try {
+      const result = await testSeriesService.uploadThumbnail(selectedSeries.id, file);
+      
+      // Update the series in state
+      setTestSeries(prev => prev.map(s => 
+        s.id === selectedSeries.id 
+          ? { ...s, thumbnail_url: result.thumbnail_url }
+          : s
+      ));
+      
+      // Update selected series
+      setSelectedSeries(prev => prev ? { ...prev, thumbnail_url: result.thumbnail_url } : null);
+      
+      toast({
+        title: 'Success',
+        description: 'Thumbnail uploaded successfully'
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to upload thumbnail',
+        variant: 'destructive'
+      });
+    } finally {
+      setIconUploading(prev => ({ ...prev, thumbnail: false }));
+      event.target.value = '';
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!selectedSeries || !selectedSeries.logo_url) return;
+
+    if (!confirm('Are you sure you want to delete the logo?')) return;
+
+    try {
+      await testSeriesService.deleteLogo(selectedSeries.id);
+      
+      // Update the series in state
+      setTestSeries(prev => prev.map(s => 
+        s.id === selectedSeries.id 
+          ? { ...s, logo_url: undefined }
+          : s
+      ));
+      
+      // Update selected series
+      setSelectedSeries(prev => prev ? { ...prev, logo_url: undefined } : null);
+      
+      toast({
+        title: 'Success',
+        description: 'Logo deleted successfully'
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete logo',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteThumbnail = async () => {
+    if (!selectedSeries || !selectedSeries.thumbnail_url) return;
+
+    if (!confirm('Are you sure you want to delete the thumbnail?')) return;
+
+    try {
+      await testSeriesService.deleteThumbnail(selectedSeries.id);
+      
+      // Update the series in state
+      setTestSeries(prev => prev.map(s => 
+        s.id === selectedSeries.id 
+          ? { ...s, thumbnail_url: undefined }
+          : s
+      ));
+      
+      // Update selected series
+      setSelectedSeries(prev => prev ? { ...prev, thumbnail_url: undefined } : null);
+      
+      toast({
+        title: 'Success',
+        description: 'Thumbnail deleted successfully'
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete thumbnail',
+        variant: 'destructive'
+      });
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
@@ -593,6 +736,15 @@ export default function TestSeriesSidebarAdmin() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleIconManagement(series)}
+                            className="flex items-center gap-2"
+                          >
+                            <ImagePlus className="h-4 w-4" />
+                            Manage Icons
+                          </Button>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             series.is_published 
                               ? 'bg-green-100 text-green-800' 
@@ -907,6 +1059,186 @@ export default function TestSeriesSidebarAdmin() {
             </div>
           )}
         </Card>
+
+        {/* Icon Management Modal */}
+        {showIconModal && selectedSeries && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900">Manage Icons</h3>
+                    <p className="text-sm text-muted-foreground">{selectedSeries.title}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowIconModal(false)}
+                    className="h-8 w-8 p-0"
+                  >
+                    ×
+                  </Button>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Logo Management */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-medium text-slate-800 flex items-center gap-2">
+                      <ImagePlus className="h-5 w-5" />
+                      Logo
+                    </h4>
+                    
+                    {selectedSeries.logo_url ? (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={selectedSeries.logo_url}
+                            alt="Test series logo"
+                            className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleDeleteLogo}
+                            className="absolute top-2 right-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => logoInputRef.current?.click()}
+                          disabled={iconUploading.logo}
+                          className="w-full"
+                        >
+                          {iconUploading.logo ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Edit className="h-4 w-4 mr-2" />
+                          )}
+                          Replace Logo
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="w-full h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-slate-500">
+                          <div className="text-center">
+                            <ImagePlus className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No logo uploaded</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => logoInputRef.current?.click()}
+                          disabled={iconUploading.logo}
+                          className="w-full"
+                        >
+                          {iconUploading.logo ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <ImagePlus className="h-4 w-4 mr-2" />
+                          )}
+                          Upload Logo
+                        </Button>
+                      </div>
+                    )}
+                    
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={logoInputRef}
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* Thumbnail Management */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-medium text-slate-800 flex items-center gap-2">
+                      <Eye className="h-5 w-5" />
+                      Thumbnail
+                    </h4>
+                    
+                    {selectedSeries.thumbnail_url ? (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={selectedSeries.thumbnail_url}
+                            alt="Test series thumbnail"
+                            className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleDeleteThumbnail}
+                            className="absolute top-2 right-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => thumbnailInputRef.current?.click()}
+                          disabled={iconUploading.thumbnail}
+                          className="w-full"
+                        >
+                          {iconUploading.thumbnail ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Edit className="h-4 w-4 mr-2" />
+                          )}
+                          Replace Thumbnail
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="w-full h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-slate-500">
+                          <div className="text-center">
+                            <Eye className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No thumbnail uploaded</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => thumbnailInputRef.current?.click()}
+                          disabled={iconUploading.thumbnail}
+                          className="w-full"
+                        >
+                          {iconUploading.thumbnail ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <ImagePlus className="h-4 w-4 mr-2" />
+                          )}
+                          Upload Thumbnail
+                        </Button>
+                      </div>
+                    )}
+                    
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={thumbnailInputRef}
+                      onChange={handleThumbnailUpload}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowIconModal(false)}
+                    className="w-full"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

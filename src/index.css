@@ -266,6 +266,28 @@ body.translated-rtl {
   color: inherit;
 }
 
+/* Larger font for exam question text */
+.exam-question-text {
+  font-size: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  .exam-question-text {
+    font-size: 1.125rem !important;
+  }
+}
+
+/* Compact font for exam option text */
+.exam-option-text {
+  font-size: 0.9rem !important;
+}
+
+@media (min-width: 640px) {
+  .exam-option-text {
+    font-size: 0.95rem !important;
+  }
+}
+
 .rich-text-editor ul,
 .rich-text-editor ol,
 .rich-text-content ul,

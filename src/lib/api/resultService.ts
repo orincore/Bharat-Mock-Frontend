@@ -31,7 +31,27 @@ interface UserStatsResponse {
   };
 }
 
+export interface IncompleteAttempt {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  examImage: string | null;
+  totalQuestions: number;
+  duration: number;
+  answeredQuestions: number;
+  language: string;
+  startedAt: string;
+  lastActivity: string;
+}
+
 export const resultService = {
+  async getIncompleteAttempts(): Promise<IncompleteAttempt[]> {
+    const response = await apiClient.get<{ success: boolean; data: IncompleteAttempt[] }>(
+      '/results/incomplete',
+      true
+    );
+    return response.data;
+  },
   async getResults(page: number = 1, limit: number = 10): Promise<PaginatedResponse<Result>> {
     const response = await apiClient.get<ResultsResponse>(
       `/results?page=${page}&limit=${limit}`,

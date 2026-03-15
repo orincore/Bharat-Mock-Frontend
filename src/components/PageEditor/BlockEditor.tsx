@@ -475,6 +475,7 @@ interface BlockEditorProps {
   };
   onReservedPositionChange?: (position: number) => void;
   availableTabs?: Array<{ id: string; label: string }>;
+  onTocOrderClick?: () => void;
 }
 
 interface InlineRichTextEditorProps {
@@ -1121,7 +1122,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   mediaUploadConfig,
   reservedTabInfo,
   onReservedPositionChange,
-  availableTabs
+  availableTabs,
+  onTocOrderClick
 }) => {
   const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
   const parentSectionsSignatureRef = useRef<string | null>(null);
@@ -1573,6 +1575,15 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           </div>
           <div className="flex items-center space-x-2">
             {tabLabel && <span className="text-sm font-medium text-gray-500">Editing tab: {tabLabel}</span>}
+            {onTocOrderClick && (
+              <button
+                onClick={onTocOrderClick}
+                className="px-3 py-1.5 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded text-sm font-medium"
+                title="Set mobile Table of Contents position for this tab"
+              >
+                TOC Order
+              </button>
+            )}
             <button
               onClick={addSection}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center space-x-2"
@@ -1974,8 +1985,12 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                                   <BlockContentEditor
                                     blockType={block.block_type}
                                     content={block.content}
+                                    settings={block.settings}
                                     onChange={(updatedContent) =>
                                       updateBlock(section.id, block.id, { content: updatedContent })
+                                    }
+                                    onSettingsChange={(updatedSettings) =>
+                                      updateBlock(section.id, block.id, { settings: updatedSettings })
                                     }
                                     mediaUploadConfig={mediaUploadConfig}
                                   />
@@ -2046,9 +2061,11 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 const BlockContentEditor: React.FC<{
   blockType: string;
   content: any;
+  settings?: any;
   onChange: (content: any) => void;
+  onSettingsChange?: (settings: any) => void;
   mediaUploadConfig?: BlockEditorMediaUploadConfig;
-}> = ({ blockType, content, onChange, mediaUploadConfig }) => {
+}> = ({ blockType, content, settings, onChange, onSettingsChange, mediaUploadConfig }) => {
   switch (blockType) {
     case 'heading':
       return (

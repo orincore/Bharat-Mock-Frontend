@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Clock, Eye, Tag, User, ChevronRight, ChevronLeft, Share2, Facebook, Twitter, Linkedin, Copy, Mail, BookOpen, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Eye, Tag, User, ChevronRight, ChevronLeft, BookOpen, TrendingUp, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { blogService, Blog, BlogSection } from '@/lib/api/blogService';
 import { PageBlockRenderer } from '@/components/PageEditor/PageBlockRenderer';
 import { useToast } from '@/hooks/use-toast';
+import { SocialShare } from '@/components/ui/social-share';
 
 export default function BlogDetailPage() {
   const params = useParams();
@@ -89,30 +90,6 @@ export default function BlogDetailPage() {
       description: 'You have been subscribed to our newsletter.',
     });
     setEmail('');
-  };
-
-  const handleShare = (platform: string) => {
-    const url = window.location.href;
-    const title = article?.title || '';
-    
-    switch (platform) {
-      case 'twitter':
-        window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank');
-        break;
-      case 'facebook':
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
-        break;
-      case 'linkedin':
-        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
-        break;
-      case 'copy':
-        navigator.clipboard.writeText(url);
-        toast({
-          title: 'Link copied!',
-          description: 'Blog link copied to clipboard.',
-        });
-        break;
-    }
   };
 
   const scrollSlider = (direction: 'left' | 'right') => {
@@ -278,41 +255,11 @@ export default function BlogDetailPage() {
           {/* Main Content */}
           <div className="space-y-6">
             {/* Social Share - Sticky */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-900">Share this article</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleShare('facebook')}
-                    className="h-9 w-9 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center transition"
-                    title="Share on Facebook"
-                  >
-                    <Facebook className="h-4 w-4 text-white" />
-                  </button>
-                  <button
-                    onClick={() => handleShare('twitter')}
-                    className="h-9 w-9 rounded-full bg-sky-500 hover:bg-sky-600 flex items-center justify-center transition"
-                    title="Share on Twitter"
-                  >
-                    <Twitter className="h-4 w-4 text-white" />
-                  </button>
-                  <button
-                    onClick={() => handleShare('linkedin')}
-                    className="h-9 w-9 rounded-full bg-blue-700 hover:bg-blue-800 flex items-center justify-center transition"
-                    title="Share on LinkedIn"
-                  >
-                    <Linkedin className="h-4 w-4 text-white" />
-                  </button>
-                  <button
-                    onClick={() => handleShare('copy')}
-                    className="h-9 w-9 rounded-full bg-gray-600 hover:bg-gray-700 flex items-center justify-center transition"
-                    title="Copy link"
-                  >
-                    <Copy className="h-4 w-4 text-white" />
-                  </button>
-                </div>
-              </div>
-            </div>
+            <SocialShare 
+              title={article.title}
+              description={article.excerpt}
+              url={typeof window !== 'undefined' ? window.location.href : `https://bharatmock.com/blogs/${slug}`}
+            />
             {sections.length > 0 ? (
               sections.map((section) => (
                 <article

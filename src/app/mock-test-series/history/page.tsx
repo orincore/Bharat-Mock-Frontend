@@ -188,7 +188,7 @@ export default function ExamHistoryPage() {
             ))}
           </div>
 
-          <Link href="/exams" className="flex items-center gap-2 text-sm font-medium text-primary">
+          <Link href="/mock-test-series" className="flex items-center gap-2 text-sm font-medium text-primary">
             <BookOpen className="h-4 w-4" />
             Browse new exams
           </Link>
@@ -210,7 +210,7 @@ export default function ExamHistoryPage() {
             <p className="text-muted-foreground mb-6">
               Start your first exam to see progress here.
             </p>
-            <Link href="/exams">
+            <Link href="/mock-test-series">
               <Button>Start an Exam</Button>
             </Link>
           </div>

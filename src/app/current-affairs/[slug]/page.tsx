@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, BookOpen, Share2, Clock, Tag } from "lucide-react";
+import { ArrowLeft, Calendar, BookOpen, Clock, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingPage } from "@/components/common/LoadingStates";
 import { blogService, Blog, BlogSection } from "@/lib/api/blogService";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
+import { SocialShare } from "@/components/ui/social-share";
 
 export default function CurrentAffairsNotePage() {
   const params = useParams();
@@ -170,13 +171,15 @@ export default function CurrentAffairsNotePage() {
           <aside className="space-y-5">
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
               <h3 className="text-base font-semibold text-slate-900 mb-4">Share this note</h3>
-              <div className="flex flex-col gap-2">
-                {['Twitter', 'Facebook', 'LinkedIn', 'Copy Link'].map((network) => (
-                  <Button key={network} variant="outline" size="sm" className="justify-start">
-                    <Share2 className="h-4 w-4 mr-2 text-slate-500" /> {network}
-                  </Button>
-                ))}
-              </div>
+              <SocialShare 
+                title={article.title}
+                description={article.excerpt}
+                url={typeof window !== 'undefined' ? window.location.href : `https://bharatmock.com/current-affairs/${slug}`}
+                variant="compact"
+                size="sm"
+                showLabel={false}
+                className="border-0 p-0 bg-transparent"
+              />
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">

@@ -175,6 +175,28 @@ class TestSeriesService {
   async reorderExams(orderedIds: string[]): Promise<void> {
     await this.client.post('/test-series/exams/reorder', { orderedIds }, true);
   }
+
+  async uploadLogo(id: string, file: File): Promise<{ success: boolean; logo_url: string; test_series: TestSeries }> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    
+    return this.client.postFormData(`/test-series/${id}/logo`, formData, true);
+  }
+
+  async uploadThumbnail(id: string, file: File): Promise<{ success: boolean; thumbnail_url: string; test_series: TestSeries }> {
+    const formData = new FormData();
+    formData.append('thumbnail', file);
+    
+    return this.client.postFormData(`/test-series/${id}/thumbnail`, formData, true);
+  }
+
+  async deleteLogo(id: string): Promise<{ success: boolean; message: string; test_series: TestSeries }> {
+    return this.client.delete(`/test-series/${id}/logo`, true);
+  }
+
+  async deleteThumbnail(id: string): Promise<{ success: boolean; message: string; test_series: TestSeries }> {
+    return this.client.delete(`/test-series/${id}/thumbnail`, true);
+  }
 }
 
 export const testSeriesService = new TestSeriesService();

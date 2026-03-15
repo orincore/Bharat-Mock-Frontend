@@ -149,7 +149,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
             <p className="text-muted-foreground mb-6">
               The exam you're looking for doesn't exist or has been removed.
             </p>
-            <Link href="/exams">
+            <Link href="/mock-test-series">
               <Button>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Exams
@@ -432,7 +432,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
 
       <div className="container-main py-12">
         <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
             <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="font-display text-2xl font-bold text-foreground mb-6">
                 {isQuiz ? 'Quiz Overview' : 'Exam Pattern'}
@@ -537,7 +537,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 order-1 lg:order-2">
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
               <h3 className="font-display text-lg font-bold text-slate-900 mb-4">Quick Stats</h3>
               <div className="space-y-4 text-sm text-slate-600">

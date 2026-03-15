@@ -66,6 +66,7 @@ interface PageContentResponse {
     canonical_url?: string;
   };
   customTabs?: CustomTab[];
+  tocOrder?: Record<string, number>;
 }
 
 interface ModernSubcategoryPageProps {
@@ -157,6 +158,33 @@ const getExamTierLabel = (exam: any): string | null => {
 
   return extractTierFromTitle(exam.title || exam.exam?.title || '');
 };
+
+const MobileTOC = ({
+  tableOfContents,
+  scrollToAnchor,
+}: {
+  tableOfContents: TableOfContentsEntry[];
+  scrollToAnchor: (id: string) => void;
+}) => (
+  <section className="lg:hidden mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+    <div className="p-4 border-b border-slate-100">
+      <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">On this page</p>
+      <p className="text-sm text-slate-500 mt-1">Jump to a section</p>
+    </div>
+    <div className="divide-y">
+      {tableOfContents.map((entry, idx) => (
+        <button
+          key={`${entry.id || 'toc'}-${idx}`}
+          type="button"
+          onClick={() => scrollToAnchor(entry.id)}
+          className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-blue-50"
+        >
+          {entry.label}
+        </button>
+      ))}
+    </div>
+  </section>
+);
 
 export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, combinedSlug, initialTabSlug }: ModernSubcategoryPageProps) {
   const router = useRouter();
@@ -979,26 +1007,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
             {mobileFiltersOpen && <FiltersPanel className="mt-4" />}
           </div>
         )}
-        {tableOfContents.length > 0 && (
-          <section className="lg:hidden mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-            <div className="p-4 border-b border-slate-100">
-              <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">On this page</p>
-              <p className="text-sm text-slate-500 mt-1">Jump to a section</p>
-            </div>
-            <div className="divide-y">
-              {tableOfContents.map((entry, tocIndex) => (
-                <button
-                  key={`${entry.id || 'toc-entry'}-mobile-${tocIndex}`}
-                  type="button"
-                  onClick={() => scrollToAnchor(entry.id)}
-                  className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-blue-50"
-                >
-                  {entry.label}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Mobile TOC and content grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             {isContentTab && (
@@ -1009,6 +1018,14 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                   </div>
                 ))}
 
+                {/* Mobile TOC — rendered inline at the position set in admin */}
+                {tableOfContents.length > 0 && (() => {
+                  const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
+                  return tocPos === 0 ? (
+                    <MobileTOC key="toc-mobile" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
+                  ) : null;
+                })()}
+
                 {visibleSections.length === 0 && (!pageContent?.orphanBlocks || pageContent.orphanBlocks.length === 0) && !isSpecialTab ? (
                   <div className="bg-white rounded-lg border border-dashed border-gray-300 p-10 text-center text-gray-500">
                     No Content Yet! Come again later...
@@ -1018,6 +1035,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                     {visibleSections.map((section, sectionIndex) => {
                       const sectionAnchor = buildSectionAnchor(section);
                       const renderReservedBefore = isSpecialTab && sectionIndex === reservedPosition;
+                      // Insert mobile TOC after section at index (tocPos - 1)
+                      const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
+                      const renderTocAfter = tableOfContents.length > 0 && tocPos > 0 && sectionIndex === tocPos - 1;
                       const reservedContent = activeTab === 'mock-tests' ? (
                         <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                           <h2 className="text-xl font-semibold mb-4">Mock Tests</h2>
@@ -1208,9 +1228,20 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                               ))}
                             </div>
                           </section>
+                          {renderTocAfter && (
+                            <MobileTOC key="toc-mobile" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
+                          )}
                         </React.Fragment>
                       );
                     })}
+                    {/* TOC at end: when tocPos >= sections count */}
+                    {tableOfContents.length > 0 && (() => {
+                      const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
+                      return tocPos > 0 && tocPos >= visibleSections.length ? (
+                        <MobileTOC key="toc-mobile-end" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
+                      ) : null;
+                    })()}
+
                     {isSpecialTab && reservedPosition === visibleSections.length && (
                       activeTab === 'mock-tests' ? (
                         <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">

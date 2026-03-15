@@ -21,6 +21,29 @@ import { taxonomyService, Category, Subcategory } from '@/lib/api/taxonomyServic
 import { Exam, Article } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { HomepageHero, HomepageHeroMediaItem, HomepageData, HomepageBanner } from '@/lib/api/homepageService';
+import { useAuth } from '@/context/AuthContext';
+
+// Isolated client component so useAuth doesn't break SSR prerender of Index
+function GetStartedButton() {
+  let isAuthenticated = false;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const auth = useAuth();
+    isAuthenticated = auth.isAuthenticated;
+  } catch {
+    // AuthProvider not available during prerender — default to guest
+  }
+  return (
+    <Link href={isAuthenticated ? '/mock-test-series' : '/register'}>
+      <Button
+        size="xl"
+        className="bg-white text-primary hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-0.5"
+      >
+        Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
+      </Button>
+    </Link>
+  );
+}
 
 type IndexProps = {
   initialHero?: HomepageHero | null;
@@ -35,7 +58,7 @@ const fallbackHero = {
     'Learn, Practice & Crack Government Exams Today.',
     'Start Preparing For Government Jobs Today With Free Mock Tests, Practice Tests, Notes, Quizzes & Exam Resources!'
   ],
-  primaryCta: { text: 'Get Free Mock', url: '/exams' },
+  primaryCta: { text: 'Get Free Mock', url: '/mock-test-series' },
   secondaryCta: null as { text: string; url: string } | null,
   media: [
     {
@@ -431,7 +454,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                     return (
                       <Link
                         key={idx}
-                        href={item.cta_url || heroPrimaryCta?.url || '/exams'}
+                        href={item.cta_url || heroPrimaryCta?.url || '/mock-test-series'}
                         className="group relative min-w-[200px] flex-shrink-0 bg-white rounded-2xl p-4 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200 sm:min-w-0"
                       >
                         <div className="flex items-start gap-3">
@@ -668,7 +691,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                 <h2 className="font-display text-3xl font-bold text-slate-900 mt-2">Most Attempted Exams</h2>
                 <p className="text-muted-foreground mt-2">Live ranking of the exams BharatMock students attempt the most.</p>
               </div>
-              <Link href="/exams" className="inline-flex">
+              <Link href="/mock-test-series" className="inline-flex">
                 <Button variant="secondary" className="gap-2">
                   Browse all exams
                   <ArrowRight className="h-4 w-4" />
@@ -794,7 +817,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                 ))}
               </div>
 
-              <Link href="/exams" className="inline-flex">
+              <Link href="/mock-test-series" className="inline-flex">
                 <Button size="sm" className="rounded-full px-6 shadow-xl">
                   Get Free Mock
                 </Button>
@@ -983,11 +1006,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
               <h2 className="font-display text-3xl font-bold text-foreground mb-2">Featured Exams</h2>
               <p className="text-muted-foreground">Practice with our top mock tests</p>
             </div>
-            <Link href="/exams">
-              <Button variant="outline">
-                View All <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+           
+            
           </div>
 
           {isLoading ? (
@@ -1122,14 +1142,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
           <p className="text-white/90 max-w-2xl mx-auto">
             Join thousands of successful students who have achieved their dreams with Bharat Mock.
           </p>
-          <Link href="/register">
-            <Button
-              size="xl"
-              className="bg-white text-primary hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-0.5"
-            >
-              Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-          </Link>
+          <GetStartedButton />
         </div>
       </section>
     </div>

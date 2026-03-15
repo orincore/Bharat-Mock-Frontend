@@ -495,8 +495,8 @@ export default function ExamsPage() {
         </div>
       </section>
 
-      {/* Popular Mock Test Series Section */}
-      {popularTests.length > 0 && (
+      {/* Popular Mock Test Series Section - Hide when searching */}
+      {!debouncedSearch && popularTests.length > 0 && (
         <section className="bg-white border-b border-border">
           <div className="container-main py-12">
             <div className="flex items-center justify-between mb-6">
@@ -544,6 +544,8 @@ export default function ExamsPage() {
         </section>
       )}
 
+      {/* Government exams by categories - Hide when searching */}
+      {!debouncedSearch && (
       <section className="bg-slate-900 text-white border-b border-slate-800">
         <div className="container-main py-6 space-y-3">
           <div className="flex flex-col gap-2">
@@ -635,6 +637,7 @@ export default function ExamsPage() {
           )}
         </div>
       </section>
+      )}
 
       <div className="container-main py-8">
         <div className="lg:hidden mb-6">
@@ -660,12 +663,28 @@ export default function ExamsPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="font-display text-2xl font-bold text-foreground">
-                  Test Series
+                  {debouncedSearch ? `Search Results for "${debouncedSearch}"` : 'Test Series'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Showing {testSeries.length} test series
+                  {debouncedSearch 
+                    ? `Found ${testSeries.length} test series matching your search`
+                    : `Showing ${testSeries.length} test series`
+                  }
                 </p>
               </div>
+              {debouncedSearch && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setFilters(prev => ({ ...prev, search: '' }));
+                    setDebouncedSearch('');
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Back to Browse
+                </Button>
+              )}
             </div>
 
             {/* Loading State */}
@@ -704,11 +723,25 @@ export default function ExamsPage() {
               <div className="bg-card rounded-xl border border-border p-12 text-center">
                 <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                  No test series found
+                  {debouncedSearch ? 'No test series found' : 'No test series available'}
                 </h3>
                 <p className="text-muted-foreground mb-6">
-                  Check back soon for new test series
+                  {debouncedSearch 
+                    ? `No test series match "${debouncedSearch}". Try different keywords or browse categories below.`
+                    : 'Check back soon for new test series'
+                  }
                 </p>
+                {debouncedSearch && (
+                  <Button 
+                    onClick={() => {
+                      setFilters(prev => ({ ...prev, search: '' }));
+                      setDebouncedSearch('');
+                    }}
+                    variant="outline"
+                  >
+                    Clear Search
+                  </Button>
+                )}
               </div>
             )}
 
@@ -724,8 +757,8 @@ export default function ExamsPage() {
         </div>
       </div>
 
-      {/* Dynamic Banner Section */}
-      {!bannersLoading && banners.length > 0 && (
+      {/* Dynamic Banner Section - Hide when searching */}
+      {!debouncedSearch && !bannersLoading && banners.length > 0 && (
         <div className="container-main mt-8">
           <div className="rounded-2xl overflow-hidden">
             {banners.map((banner) => (
@@ -753,7 +786,8 @@ export default function ExamsPage() {
         </div>
       )}
 
-      {/* Why Take Test Series Section */}
+      {/* Why Take Test Series Section - Hide when searching */}
+      {!debouncedSearch && (
       <div className="container-main mt-12 mb-8">
             <div className="rounded-3xl border border-border/60 bg-white shadow-sm p-6 sm:p-8 lg:p-10">
               <h2 className="font-display text-3xl font-bold text-foreground mb-6 text-center">
@@ -834,9 +868,10 @@ export default function ExamsPage() {
               </div>
             </div>
       </div>
+      )}
 
-      {/* New Test Series For You Section */}
-      {newTestSeries.length > 0 && (
+      {/* New Test Series For You Section - Hide when searching */}
+      {!debouncedSearch && newTestSeries.length > 0 && (
         <div className="container-main mt-12 mb-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -886,7 +921,8 @@ export default function ExamsPage() {
         </div>
       )}
 
-      {/* Testimonials Section */}
+      {/* Testimonials Section - Hide when searching */}
+      {!debouncedSearch && (
       <section className="container-main mt-16">
         <div className="relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] p-8 md:p-10">
           <div className="pointer-events-none absolute inset-0 opacity-70">
@@ -992,8 +1028,10 @@ export default function ExamsPage() {
           </div>
         </div>
       </section>
+      )}
 
-      {/* Access Steps Section */}
+      {/* Access Steps Section - Hide when searching */}
+      {!debouncedSearch && (
       <div className="container-main mt-16 mb-12">
               <div className="text-center mb-10">
                 <p className="text-sm uppercase tracking-[0.35em] text-blue-500 font-semibold">Get Started Fast</p>
@@ -1053,8 +1091,10 @@ export default function ExamsPage() {
                 ))}
               </div>
       </div>
+      )}
 
-      {/* SEO Content Block */}
+      {/* SEO Content Block - Hide when searching */}
+      {!debouncedSearch && (
       <div className="container-main">
         <section className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
               <div className="max-w-5xl mx-auto space-y-4">
@@ -1085,8 +1125,10 @@ export default function ExamsPage() {
               </div>
         </section>
       </div>
+      )}
 
-      {/* FAQ Section */}
+      {/* FAQ Section - Hide when searching */}
+      {!debouncedSearch && (
       <section className="py-10">
         <div className="container-main">
                 <div className="max-w-4xl mx-auto">
@@ -1166,6 +1208,7 @@ export default function ExamsPage() {
                 </div>
         </div>
       </section>
+      )}
     </div>
   );
 }

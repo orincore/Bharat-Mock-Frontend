@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, Phone, Eye, EyeOff, UserPlus } from 'lucide-react';
@@ -10,7 +10,13 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, authLoading, router]);
   
   const [formData, setFormData] = useState({
     name: '',

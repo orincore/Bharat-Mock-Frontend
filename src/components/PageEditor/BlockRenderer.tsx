@@ -144,13 +144,14 @@ const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =
 
 const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { text, alignment = 'left', fontSize = '16px' } = content;
-  const sanitized = stripLineBreakTags(text);
+  // Don't strip line break tags - preserve them for proper rendering
+  const processedText = text || '';
 
   return (
     <p
       className={`text-${alignment} mb-4 text-gray-700 leading-relaxed`}
       style={{ fontSize }}
-      dangerouslySetInnerHTML={{ __html: sanitized }}
+      dangerouslySetInnerHTML={{ __html: processedText }}
     />
   );
 };

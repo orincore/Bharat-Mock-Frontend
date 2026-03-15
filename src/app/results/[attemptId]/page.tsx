@@ -344,7 +344,7 @@ export default function ResultPage() {
     <div className="min-h-screen bg-muted/30 py-12">
       <div className="container-main max-w-5xl">
         <div className="mb-6">
-          <Link href="/exams">
+          <Link href="/mock-test-series">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Exams

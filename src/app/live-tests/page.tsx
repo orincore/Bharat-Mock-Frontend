@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   CalendarDays,
@@ -22,7 +22,7 @@ import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { examService } from '@/lib/api/examService';
-import { taxonomyService } from '@/lib/api/taxonomyService';
+import { taxonomyService, Category } from '@/lib/api/taxonomyService';
 import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
 import { Exam } from '@/types';
 import { ExamCard, getCountdownLabel } from '@/components/exam/ExamCard';
@@ -113,14 +113,16 @@ export default function LiveTestsPage() {
   const [error, setError] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'upcoming' | 'ongoing' | 'completed'>('upcoming');
   const [search, setSearch] = useState('');
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [heroSearch, setHeroSearch] = useState('');
   const [activeCalendarExam, setActiveCalendarExam] = useState<Exam | null>(null);
   const [heroBanner, setHeroBanner] = useState<PageBanner | null>(null);
   const [bannerLoading, setBannerLoading] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const activeRequestRef = useRef(0);
 
   const faqItems = useMemo(
     () => [
@@ -151,15 +153,24 @@ export default function LiveTestsPage() {
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const categoryData = await taxonomyService.getCategories();
-        const names = categoryData.map((cat) => cat.name).filter(Boolean) as string[];
-        setCategories(names);
+        const data = await taxonomyService.getCategories();
+        setCategories(
+          data
+            .filter((c) => c.is_active !== false)
+            .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+        );
       } catch (catError) {
         console.error('Failed to load categories', catError);
       }
     };
     loadCategories();
   }, []);
+
+  // Debounce search input
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(handle);
+  }, [search]);
 
   useEffect(() => {
     const fetchHeroBanner = async () => {
@@ -179,23 +190,35 @@ export default function LiveTestsPage() {
   }, []);
 
   const fetchScheduledExams = useCallback(async () => {
+    const requestId = ++activeRequestRef.current;
     setIsLoading(true);
     setError('');
     try {
-      const response = await examService.getExams({
+      const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+      const params: any = {
         status: selectedStatus,
-        category: selectedCategory,
-        search,
-        exam_type: 'all'
-      });
-      const scheduledOnly = response.data.filter((exam) => !exam.allow_anytime && exam.status !== 'anytime');
+        exam_type: 'all',
+        limit: 100,
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (selectedCategory) params.category = selectedCategory.slug || selectedCategory.name;
+
+      const response = await examService.getExams(params);
+      if (requestId !== activeRequestRef.current) return;
+
+      // Keep only scheduled (windowed) exams — exclude anytime/open exams
+      const scheduledOnly = response.data.filter(
+        (exam) => !exam.allow_anytime && exam.status !== 'anytime'
+      );
       setExams(scheduledOnly);
     } catch (err: any) {
+      if (requestId !== activeRequestRef.current) return;
       setError(err.message || 'Failed to load live tests');
     } finally {
+      if (requestId !== activeRequestRef.current) return;
       setIsLoading(false);
     }
-  }, [selectedCategory, search, selectedStatus]);
+  }, [selectedCategoryId, debouncedSearch, selectedStatus, categories]);
 
   useEffect(() => {
     fetchScheduledExams();
@@ -293,18 +316,18 @@ export default function LiveTestsPage() {
         </div>
         <div className="flex gap-3">
           <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
             className="px-4 py-2 rounded-lg border border-border bg-background text-sm"
           >
             <option value="">All Categories</option>
             {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
+              <option key={category.id} value={category.id}>
+                {category.name}
               </option>
             ))}
           </select>
-          <Button variant="ghost" onClick={() => setSelectedCategory('')} disabled={!selectedCategory}>
+          <Button variant="ghost" onClick={() => setSelectedCategoryId('')} disabled={!selectedCategoryId}>
             Reset
           </Button>
         </div>
@@ -454,7 +477,7 @@ export default function LiveTestsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-display text-2xl font-bold">Live Mock Tests</h3>
-                    <Link href="/exams">
+                    <Link href="/mock-test-series">
                       <Button variant="outline">Browse Anytime Exams</Button>
                     </Link>
                   </div>
@@ -653,7 +676,7 @@ export default function LiveTestsPage() {
           </div>
           <div className="mt-4 flex justify-end gap-3">
             <Button variant="ghost" onClick={() => {
-              setSelectedCategory('');
+              setSelectedCategoryId('');
               setSelectedStatus('upcoming');
             }}>
               Reset

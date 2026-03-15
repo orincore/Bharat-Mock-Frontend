@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -89,6 +89,21 @@ export default function ExamAttemptPage() {
   const [languageSelectionMade, setLanguageSelectionMade] = useState(false);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState('Submitting your exam...');
+
+  const selectedAnswerRef = useRef<string | string[] | null>(null);
+  const markedForReviewRef = useRef(false);
+  const questionsRef = useRef<QuestionWithStatus[]>([]);
+  const currentSectionIndexRef = useRef(0);
+  const currentQuestionIndexRef = useRef(0);
+  const questionStartTimeRef = useRef(Date.now());
+  const isSavingRef = useRef(false);
+
+  useEffect(() => { selectedAnswerRef.current = selectedAnswer; }, [selectedAnswer]);
+  useEffect(() => { markedForReviewRef.current = markedForReview; }, [markedForReview]);
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+  useEffect(() => { currentSectionIndexRef.current = currentSectionIndex; }, [currentSectionIndex]);
+  useEffect(() => { currentQuestionIndexRef.current = currentQuestionIndex; }, [currentQuestionIndex]);
+  useEffect(() => { questionStartTimeRef.current = questionStartTime; }, [questionStartTime]);
 
 
   const orderValue = (question: Question | QuestionWithStatus) => (
@@ -317,6 +332,7 @@ export default function ExamAttemptPage() {
     const questionId = targetQuestion.id;
 
     setIsSaving(true);
+    isSavingRef.current = true;
     try {
       await examService.saveAnswer(attemptId, questionId, {
         answer,
@@ -346,8 +362,39 @@ export default function ExamAttemptPage() {
       console.error('Failed to save answer:', err);
     } finally {
       setIsSaving(false);
+      isSavingRef.current = false;
     }
   }, [attemptId, currentSectionIndex, currentQuestionIndex, questions, questionStartTime, refreshSections]);
+
+  const silentSave = useCallback(async () => {
+    if (isSavingRef.current) return;
+    const qs = questionsRef.current;
+    const secIdx = currentSectionIndexRef.current;
+    const qIdx = currentQuestionIndexRef.current;
+    let globalIndex = 0;
+    for (let i = 0; i < secIdx; i++) {
+      const sectionId = sections[i]?.id;
+      if (sectionId) globalIndex += qs.filter(q => q.section_id === sectionId).length;
+    }
+    globalIndex += qIdx;
+    const targetQuestion = qs[globalIndex];
+    if (!targetQuestion) return;
+    const answer = selectedAnswerRef.current;
+    const marked = markedForReviewRef.current;
+    const timeTaken = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
+    try {
+      isSavingRef.current = true;
+      await examService.saveAnswer(attemptId, targetQuestion.id, {
+        answer,
+        markedForReview: marked,
+        timeTaken,
+      });
+    } catch {
+      // silent
+    } finally {
+      isSavingRef.current = false;
+    }
+  }, [attemptId, sections]);
 
   const handleAnswerChange = (optionId: string) => {
     const currentQuestion = getCurrentSectionQuestions()[currentQuestionIndex];
@@ -483,6 +530,14 @@ export default function ExamAttemptPage() {
 
     return () => clearInterval(timer);
   }, [showInstructions, isLoading, handleAutoSubmit]);
+
+  useEffect(() => {
+    if (showInstructions || isLoading) return;
+    const interval = setInterval(() => {
+      silentSave();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [showInstructions, isLoading, silentSave]);
 
   useEffect(() => {
     if (showInstructions) {
@@ -719,14 +774,14 @@ export default function ExamAttemptPage() {
                 </ul>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="outline" className="flex-1" size="lg" onClick={() => router.push(`/exams/${examId}`)}>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" className="flex-1 text-sm sm:text-base" size="default" onClick={() => router.push(`/exams/${examId}`)}>
                   Cancel
                 </Button>
                 <Button
                   onClick={handleStartExamFlow}
-                  className="flex-1"
-                  size="lg"
+                  className="flex-1 text-sm sm:text-base"
+                  size="default"
                   disabled={supportsHindi && !languageSelectionMade}
                 >
                   {supportsHindi && !languageSelectionMade ? 'Select language to start' : 'Start Exam'}
@@ -798,7 +853,7 @@ export default function ExamAttemptPage() {
                     <button
                       key={section.id}
                       onClick={() => {
-                        saveAnswer(selectedAnswer, markedForReview);
+                        silentSave();
                         setCurrentSectionIndex(idx);
                         setCurrentQuestionIndex(0);
                       }}
@@ -902,7 +957,8 @@ export default function ExamAttemptPage() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
+                    await silentSave();
                     if (currentQuestionIndex > 0) {
                       setCurrentQuestionIndex(prev => prev - 1);
                     } else if (currentSectionIndex > 0) {
@@ -917,7 +973,8 @@ export default function ExamAttemptPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
+                    await silentSave();
                     if (currentQuestionIndex < currentSectionQuestions.length - 1) {
                       setCurrentQuestionIndex(prev => prev + 1);
                     } else if (currentSectionIndex < sections.length - 1) {
@@ -983,7 +1040,7 @@ export default function ExamAttemptPage() {
                     <button
                       key={q.id}
                       onClick={() => {
-                        saveAnswer(selectedAnswer, markedForReview);
+                        silentSave();
                         setCurrentQuestionIndex(idx);
                       }}
                       className={`aspect-square rounded-lg border-2 font-medium text-sm transition-all ${

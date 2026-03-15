@@ -459,10 +459,10 @@ export default function TestSeriesDetailPage() {
       </div>
 
       {/* Test Series Content */}
-      <div className="container-main py-6">
+      <div className="container-main py-6 overflow-hidden">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] items-start">
-          <div className="space-y-5">
-            <div className="flex flex-col lg:flex-row gap-4 items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3">
+          <div className="space-y-5 min-w-0 w-full overflow-hidden">
+            <div className="flex flex-col lg:flex-row gap-4 items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3 min-w-0 overflow-hidden">
               <div className="flex items-center gap-3 text-sm text-slate-500">
                 <Search className="h-4 w-4 text-slate-400" />
                 <Input
@@ -486,43 +486,49 @@ export default function TestSeriesDetailPage() {
             </div>
 
             {/* Section/Topic Tabs & Listings */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
-              <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 pb-3">
-                {sectionFilters.map(section => (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveTab(section.id)}
-                    className={`relative pb-2 text-sm font-semibold transition-colors ${
-                      activeTab === section.id ? 'text-blue-600' : 'text-slate-500'
-                    }`}
-                  >
-                    {section.name} ({section.count})
-                    {activeTab === section.id && (
-                      <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
-                    )}
-                  </button>
-                ))}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5 min-w-0 overflow-hidden">
+              {/* Sections — horizontal scroll on mobile, wrap on desktop */}
+              <div className="border-b border-slate-200 min-w-0">
+                <div className="flex items-center gap-4 overflow-x-auto pb-3 md:flex-wrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {sectionFilters.map(section => (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveTab(section.id)}
+                      className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
+                        activeTab === section.id ? 'text-blue-600' : 'text-slate-500'
+                      }`}
+                    >
+                      {section.name} ({section.count})
+                      {activeTab === section.id && (
+                        <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {currentSection ? (
                 <>
-                  <div className="flex flex-wrap gap-3">
-                    {(sectionTopicFilters.get(currentSection.id) || []).map(topic => (
-                      <button
-                        key={topic.id}
-                        onClick={() =>
-                          setSelectedTopicId(prev => (prev === topic.id ? null : topic.id))
-                        }
-                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                          selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {topic.name} ({topic.count})
-                      </button>
-                    ))}
-                    {sectionTopicFilters.get(currentSection.id)?.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No topics available for this section.</p>
-                    )}
+                  {/* Topics — horizontal scroll on mobile, wrap on desktop */}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3 overflow-x-auto pb-1 md:flex-wrap md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                      {(sectionTopicFilters.get(currentSection.id) || []).map(topic => (
+                        <button
+                          key={topic.id}
+                          onClick={() =>
+                            setSelectedTopicId(prev => (prev === topic.id ? null : topic.id))
+                          }
+                          className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                            selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {topic.name} ({topic.count})
+                        </button>
+                      ))}
+                      {sectionTopicFilters.get(currentSection.id)?.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No topics available for this section.</p>
+                      )}
+                    </div>
                   </div>
 
                   {searchedSectionEntries.length > 0 ? (

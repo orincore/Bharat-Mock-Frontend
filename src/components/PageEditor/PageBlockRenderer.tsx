@@ -20,5 +20,6 @@ export const PageBlockRenderer: React.FC<PageBlockRendererProps> = ({ block }) =
   if (block.block_type === 'examCards') {
     return <LiveExamCardsBlock content={block.content} />;
   }
+  // tableOfContents and all other blocks go through BlockRenderer which handles settings
   return <BlockRenderer block={block} />;
 };

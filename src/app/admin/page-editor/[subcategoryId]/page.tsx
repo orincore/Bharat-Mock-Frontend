@@ -26,8 +26,10 @@ export default function PageEditorPage() {
   const [saving, setSaving] = useState(false);
   const [subcategoryInfo, setSubcategoryInfo] = useState<any>(null);
   const [showSEOPanel, setShowSEOPanel] = useState(false);
+  const [showTocPanel, setShowTocPanel] = useState(false);
   const [seoData, setSeoData] = useState<any>({});
   const [customTabs, setCustomTabs] = useState<any[]>([]);
+  const [tocOrder, setTocOrder] = useState<Record<string, number | ''>>({});
 
   useEffect(() => {
     fetchPageContent();
@@ -60,6 +62,7 @@ export default function PageEditorPage() {
       setSections(data.sections || []);
       setSeoData(data.seo || {});
       setCustomTabs(data.customTabs || []);
+      setTocOrder(data.tocOrder || {});
     } catch (error) {
       console.error('Error fetching page content:', error);
     } finally {
@@ -154,6 +157,39 @@ export default function PageEditorPage() {
     }
   };
 
+  const handleSaveTocOrder = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      // Merge toc_order into existing structured_data
+      const cleanOrder: Record<string, number> = {};
+      Object.entries(tocOrder).forEach(([tab, val]) => {
+        if (val !== '' && val !== null && val !== undefined) {
+          cleanOrder[tab] = Number(val);
+        }
+      });
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/${subcategoryId}/seo`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            ...seoData,
+            structured_data: { ...(seoData.structured_data || {}), toc_order: cleanOrder }
+          })
+        }
+      );
+      setSeoData((prev: any) => ({
+        ...prev,
+        structured_data: { ...(prev.structured_data || {}), toc_order: cleanOrder }
+      }));
+      alert('TOC positions saved!');
+      setShowTocPanel(false);
+    } catch (error) {
+      console.error('Error saving TOC order:', error);
+      alert('Failed to save TOC positions.');
+    }
+  };
+
   const handlePreview = () => {
     if (subcategoryInfo?.slug) {
       window.open(`/${subcategoryInfo.slug}`, '_blank');
@@ -175,45 +211,51 @@ export default function PageEditorPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center space-x-4 min-w-0">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-gray-900 truncate">
                 Page Editor: {subcategoryInfo?.name || 'Loading...'}
               </h1>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 truncate">
                 {subcategoryInfo?.category_name} / {subcategoryInfo?.name}
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowSEOPanel(true)}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2"
+              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1.5 text-sm"
             >
               <Settings className="w-4 h-4" />
-              <span>SEO Settings</span>
+              <span className="hidden sm:inline">SEO</span>
+            </button>
+            <button
+              onClick={() => setShowTocPanel(true)}
+              className="px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 flex items-center gap-1.5 text-sm font-medium"
+            >
+              <span>TOC Order</span>
             </button>
             <button
               onClick={handlePreview}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2"
+              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1.5 text-sm"
             >
               <Eye className="w-4 h-4" />
-              <span>Preview</span>
+              <span className="hidden sm:inline">Preview</span>
             </button>
             <button
               onClick={() => handleSave(sections)}
               disabled={saving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5 text-sm"
             >
               <Save className="w-4 h-4" />
-              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+              <span>{saving ? 'Saving...' : 'Save'}</span>
             </button>
           </div>
         </div>
@@ -224,6 +266,7 @@ export default function PageEditorPage() {
         sections={sections}
         onSave={handleSave}
         onSectionsChange={setSections}
+        onTocOrderClick={() => setShowTocPanel(true)}
         availableTabs={[
           { id: 'overview', label: 'Overview' },
           { id: 'mock-tests', label: 'Mock Tests' },
@@ -231,6 +274,50 @@ export default function PageEditorPage() {
           ...customTabs.map(tab => ({ id: tab.id, label: tab.title }))
         ]}
       />
+
+      {/* TOC Order Panel */}
+      {showTocPanel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">TOC Mobile Position</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Set the CSS <code>order</code> of the Table of Contents on mobile per tab. Lower = appears earlier. Default is 0 (top).
+                </p>
+              </div>
+              <button onClick={() => setShowTocPanel(false)} className="text-gray-500 hover:text-gray-700 ml-4">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'mock-tests', label: 'Mock Tests' },
+                { id: 'previous-papers', label: 'Previous Papers' },
+                ...customTabs.map(tab => ({ id: tab.id, label: tab.title }))
+              ].map(tab => (
+                <div key={tab.id} className="flex items-center justify-between gap-4">
+                  <label className="text-sm font-medium text-gray-700 flex-1">{tab.label}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={tocOrder[tab.id] ?? ''}
+                    onChange={e => setTocOrder(prev => ({
+                      ...prev,
+                      [tab.id]: e.target.value === '' ? '' : parseInt(e.target.value, 10)
+                    }))}
+                    placeholder="0"
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-2">
+              <button onClick={() => setShowTocPanel(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSaveTocOrder} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Positions</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SEO Panel */}
       {showSEOPanel && (

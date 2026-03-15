@@ -103,7 +103,7 @@ interface SEOData {
   og_image_url?: string;
   canonical_url?: string;
   robots_meta?: string;
-  structured_data?: string;
+  structured_data?: string | Record<string, any>;
 }
 
 export default function AdminSubcategoryEditorPage() {
@@ -133,6 +133,8 @@ export default function AdminSubcategoryEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSEOPanel, setShowSEOPanel] = useState(false);
+  const [showTocPanel, setShowTocPanel] = useState(false);
+  const [tocOrder, setTocOrder] = useState<Record<string, number | ''>>({});
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [uploadingOgImage, setUploadingOgImage] = useState(false);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
@@ -577,6 +579,7 @@ export default function AdminSubcategoryEditorPage() {
       setSeoData(data.seo || {});
       setCustomTabs(nextTabs);
       setTabConfig(nextTabConfig);
+      setTocOrder(data.tocOrder || {});
 
       const positions: Record<string, number> = {};
       (data.sections || []).forEach((section: Section) => {
@@ -806,6 +809,40 @@ export default function AdminSubcategoryEditorPage() {
         description: 'Failed to save SEO settings',
         variant: 'destructive'
       });
+    }
+  };
+
+  const handleSaveTocOrder = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        toast({ title: 'Authentication Error', description: 'Please log in', variant: 'destructive' });
+        return;
+      }
+      const cleanOrder: Record<string, number> = {};
+      Object.entries(tocOrder).forEach(([tab, val]) => {
+        if (val !== '' && val !== null && val !== undefined) {
+          cleanOrder[tab] = Number(val);
+        }
+      });
+      const response = await fetch(buildApiUrl(`/page-content/${subcategoryId}/seo`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          ...seoData,
+          structured_data: { ...(typeof seoData.structured_data === 'object' ? seoData.structured_data : {}), toc_order: cleanOrder }
+        })
+      });
+      if (!response.ok) throw new Error('Failed to save TOC order');
+      setSeoData((prev) => ({
+        ...prev,
+        structured_data: { ...(typeof prev.structured_data === 'object' ? prev.structured_data : {}), toc_order: cleanOrder }
+      }));
+      toast({ title: 'Success', description: 'TOC positions saved' });
+      setShowTocPanel(false);
+    } catch (error) {
+      console.error('Error saving TOC order:', error);
+      toast({ title: 'Error', description: 'Failed to save TOC positions', variant: 'destructive' });
     }
   };
 
@@ -1099,6 +1136,7 @@ export default function AdminSubcategoryEditorPage() {
         onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
         tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
         mediaUploadConfig={mediaUploadConfig}
+        onTocOrderClick={() => setShowTocPanel(true)}
         reservedTabInfo={activeTabId === 'mock-tests' || activeTabId === 'previous-papers' ? {
           tabType: activeTabId,
           message: activeTabId === 'mock-tests'
@@ -1113,6 +1151,50 @@ export default function AdminSubcategoryEditorPage() {
         }}
         availableTabs={tabOptions.map((tab) => ({ id: tab.id, label: tab.title }))}
       />
+
+      {/* TOC Order Panel */}
+      {showTocPanel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">TOC Mobile Position</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Set the CSS <code className="bg-gray-100 px-1 rounded">order</code> of the Table of Contents on mobile per tab. Lower = appears earlier. Default is 0 (top).
+                </p>
+              </div>
+              <button onClick={() => setShowTocPanel(false)} className="text-gray-500 hover:text-gray-700 ml-4 text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              {[
+                { id: 'overview', title: 'Overview' },
+                { id: 'mock-tests', title: 'Mock Tests' },
+                { id: 'previous-papers', title: 'Previous Papers' },
+                ...customTabs.map((tab) => ({ id: tab.id, title: tab.title }))
+              ].map((tab) => (
+                <div key={tab.id} className="flex items-center justify-between gap-4">
+                  <label className="text-sm font-medium text-gray-700 flex-1">{tab.title}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={tocOrder[tab.id] ?? ''}
+                    onChange={(e) => setTocOrder((prev) => ({
+                      ...prev,
+                      [tab.id]: e.target.value === '' ? '' : parseInt(e.target.value, 10)
+                    }))}
+                    placeholder="0"
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-2">
+              <button onClick={() => setShowTocPanel(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
+              <button onClick={handleSaveTocOrder} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Save Positions</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SEO Settings Panel */}
       {showSEOPanel && (
@@ -1298,7 +1380,7 @@ export default function AdminSubcategoryEditorPage() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Structured Data Notes</label>
                   <textarea
-                    value={seoData.structured_data || ''}
+                    value={typeof seoData.structured_data === 'string' ? seoData.structured_data : ''}
                     onChange={(e) => handleSeoChange('structured_data' as keyof SEOData, e.target.value)}
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

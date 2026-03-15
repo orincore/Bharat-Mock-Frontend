@@ -127,7 +127,7 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
   return (
     <div
       className={`card-interactive group flex flex-col border rounded-2xl overflow-hidden bg-background ${cardBorder} ${
-        isCompact ? 'text-sm max-w-[260px]' : 'text-base'
+        isCompact ? 'text-sm max-w-[260px]' : 'text-base min-h-[320px] sm:min-h-[340px] lg:min-h-[360px]'
       }`}
     >
       {isPremiumVariant && (
@@ -195,9 +195,13 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
           </div>
         )}
 
-        <div>
+        <div className="min-h-[3rem] sm:min-h-[3.5rem] flex items-start">
           <h3
-            className={`font-display ${isCompact ? 'text-base' : 'text-lg'} font-semibold text-foreground leading-tight ${titleHoverColor} transition-colors line-clamp-2`}
+            className={`font-display font-semibold text-foreground leading-tight ${titleHoverColor} transition-colors ${
+              isCompact 
+                ? 'text-xs sm:text-sm' 
+                : 'text-sm sm:text-base lg:text-lg xl:text-base'
+            }`}
           >
             {exam.title}
           </h3>

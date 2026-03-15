@@ -31,18 +31,19 @@ const deriveYear = (exam: Exam): string | null => {
 export default function PrevPapersPage() {
   const [exams, setExams] = useState<ExamWithDerivedYear[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(true);
   const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>([]);
+  const [selectedDifficultyId, setSelectedDifficultyId] = useState<string>('');
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [difficultiesLoading, setDifficultiesLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<PremiumTab>('all');
   const [yearOptions, setYearOptions] = useState<string[]>([]);
-  const [selectedYears, setSelectedYears] = useState<string[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>('');
 
   const [filters, setFilters] = useState({
     search: '',
@@ -51,9 +52,8 @@ export default function PrevPapersPage() {
     difficulty: '',
     status: '',
     exam_type: PAPER_EXAM_TYPE,
-    is_premium: 'false' as string,
+    is_premium: '', // Don't filter by premium status initially
   });
-  const [selectedDifficultyIds, setSelectedDifficultyIds] = useState<string[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const activeRequestRef = useRef(0);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -81,7 +81,7 @@ export default function PrevPapersPage() {
     filters.is_premium,
     pagination.page,
     debouncedSearch,
-    selectedYears
+    selectedYear
   ]);
 
   useEffect(() => {
@@ -98,6 +98,8 @@ export default function PrevPapersPage() {
       const sorted = data
         .filter((category) => category.is_active !== false)
         .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      
+      console.log('Available categories:', sorted.map(c => ({ id: c.id, name: c.name, slug: c.slug })));
       setCategories(sorted);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
@@ -110,7 +112,15 @@ export default function PrevPapersPage() {
     setSubcategoriesLoading(true);
     try {
       const data = await taxonomyService.getSubcategories();
-      setSubcategories(data.filter((sub) => sub.name));
+      const filtered = data.filter((sub) => sub.name);
+      
+      console.log('Available subcategories:', filtered.map(s => ({ 
+        id: s.id, 
+        name: s.name, 
+        slug: s.slug, 
+        category_id: s.category_id 
+      })));
+      setSubcategories(filtered);
     } catch (err) {
       console.error('Failed to fetch subcategories:', err);
     } finally {
@@ -136,15 +146,60 @@ export default function PrevPapersPage() {
     setError('');
 
     try {
-      const response = await examService.getExams({
-        ...filters,
-        search: debouncedSearch,
+      // Clean up the request parameters to avoid sending empty strings
+      const requestParams: any = {
         page: pagination.page,
         limit: pagination.limit,
-        year: selectedYears.join(',') || undefined,
+        exam_type: PAPER_EXAM_TYPE, // Always filter for past papers
+      };
+
+      // Only add non-empty filter values
+      if (debouncedSearch.trim()) {
+        requestParams.search = debouncedSearch.trim();
+      }
+      
+      if (filters.category.trim()) {
+        requestParams.category = filters.category.trim();
+      }
+      
+      if (filters.subcategory.trim()) {
+        requestParams.subcategory = filters.subcategory.trim();
+      }
+      
+      if (filters.difficulty.trim()) {
+        requestParams.difficulty = filters.difficulty.trim();
+      }
+      
+      if (filters.status.trim()) {
+        requestParams.status = filters.status.trim();
+      }
+      
+      if (filters.is_premium.trim()) {
+        requestParams.is_premium = filters.is_premium.trim();
+      }
+      
+      if (selectedYear) {
+        requestParams.year = selectedYear;
+      }
+
+      // Debug logging
+      console.log('Fetching exams with params:', requestParams);
+      console.log('Selected filters:', {
+        selectedCategoryId,
+        selectedSubcategoryId,
+        selectedDifficultyId,
+        selectedYear,
+        activeTab
       });
 
+      const response = await examService.getExams(requestParams);
+
       if (requestId !== activeRequestRef.current) return;
+
+      console.log('Exam response:', response);
+      console.log('Found exams count:', response.data.length);
+      console.log('Available years:', response.years);
+      console.log('Sample exam data:', response.data.slice(0, 2));
 
       const enrichedExams: ExamWithDerivedYear[] = [...response.data].map((exam) => ({
         ...exam,
@@ -172,6 +227,7 @@ export default function PrevPapersPage() {
       }));
     } catch (err: any) {
       if (requestId !== activeRequestRef.current) return;
+      console.error('Error fetching exams:', err);
       setError(err.message || 'Failed to load previous papers');
     } finally {
       if (requestId !== activeRequestRef.current) return;
@@ -189,89 +245,61 @@ export default function PrevPapersPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const buildCategoryFilterValue = (ids: string[]) =>
-    ids
-      .map((id) => categories.find((category) => category.id === id))
-      .map((category) => category?.slug || category?.name || '')
-      .filter(Boolean)
-      .join(',');
+  const buildCategoryFilterValue = (id: string) => {
+    const category = categories.find((category) => category.id === id);
+    return category ? (category.slug || category.name || '') : '';
+  };
 
-  const buildSubcategoryFilterValue = (ids: string[]) =>
-    ids
-      .map((id) => subcategories.find((subcategory) => subcategory.id === id))
-      .map((subcategory) => subcategory?.slug || subcategory?.name || '')
-      .filter(Boolean)
-      .join(',');
+  const buildSubcategoryFilterValue = (id: string) => {
+    const subcategory = subcategories.find((subcategory) => subcategory.id === id);
+    return subcategory ? (subcategory.slug || subcategory.name || '') : '';
+  };
 
-  const buildDifficultyFilterValue = (ids: string[]) =>
-    ids
-      .map((id) => difficultyOptions.find((option) => option.id === id))
-      .map((option) => option?.slug || option?.name || '')
-      .filter(Boolean)
-      .join(',');
+  const buildDifficultyFilterValue = (id: string) => {
+    const difficulty = difficultyOptions.find((option) => option.id === id);
+    return difficulty ? (difficulty.slug || difficulty.name || '') : '';
+  };
 
-  const toggleCategory = (categoryId: string) => {
-    let nextCategoryIds: string[];
-    if (!categoryId) {
-      nextCategoryIds = [];
-    } else if (selectedCategoryIds.includes(categoryId)) {
-      nextCategoryIds = selectedCategoryIds.filter((id) => id !== categoryId);
-    } else {
-      nextCategoryIds = [...selectedCategoryIds, categoryId];
-    }
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    handleFilterChange('category', buildCategoryFilterValue(categoryId));
 
-    setSelectedCategoryIds(nextCategoryIds);
-    handleFilterChange('category', buildCategoryFilterValue(nextCategoryIds));
-
-    if (nextCategoryIds.length > 0) {
-      const allowedCategoryIds = new Set(nextCategoryIds);
-      const filteredSubcategories = selectedSubcategoryIds.filter((subId) => {
-        const subcategory = subcategories.find((sub) => sub.id === subId);
-        return subcategory && allowedCategoryIds.has(subcategory.category_id);
-      });
-
-      if (filteredSubcategories.length !== selectedSubcategoryIds.length) {
-        setSelectedSubcategoryIds(filteredSubcategories);
-        handleFilterChange('subcategory', buildSubcategoryFilterValue(filteredSubcategories));
+    // Clear subcategory if it doesn't belong to the selected category
+    if (categoryId && selectedSubcategoryId) {
+      const subcategory = subcategories.find((sub) => sub.id === selectedSubcategoryId);
+      if (subcategory && subcategory.category_id !== categoryId) {
+        setSelectedSubcategoryId('');
+        handleFilterChange('subcategory', '');
       }
+    } else if (!categoryId) {
+      // If no category selected, clear subcategory
+      setSelectedSubcategoryId('');
+      handleFilterChange('subcategory', '');
     }
   };
 
-  const toggleSubcategory = (subcategoryId: string) => {
-    let nextSubcategoryIds: string[];
-    if (!subcategoryId) {
-      nextSubcategoryIds = [];
-    } else if (selectedSubcategoryIds.includes(subcategoryId)) {
-      nextSubcategoryIds = selectedSubcategoryIds.filter((id) => id !== subcategoryId);
-    } else {
-      nextSubcategoryIds = [...selectedSubcategoryIds, subcategoryId];
-    }
+  const handleSubcategoryChange = (subcategoryId: string) => {
+    setSelectedSubcategoryId(subcategoryId);
+    handleFilterChange('subcategory', buildSubcategoryFilterValue(subcategoryId));
 
-    setSelectedSubcategoryIds(nextSubcategoryIds);
-    handleFilterChange('subcategory', buildSubcategoryFilterValue(nextSubcategoryIds));
-
+    // If a subcategory is selected, ensure its parent category is also selected
     if (subcategoryId) {
       const targetSubcategory = subcategories.find((sub) => sub.id === subcategoryId);
-      if (targetSubcategory && !selectedCategoryIds.includes(targetSubcategory.category_id)) {
-        const updatedCategoryIds = [...selectedCategoryIds, targetSubcategory.category_id];
-        setSelectedCategoryIds(updatedCategoryIds);
-        handleFilterChange('category', buildCategoryFilterValue(updatedCategoryIds));
+      if (targetSubcategory && selectedCategoryId !== targetSubcategory.category_id) {
+        setSelectedCategoryId(targetSubcategory.category_id);
+        handleFilterChange('category', buildCategoryFilterValue(targetSubcategory.category_id));
       }
     }
   };
 
-  const toggleDifficulty = (difficultyId: string) => {
-    let nextDifficultyIds: string[];
-    if (!difficultyId) {
-      nextDifficultyIds = [];
-    } else if (selectedDifficultyIds.includes(difficultyId)) {
-      nextDifficultyIds = selectedDifficultyIds.filter((id) => id !== difficultyId);
-    } else {
-      nextDifficultyIds = [...selectedDifficultyIds, difficultyId];
-    }
+  const handleDifficultyChange = (difficultyId: string) => {
+    setSelectedDifficultyId(difficultyId);
+    handleFilterChange('difficulty', buildDifficultyFilterValue(difficultyId));
+  };
 
-    setSelectedDifficultyIds(nextDifficultyIds);
-    handleFilterChange('difficulty', buildDifficultyFilterValue(nextDifficultyIds));
+  const handleYearChange = (year: string) => {
+    setSelectedYear(year);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleTabChange = (tab: PremiumTab) => {
@@ -279,7 +307,7 @@ export default function PrevPapersPage() {
     setFilters((prev) => ({
       ...prev,
       exam_type: PAPER_EXAM_TYPE,
-      is_premium: tab === 'premium' ? 'true' : 'false',
+      is_premium: tab === 'premium' ? 'true' : '', // Use empty string for 'all' to include both premium and free
     }));
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
@@ -292,26 +320,26 @@ export default function PrevPapersPage() {
       difficulty: '',
       status: '',
       exam_type: PAPER_EXAM_TYPE,
-      is_premium: activeTab === 'premium' ? 'true' : 'false',
+      is_premium: activeTab === 'premium' ? 'true' : '', // Use empty string for 'all'
     });
-    setSelectedCategoryIds([]);
-    setSelectedSubcategoryIds([]);
-    setSelectedDifficultyIds([]);
-    setSelectedYears([]);
+    setSelectedCategoryId('');
+    setSelectedSubcategoryId('');
+    setSelectedDifficultyId('');
+    setSelectedYear('');
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const filteredSubcategories = selectedCategoryIds.length
-    ? subcategories.filter((sub) => selectedCategoryIds.includes(sub.category_id))
+  const filteredSubcategories = selectedCategoryId
+    ? subcategories.filter((sub) => sub.category_id === selectedCategoryId)
     : subcategories;
 
   const isFilterDataLoading = categoriesLoading || difficultiesLoading || subcategoriesLoading;
   const hasCustomFilters = Boolean(
     filters.search ||
-    selectedCategoryIds.length ||
-    selectedSubcategoryIds.length ||
-    selectedDifficultyIds.length ||
-    selectedYears.length
+    selectedCategoryId ||
+    selectedSubcategoryId ||
+    selectedDifficultyId ||
+    selectedYear
   );
 
   const FiltersPanel = () => (
@@ -346,20 +374,22 @@ export default function PrevPapersPage() {
             <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="category"
                   className="h-4 w-4 accent-primary"
-                  checked={selectedCategoryIds.length === 0}
-                  onChange={() => toggleCategory('')}
+                  checked={selectedCategoryId === ''}
+                  onChange={() => handleCategoryChange('')}
                 />
                 <span>All Categories</span>
               </label>
               {categories.map((category) => (
                 <label key={category.id} className="flex items-center gap-2 text-sm text-foreground">
                   <input
-                    type="checkbox"
+                    type="radio"
+                    name="category"
                     className="h-4 w-4 accent-primary"
-                    checked={selectedCategoryIds.includes(category.id)}
-                    onChange={() => toggleCategory(category.id)}
+                    checked={selectedCategoryId === category.id}
+                    onChange={() => handleCategoryChange(category.id)}
                   />
                   <span>{category.name}</span>
                 </label>
@@ -377,10 +407,11 @@ export default function PrevPapersPage() {
               <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
                 <label className="flex items-center gap-2 text-sm text-foreground">
                   <input
-                    type="checkbox"
+                    type="radio"
+                    name="subcategory"
                     className="h-4 w-4 accent-primary"
-                    checked={selectedSubcategoryIds.length === 0}
-                    onChange={() => toggleSubcategory('')}
+                    checked={selectedSubcategoryId === ''}
+                    onChange={() => handleSubcategoryChange('')}
                     disabled={filteredSubcategories.length === 0}
                   />
                   <span>All Sub-categories</span>
@@ -388,10 +419,11 @@ export default function PrevPapersPage() {
                 {filteredSubcategories.map((subcategory) => (
                   <label key={subcategory.id} className="flex items-center gap-2 text-sm text-foreground">
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="subcategory"
                       className="h-4 w-4 accent-primary"
-                      checked={selectedSubcategoryIds.includes(subcategory.id)}
-                      onChange={() => toggleSubcategory(subcategory.id)}
+                      checked={selectedSubcategoryId === subcategory.id}
+                      onChange={() => handleSubcategoryChange(subcategory.id)}
                     />
                     <span>{subcategory.name}</span>
                   </label>
@@ -407,20 +439,22 @@ export default function PrevPapersPage() {
             <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="difficulty"
                   className="h-4 w-4 accent-primary"
-                  checked={selectedDifficultyIds.length === 0}
-                  onChange={() => toggleDifficulty('')}
+                  checked={selectedDifficultyId === ''}
+                  onChange={() => handleDifficultyChange('')}
                 />
                 <span>All Difficulties</span>
               </label>
               {difficultyOptions.map((difficulty) => (
                 <label key={difficulty.id} className="flex items-center gap-2 text-sm text-foreground">
                   <input
-                    type="checkbox"
+                    type="radio"
+                    name="difficulty"
                     className="h-4 w-4 accent-primary"
-                    checked={selectedDifficultyIds.includes(difficulty.id)}
-                    onChange={() => toggleDifficulty(difficulty.id)}
+                    checked={selectedDifficultyId === difficulty.id}
+                    onChange={() => handleDifficultyChange(difficulty.id)}
                   />
                   <span>{difficulty.name}</span>
                 </label>
@@ -435,10 +469,11 @@ export default function PrevPapersPage() {
             <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="year"
                   className="h-4 w-4 accent-primary"
-                  checked={selectedYears.length === 0}
-                  onChange={() => setSelectedYears([])}
+                  checked={selectedYear === ''}
+                  onChange={() => handleYearChange('')}
                 />
                 <span>All Years</span>
               </label>
@@ -448,10 +483,11 @@ export default function PrevPapersPage() {
               {yearOptions.map((year) => (
                 <label key={year} className="flex items-center gap-2 text-sm text-foreground">
                   <input
-                    type="checkbox"
+                    type="radio"
+                    name="year"
                     className="h-4 w-4 accent-primary"
-                    checked={selectedYears.includes(year)}
-                    onChange={() => handleYearToggle(year)}
+                    checked={selectedYear === year}
+                    onChange={() => handleYearChange(year)}
                   />
                   <span>{year}</span>
                 </label>
@@ -462,16 +498,6 @@ export default function PrevPapersPage() {
       )}
     </div>
   );
-
-  const handleYearToggle = (year: string) => {
-    setSelectedYears((prev) => {
-      if (prev.includes(year)) {
-        return prev.filter((y) => y !== year);
-      }
-      return [...prev, year];
-    });
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -602,8 +628,25 @@ export default function PrevPapersPage() {
             )}
 
             {error && (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 mb-6 text-destructive">
-                {error}
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="text-destructive">⚠️</div>
+                  <div>
+                    <p className="text-destructive font-medium">Error loading papers</p>
+                    <p className="text-destructive/80 text-sm mt-1">{error}</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setError('');
+                        fetchExams();
+                      }}
+                      className="mt-2"
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -613,15 +656,28 @@ export default function PrevPapersPage() {
               </div>
             ) : exams.length === 0 ? (
               <div className="text-center py-12 bg-card rounded-2xl border border-border">
-                <h3 className="font-display text-2xl font-bold mb-2">
-                  {activeTab === 'premium' ? 'No premium papers found' : 'No previous papers found'}
-                </h3>
-                <p className="text-muted-foreground mb-6">
-                  {activeTab === 'premium'
-                    ? 'Premium previous papers will appear here once added.'
-                    : 'Try adjusting your filters or search term to find more papers.'}
-                </p>
-                <Button onClick={clearFilters}>Clear filters</Button>
+                <div className="max-w-md mx-auto">
+                  <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="font-display text-2xl font-bold mb-2">
+                    {activeTab === 'premium' ? 'No premium papers found' : 'No previous papers found'}
+                  </h3>
+                  <p className="text-muted-foreground mb-6">
+                    {activeTab === 'premium'
+                      ? 'Premium previous papers will appear here once added.'
+                      : hasCustomFilters 
+                        ? 'No papers match your current filters. Try adjusting your search criteria.'
+                        : 'Previous year papers are being added. Please check back later.'}
+                  </p>
+                  {hasCustomFilters && (
+                    <Button onClick={clearFilters} className="mb-4">
+                      Clear all filters
+                    </Button>
+                  )}
+                  <div className="text-sm text-muted-foreground">
+                    <p>Looking for specific exams like CHSL, CGL, or Banking?</p>
+                    <p>Use the category filters above to narrow your search.</p>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">

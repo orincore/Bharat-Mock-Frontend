@@ -82,7 +82,7 @@ export default function ExamDetailPage() {
             <p className="text-muted-foreground mb-6">
               The exam you're looking for doesn't exist or has been removed.
             </p>
-            <Link href="/exams">
+            <Link href="/mock-test-series">
               <Button>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Exams
@@ -105,7 +105,7 @@ export default function ExamDetailPage() {
       {/* Header */}
       <section className="gradient-hero py-12">
         <div className="container-main">
-          <Link href="/exams" className="inline-flex items-center text-background/80 hover:text-background mb-4">
+          <Link href="/mock-test-series" className="inline-flex items-center text-background/80 hover:text-background mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Exams
           </Link>

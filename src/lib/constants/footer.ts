@@ -25,7 +25,7 @@ export const fallbackFooterSections: FooterSection[] = [
       { label: 'Articles', href: '/blogs' },
       { label: 'Courses', href: '/courses' },
       { label: 'Study Material', href: '/blogs' },
-      { label: 'Previous Papers', href: '/exams' }
+      { label: 'Previous Papers', href: '/previous-year-papers' }
     ]
   },
   {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -89,6 +89,23 @@ export default function ExamAttemptPage() {
   const [languageSelectionMade, setLanguageSelectionMade] = useState(false);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState('Submitting your exam...');
+
+  // Refs to always have latest values inside intervals/callbacks without stale closures
+  const selectedAnswerRef = useRef<string | string[] | null>(null);
+  const markedForReviewRef = useRef(false);
+  const questionsRef = useRef<QuestionWithStatus[]>([]);
+  const currentSectionIndexRef = useRef(0);
+  const currentQuestionIndexRef = useRef(0);
+  const questionStartTimeRef = useRef(Date.now());
+  const isSavingRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => { selectedAnswerRef.current = selectedAnswer; }, [selectedAnswer]);
+  useEffect(() => { markedForReviewRef.current = markedForReview; }, [markedForReview]);
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+  useEffect(() => { currentSectionIndexRef.current = currentSectionIndex; }, [currentSectionIndex]);
+  useEffect(() => { currentQuestionIndexRef.current = currentQuestionIndex; }, [currentQuestionIndex]);
+  useEffect(() => { questionStartTimeRef.current = questionStartTime; }, [questionStartTime]);
 
 
   const orderValue = (question: Question | QuestionWithStatus) => (
@@ -317,6 +334,7 @@ export default function ExamAttemptPage() {
     const questionId = targetQuestion.id;
 
     setIsSaving(true);
+    isSavingRef.current = true;
     try {
       await examService.saveAnswer(attemptId, questionId, {
         answer,
@@ -346,8 +364,42 @@ export default function ExamAttemptPage() {
       console.error('Failed to save answer:', err);
     } finally {
       setIsSaving(false);
+      isSavingRef.current = false;
     }
   }, [attemptId, currentSectionIndex, currentQuestionIndex, questions, questionStartTime, refreshSections]);
+
+  // Silent background auto-save using refs — no state updates, no UI flicker
+  const silentSave = useCallback(async () => {
+    if (isSavingRef.current) return;
+    const qs = questionsRef.current;
+    const secIdx = currentSectionIndexRef.current;
+    const qIdx = currentQuestionIndexRef.current;
+    let globalIndex = 0;
+    // compute global index from refs
+    for (let i = 0; i < secIdx; i++) {
+      // count questions in each prior section from questionsRef
+      const sectionId = sections[i]?.id;
+      if (sectionId) globalIndex += qs.filter(q => q.section_id === sectionId).length;
+    }
+    globalIndex += qIdx;
+    const targetQuestion = qs[globalIndex];
+    if (!targetQuestion) return;
+    const answer = selectedAnswerRef.current;
+    const marked = markedForReviewRef.current;
+    const timeTaken = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
+    try {
+      isSavingRef.current = true;
+      await examService.saveAnswer(attemptId, targetQuestion.id, {
+        answer,
+        markedForReview: marked,
+        timeTaken,
+      });
+    } catch {
+      // silent — don't disrupt the user
+    } finally {
+      isSavingRef.current = false;
+    }
+  }, [attemptId, sections]);
 
   const handleAnswerChange = (optionId: string) => {
     const currentQuestion = getCurrentSectionQuestions()[currentQuestionIndex];
@@ -484,6 +536,15 @@ export default function ExamAttemptPage() {
     return () => clearInterval(timer);
   }, [showInstructions, isLoading, handleAutoSubmit]);
 
+  // Auto-save every 30 seconds silently in the background
+  useEffect(() => {
+    if (showInstructions || isLoading) return;
+    const interval = setInterval(() => {
+      silentSave();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [showInstructions, isLoading, silentSave]);
+
   useEffect(() => {
     if (showInstructions) {
       exitDomFullscreen();
@@ -616,56 +677,53 @@ export default function ExamAttemptPage() {
   if (showInstructions) {
     const languageLabel = selectedLanguage === 'hi' ? 'हिंदी (Hindi)' : 'English';
     return (
-      <div className="min-h-screen bg-muted/30 py-10">
-        <div className="container-main space-y-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="min-h-screen bg-muted/30 py-4">
+        <div className="container-main space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div>
-              <p className="text-sm uppercase tracking-[0.4em] text-muted-foreground">Exam Instructions</p>
-              <h1 className="font-display text-3xl font-bold text-foreground">{exam?.title}</h1>
-              <p className="text-sm text-muted-foreground">Review the instructions below before you begin your attempt.</p>
+              <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">Exam Instructions</p>
+              <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">{exam?.title}</h1>
+              <p className="text-xs text-muted-foreground">Review the instructions below before you begin.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="px-4 py-2 rounded-full border border-border bg-card text-sm font-medium">
-                Selected Language: {languageLabel}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 rounded-full border border-border bg-card text-xs font-medium">
+                {languageLabel}
               </span>
-              <span className="px-4 py-2 rounded-full border border-border bg-card text-sm font-medium">
-                Duration: {exam?.duration} min
+              <span className="px-3 py-1 rounded-full border border-border bg-card text-xs font-medium">
+                {exam?.duration} min
               </span>
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-8">
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-6 shadow-sm">
-              <div className="flex items-center gap-3">
-                <FileText className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Overview</p>
-                  <p className="text-lg font-semibold text-foreground">Exam Summary</p>
-                </div>
+          <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-4">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                <p className="text-sm font-semibold text-foreground">Exam Summary</p>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                <div className="p-4 rounded-xl bg-muted border border-border">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="p-3 rounded-lg bg-muted border border-border">
                   <p className="text-muted-foreground text-xs">Total Questions</p>
-                  <p className="text-2xl font-semibold text-foreground">{exam?.total_questions}</p>
+                  <p className="text-xl font-semibold text-foreground">{exam?.total_questions}</p>
                 </div>
-                <div className="p-4 rounded-xl bg-muted border border-border">
+                <div className="p-3 rounded-lg bg-muted border border-border">
                   <p className="text-muted-foreground text-xs">Total Marks</p>
-                  <p className="text-2xl font-semibold text-foreground">{exam?.total_marks}</p>
+                  <p className="text-xl font-semibold text-foreground">{exam?.total_marks}</p>
                 </div>
-                <div className="p-4 rounded-xl bg-muted border border-border">
+                <div className="p-3 rounded-lg bg-muted border border-border">
                   <p className="text-muted-foreground text-xs">Negative Marking</p>
-                  <p className="text-lg font-semibold text-foreground">{exam?.negative_marking ? `Yes (-${exam?.negative_mark_value})` : 'No'}</p>
+                  <p className="text-sm font-semibold text-foreground">{exam?.negative_marking ? `Yes (-${exam?.negative_mark_value})` : 'No'}</p>
                 </div>
-                <div className="p-4 rounded-xl bg-muted border border-border">
+                <div className="p-3 rounded-lg bg-muted border border-border">
                   <p className="text-muted-foreground text-xs">Attempt Mode</p>
-                  <p className="text-lg font-semibold text-foreground">Online</p>
+                  <p className="text-sm font-semibold text-foreground">Online</p>
                 </div>
               </div>
 
               <div>
-                <h2 className="font-semibold text-lg mb-2 text-foreground">Navigation & Conduct</h2>
-                <ul className="space-y-2 text-sm text-muted-foreground">
+                <h2 className="font-semibold text-sm mb-1.5 text-foreground">Navigation & Conduct</h2>
+                <ul className="space-y-1 text-xs text-muted-foreground">
                   <li>• Use the palette to switch between sections or questions.</li>
                   <li>• “Save & Next” stores your response and advances ahead.</li>
                   <li>• “Mark for Review” keeps your answer (if any) but flags it.</li>
@@ -674,8 +732,8 @@ export default function ExamAttemptPage() {
               </div>
 
               <div>
-                <h2 className="font-semibold text-lg mb-2 text-foreground">Status Legend</h2>
-                <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <h2 className="font-semibold text-sm mb-1.5 text-foreground">Status Legend</h2>
+                <div className="grid grid-cols-2 gap-2 text-xs">
                   {[{
                     label: 'Answered',
                     color: 'bg-green-100 border-green-300 text-green-900',
@@ -693,7 +751,7 @@ export default function ExamAttemptPage() {
                     color: 'bg-muted border-border text-muted-foreground',
                     icon: <Circle className="h-4 w-4" />
                   }].map(status => (
-                    <div key={status.label} className={`flex items-center gap-3 rounded-xl border ${status.color} px-3 py-2`}>
+                    <div key={status.label} className={`flex items-center gap-2 rounded-lg border ${status.color} px-2 py-1.5`}>
                       <span className="flex items-center justify-center w-8 h-8 rounded-lg border border-current">
                         {status.icon}
                       </span>
@@ -703,15 +761,15 @@ export default function ExamAttemptPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 p-4 text-sm">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 p-3 text-xs">
                 <strong>Important:</strong> The exam auto-submits when the timer reaches zero. Save responses regularly to avoid loss.
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="bg-card border border-border rounded-2xl p-5">
-                <h2 className="font-semibold text-lg mb-3 text-foreground">Before You Begin</h2>
-                <ul className="space-y-2 text-sm text-muted-foreground">
+              <div className="bg-card border border-border rounded-xl p-4">
+                <h2 className="font-semibold text-sm mb-2 text-foreground">Before You Begin</h2>
+                <ul className="space-y-1 text-xs text-muted-foreground">
                   <li>• Ensure a stable internet connection.</li>
                   <li>• Keep your admit card or candidate ID handy.</li>
                   <li>• Avoid refreshing the page during the attempt.</li>
@@ -719,14 +777,14 @@ export default function ExamAttemptPage() {
                 </ul>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="outline" className="flex-1" size="lg" onClick={() => router.push(`/exams/${examId}`)}>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" className="flex-1 text-sm sm:text-base" size="default" onClick={() => router.push(`/exams/${examId}`)}>
                   Cancel
                 </Button>
                 <Button
                   onClick={handleStartExamFlow}
-                  className="flex-1"
-                  size="lg"
+                  className="flex-1 text-sm sm:text-base"
+                  size="default"
                   disabled={supportsHindi && !languageSelectionMade}
                 >
                   {supportsHindi && !languageSelectionMade ? 'Select language to start' : 'Start Exam'}
@@ -798,7 +856,7 @@ export default function ExamAttemptPage() {
                     <button
                       key={section.id}
                       onClick={() => {
-                        saveAnswer(selectedAnswer, markedForReview);
+                        silentSave();
                         setCurrentSectionIndex(idx);
                         setCurrentQuestionIndex(0);
                       }}
@@ -820,11 +878,11 @@ export default function ExamAttemptPage() {
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-2xl p-6">
-              <div className="mb-4">
-                <div className="flex items-start justify-between mb-4">
+            <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
+              <div className="mb-3">
+                <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-2">
                       <span className="text-sm font-medium text-muted-foreground">Question {currentQuestion?.question_number ?? (currentQuestionIndex + 1)}</span>
                       <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
                         {currentQuestion?.marks} {currentQuestion?.marks === 1 ? 'Mark' : 'Marks'}
@@ -836,7 +894,7 @@ export default function ExamAttemptPage() {
                       )}
                     </div>
                     <div
-                      className="text-lg leading-relaxed rich-text-content"
+                      className="rich-text-content exam-question-text leading-relaxed"
                       dangerouslySetInnerHTML={{ __html: sanitizeRichText(getLocalizedQuestionText(currentQuestion)) }}
                     />
                   </div>
@@ -850,8 +908,8 @@ export default function ExamAttemptPage() {
                 )}
               </div>
 
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-muted-foreground mb-3">Options:</p>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Options:</p>
                 {currentQuestion?.options?.map((option, idx) => {
                   const isSelected = currentQuestion.type === 'multiple'
                     ? Array.isArray(selectedAnswer) && selectedAnswer.includes(option.id)
@@ -860,7 +918,7 @@ export default function ExamAttemptPage() {
                   return (
                     <label
                       key={option.id}
-                      className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      className={`flex items-start gap-2 p-2.5 sm:p-3 rounded-lg border-2 cursor-pointer transition-all ${
                         isSelected
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50 hover:bg-muted/50'
@@ -872,15 +930,15 @@ export default function ExamAttemptPage() {
                         value={option.id}
                         checked={isSelected}
                         onChange={() => handleAnswerChange(option.id)}
-                        className="mt-1"
+                        className="mt-0.5 shrink-0"
                       />
-                      <div className="flex-1">
-                        <div className="flex items-start gap-2 mb-2">
-                          <span className="font-medium text-sm text-muted-foreground">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start gap-1.5">
+                          <span className="font-medium text-sm text-muted-foreground shrink-0">
                             {String.fromCharCode(65 + idx)}.
                           </span>
                           <div
-                            className="flex-1 rich-text-content"
+                            className="flex-1 exam-option-text rich-text-content"
                             dangerouslySetInnerHTML={{ __html: sanitizeRichText(getLocalizedOptionText(option)) }}
                           />
                         </div>
@@ -888,7 +946,7 @@ export default function ExamAttemptPage() {
                           <img
                             src={resolveOptionImage(option)}
                             alt={`Option ${String.fromCharCode(65 + idx)}`}
-                            className="max-h-40 rounded-lg border border-border object-contain"
+                            className="max-h-40 rounded-lg border border-border object-contain mt-1"
                           />
                         )}
                       </div>
@@ -898,11 +956,14 @@ export default function ExamAttemptPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              {/* Row 1 on mobile: Prev / Next + Clear + Mark */}
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  size="sm"
+                  onClick={async () => {
+                    await silentSave();
                     if (currentQuestionIndex > 0) {
                       setCurrentQuestionIndex(prev => prev - 1);
                     } else if (currentSectionIndex > 0) {
@@ -917,7 +978,9 @@ export default function ExamAttemptPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  size="sm"
+                  onClick={async () => {
+                    await silentSave();
                     if (currentQuestionIndex < currentSectionQuestions.length - 1) {
                       setCurrentQuestionIndex(prev => prev + 1);
                     } else if (currentSectionIndex < sections.length - 1) {
@@ -930,28 +993,30 @@ export default function ExamAttemptPage() {
                   Next
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleClearResponse} disabled={!selectedAnswer}>
-                  Clear Response
+                <Button variant="outline" size="sm" onClick={handleClearResponse} disabled={!selectedAnswer}>
+                  Clear
                 </Button>
                 <Button
                   variant={markedForReview ? 'default' : 'outline'}
+                  size="sm"
                   onClick={handleMarkForReview}
                   disabled={isSaving}
                 >
-                  <Flag className="h-4 w-4 mr-2" />
-                  {markedForReview ? 'Marked' : 'Mark for Review'}
-                </Button>
-                <Button
-                  onClick={isLastQuestion ? handleSaveAndSubmitPrompt : handleSaveAndNext}
-                  disabled={isSaving || !hasSelectedAnswer}
-                  className={!hasSelectedAnswer && !isSaving ? 'opacity-60 cursor-not-allowed' : undefined}
-                >
-                  {isSaving ? 'Saving...' : isLastQuestion ? 'End Exam' : 'Save & Next'}
+                  <Flag className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{markedForReview ? 'Marked' : 'Mark for Review'}</span>
+                  <span className="sm:hidden">{markedForReview ? 'Marked' : 'Review'}</span>
                 </Button>
               </div>
+
+              {/* Save & Next always visible */}
+              <Button
+                size="sm"
+                onClick={isLastQuestion ? handleSaveAndSubmitPrompt : handleSaveAndNext}
+                disabled={isSaving || !hasSelectedAnswer}
+                className={`w-full sm:w-auto${!hasSelectedAnswer && !isSaving ? ' opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {isSaving ? 'Saving...' : isLastQuestion ? 'End Exam' : 'Save & Next'}
+              </Button>
             </div>
           </div>
 
@@ -983,7 +1048,7 @@ export default function ExamAttemptPage() {
                     <button
                       key={q.id}
                       onClick={() => {
-                        saveAnswer(selectedAnswer, markedForReview);
+                        silentSave();
                         setCurrentQuestionIndex(idx);
                       }}
                       className={`aspect-square rounded-lg border-2 font-medium text-sm transition-all ${
