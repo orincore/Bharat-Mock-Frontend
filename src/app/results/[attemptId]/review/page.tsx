@@ -7,6 +7,47 @@ import { ArrowLeft, Award, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingPage } from "@/components/common/LoadingStates";
 
+import DOMPurify from 'dompurify';
+import { MathRenderer } from '@/components/common/MathRenderer';
+
+const MATHML_TAGS = [
+  'math', 'mrow', 'mi', 'mn', 'mo', 'mfrac', 'msup', 'msub', 'msubsup',
+  'msqrt', 'mroot', 'mtext', 'mspace', 'mtable', 'mtr', 'mtd', 'mover',
+  'munder', 'munderover', 'menclose', 'mstyle', 'merror', 'mpadded',
+  'mphantom', 'mmultiscripts', 'none', 'mprescripts', 'semantics', 'annotation',
+];
+
+const sanitizeHtml = (html?: string): string => {
+  if (typeof window === 'undefined') return html || '';
+  const clean = DOMPurify.sanitize(html || '', {
+    USE_PROFILES: { html: true },
+    ADD_TAGS: ['font', 'code', 'sup', 'sub', ...MATHML_TAGS],
+    ADD_ATTR: ['style', 'class', 'size', 'target', 'rel',
+      'xmlns', 'display', 'mathvariant', 'mathsize', 'stretchy', 'fence',
+      'separator', 'lspace', 'rspace', 'linethickness', 'numalign', 'denomalign',
+      'bevelled', 'columnalign', 'rowalign', 'columnspacing', 'rowspacing',
+      'displaystyle', 'scriptlevel', 'notation', 'encoding',
+    ],
+    FORBID_ATTR: ['color', 'face'],
+  });
+  const tmp = document.createElement('div');
+  tmp.innerHTML = clean;
+  tmp.querySelectorAll('*').forEach((el) => {
+    if (el.namespaceURI === 'http://www.w3.org/1998/Math/MathML') return;
+    const s = (el as HTMLElement).style;
+    if (s) {
+      s.removeProperty('color');
+      s.removeProperty('background-color');
+      s.removeProperty('font-size');
+      s.removeProperty('font-family');
+      if (!s.cssText.trim()) (el as HTMLElement).removeAttribute('style');
+    }
+    el.removeAttribute('color');
+    el.removeAttribute('face');
+  });
+  return tmp.innerHTML;
+};
+
 interface ResultSummary {
   id: string;
   attempt_id: string;
@@ -158,6 +199,13 @@ export default function ReviewPage() {
     return "border-border";
   };
 
+  const stripHtml = (html: string) => {
+    if (typeof window === 'undefined') return html;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || html;
+  };
+
   const renderAnswerSummary = (question: ReviewQuestion) => {
     const userIds = parseAnswerIds(question.userAnswer);
     const correctIds = parseAnswerIds(question.correctAnswer as any);
@@ -168,7 +216,7 @@ export default function ReviewPage() {
 
     const optionText = (ids: string[]) =>
       ids
-        .map((id) => question.options.find((opt) => opt.id === id)?.option_text || id)
+        .map((id) => stripHtml(question.options.find((opt) => opt.id === id)?.option_text || id))
         .join(", ");
 
     return question.isCorrect
@@ -269,7 +317,10 @@ export default function ReviewPage() {
                           <div className="flex items-start justify-between gap-4 mb-3">
                             <div>
                               <p className="text-sm text-muted-foreground mb-1">Question {idx + 1}</p>
-                              <p className="font-medium text-base">{question.text}</p>
+                              <MathRenderer
+                                html={question.text}
+                                className="font-medium text-base rich-text-content exam-question-text"
+                              />
                             </div>
                             <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusColor}`}>
                               {statusBadge}
@@ -288,12 +339,15 @@ export default function ReviewPage() {
                             {question.options.map((option) => (
                               <div
                                 key={option.id}
-                                className={`border rounded-lg px-3 py-2 text-sm ${getOptionClass(option.id, question)}`}
+                                className={`border rounded-lg px-3 py-2 text-sm flex items-start gap-2 ${getOptionClass(option.id, question)}`}
                               >
-                                <span className="font-semibold mr-2">
+                                <span className="font-semibold shrink-0">
                                   {String.fromCharCode(65 + option.option_order - 1)}
                                 </span>
-                                {option.option_text}
+                                <MathRenderer
+                                  html={option.option_text}
+                                  className="rich-text-content exam-option-text"
+                                />
                               </div>
                             ))}
                           </div>
@@ -312,7 +366,10 @@ export default function ReviewPage() {
                           {question.explanation && (
                             <details className="mt-2">
                               <summary className="text-sm font-semibold cursor-pointer">View Explanation</summary>
-                              <p className="text-sm text-muted-foreground mt-2">{question.explanation}</p>
+                              <MathRenderer
+                                html={question.explanation}
+                                className="text-sm text-muted-foreground mt-2 rich-text-content"
+                              />
                             </details>
                           )}
                         </div>

@@ -1108,32 +1108,29 @@ export default function ExamFormPage() {
     const [movedSection] = currentSections.splice(sectionIndex, 1);
     currentSections.splice(sectionIndex - 1, 0, movedSection);
     
-    // Update section_order for all affected sections
-    const updatedSections = sections.map(section => {
-      const newIndex = currentSections.findIndex(s => s.id === section.id);
-      if (newIndex !== -1) {
-        return { ...section, section_order: newIndex + 1 };
-      }
-      return section;
-    });
-    
-    setSections(updatedSections);
+    // Rebuild full sections array preserving other-language sections, with new order
+    const otherSections = sections.filter(s => s.language !== selectedLanguage);
+    const reorderedDisplay = currentSections.map((s, idx) => ({ ...s, section_order: idx + 1 }));
+    setSections([...otherSections, ...reorderedDisplay]);
     setHasUnsavedChanges(true);
     markUnsavedChanges();
 
-    // If exam is saved, update order on backend
+    // If exam is saved, update order on backend (only send real DB UUIDs)
     if (persistedExamId) {
-      try {
-        const orderedIds = currentSections.map(s => s.id);
-        await testSeriesService.reorderSections(orderedIds);
-        setToastMessage('Section order updated');
-        setToastType('success');
-        setShowToast(true);
-      } catch (error) {
-        console.error('Failed to update section order:', error);
-        setToastMessage('Failed to update section order');
-        setToastType('error');
-        setShowToast(true);
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const orderedIds = currentSections.map(s => s.id).filter(id => uuidRegex.test(id));
+      if (orderedIds.length > 0) {
+        try {
+          await testSeriesService.reorderSections(orderedIds);
+          setToastMessage('Section order updated');
+          setToastType('success');
+          setShowToast(true);
+        } catch (error) {
+          console.error('Failed to update section order:', error);
+          setToastMessage('Failed to update section order');
+          setToastType('error');
+          setShowToast(true);
+        }
       }
     }
   };
@@ -1145,32 +1142,29 @@ export default function ExamFormPage() {
     const [movedSection] = currentSections.splice(sectionIndex, 1);
     currentSections.splice(sectionIndex + 1, 0, movedSection);
     
-    // Update section_order for all affected sections
-    const updatedSections = sections.map(section => {
-      const newIndex = currentSections.findIndex(s => s.id === section.id);
-      if (newIndex !== -1) {
-        return { ...section, section_order: newIndex + 1 };
-      }
-      return section;
-    });
-    
-    setSections(updatedSections);
+    // Rebuild full sections array preserving other-language sections, with new order
+    const otherSections = sections.filter(s => s.language !== selectedLanguage);
+    const reorderedDisplay = currentSections.map((s, idx) => ({ ...s, section_order: idx + 1 }));
+    setSections([...otherSections, ...reorderedDisplay]);
     setHasUnsavedChanges(true);
     markUnsavedChanges();
 
-    // If exam is saved, update order on backend
+    // If exam is saved, update order on backend (only send real DB UUIDs)
     if (persistedExamId) {
-      try {
-        const orderedIds = currentSections.map(s => s.id);
-        await testSeriesService.reorderSections(orderedIds);
-        setToastMessage('Section order updated');
-        setToastType('success');
-        setShowToast(true);
-      } catch (error) {
-        console.error('Failed to update section order:', error);
-        setToastMessage('Failed to update section order');
-        setToastType('error');
-        setShowToast(true);
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const orderedIds = currentSections.map(s => s.id).filter(id => uuidRegex.test(id));
+      if (orderedIds.length > 0) {
+        try {
+          await testSeriesService.reorderSections(orderedIds);
+          setToastMessage('Section order updated');
+          setToastType('success');
+          setShowToast(true);
+        } catch (error) {
+          console.error('Failed to update section order:', error);
+          setToastMessage('Failed to update section order');
+          setToastType('error');
+          setShowToast(true);
+        }
       }
     }
   };

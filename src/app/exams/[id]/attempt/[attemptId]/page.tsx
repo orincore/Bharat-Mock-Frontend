@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import DOMPurify from 'dompurify';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   AlertCircle, Clock, ChevronLeft, ChevronRight, Flag, 
@@ -11,21 +10,9 @@ import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { examService } from '@/lib/api/examService';
 import { Exam, Question, Section } from '@/types';
+import { MathRenderer } from '@/components/common/MathRenderer';
 
 type QuestionStatus = 'not-visited' | 'not-answered' | 'answered' | 'marked' | 'answered-marked';
-
-const RICH_TEXT_SANITIZE_CONFIG = {
-  USE_PROFILES: { html: true },
-  ADD_TAGS: ['font', 'code'],
-  ADD_ATTR: ['style', 'class', 'color', 'face', 'size', 'target', 'rel', 'data-inline-break'],
-};
-
-const sanitizeRichText = (html?: string) => {
-  if (typeof window === 'undefined') {
-    return html || '';
-  }
-  return DOMPurify.sanitize(html || '', RICH_TEXT_SANITIZE_CONFIG);
-};
 
 const requestDomFullscreen = () => {
   if (typeof document === 'undefined') return;
@@ -878,10 +865,10 @@ export default function ExamAttemptPage() {
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
+            <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 overflow-hidden">
               <div className="mb-3">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap mb-2">
                       <span className="text-sm font-medium text-muted-foreground">Question {currentQuestion?.question_number ?? (currentQuestionIndex + 1)}</span>
                       <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
@@ -893,9 +880,9 @@ export default function ExamAttemptPage() {
                         </span>
                       )}
                     </div>
-                    <div
+                    <MathRenderer
+                      html={getLocalizedQuestionText(currentQuestion)}
                       className="rich-text-content exam-question-text leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: sanitizeRichText(getLocalizedQuestionText(currentQuestion)) }}
                     />
                   </div>
                 </div>
@@ -937,9 +924,9 @@ export default function ExamAttemptPage() {
                           <span className="font-medium text-sm text-muted-foreground shrink-0">
                             {String.fromCharCode(65 + idx)}.
                           </span>
-                          <div
+                          <MathRenderer
+                            html={getLocalizedOptionText(option)}
                             className="flex-1 exam-option-text rich-text-content"
-                            dangerouslySetInnerHTML={{ __html: sanitizeRichText(getLocalizedOptionText(option)) }}
                           />
                         </div>
                         {resolveOptionImage(option) && (

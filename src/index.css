@@ -263,12 +263,30 @@ body.translated-rtl {
 .rich-text-content {
   line-height: 1.6;
   font-size: 0.95rem;
-  color: inherit;
+  color: #1a1a1a;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Force all child elements in rich text to use black color */
+.rich-text-editor *,
+.rich-text-content * {
+  color: #1a1a1a !important;
+}
+
+/* Also override via attribute selector for font tags */
+.rich-text-editor font[color],
+.rich-text-content font[color],
+.exam-question-text font[color],
+.exam-option-text font[color] {
+  color: #1a1a1a !important;
 }
 
 /* Larger font for exam question text */
 .exam-question-text {
   font-size: 1rem !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 @media (min-width: 640px) {
@@ -277,15 +295,112 @@ body.translated-rtl {
   }
 }
 
+/* Normalize headings and bold inside exam question/option text */
+.exam-question-text h1,
+.exam-question-text h2,
+.exam-question-text h3,
+.exam-question-text h4,
+.exam-question-text h5,
+.exam-question-text h6,
+.exam-question-text strong,
+.exam-question-text b {
+  font-size: inherit !important;
+  font-weight: 600;
+  line-height: inherit;
+}
+
 /* Compact font for exam option text */
 .exam-option-text {
   font-size: 0.9rem !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 @media (min-width: 640px) {
   .exam-option-text {
     font-size: 0.95rem !important;
   }
+}
+
+/* Strip ALL inline font-size overrides from any element inside exam text */
+.exam-question-text * {
+  font-size: inherit !important;
+  max-width: 100%;
+  color: #1a1a1a !important;
+}
+
+.exam-option-text * {
+  font-size: inherit !important;
+  max-width: 100%;
+  color: #1a1a1a !important;
+}
+
+/* Force black color on exam text root elements too */
+.exam-question-text,
+.exam-option-text {
+  color: #1a1a1a !important;
+}
+
+/* Normalize headings and bold inside exam question/option text */
+.exam-question-text h1,
+.exam-question-text h2,
+.exam-question-text h3,
+.exam-question-text h4,
+.exam-question-text h5,
+.exam-question-text h6,
+.exam-question-text strong,
+.exam-question-text b,
+.exam-option-text h1,
+.exam-option-text h2,
+.exam-option-text h3,
+.exam-option-text h4,
+.exam-option-text h5,
+.exam-option-text h6,
+.exam-option-text strong,
+.exam-option-text b {
+  font-size: inherit !important;
+  font-weight: 600;
+  line-height: inherit;
+}
+
+/* MathML rendering */
+math {
+  display: inline-math;
+  font-style: italic;
+}
+math[display="block"] {
+  display: block;
+  text-align: center;
+  margin: 0.5rem 0;
+}
+mfrac {
+  display: inline-table;
+  vertical-align: middle;
+  text-align: center;
+}
+mfrac > * {
+  display: block;
+  padding: 0 0.2em;
+}
+mfrac > *:first-child {
+  border-bottom: 1px solid currentColor;
+}
+msup > *:last-child,
+msub > *:last-child {
+  font-size: 0.75em;
+}
+msup > *:last-child { vertical-align: super; }
+msub > *:last-child { vertical-align: sub; }
+/* Don't force black on MathML — inherit from parent */
+.exam-question-text math,
+.exam-question-text math *,
+.exam-option-text math,
+.exam-option-text math *,
+.rich-text-editor math,
+.rich-text-editor math *,
+.rich-text-content math,
+.rich-text-content math * {
+  color: inherit !important;
 }
 
 .rich-text-editor ul,

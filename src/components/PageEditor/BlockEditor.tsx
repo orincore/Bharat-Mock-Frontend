@@ -51,6 +51,7 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { BlockRenderer, getBlockIcon } from './BlockRenderer';
 
 interface Block {
@@ -502,6 +503,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   onImagePaste
 }) => {
   const editorRef = useRef<HTMLDivElement | null>(null);
+  const savedRangeRef = useRef<Range | null>(null);
+  const [showMathPicker, setShowMathPicker] = useState(false);
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,
@@ -639,6 +642,41 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     updateActiveFormats();
   };
 
+  const saveCursorPosition = () => {
+    if (typeof window === 'undefined') return;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const insertMathSymbol = (symbol: string) => {
+    if (typeof document === 'undefined') return;
+    editorRef.current?.focus();
+    // Restore saved cursor position if selection was lost when picker opened
+    const sel = window.getSelection();
+    if (savedRangeRef.current && sel) {
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+    }
+    document.execCommand('insertText', false, symbol);
+    handleInput();
+    setShowMathPicker(false);
+  };
+
+  const MATH_SYMBOLS: { label: string; symbols: string[] }[] = [
+    { label: 'Operators', symbols: ['+', '−', '×', '÷', '±', '∓', '∗', '∝', '∞', '√', '∛', '∜'] },
+    { label: 'Relations', symbols: ['=', '≠', '<', '>', '≤', '≥', '≈', '≡', '∼', '∝', '⊂', '⊃', '⊆', '⊇'] },
+    { label: 'Greek', symbols: ['α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ', 'λ', 'μ', 'π', 'σ', 'τ', 'φ', 'ω', 'Δ', 'Σ', 'Π', 'Ω'] },
+    { label: 'Fractions', symbols: ['½', '⅓', '⅔', '¼', '¾', '⅕', '⅖', '⅗', '⅘', '⅙', '⅚', '⅛', '⅜', '⅝', '⅞'] },
+    { label: 'Superscript', symbols: ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹', 'ⁿ'] },
+    { label: 'Subscript', symbols: ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'] },
+    { label: 'Geometry', symbols: ['°', '∠', '⊥', '∥', '△', '□', '○', '∴', '∵', '∫', '∂', '∇'] },
+    { label: 'Sets', symbols: ['∈', '∉', '∪', '∩', '∅', '∀', '∃', '∄', '⊕', '⊗'] },
+    { label: 'Arrows', symbols: ['→', '←', '↑', '↓', '↔', '⇒', '⇐', '⇔', '↦'] },
+    { label: 'Misc', symbols: ['%', '‰', '′', '″', '|', '‖', '…', '·', '∙', '⋯', '⋮', '⋱'] },
+  ];
+
   const handleEditorKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter') {
       const isListActive = activeFormats.bulletList || activeFormats.numberedList;
@@ -653,19 +691,73 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   };
 
   const handleEditorPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    if (!onImagePaste || !event.clipboardData) return;
+    const items = Array.from(event.clipboardData?.items || []);
+    const files = Array.from(event.clipboardData?.files || []);
 
-    const items = Array.from(event.clipboardData.items || []);
+    // Handle image paste
     let file = items.find(item => item.type.startsWith('image/'))?.getAsFile() || null;
-
-    if (!file) {
-      const files = Array.from(event.clipboardData.files || []);
-      file = files.find(f => f.type.startsWith('image/')) || null;
-    }
-
+    if (!file) file = files.find(f => f.type.startsWith('image/')) || null;
     if (file) {
       event.preventDefault();
-      onImagePaste(file);
+      if (onImagePaste) onImagePaste(file);
+      return;
+    }
+
+    const PASTE_MATHML_TAGS = [
+      'math', 'mrow', 'mi', 'mn', 'mo', 'mfrac', 'msup', 'msub', 'msubsup',
+      'msqrt', 'mroot', 'mtext', 'mspace', 'mtable', 'mtr', 'mtd', 'mover',
+      'munder', 'munderover', 'menclose', 'mstyle', 'merror', 'mpadded',
+      'mphantom', 'mmultiscripts', 'none', 'mprescripts', 'semantics', 'annotation',
+    ];
+
+    // For text/HTML paste: preserve structure, strip only colors/fonts
+    const html = event.clipboardData?.getData('text/html');
+    if (html) {
+      event.preventDefault();
+      const tmp = document.createElement('div');
+      tmp.innerHTML = DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        ADD_TAGS: ['font', 'code', 'sup', 'sub', 'table', 'thead', 'tbody', 'tr', 'th', 'td', ...PASTE_MATHML_TAGS],
+        ADD_ATTR: ['style', 'class', 'colspan', 'rowspan', 'border', 'cellpadding', 'cellspacing',
+          'xmlns', 'display', 'mathvariant', 'mathsize', 'stretchy', 'fence', 'separator',
+          'lspace', 'rspace', 'linethickness', 'numalign', 'denomalign', 'bevelled',
+          'columnalign', 'rowalign', 'columnspacing', 'rowspacing', 'displaystyle',
+          'scriptlevel', 'notation', 'encoding',
+        ],
+        FORBID_ATTR: ['color', 'face'],
+      });
+
+      // Strip color/font-size from all non-MathML elements
+      tmp.querySelectorAll('*').forEach(el => {
+        if (el.namespaceURI === 'http://www.w3.org/1998/Math/MathML') return;
+        const s = (el as HTMLElement).style;
+        if (s) {
+          s.removeProperty('color');
+          s.removeProperty('background-color');
+          s.removeProperty('font-size');
+          s.removeProperty('font-family');
+          if (!s.cssText.trim()) (el as HTMLElement).removeAttribute('style');
+        }
+        el.removeAttribute('color');
+        el.removeAttribute('face');
+      });
+
+      // Unwrap attribute-less spans (leftover wrappers from source)
+      tmp.querySelectorAll('span').forEach(el => {
+        if (!el.hasAttributes()) el.replaceWith(...Array.from(el.childNodes));
+      });
+
+      document.execCommand('insertHTML', false, tmp.innerHTML);
+      handleInput();
+      return;
+    }
+
+    // Plain text fallback — preserves Unicode math chars (𝑃, ₃, ², etc.)
+    const text = event.clipboardData?.getData('text/plain');
+    if (text) {
+      event.preventDefault();
+      document.execCommand('insertText', false, text);
+      handleInput();
     }
   };
 
@@ -696,6 +788,16 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     handleInput();
     updateActiveFormats();
   };
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || !showMathPicker) return;
+    const close = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.math-picker-root')) setShowMathPicker(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [showMathPicker]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -741,6 +843,59 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
                 </button>
               );
             })}
+            {/* Math symbols picker */}
+            <div className="relative math-picker-root">
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  saveCursorPosition();
+                  setShowMathPicker(v => !v);
+                }}
+                className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${showMathPicker ? 'bg-gray-200 text-blue-600' : ''}`}
+                title="Insert math symbol"
+              >
+                Ω
+              </button>
+              {showMathPicker && (
+                <div
+                  className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-3 w-72"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-600">Math Symbols</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowMathPicker(false)}
+                      className="text-gray-400 hover:text-gray-600 text-xs"
+                    >✕</button>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {MATH_SYMBOLS.map((group) => (
+                      <div key={group.label}>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{group.label}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {group.symbols.map((sym) => (
+                            <button
+                              key={sym}
+                              type="button"
+                              onClick={() => insertMathSymbol(sym)}
+                              className="w-7 h-7 text-sm flex items-center justify-center rounded hover:bg-blue-50 hover:text-blue-600 border border-gray-100 font-mono transition-colors"
+                              title={sym}
+                            >
+                              {sym}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-2 pt-2 border-t border-gray-100">
+                    You can also paste symbols directly from any source (Ctrl/⌘+V)
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
           {variant === 'full' && (
             <div className="flex items-center gap-2 ml-auto">
@@ -810,7 +965,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
           <div
             ref={editorRef}
             className={`px-3 py-3 focus:outline-none text-sm rich-text-editor ${className}`}
-            style={{ minHeight }}
+            style={{ minHeight, color: '#1a1a1a' }}
             contentEditable
             suppressContentEditableWarning
             onInput={handleInput}
