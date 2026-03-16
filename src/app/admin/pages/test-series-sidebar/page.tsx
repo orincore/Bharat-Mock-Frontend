@@ -83,6 +83,11 @@ export default function TestSeriesSidebarAdmin() {
   const [editingBanner, setEditingBanner] = useState<PageBanner | null>(null);
   const [form, setForm] = useState({ imageUrl: '', linkUrl: '', altText: '' });
 
+  // Inline Edit State
+  const [editingItem, setEditingItem] = useState<{ type: 'series' | 'section' | 'topic'; id: string; name: string } | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
   // Icon Management State
   const [selectedSeries, setSelectedSeries] = useState<TestSeriesWithDetails | null>(null);
   const [iconUploading, setIconUploading] = useState<{ logo: boolean; thumbnail: boolean }>({ logo: false, thumbnail: false });
@@ -516,6 +521,91 @@ export default function TestSeriesSidebarAdmin() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Inline Edit / Delete Functions
+  const startEditing = (type: 'series' | 'section' | 'topic', id: string, name: string) => {
+    setEditingItem({ type, id, name });
+    setEditingName(name);
+  };
+
+  const cancelEditing = () => {
+    setEditingItem(null);
+    setEditingName('');
+  };
+
+  const saveEditing = async () => {
+    if (!editingItem || !editingName.trim()) return;
+    setEditSaving(true);
+    try {
+      if (editingItem.type === 'series') {
+        await testSeriesService.updateTestSeries(editingItem.id, { title: editingName.trim() });
+        setTestSeries(prev => prev.map(s => s.id === editingItem.id ? { ...s, title: editingName.trim() } : s));
+      } else if (editingItem.type === 'section') {
+        await testSeriesService.updateSection(editingItem.id, { name: editingName.trim() });
+        setTestSeries(prev => prev.map(s => ({
+          ...s,
+          sections: s.sections.map(sec => sec.id === editingItem.id ? { ...sec, name: editingName.trim() } : sec)
+        })));
+      } else if (editingItem.type === 'topic') {
+        await testSeriesService.updateTopic(editingItem.id, { name: editingName.trim() });
+        setTestSeries(prev => prev.map(s => ({
+          ...s,
+          sections: s.sections.map(sec => ({
+            ...sec,
+            topics: sec.topics.map(t => t.id === editingItem.id ? { ...t, name: editingName.trim() } : t)
+          }))
+        })));
+      }
+      toast({ title: 'Saved', description: 'Name updated successfully' });
+      cancelEditing();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to save', variant: 'destructive' });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleDeleteSeries = async (seriesId: string, title: string) => {
+    if (!confirm(`Delete test series "${title}"? This cannot be undone.`)) return;
+    try {
+      await testSeriesService.deleteTestSeries(seriesId);
+      setTestSeries(prev => prev.filter(s => s.id !== seriesId));
+      toast({ title: 'Deleted', description: 'Test series deleted' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteSection = async (sectionId: string, name: string) => {
+    if (!confirm(`Delete section "${name}"?`)) return;
+    try {
+      await testSeriesService.deleteSection(sectionId);
+      setTestSeries(prev => prev.map(s => ({
+        ...s,
+        sections: s.sections.filter(sec => sec.id !== sectionId)
+      })));
+      toast({ title: 'Deleted', description: 'Section deleted' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteTopic = async (topicId: string, name: string) => {
+    if (!confirm(`Delete topic "${name}"?`)) return;
+    try {
+      await testSeriesService.deleteTopic(topicId);
+      setTestSeries(prev => prev.map(s => ({
+        ...s,
+        sections: s.sections.map(sec => ({
+          ...sec,
+          topics: sec.topics.filter(t => t.id !== topicId)
+        }))
+      })));
+      toast({ title: 'Deleted', description: 'Topic deleted' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
+    }
+  };
+
   // Icon Management Functions
   const handleIconManagement = (series: TestSeriesWithDetails) => {
     setSelectedSeries(series);
@@ -729,7 +819,23 @@ export default function TestSeriesSidebarAdmin() {
                           </Button>
                           <BookOpen className="h-5 w-5 text-blue-600" />
                           <div>
-                            <h3 className="text-lg font-semibold text-slate-900">{series.title}</h3>
+                            {editingItem?.type === 'series' && editingItem.id === series.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={editingName}
+                                  onChange={e => setEditingName(e.target.value)}
+                                  className="h-8 text-sm w-48"
+                                  onKeyDown={e => { if (e.key === 'Enter') saveEditing(); if (e.key === 'Escape') cancelEditing(); }}
+                                  autoFocus
+                                />
+                                <Button size="sm" onClick={saveEditing} disabled={editSaving} className="h-8 px-2">
+                                  {editSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={cancelEditing} className="h-8 px-2">×</Button>
+                              </div>
+                            ) : (
+                              <h3 className="text-lg font-semibold text-slate-900">{series.title}</h3>
+                            )}
                             <p className="text-sm text-muted-foreground">
                               {series.sections?.length || 0} sections • {series.exams?.length || 0} exams
                             </p>
@@ -739,11 +845,27 @@ export default function TestSeriesSidebarAdmin() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => startEditing('series', series.id, series.title)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Rename
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleIconManagement(series)}
                             className="flex items-center gap-2"
                           >
                             <ImagePlus className="h-4 w-4" />
-                            Manage Icons
+                            Icons
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteSeries(series.id, series.title)}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             series.is_published 
@@ -803,11 +925,35 @@ export default function TestSeriesSidebarAdmin() {
                                           </Button>
                                         </div>
                                         <FileText className="h-4 w-4 text-green-600" />
-                                        <span className="font-medium">{section.name}</span>
+                                        {editingItem?.type === 'section' && editingItem.id === section.id ? (
+                                          <div className="flex items-center gap-2">
+                                            <Input
+                                              value={editingName}
+                                              onChange={e => setEditingName(e.target.value)}
+                                              className="h-7 text-sm w-40"
+                                              onKeyDown={e => { if (e.key === 'Enter') saveEditing(); if (e.key === 'Escape') cancelEditing(); }}
+                                              autoFocus
+                                            />
+                                            <Button size="sm" onClick={saveEditing} disabled={editSaving} className="h-7 px-2">
+                                              {editSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                            </Button>
+                                            <Button size="sm" variant="ghost" onClick={cancelEditing} className="h-7 px-2">×</Button>
+                                          </div>
+                                        ) : (
+                                          <span className="font-medium">{section.name}</span>
+                                        )}
                                       </div>
-                                      <span className="text-sm text-muted-foreground">
-                                        {section.topics?.length || 0} topics
-                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                          {section.topics?.length || 0} topics
+                                        </span>
+                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => startEditing('section', section.id, section.name)} title="Rename section">
+                                          <Edit className="h-3 w-3" />
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => handleDeleteSection(section.id, section.name)} title="Delete section">
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
                                     </div>
 
                                     {/* Topics */}
@@ -841,11 +987,37 @@ export default function TestSeriesSidebarAdmin() {
                                                   <ArrowDown className="h-3 w-3" />
                                                 </Button>
                                               </div>
-                                              <span className="text-sm">{topic.name}</span>
+                                              {editingItem?.type === 'topic' && editingItem.id === topic.id ? null : (
+                                                <span className="text-sm">{topic.name}</span>
+                                              )}
                                             </div>
-                                            <span className="text-xs text-muted-foreground">
-                                              Order: {topic.display_order + 1}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                              {editingItem?.type === 'topic' && editingItem.id === topic.id ? (
+                                                <div className="flex items-center gap-1">
+                                                  <Input
+                                                    value={editingName}
+                                                    onChange={e => setEditingName(e.target.value)}
+                                                    className="h-6 text-xs w-32"
+                                                    onKeyDown={e => { if (e.key === 'Enter') saveEditing(); if (e.key === 'Escape') cancelEditing(); }}
+                                                    autoFocus
+                                                  />
+                                                  <Button size="sm" onClick={saveEditing} disabled={editSaving} className="h-6 px-1">
+                                                    {editSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                  </Button>
+                                                  <Button size="sm" variant="ghost" onClick={cancelEditing} className="h-6 px-1">×</Button>
+                                                </div>
+                                              ) : (
+                                                <>
+                                                  <span className="text-xs text-muted-foreground">Order: {topic.display_order + 1}</span>
+                                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEditing('topic', topic.id, topic.name)} title="Rename topic">
+                                                    <Edit className="h-3 w-3" />
+                                                  </Button>
+                                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500 hover:text-red-700" onClick={() => handleDeleteTopic(topic.id, topic.name)} title="Delete topic">
+                                                    <Trash2 className="h-3 w-3" />
+                                                  </Button>
+                                                </>
+                                              )}
+                                            </div>
                                           </div>
                                         ))}
                                       </div>
