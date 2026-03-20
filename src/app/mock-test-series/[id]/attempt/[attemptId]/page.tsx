@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   AlertCircle, Clock, ChevronLeft, ChevronRight, Flag, 
-  CheckCircle2, Circle, AlertTriangle, FileText, X 
+  CheckCircle2, Circle, AlertTriangle, FileText, X, CheckCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
@@ -173,11 +173,8 @@ export default function ExamAttemptPage() {
       }
 
       try {
-        const [examData, questionsResponse] = await Promise.all([
-          examService.getExamById(examId),
-          examService.getExamQuestions(examId, attemptId)
-        ]);
-        
+        const examData = await examService.getExamById(examId);
+
         if (!examData) {
           throw new Error('Exam not found');
         }
@@ -187,6 +184,8 @@ export default function ExamAttemptPage() {
         setSelectedLanguage(requestedLanguage);
         setLanguageSelectionMade(true);
         setTimeRemaining((examData.duration || 0) * 60);
+
+        const questionsResponse = await examService.getExamQuestions(examId, attemptId);
         
         console.log('API Response:', {
           sections_count: questionsResponse.sections.length,
@@ -614,13 +613,47 @@ export default function ExamAttemptPage() {
   }
 
   if (error) {
+    const isAlreadySubmitted = error.toLowerCase().includes('already submitted');
+
+    if (isAlreadySubmitted) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center py-12 px-4">
+          <div className="max-w-md w-full text-center">
+            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-6">
+              <CheckCheck className="h-10 w-10 text-blue-600" />
+            </div>
+            <h2 className="font-display text-2xl font-bold text-gray-900 mb-2">
+              Exam Already Submitted
+            </h2>
+            <p className="text-gray-500 mb-8">
+              You have already completed this exam. Head to your results to review your performance.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                onClick={() => router.push(`/results/${attemptId}`)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                View Results
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push(exam?.url_path || `/exams/${examId}`)}
+              >
+                Back to Exam
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center py-12">
         <div className="max-w-md text-center">
           <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
           <h2 className="font-display text-2xl font-bold mb-2">Unable to load exam</h2>
           <p className="text-muted-foreground mb-6">{error}</p>
-          <Button onClick={() => router.push(`/exams/${examId}`)}>Back to exam</Button>
+          <Button onClick={() => router.push(exam?.url_path || `/exams/${examId}`)}>Back to exam</Button>
         </div>
       </div>
     );

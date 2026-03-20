@@ -283,8 +283,9 @@ export const subcategoryAdminService = {
   async searchExams(search?: string) {
     const params = new URLSearchParams();
     params.set('page', '1');
-    params.set('limit', '20');
+    params.set('limit', '50');
     if (search) params.set('search', search);
+    params.set('exam_type', 'all');
 
     const data = await authFetch(`/admin/exams?${params.toString()}`);
     if (Array.isArray(data.data)) {

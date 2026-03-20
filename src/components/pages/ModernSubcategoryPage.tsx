@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -8,7 +8,7 @@ import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
-import { Download, Lock, Filter } from 'lucide-react';
+import { Download, Lock, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from "@/context/AuthContext";
 
 interface Block {
@@ -216,6 +216,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const [downloadingExamId, setDownloadingExamId] = useState<string | null>(null);
   const [isTabListOpen, setIsTabListOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchSubcategory = async () => {
@@ -878,10 +879,15 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const tableOfContents = useMemo<TableOfContentsEntry[]>(() => {
     if (!isContentTab) return [];
     return visibleSections
-      .map((section) => ({
-        id: buildSectionAnchor(section),
-        label: section.title || 'Untitled Section'
-      }))
+      .map((section) => {
+        const rawLabel = section.title || 'Untitled Section';
+        // Strip HTML tags so TOC shows plain text
+        const plainLabel = rawLabel.replace(/<[^>]*>/g, '').trim() || 'Untitled Section';
+        return {
+          id: buildSectionAnchor(section),
+          label: plainLabel,
+        };
+      })
       .filter((entry) => Boolean(entry.id));
   }, [visibleSections, isContentTab, buildSectionAnchor]);
 
@@ -966,8 +972,18 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className="container-main">
-          <div className="flex items-center gap-3 py-4">
-            <div className="flex-1 overflow-x-auto hide-scrollbar">
+          <div className="flex items-center py-4" style={{ gap: "8px" }}>
+            {/* Left scroll arrow */}
+            <button
+              type="button"
+              aria-label="Scroll tabs left"
+              className="tab-scroll-arrow flex-shrink-0 items-center justify-center w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors shadow-sm"
+              onClick={() => tabScrollRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div ref={tabScrollRef} className="flex-1 overflow-x-auto hide-scrollbar">
               <div className="flex items-center space-x-6">
                 {tabItems.map((tab) => (
                   <button
@@ -982,6 +998,18 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                 ))}
               </div>
             </div>
+
+            {/* Right scroll arrow */}
+            <button
+              type="button"
+              aria-label="Scroll tabs right"
+              className="tab-scroll-arrow flex-shrink-0 items-center justify-center w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors shadow-sm"
+              onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* Mobile "More" button */}
             <button
               type="button"
               className="md:hidden whitespace-nowrap text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 flex-shrink-0"

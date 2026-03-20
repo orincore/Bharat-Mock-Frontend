@@ -5,7 +5,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
-import { Download, ChevronRight, ArrowRight, BookOpen } from "lucide-react";
+import { Download, ChevronRight, ChevronLeft, ArrowRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
 interface Block {
@@ -157,6 +157,7 @@ export default function NewCategoryPage({
 }: NewCategoryPageProps) {
   const router = useRouter();
   const overviewRef = useRef<HTMLDivElement>(null);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
 
   const [category, setCategory] = useState<Category | null>(null);
   const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([]);
@@ -443,8 +444,18 @@ export default function NewCategoryPage({
       {/* Tab bar */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className={containerClass}>
-          <div className="flex items-center gap-3 py-4">
-            <div className="flex-1 overflow-x-auto hide-scrollbar">
+          <div className="flex items-center py-4" style={{ gap: "8px" }}>
+            {/* Left scroll arrow */}
+            <button
+              type="button"
+              aria-label="Scroll tabs left"
+              className="tab-scroll-arrow flex-shrink-0 items-center justify-center w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors shadow-sm"
+              onClick={() => tabScrollRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div ref={tabScrollRef} className="flex-1 overflow-x-auto hide-scrollbar">
               <div className="flex items-center space-x-6">
                 {tabItems.map((tab) => (
                   <button
@@ -461,6 +472,18 @@ export default function NewCategoryPage({
                 ))}
               </div>
             </div>
+
+            {/* Right scroll arrow */}
+            <button
+              type="button"
+              aria-label="Scroll tabs right"
+              className="tab-scroll-arrow flex-shrink-0 items-center justify-center w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors shadow-sm"
+              onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* Mobile "More" button */}
             <button
               type="button"
               className="md:hidden whitespace-nowrap text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 flex-shrink-0"

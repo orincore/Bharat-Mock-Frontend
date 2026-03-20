@@ -269,7 +269,7 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
       setSearching(true);
       const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '') || '/api/v1';
       const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
-      const res = await fetch(`${apiBase}/exams?search=${encodeURIComponent(term.trim())}&limit=10`, {
+      const res = await fetch(`${apiBase}/exams?search=${encodeURIComponent(term.trim())}&limit=50&exam_type=all`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!res.ok) throw new Error('Search failed');
@@ -504,7 +504,10 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
 }) => {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const savedRangeRef = useRef<Range | null>(null);
+  const linkInputRef = useRef<HTMLInputElement | null>(null);
   const [showMathPicker, setShowMathPicker] = useState(false);
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,
@@ -614,9 +617,67 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
 
   const insertLink = () => {
     if (typeof window === 'undefined') return;
-    const url = window.prompt('Enter URL');
-    if (!url) return;
-    exec('createLink', url);
+    // Save current selection
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+    // Pre-fill URL if cursor is inside an existing link
+    const anchorNode = sel?.anchorNode || null;
+    let existingHref = '';
+    let cur: Node | null = anchorNode;
+    while (cur && editorRef.current && cur !== editorRef.current) {
+      if ((cur as HTMLElement).tagName === 'A') {
+        existingHref = (cur as HTMLAnchorElement).href || '';
+        break;
+      }
+      cur = cur.parentNode;
+    }
+    setLinkUrl(existingHref);
+    setShowLinkPopover(true);
+    setTimeout(() => linkInputRef.current?.focus(), 50);
+  };
+
+  const applyLink = () => {
+    if (typeof document === 'undefined') return;
+    editorRef.current?.focus();
+    if (savedRangeRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
+    if (linkUrl.trim()) {
+      const url = linkUrl.trim().startsWith('http') ? linkUrl.trim() : `https://${linkUrl.trim()}`;
+      document.execCommand('createLink', false, url);
+      // Set target="_blank" on the newly created link
+      const links = editorRef.current?.querySelectorAll('a');
+      links?.forEach(a => { if (!a.target) a.target = '_blank'; });
+    } else {
+      document.execCommand('unlink', false);
+    }
+    handleInput();
+    updateActiveFormats();
+    setShowLinkPopover(false);
+    setLinkUrl('');
+  };
+
+  const removeLink = () => {
+    if (typeof document === 'undefined') return;
+    editorRef.current?.focus();
+    if (savedRangeRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
+    document.execCommand('unlink', false);
+    handleInput();
+    updateActiveFormats();
+    setShowLinkPopover(false);
+    setLinkUrl('');
   };
 
   const insertCode = () => {
@@ -811,7 +872,6 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     { label: 'I', title: 'Italic', action: () => exec('italic'), key: 'italic' as const },
     { label: 'U', title: 'Underline', action: () => exec('underline'), key: 'underline' as const },
     { label: '</>', title: 'Code', action: insertCode, key: 'code' as const },
-    { label: 'Link', title: 'Insert link', action: insertLink, key: 'link' as const },
     { label: '•', title: 'Bulleted list', action: () => exec('insertUnorderedList'), key: 'bulletList' as const },
     { label: '1.', title: 'Numbered list', action: () => exec('insertOrderedList'), key: 'numberedList' as const },
     { label: '↵', title: 'Insert line break', action: insertLineBreak },
@@ -825,7 +885,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
       {label && <label className="block text-sm font-medium text-gray-700">{label}</label>}
       <div className="border border-gray-200 rounded-xl bg-white">
         <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-gray-100">
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 items-center">
             {buttons.map((button) => {
               const isActive = button.key ? activeFormats[button.key] : false;
               return (
@@ -843,6 +903,59 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
                 </button>
               );
             })}
+            {/* Link button with inline popover */}
+            <div className="relative">
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); insertLink(); }}
+                className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${activeFormats.link ? 'bg-gray-200 text-blue-600' : ''}`}
+                title="Insert / edit link"
+              >
+                Link
+              </button>
+              {showLinkPopover && (
+                <div
+                  className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-3 w-72"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  <p className="text-xs font-semibold text-gray-600 mb-2">Insert / Edit Link</p>
+                  <input
+                    ref={linkInputRef}
+                    type="text"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyLink(); } if (e.key === 'Escape') { setShowLinkPopover(false); } }}
+                    placeholder="https://example.com"
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={applyLink}
+                      className="flex-1 px-2 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Apply
+                    </button>
+                    {activeFormats.link && (
+                      <button
+                        type="button"
+                        onClick={removeLink}
+                        className="px-2 py-1.5 text-xs font-semibold border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowLinkPopover(false)}
+                      className="px-2 py-1.5 text-xs font-semibold border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             {/* Math symbols picker */}
             <div className="relative math-picker-root">
               <button
