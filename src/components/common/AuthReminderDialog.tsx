@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Crown, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,8 @@ import { subscriptionService, SubscriptionPlan } from '@/lib/api/subscriptionSer
 
 const STORAGE_KEY = 'auth_reminder_dismissed';
 const GUEST_DISMISS_KEY = 'login_reminder_dismissed';
-const GUEST_REMINDER_DELAY_MS = 30_000; // 30 seconds
+const GUEST_REMINDER_DELAY_MS = 60_000;   // 60 seconds
+const UPSELL_REMINDER_DELAY_MS = 45_000;  // 45 seconds
 
 type DialogVariant = 'guest' | 'upsell' | null;
 
@@ -87,7 +88,13 @@ export function AuthReminderDialog() {
       return;
     }
 
-    openDialog('upsell');
+    const timer = window.setTimeout(() => {
+      openDialog('upsell');
+    }, UPSELL_REMINDER_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [user, upsellDismissKey]);
 
   useEffect(() => {
@@ -175,34 +182,50 @@ export function AuthReminderDialog() {
     const isSelected = plan.id === selectedPlan?.id;
     const effectivePrice = plan.sale_price_cents ?? plan.price_cents ?? plan.normal_price_cents;
     const discount = savingsPercent(plan);
+    const months = Math.round(plan.duration_days / 30);
+    const isYearly = plan.duration_days >= 360;
+
     return (
       <button
         key={plan.id}
         onClick={() => setSelectedPlanId(plan.id)}
-        className={`w-full rounded-2xl border px-4 py-3 text-left transition-all ${
+        className={`relative w-full rounded-2xl border-2 px-4 py-3.5 text-left transition-all duration-200 ${
           isSelected
-            ? 'border-amber-400 bg-amber-50 shadow-[0_0_0_2px_rgba(251,191,36,0.25)]'
-            : 'border-gray-200 hover:border-amber-300 hover:bg-amber-50/30'
+            ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg shadow-amber-100'
+            : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
         }`}
       >
+        {isYearly && (
+          <span className="absolute -top-2.5 right-3 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 px-2.5 py-0.5 text-[10px] font-bold text-black uppercase tracking-wide shadow">
+            <Sparkles className="h-2.5 w-2.5" /> Best Value
+          </span>
+        )}
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-gray-900">{plan.name}</p>
-            <p className="text-xs text-gray-500">Valid for {plan.duration_days} days</p>
+            <p className={`text-sm font-bold ${isSelected ? 'text-gray-900' : 'text-white'}`}>{plan.name}</p>
+            <p className={`text-xs mt-0.5 ${isSelected ? 'text-gray-500' : 'text-white/50'}`}>
+              {months} {months === 1 ? 'month' : 'months'} access
+            </p>
             {discount !== null && (
-              <p className="text-[11px] font-semibold text-emerald-600 mt-1">Saving {discount}%</p>
+              <span className={`mt-1 inline-block text-[11px] font-semibold ${isSelected ? 'text-emerald-600' : 'text-emerald-400'}`}>
+                Save {discount}%
+              </span>
             )}
           </div>
-          <div className="text-right">
+          <div className="text-right flex-shrink-0">
             {plan.sale_price_cents && plan.sale_price_cents < plan.normal_price_cents && (
-              <p className="text-xs text-gray-400 line-through">{formatCurrency(plan.normal_price_cents)}</p>
+              <p className={`text-xs line-through ${isSelected ? 'text-gray-400' : 'text-white/30'}`}>
+                {formatCurrency(plan.normal_price_cents)}
+              </p>
             )}
-            <p className="text-lg font-bold text-gray-900">{formatCurrency(effectivePrice)}</p>
+            <p className={`text-xl font-extrabold ${isSelected ? 'text-gray-900' : 'text-white'}`}>
+              {formatCurrency(effectivePrice)}
+            </p>
           </div>
         </div>
         {isSelected && (
-          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-600">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Best choice
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
+            <CheckCircle2 className="h-3 w-3" /> Selected
           </div>
         )}
       </button>
@@ -210,66 +233,95 @@ export function AuthReminderDialog() {
   };
 
   const renderUpsellContent = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(300px,1fr)]">
-      <div className="hidden lg:block bg-white overflow-hidden">
+    <div className="flex flex-col sm:flex-row w-full">
+
+      {/* Left — image, exactly half the dialog width, hidden on mobile */}
+      <div className="relative hidden sm:block sm:w-1/2 flex-shrink-0 overflow-hidden bg-[#0a1628]">
         <Image
           src="/assets/subscription_banner.jpg"
-          alt="Premium"
-          width={1500}
-          height={900}
+          alt="Bharat Mock Premium"
+          width={500}
+          height={600}
           priority
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover object-center"
+          style={{ display: 'block' }}
         />
+        {/* subtle dark overlay at bottom for badge readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
+        {/* badge pinned to bottom-left */}
+        <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-black/50 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-amber-300">
+          <Crown className="h-3.5 w-3.5" />
+          Bharat Mock Premium
+        </div>
       </div>
 
-      <div className="bg-white px-5 py-5 sm:px-6 sm:py-6 space-y-4 text-gray-900">
-        <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-gray-500">All Plans</p>
-          <h4 className="text-xl font-semibold mt-1">Choose your access</h4>
+      {/* Right — plan selector, exactly same width as left on desktop, full width on mobile */}
+      <div className="flex flex-col bg-white px-4 py-5 sm:px-6 sm:py-7 w-full sm:w-1/2 flex-shrink-0">
+
+        <div className="mb-3 sm:mb-4">
+          {/* mobile-only badge since image is hidden */}
+          <div className="sm:hidden mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-300/50 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+            <Crown className="h-3 w-3" />
+            Bharat Mock Premium
+          </div>
+          <p className="text-[11px] uppercase tracking-[0.35em] text-gray-400 font-semibold">Choose a plan</p>
+          <h4 className="mt-1 text-lg sm:text-xl font-bold text-gray-900">Unlock your full potential</h4>
+          <p className="mt-0.5 text-xs text-gray-500">Join lakhs of aspirants preparing with Bharat Mock.</p>
         </div>
 
-        <div className="space-y-2.5">
+        {/* plan cards */}
+        <div className="space-y-2 sm:space-y-2.5 rounded-2xl bg-[#0f1e3a] p-2.5 sm:p-3">
           {loadingPlans ? (
-            <div className="space-y-2.5">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={`skeleton-${index}`} className="h-18 rounded-2xl bg-gray-100 animate-pulse" />
-              ))}
-            </div>
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-2xl bg-white/10 animate-pulse" />
+            ))
           ) : sortedPlans.length ? (
             sortedPlans.slice(0, 4).map(renderPlanCard)
           ) : (
-            <p className="text-sm text-gray-500">Plans are unavailable right now. Please try again later.</p>
+            <p className="py-4 text-center text-sm text-white/50">Plans unavailable right now.</p>
           )}
         </div>
 
-        {selectedPlan && (
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs sm:text-sm text-gray-700 space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span>Selected plan</span>
-              <span className="text-gray-900 font-semibold text-sm">{selectedPlan.name}</span>
+        {/* summary */}
+        {selectedPlan && !loadingPlans && (
+          <div className="mt-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>Plan</span>
+              <span className="font-semibold text-gray-800">{selectedPlan.name}</span>
             </div>
-            <div className="flex items-center justify-between text-xs">
-              <span>Valid for</span>
-              <span>{Math.round(selectedPlan.duration_days / 30)} months</span>
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>Duration</span>
+              <span className="font-semibold text-gray-800">{Math.round(selectedPlan.duration_days / 30)} months</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span>Total payable</span>
-              <span className="text-lg font-bold text-gray-900">{formatCurrency(selectedPlan.sale_price_cents ?? selectedPlan.price_cents ?? selectedPlan.normal_price_cents)}</span>
+            <div className="flex items-center justify-between border-t border-gray-200 pt-2">
+              <span className="text-sm font-medium text-gray-700">Total payable</span>
+              <span className="text-xl font-extrabold text-gray-900">
+                {formatCurrency(selectedPlan.sale_price_cents ?? selectedPlan.price_cents ?? selectedPlan.normal_price_cents)}
+              </span>
             </div>
           </div>
         )}
 
-        <div>
+        {/* CTA */}
+        <div className="mt-4 space-y-2">
           <Button
-            className="w-full bg-amber-400 text-black hover:bg-amber-300 text-sm py-5"
+            className="w-full h-12 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-base shadow-lg shadow-amber-200 hover:from-amber-300 hover:to-orange-400 transition-all"
             asChild
             onClick={handleActionClick}
           >
-            <Link href="/subscriptions">Go to Subscriptions</Link>
+            <Link href="/subscriptions">
+              <Crown className="mr-2 h-4 w-4" />
+              Unlock Premium Now
+            </Link>
           </Button>
+          <button
+            onClick={handleActionClick}
+            className="w-full text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
+          >
+            Maybe later — continue with free access
+          </button>
         </div>
-
-        <p className="text-[11px] text-gray-500 text-center">Already premium? Enjoy uninterrupted access anytime.</p>
       </div>
     </div>
   );
@@ -317,8 +369,8 @@ export function AuthReminderDialog() {
     return null;
   }
 
-  const dialogMaxWidth = variant === 'upsell' ? 'max-w-[900px]' : 'max-w-md';
-  const dialogThemeClasses = 'bg-white text-gray-900';
+  const dialogMaxWidth = variant === 'upsell' ? 'max-w-[860px]' : 'max-w-md';
+  const dialogThemeClasses = variant === 'upsell' ? 'bg-white' : 'bg-white text-gray-900';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

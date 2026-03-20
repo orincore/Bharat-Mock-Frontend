@@ -12,6 +12,7 @@ import {
   Users2,
   Award
 } from 'lucide-react';
+import { FaTelegram } from 'react-icons/fa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -296,7 +297,7 @@ export default function ContactPage() {
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {socialLinks.map((link) => {
-                    const Icon = socialIconMap[link.icon || link.platform?.toLowerCase()] ?? Send;
+                    const Icon = socialIconMap[link.icon || link.platform?.toLowerCase()] ?? FaTelegram;
                     return (
                       <Link
                         key={link.id ?? link.url}

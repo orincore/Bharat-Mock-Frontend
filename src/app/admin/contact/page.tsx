@@ -11,6 +11,19 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react';
 import { fallbackContactInfo } from '@/lib/constants/contact';
+import { FaFacebook, FaInstagram, FaTwitter, FaLinkedin, FaYoutube, FaWhatsapp, FaTelegram, FaGithub, FaGlobe } from 'react-icons/fa';
+
+const SOCIAL_ICON_OPTIONS = [
+  { value: 'facebook',  label: 'Facebook',  Icon: FaFacebook },
+  { value: 'instagram', label: 'Instagram', Icon: FaInstagram },
+  { value: 'twitter',   label: 'Twitter',   Icon: FaTwitter },
+  { value: 'linkedin',  label: 'LinkedIn',  Icon: FaLinkedin },
+  { value: 'youtube',   label: 'YouTube',   Icon: FaYoutube },
+  { value: 'whatsapp',  label: 'WhatsApp',  Icon: FaWhatsapp },
+  { value: 'telegram',  label: 'Telegram',  Icon: FaTelegram },
+  { value: 'github',    label: 'GitHub',    Icon: FaGithub },
+  { value: 'website',   label: 'Website',   Icon: FaGlobe },
+];
 
 const createDefaultForm = (): ContactInfoInput => ({
   headline: fallbackContactInfo.headline,
@@ -413,13 +426,34 @@ export default function ContactAdminPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`icon-${index}`}>Icon (optional)</Label>
-                      <Input
-                        id={`icon-${index}`}
-                        value={link.icon ?? ''}
-                        onChange={(e) => updateSocialLink(index, 'icon', e.target.value)}
-                        placeholder="Defaults to platform name"
-                      />
+                      <Label htmlFor={`icon-${index}`}>Icon</Label>
+                      <div className="relative">
+                        <select
+                          id={`icon-${index}`}
+                          required
+                          value={link.icon ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const opt = SOCIAL_ICON_OPTIONS.find((o) => o.value === val);
+                            updateSocialLink(index, 'icon', val);
+                            updateSocialLink(index, 'platform', val);
+                            if (opt && !link.label) updateSocialLink(index, 'label', opt.label);
+                          }}
+                          className="w-full h-10 rounded-md border border-input bg-background px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
+                        >
+                          <option value="" disabled>Select icon…</option>
+                          {SOCIAL_ICON_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        {/* preview the selected icon */}
+                        {link.icon && (() => {
+                          const opt = SOCIAL_ICON_OPTIONS.find((o) => o.value === link.icon);
+                          return opt ? (
+                            <opt.Icon className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          ) : null;
+                        })()}
+                      </div>
                     </div>
                   </div>
 

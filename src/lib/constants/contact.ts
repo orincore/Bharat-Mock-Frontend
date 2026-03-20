@@ -1,27 +1,27 @@
 import { ContactInfo } from '@/types';
 import {
-  Facebook,
-  Twitter,
-  Instagram,
-  Linkedin,
-  Youtube,
-  MessageCircle,
-  Send,
-  Globe,
-  Github,
-  LucideIcon
-} from 'lucide-react';
+  FaFacebook,
+  FaTwitter,
+  FaInstagram,
+  FaLinkedin,
+  FaYoutube,
+  FaWhatsapp,
+  FaTelegram,
+  FaGlobe,
+  FaGithub,
+} from 'react-icons/fa';
+import type { IconType } from 'react-icons';
 
-export const socialIconMap: Record<string, LucideIcon> = {
-  facebook: Facebook,
-  twitter: Twitter,
-  instagram: Instagram,
-  linkedin: Linkedin,
-  youtube: Youtube,
-  whatsapp: MessageCircle,
-  telegram: Send,
-  website: Globe,
-  github: Github
+export const socialIconMap: Record<string, IconType> = {
+  facebook:  FaFacebook,
+  twitter:   FaTwitter,
+  instagram: FaInstagram,
+  linkedin:  FaLinkedin,
+  youtube:   FaYoutube,
+  whatsapp:  FaWhatsapp,
+  telegram:  FaTelegram,
+  website:   FaGlobe,
+  github:    FaGithub,
 };
 
 export const fallbackContactInfo: ContactInfo = {
