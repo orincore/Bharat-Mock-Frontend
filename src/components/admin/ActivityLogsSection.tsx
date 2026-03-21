@@ -5,7 +5,26 @@ import { Activity, Eye, Calendar, User, Filter } from 'lucide-react';
 import { activityLogService, ActivityLog } from '@/lib/api/activityLogService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
+
+function timeAgo(dateStr: string): string {
+  // Ensure the timestamp is treated as UTC (Supabase returns timestamps without Z)
+  const normalized = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+  const diff = Math.floor((Date.now() - new Date(normalized).getTime()) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) {
+    const m = Math.floor(diff / 60);
+    const s = diff % 60;
+    return s > 0 ? `${m}m ${s}s ago` : `${m}m ago`;
+  }
+  if (diff < 86400) {
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    return m > 0 ? `${h}h ${m}m ago` : `${h}h ago`;
+  }
+  const d = Math.floor(diff / 86400);
+  const h = Math.floor((diff % 86400) / 3600);
+  return h > 0 ? `${d}d ${h}h ago` : `${d}d ago`;
+}
 
 interface ActivityLogsSectionProps {
   onViewAll: () => void;
@@ -178,7 +197,7 @@ export default function ActivityLogsSection({ onViewAll }: ActivityLogsSectionPr
                 </div>
 
                 <div className="text-xs text-muted-foreground whitespace-nowrap">
-                  {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                  {timeAgo(log.created_at)}
                 </div>
               </div>
             ))}
