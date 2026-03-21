@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -17,14 +17,16 @@ import {
   Layers,
   History,
   Target,
-  ArrowRight
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { testSeriesService, TestSeries } from '@/lib/api/testSeriesService';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
-import { ExamCard } from '@/components/exam/ExamCard';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { Exam } from '@/types';
 import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -58,6 +60,12 @@ export default function TestSeriesDetailPage() {
   const [sidebarSeries, setSidebarSeries] = useState<TestSeries[]>([]);
   const [sidebarBanner, setSidebarBanner] = useState<PageBanner | null>(null);
   const [sidebarLoading, setSidebarLoading] = useState(true);
+  const sectionsScrollRef = useRef<HTMLDivElement>(null);
+  const topicsScrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
+    ref.current?.scrollBy({ left: dir === 'left' ? -240 : 240, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     if (slug) {
@@ -184,6 +192,7 @@ export default function TestSeriesDetailPage() {
       startDate: exam.startDate,
       endDate: exam.endDate,
       passPercentage: exam.passPercentage,
+      exam_categories: exam.exam_categories,
       negativeMarking: exam.negativeMarking,
       negativeMarkValue: exam.negativeMarkValue,
     };
@@ -487,31 +496,60 @@ export default function TestSeriesDetailPage() {
 
             {/* Section/Topic Tabs & Listings */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5 min-w-0 overflow-hidden">
-              {/* Sections — horizontal scroll on mobile, wrap on desktop */}
-              <div className="border-b border-slate-200 min-w-0">
-                <div className="flex items-center gap-4 overflow-x-auto pb-3 md:flex-wrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  {sectionFilters.map(section => (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveTab(section.id)}
-                      className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
-                        activeTab === section.id ? 'text-blue-600' : 'text-slate-500'
-                      }`}
-                    >
-                      {section.name} ({section.count})
-                      {activeTab === section.id && (
-                        <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
-                      )}
-                    </button>
-                  ))}
+              {/* Sections — inline arrows on desktop */}
+              <div className="border-b border-slate-200 pb-0">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => scroll(sectionsScrollRef, 'left')}
+                    className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
+                    aria-label="Scroll sections left"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-slate-600" />
+                  </button>
+                  <div
+                    ref={sectionsScrollRef}
+                    className="flex items-center gap-4 overflow-x-auto pb-3 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
+                  >
+                    {sectionFilters.map(section => (
+                      <button
+                        key={section.id}
+                        onClick={() => setActiveTab(section.id)}
+                        className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
+                          activeTab === section.id ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {section.name} ({section.count})
+                        {activeTab === section.id && (
+                          <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => scroll(sectionsScrollRef, 'right')}
+                    className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
+                    aria-label="Scroll sections right"
+                  >
+                    <ChevronRight className="h-4 w-4 text-slate-600" />
+                  </button>
                 </div>
               </div>
 
               {currentSection ? (
                 <>
-                  {/* Topics — horizontal scroll on mobile, wrap on desktop */}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-3 overflow-x-auto pb-1 md:flex-wrap md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* Topics — inline arrows on desktop */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => scroll(topicsScrollRef, 'left')}
+                      className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                      aria-label="Scroll topics left"
+                    >
+                      <ChevronLeft className="h-4 w-4 text-slate-600" />
+                    </button>
+                    <div
+                      ref={topicsScrollRef}
+                      className="flex items-center gap-3 overflow-x-auto pb-1 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
+                    >
                       {(sectionTopicFilters.get(currentSection.id) || []).map(topic => (
                         <button
                           key={topic.id}
@@ -519,7 +557,7 @@ export default function TestSeriesDetailPage() {
                             setSelectedTopicId(prev => (prev === topic.id ? null : topic.id))
                           }
                           className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                            selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                            selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                           }`}
                         >
                           {topic.name} ({topic.count})
@@ -529,12 +567,27 @@ export default function TestSeriesDetailPage() {
                         <p className="text-sm text-muted-foreground">No topics available for this section.</p>
                       )}
                     </div>
+                    <button
+                      onClick={() => scroll(topicsScrollRef, 'right')}
+                      className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                      aria-label="Scroll topics right"
+                    >
+                      <ChevronRight className="h-4 w-4 text-slate-600" />
+                    </button>
                   </div>
 
                   {searchedSectionEntries.length > 0 ? (
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                       {searchedSectionEntries.map(entry => (
-                        <ExamCard key={entry.raw.id} exam={entry.card} />
+                        <StandardExamCard
+                          key={entry.raw.id}
+                          exam={{
+                            ...entry.card,
+                            category_logo_url: entry.card.exam_categories?.logo_url,
+                            category_icon: entry.card.exam_categories?.icon,
+                          }}
+                          ctaLabel="Attempt Now"
+                        />
                       ))}
                     </div>
                   ) : (
@@ -554,7 +607,15 @@ export default function TestSeriesDetailPage() {
                 <h2 className="text-xl font-semibold text-slate-900">Other Tests</h2>
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {uncategorized.map((entry) => (
-                    <ExamCard key={entry.raw.id} exam={entry.card} />
+                    <StandardExamCard
+                      key={entry.raw.id}
+                      exam={{
+                        ...entry.card,
+                        category_logo_url: entry.card.exam_categories?.logo_url,
+                        category_icon: entry.card.exam_categories?.icon,
+                      }}
+                      ctaLabel="Attempt Now"
+                    />
                   ))}
                 </div>
               </div>
@@ -683,7 +744,7 @@ export default function TestSeriesDetailPage() {
             {faqItems.map((item, idx) => (
               <AccordionItem key={item.question} value={`faq-${idx}`}>
                 <AccordionTrigger className="text-left text-base font-semibold text-slate-800">
-                  {item.question}
+                  <h3 className="inline text-base font-semibold text-slate-800 text-left">{item.question}</h3>
                 </AccordionTrigger>
                 <AccordionContent className="text-sm text-slate-600 leading-relaxed">
                   {item.answer}

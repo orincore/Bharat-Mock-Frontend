@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Search, Filter, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ExamCard } from '@/components/exam/ExamCard';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
@@ -291,7 +291,7 @@ export default function QuizzesPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="gradient-hero py-10">
-        <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
+        <div className="container-main">
           <div className="max-w-3xl">
             <Breadcrumbs items={[HomeBreadcrumb(), { label: 'Quizzes' }]} variant="dark" className="mb-6" />
             <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
@@ -315,7 +315,7 @@ export default function QuizzesPage() {
         </div>
       </section>
 
-      <div className="relative w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 py-12">
+      <div className="container-main py-12">
         {/* Mobile filter toggle */}
         <div className="lg:hidden mb-6">
           <button type="button" onClick={() => setMobileFiltersOpen((p) => !p)}
@@ -369,7 +369,7 @@ export default function QuizzesPage() {
             ) : (
               <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {exams.map((exam) => (
-                  <ExamCard key={exam.id} exam={exam} />
+                  <StandardExamCard key={exam.id} exam={{ ...exam, category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }} />
                 ))}
               </div>
             )}

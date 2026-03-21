@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ExamCard } from '@/components/exam/ExamCard';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { examService } from '@/lib/api/examService';
 import { Exam } from '@/types';
 import { GraduationCap, Loader2 } from 'lucide-react';
@@ -75,26 +75,29 @@ export const LiveExamCardsBlock: React.FC<LiveExamCardsBlockProps> = ({ content 
   }
 
   const normalizedColumns = Math.min(Math.max(Number(columns) || 1, 1), 4);
-  const minCardWidth = normalizedColumns >= 3 ? 240 : 280;
+  const minCardWidth = normalizedColumns >= 3 ? 200 : 240;
   const gridStyle = layout === 'list'
     ? undefined
     : ({
-        gridTemplateColumns: `repeat(auto-fit, minmax(${minCardWidth}px, 1fr))`
+        gridTemplateColumns: `repeat(auto-fit, minmax(min(${minCardWidth}px, 100%), 1fr))`
       } as React.CSSProperties);
   const gridClass = layout === 'list'
     ? 'flex flex-col gap-4'
     : 'grid gap-5';
 
   return (
-    <div className="block-exam-cards">
+    <div className="block-exam-cards min-w-0 overflow-hidden">
       <Header title={title} />
       <div className={gridClass} style={gridStyle}>
-        {exams.map((exam) => (
-          <div
-            key={exam.id}
-            className="rounded-2xl border border-slate-200 bg-white/90 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.35)] ring-1 ring-slate-100/80 hover:shadow-[0_24px_50px_-20px_rgba(15,23,42,0.4)] hover:border-blue-200 transition-all duration-300"
-          >
-            <ExamCard exam={exam} />
+      {exams.map((exam) => (
+          <div key={exam.id} className="min-w-0 overflow-hidden">
+            <StandardExamCard
+              exam={{
+                ...exam,
+                category_logo_url: exam.exam_categories?.logo_url,
+                category_icon: exam.exam_categories?.icon,
+              }}
+            />
           </div>
         ))}
       </div>

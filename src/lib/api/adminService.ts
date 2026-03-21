@@ -129,6 +129,8 @@ interface CreateExamData {
   test_series_topic_id?: string;
   exam_date?: string;
   display_order?: number;
+  paper_section_id?: string;
+  paper_topic_id?: string;
 }
 
 interface CreateSectionData {

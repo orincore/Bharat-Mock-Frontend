@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Filter, BookOpen, Crown, FileText } from 'lucide-react';
+import { Search, Filter, BookOpen, Crown, FileText, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ExamCard } from '@/components/exam/ExamCard';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { examService } from '@/lib/api/examService';
 import { taxonomyService, Difficulty, Category, Subcategory } from '@/lib/api/taxonomyService';
+import { paperSectionsService, PaperSection, PaperTopic } from '@/lib/api/paperSectionsService';
 import { Exam } from '@/types';
 
 const PAPER_EXAM_TYPE = 'past_paper';
@@ -45,6 +46,15 @@ export default function PrevPapersPage() {
   const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>('');
 
+  // Paper sections and topics
+  const [paperSections, setPaperSections] = useState<PaperSection[]>([]);
+  const [paperTopics, setPaperTopics] = useState<PaperTopic[]>([]);
+  const [sectionsLoading, setSectionsLoading] = useState(true);
+  const [activeSectionId, setActiveSectionId] = useState<string>('');
+  const [selectedTopicId, setSelectedTopicId] = useState<string>('');
+  const sectionsScrollRef = useRef<HTMLDivElement>(null);
+  const topicsScrollRef = useRef<HTMLDivElement>(null);
+
   const [filters, setFilters] = useState({
     search: '',
     category: '',
@@ -52,7 +62,7 @@ export default function PrevPapersPage() {
     difficulty: '',
     status: '',
     exam_type: PAPER_EXAM_TYPE,
-    is_premium: '', // Don't filter by premium status initially
+    is_premium: '',
   });
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const activeRequestRef = useRef(0);
@@ -60,15 +70,20 @@ export default function PrevPapersPage() {
 
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 12,
+    limit: 100,
     total: 0,
     totalPages: 0,
   });
+
+  const scroll = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
+    ref.current?.scrollBy({ left: dir === 'left' ? -240 : 240, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     fetchCategories();
     fetchSubcategories();
     fetchDifficulties();
+    fetchPaperSections();
   }, []);
 
   useEffect(() => {
@@ -81,7 +96,9 @@ export default function PrevPapersPage() {
     filters.is_premium,
     pagination.page,
     debouncedSearch,
-    selectedYear
+    selectedYear,
+    activeSectionId,
+    selectedTopicId
   ]);
 
   useEffect(() => {
@@ -91,6 +108,28 @@ export default function PrevPapersPage() {
     return () => clearTimeout(handle);
   }, [filters.search]);
 
+  const fetchPaperSections = async () => {
+    setSectionsLoading(true);
+    try {
+      const sections = await paperSectionsService.getSections();
+      const topics = await paperSectionsService.getTopics();
+      console.log('Fetched paper sections:', sections);
+      console.log('Fetched paper topics:', topics);
+      setPaperSections(sections.filter(s => s.is_active !== false));
+      setPaperTopics(topics.filter(t => t.is_active !== false));
+      
+      // Set first section as active by default
+      if (sections.length > 0 && !activeSectionId) {
+        setActiveSectionId(sections[0].id);
+        console.log('Set active section:', sections[0].id, sections[0].name);
+      }
+    } catch (err) {
+      console.error('Failed to fetch paper sections:', err);
+    } finally {
+      setSectionsLoading(false);
+    }
+  };
+
   const fetchCategories = async () => {
     setCategoriesLoading(true);
     try {
@@ -98,8 +137,6 @@ export default function PrevPapersPage() {
       const sorted = data
         .filter((category) => category.is_active !== false)
         .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
-      
-      console.log('Available categories:', sorted.map(c => ({ id: c.id, name: c.name, slug: c.slug })));
       setCategories(sorted);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
@@ -113,13 +150,6 @@ export default function PrevPapersPage() {
     try {
       const data = await taxonomyService.getSubcategories();
       const filtered = data.filter((sub) => sub.name);
-      
-      console.log('Available subcategories:', filtered.map(s => ({ 
-        id: s.id, 
-        name: s.name, 
-        slug: s.slug, 
-        category_id: s.category_id 
-      })));
       setSubcategories(filtered);
     } catch (err) {
       console.error('Failed to fetch subcategories:', err);
@@ -146,60 +176,25 @@ export default function PrevPapersPage() {
     setError('');
 
     try {
-      // Clean up the request parameters to avoid sending empty strings
       const requestParams: any = {
         page: pagination.page,
         limit: pagination.limit,
-        exam_type: PAPER_EXAM_TYPE, // Always filter for past papers
+        exam_type: PAPER_EXAM_TYPE,
       };
 
-      // Only add non-empty filter values
-      if (debouncedSearch.trim()) {
-        requestParams.search = debouncedSearch.trim();
-      }
-      
-      if (filters.category.trim()) {
-        requestParams.category = filters.category.trim();
-      }
-      
-      if (filters.subcategory.trim()) {
-        requestParams.subcategory = filters.subcategory.trim();
-      }
-      
-      if (filters.difficulty.trim()) {
-        requestParams.difficulty = filters.difficulty.trim();
-      }
-      
-      if (filters.status.trim()) {
-        requestParams.status = filters.status.trim();
-      }
-      
-      if (filters.is_premium.trim()) {
-        requestParams.is_premium = filters.is_premium.trim();
-      }
-      
-      if (selectedYear) {
-        requestParams.year = selectedYear;
-      }
-
-      // Debug logging
-      console.log('Fetching exams with params:', requestParams);
-      console.log('Selected filters:', {
-        selectedCategoryId,
-        selectedSubcategoryId,
-        selectedDifficultyId,
-        selectedYear,
-        activeTab
-      });
+      if (debouncedSearch.trim()) requestParams.search = debouncedSearch.trim();
+      if (filters.category.trim()) requestParams.category = filters.category.trim();
+      if (filters.subcategory.trim()) requestParams.subcategory = filters.subcategory.trim();
+      if (filters.difficulty.trim()) requestParams.difficulty = filters.difficulty.trim();
+      if (filters.status.trim()) requestParams.status = filters.status.trim();
+      if (filters.is_premium.trim()) requestParams.is_premium = filters.is_premium.trim();
+      if (selectedYear) requestParams.year = selectedYear;
+      if (activeSectionId) requestParams.paper_section_id = activeSectionId;
+      if (selectedTopicId) requestParams.paper_topic_id = selectedTopicId;
 
       const response = await examService.getExams(requestParams);
 
       if (requestId !== activeRequestRef.current) return;
-
-      console.log('Exam response:', response);
-      console.log('Found exams count:', response.data.length);
-      console.log('Available years:', response.years);
-      console.log('Sample exam data:', response.data.slice(0, 2));
 
       const enrichedExams: ExamWithDerivedYear[] = [...response.data].map((exam) => ({
         ...exam,
@@ -264,7 +259,6 @@ export default function PrevPapersPage() {
     setSelectedCategoryId(categoryId);
     handleFilterChange('category', buildCategoryFilterValue(categoryId));
 
-    // Clear subcategory if it doesn't belong to the selected category
     if (categoryId && selectedSubcategoryId) {
       const subcategory = subcategories.find((sub) => sub.id === selectedSubcategoryId);
       if (subcategory && subcategory.category_id !== categoryId) {
@@ -272,7 +266,6 @@ export default function PrevPapersPage() {
         handleFilterChange('subcategory', '');
       }
     } else if (!categoryId) {
-      // If no category selected, clear subcategory
       setSelectedSubcategoryId('');
       handleFilterChange('subcategory', '');
     }
@@ -282,7 +275,6 @@ export default function PrevPapersPage() {
     setSelectedSubcategoryId(subcategoryId);
     handleFilterChange('subcategory', buildSubcategoryFilterValue(subcategoryId));
 
-    // If a subcategory is selected, ensure its parent category is also selected
     if (subcategoryId) {
       const targetSubcategory = subcategories.find((sub) => sub.id === subcategoryId);
       if (targetSubcategory && selectedCategoryId !== targetSubcategory.category_id) {
@@ -307,8 +299,19 @@ export default function PrevPapersPage() {
     setFilters((prev) => ({
       ...prev,
       exam_type: PAPER_EXAM_TYPE,
-      is_premium: tab === 'premium' ? 'true' : '', // Use empty string for 'all' to include both premium and free
+      is_premium: tab === 'premium' ? 'true' : '',
     }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleSectionChange = (sectionId: string) => {
+    setActiveSectionId(sectionId);
+    setSelectedTopicId('');
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleTopicChange = (topicId: string) => {
+    setSelectedTopicId(topicId === selectedTopicId ? '' : topicId);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -320,18 +323,37 @@ export default function PrevPapersPage() {
       difficulty: '',
       status: '',
       exam_type: PAPER_EXAM_TYPE,
-      is_premium: activeTab === 'premium' ? 'true' : '', // Use empty string for 'all'
+      is_premium: activeTab === 'premium' ? 'true' : '',
     });
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
     setSelectedDifficultyId('');
     setSelectedYear('');
+    setSelectedTopicId('');
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const filteredSubcategories = selectedCategoryId
     ? subcategories.filter((sub) => sub.category_id === selectedCategoryId)
     : subcategories;
+
+  const currentSectionTopics = useMemo(() => {
+    if (!activeSectionId) return [];
+    const topics = paperTopics.filter(topic => topic.section_id === activeSectionId);
+    console.log('Current section topics for', activeSectionId, ':', topics);
+    return topics;
+  }, [activeSectionId, paperTopics]);
+
+  const sectionCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    paperSections.forEach(section => {
+      const sectionExams = exams.filter(exam => 
+        (exam as any).paper_section_id === section.id
+      );
+      counts[section.id] = sectionExams.length;
+    });
+    return counts;
+  }, [paperSections, exams]);
 
   const isFilterDataLoading = categoriesLoading || difficultiesLoading || subcategoriesLoading;
   const hasCustomFilters = Boolean(
@@ -504,7 +526,7 @@ export default function PrevPapersPage() {
       <section className="relative overflow-hidden bg-gradient-to-br from-[#0a1833] via-[#0f2347] to-[#1a3a6b] text-white py-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,153,51,0.12),_transparent_55%)]" />
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
-        <div className="relative w-full px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-32">
+        <div className="relative container-main">
           <div className="max-w-3xl">
             <Breadcrumbs
               items={[HomeBreadcrumb(), { label: 'Previous Year Papers' }]}
@@ -540,7 +562,7 @@ export default function PrevPapersPage() {
         </div>
       </section>
 
-      <div className="relative w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 py-12">
+      <div className="container-main py-12">
         <div className="lg:hidden mb-6">
           <button
             type="button"
@@ -627,6 +649,97 @@ export default function PrevPapersPage() {
               </div>
             )}
 
+            {/* Sections and Topics Tabs */}
+            {paperSections.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5 mb-6 min-w-0 overflow-hidden">
+                {/* Sections */}
+                <div className="border-b border-slate-200 pb-0">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => scroll(sectionsScrollRef, 'left')}
+                      className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
+                      aria-label="Scroll sections left"
+                    >
+                      <ChevronLeft className="h-4 w-4 text-slate-600" />
+                    </button>
+                    <div
+                      ref={sectionsScrollRef}
+                      className="flex items-center gap-4 overflow-x-auto pb-3 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
+                    >
+                      <button
+                        onClick={() => handleSectionChange('')}
+                        className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
+                          activeSectionId === '' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        All Papers ({exams.length})
+                        {activeSectionId === '' && (
+                          <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
+                        )}
+                      </button>
+                      {paperSections.map(section => (
+                        <button
+                          key={section.id}
+                          onClick={() => handleSectionChange(section.id)}
+                          className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
+                            activeSectionId === section.id ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          {section.name} ({sectionCounts[section.id] || 0})
+                          {activeSectionId === section.id && (
+                            <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => scroll(sectionsScrollRef, 'right')}
+                      className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
+                      aria-label="Scroll sections right"
+                    >
+                      <ChevronRight className="h-4 w-4 text-slate-600" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Topics */}
+                {currentSectionTopics.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => scroll(topicsScrollRef, 'left')}
+                      className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                      aria-label="Scroll topics left"
+                    >
+                      <ChevronLeft className="h-4 w-4 text-slate-600" />
+                    </button>
+                    <div
+                      ref={topicsScrollRef}
+                      className="flex items-center gap-3 overflow-x-auto pb-1 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
+                    >
+                      {currentSectionTopics.map(topic => (
+                        <button
+                          key={topic.id}
+                          onClick={() => handleTopicChange(topic.id)}
+                          className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                            selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {topic.name}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => scroll(topicsScrollRef, 'right')}
+                      className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                      aria-label="Scroll topics right"
+                    >
+                      <ChevronRight className="h-4 w-4 text-slate-600" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {error && (
               <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 mb-6">
                 <div className="flex items-start gap-3">
@@ -682,7 +795,7 @@ export default function PrevPapersPage() {
             ) : (
               <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {exams.map((exam) => (
-                  <ExamCard key={exam.id} exam={exam} variant={activeTab === 'premium' ? 'premium' : 'default'} />
+                  <StandardExamCard key={exam.id} exam={{ ...exam, category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }} />
                 ))}
               </div>
             )}

@@ -511,48 +511,6 @@ export default function LiveTestsPage() {
             </TabsContent>
           </Tabs>
 
-          <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
-            <header className="space-y-2">
-              <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
-              <h2 className="font-display text-3xl font-bold">Why the Live Tests calendar is your competitive advantage</h2>
-              <p className="text-base text-muted-foreground">
-                Settle in for a detailed narrative that connects the UI you are scrolling through with the discipline, analytics, and accountability needed to ace nationwide exams.
-              </p>
-            </header>
-            <div className="space-y-4 text-muted-foreground leading-relaxed text-base md:text-lg">
-              <p>
-                Bharat Mock live fixtures are built to replicate the electric tension of center-based exams while still giving you the convenience of attempting from wherever you are. Every timer tick, leaderboard update, and proctored checkpoint is meticulously choreographed so that your muscle memory for actual exam day is forged weeks in advance. Instead of passively reading notes, you are inserted into a vibrant arena where lakhs of aspirants jostle for the same selection and every mark reclaimed from negative marking counts toward a life-changing cutoff. The Live Tests page acts as a central pit lane where you configure your car, refuel, and preview the circuit before another blistering lap of competition.
-              </p>
-              <p>
-                To make those preparations tangible, each live test listing includes micro-details such as sectional timing, average accuracy benchmarks from the last cohort, and suggested buffer slots for revision. When you scroll through the Live Tests page after dinner or between coaching lectures, you are effectively building a personalized tournament bracket. Maybe you begin with a 30 minute reasoning duel on Tuesday, stack a bilingual GS sprint on Thursday, and close the week with a mega mock on Sunday morning. The platform stores these commitments so that reminder notifications and calendar nudges keep you honest even when fatigue tempts you to skip a session. Discipline, once scheduled, becomes simpler to execute.
-              </p>
-              <p>
-                Live quizzes deserve special mention because they weaponize the power of short, intense bursts of cognition. Ten to fifteen carefully balanced questions delivered in a ten minute window create the same adrenaline spike as the rapid-fire sections of SSC, banking, and state PSC prelims. On the quizzes tab you can filter by category, difficulty, or language preference and immediately see how many aspirants are queued for the next slot. The streak tracker sitting beside each card is more than a vanity metric; it is a behavioral nudge reminding you that consistency beats sporadic genius. Miss one day and the streak resets, but keep the chain alive for a month and your subconscious begins expecting victory.
-              </p>
-              <p>
-                Behind the interface sits an orchestration engine that quietly reconciles thousands of constraints pulled from the backend schedule service. When the admin team marks a new exam as live, the cache invalidates, the status propagates to the tabs, and your feed refreshes without needing a hard reload. If you belong to multiple categories—say BPSC and CTET—the recommendation logic alternates fixtures so you never go two weeks without facing pedagogy or reasoning. This dynamic feed is the opposite of a static PDF calendar; it reacts to your filters, search phrases, and completion history, serving up opportunities that match both your ambition and available bandwidth.
-              </p>
-              <p>
-                Preparation is not a solitary pursuit, and the long-form narrative attached to this page serves as a mentor whispering strategies in your ear. Imagine scanning the hero banner and noticing a note about limited seats—that is a cue to assemble your study circle, pick roles, and run a pre-test huddle. One friend might own vocabulary recaps, another could audit the formula sheet, while you simulate the online interface for the group. The moment the live window opens, you are not just answering questions; you are representing a team that will dissect the analytics afterward, celebrate percentile jumps, and draft counterplans for any topics that exposed gaps.
-              </p>
-              <p>
-                Speaking of analytics, Bharat Mock's post-test breakdowns dive deeper than generic scorecards. Once you finish a live mock or quiz, the dashboard overlays your timeline with the national average, highlights segments where hesitation taxes were paid, and points to remedial video lessons curated by faculty. Over time, these insights become a narrative arc: perhaps your accuracy in data interpretation rose from 52% to 71% after three weekend sprints, or your Hindi comprehension climbed once you toggled the bilingual view. The Live Tests page is essentially chapter zero of that arc, reminding you what the next experiment is and why the metrics will matter when the SSC, UPSC, or state board finally presses the bell.
-              </p>
-              <p>
-                Mental resilience is forged not in comfort but in controlled adversity. That is why many fixtures carry tags like High Pressure Window or Adaptive Difficulty. They intentionally stack above-average difficulty questions or shrink buffer times, forcing you to practice composure. When you enter such sessions straight from the Live Tests listing, you are consenting to a laboratory of stress, and that is a good thing. Your heart rate stabilizes faster with each exposure, your breathing returns to rhythm, and you learn to detach from a bad question within seconds instead of spiraling. The paragraph you are reading is a gentle reminder that mindset is as trainable as mathematics.
-              </p>
-              <p>
-                Another dimension worth appreciating is the orchestration between hero search, filters, and notifications. You can search for CHSL mega slot, narrow results to upcoming, and lock the filters so both desktop and mobile interfaces mirror each other. Once that configuration is saved, the backend understands your intent and surfaces similar fixtures near the top of the feed. Pair that with Google Calendar exports or ICS downloads and you suddenly possess a cross-device command center. A quick glance at your phone while commuting lets you know whether tonight's quiz is still scheduled, whether the attempt window shifted, and when to switch from passive note review to active recall drills.
-              </p>
-              <p>
-                The Live Tests ecosystem also integrates with teaching resources scattered across the platform. Each card can link to strategy articles, FAQ snippets, or even masterclass replays so that last-minute doubt clearing sits a single click away. Suppose you are anxious about the new descriptive writing segment; the Live Tests page may recommend a warm-up practice set published under the Teaching tab, ensuring you never face an unfamiliar question format cold. By centralizing knowledge and action, Bharat Mock shortens the lag between thinking you should revise a topic and testing yourself under live conditions right away.
-              </p>
-              <p>
-                In the end, this entire thousand-plus-word section exists to nudge you from passive intent to decisive action. Bookmark the page, build a ritual around reviewing the schedule every Sunday night, and treat each entry as a contract with your future self. Whether you are chasing AIR-1 or simply fighting to clear a stubborn cutoff, the Live Tests page is the arena where habits crystallize, weaknesses surface, and progress becomes visible. Step into the next slot with courage, respect the timer, and remember that every live attempt is simultaneously a rehearsal and a revelation. The nation's toughest exams await; let the Bharat Mock calendar be the drumbeat that keeps you marching.
-              </p>
-            </div>
-          </section>
-
           <section className="bg-background border border-border/60 rounded-3xl shadow-sm p-8 md:p-12 space-y-8">
             <div className="text-center space-y-3">
               <p className="text-sm uppercase tracking-[0.3em] text-secondary font-semibold">Reasons to trust Bharat Mock</p>
@@ -626,6 +584,48 @@ export default function LiveTestsPage() {
             description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to remind you that live fixtures here translate into real selection stories."
           />
 
+          <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
+            <header className="space-y-2">
+              <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
+              <h2 className="font-display text-3xl font-bold">Why the Live Tests calendar is your competitive advantage</h2>
+              <p className="text-base text-muted-foreground">
+                Settle in for a detailed narrative that connects the UI you are scrolling through with the discipline, analytics, and accountability needed to ace nationwide exams.
+              </p>
+            </header>
+            <div className="space-y-4 text-muted-foreground leading-relaxed text-base md:text-lg">
+              <p>
+                Bharat Mock live fixtures are built to replicate the electric tension of center-based exams while still giving you the convenience of attempting from wherever you are. Every timer tick, leaderboard update, and proctored checkpoint is meticulously choreographed so that your muscle memory for actual exam day is forged weeks in advance. Instead of passively reading notes, you are inserted into a vibrant arena where lakhs of aspirants jostle for the same selection and every mark reclaimed from negative marking counts toward a life-changing cutoff. The Live Tests page acts as a central pit lane where you configure your car, refuel, and preview the circuit before another blistering lap of competition.
+              </p>
+              <p>
+                To make those preparations tangible, each live test listing includes micro-details such as sectional timing, average accuracy benchmarks from the last cohort, and suggested buffer slots for revision. When you scroll through the Live Tests page after dinner or between coaching lectures, you are effectively building a personalized tournament bracket. Maybe you begin with a 30 minute reasoning duel on Tuesday, stack a bilingual GS sprint on Thursday, and close the week with a mega mock on Sunday morning. The platform stores these commitments so that reminder notifications and calendar nudges keep you honest even when fatigue tempts you to skip a session. Discipline, once scheduled, becomes simpler to execute.
+              </p>
+              <p>
+                Live quizzes deserve special mention because they weaponize the power of short, intense bursts of cognition. Ten to fifteen carefully balanced questions delivered in a ten minute window create the same adrenaline spike as the rapid-fire sections of SSC, banking, and state PSC prelims. On the quizzes tab you can filter by category, difficulty, or language preference and immediately see how many aspirants are queued for the next slot. The streak tracker sitting beside each card is more than a vanity metric; it is a behavioral nudge reminding you that consistency beats sporadic genius. Miss one day and the streak resets, but keep the chain alive for a month and your subconscious begins expecting victory.
+              </p>
+              <p>
+                Behind the interface sits an orchestration engine that quietly reconciles thousands of constraints pulled from the backend schedule service. When the admin team marks a new exam as live, the cache invalidates, the status propagates to the tabs, and your feed refreshes without needing a hard reload. If you belong to multiple categories—say BPSC and CTET—the recommendation logic alternates fixtures so you never go two weeks without facing pedagogy or reasoning. This dynamic feed is the opposite of a static PDF calendar; it reacts to your filters, search phrases, and completion history, serving up opportunities that match both your ambition and available bandwidth.
+              </p>
+              <p>
+                Preparation is not a solitary pursuit, and the long-form narrative attached to this page serves as a mentor whispering strategies in your ear. Imagine scanning the hero banner and noticing a note about limited seats—that is a cue to assemble your study circle, pick roles, and run a pre-test huddle. One friend might own vocabulary recaps, another could audit the formula sheet, while you simulate the online interface for the group. The moment the live window opens, you are not just answering questions; you are representing a team that will dissect the analytics afterward, celebrate percentile jumps, and draft counterplans for any topics that exposed gaps.
+              </p>
+              <p>
+                Speaking of analytics, Bharat Mock's post-test breakdowns dive deeper than generic scorecards. Once you finish a live mock or quiz, the dashboard overlays your timeline with the national average, highlights segments where hesitation taxes were paid, and points to remedial video lessons curated by faculty. Over time, these insights become a narrative arc: perhaps your accuracy in data interpretation rose from 52% to 71% after three weekend sprints, or your Hindi comprehension climbed once you toggled the bilingual view. The Live Tests page is essentially chapter zero of that arc, reminding you what the next experiment is and why the metrics will matter when the SSC, UPSC, or state board finally presses the bell.
+              </p>
+              <p>
+                Mental resilience is forged not in comfort but in controlled adversity. That is why many fixtures carry tags like High Pressure Window or Adaptive Difficulty. They intentionally stack above-average difficulty questions or shrink buffer times, forcing you to practice composure. When you enter such sessions straight from the Live Tests listing, you are consenting to a laboratory of stress, and that is a good thing. Your heart rate stabilizes faster with each exposure, your breathing returns to rhythm, and you learn to detach from a bad question within seconds instead of spiraling. The paragraph you are reading is a gentle reminder that mindset is as trainable as mathematics.
+              </p>
+              <p>
+                Another dimension worth appreciating is the orchestration between hero search, filters, and notifications. You can search for CHSL mega slot, narrow results to upcoming, and lock the filters so both desktop and mobile interfaces mirror each other. Once that configuration is saved, the backend understands your intent and surfaces similar fixtures near the top of the feed. Pair that with Google Calendar exports or ICS downloads and you suddenly possess a cross-device command center. A quick glance at your phone while commuting lets you know whether tonight's quiz is still scheduled, whether the attempt window shifted, and when to switch from passive note review to active recall drills.
+              </p>
+              <p>
+                The Live Tests ecosystem also integrates with teaching resources scattered across the platform. Each card can link to strategy articles, FAQ snippets, or even masterclass replays so that last-minute doubt clearing sits a single click away. Suppose you are anxious about the new descriptive writing segment; the Live Tests page may recommend a warm-up practice set published under the Teaching tab, ensuring you never face an unfamiliar question format cold. By centralizing knowledge and action, Bharat Mock shortens the lag between thinking you should revise a topic and testing yourself under live conditions right away.
+              </p>
+              <p>
+                In the end, this entire thousand-plus-word section exists to nudge you from passive intent to decisive action. Bookmark the page, build a ritual around reviewing the schedule every Sunday night, and treat each entry as a contract with your future self. Whether you are chasing AIR-1 or simply fighting to clear a stubborn cutoff, the Live Tests page is the arena where habits crystallize, weaknesses surface, and progress becomes visible. Step into the next slot with courage, respect the timer, and remember that every live attempt is simultaneously a rehearsal and a revelation. The nation's toughest exams await; let the Bharat Mock calendar be the drumbeat that keeps you marching.
+              </p>
+            </div>
+          </section>
+
           <section className="py-12">
             <div className="max-w-5xl mx-auto">
               <div className="text-center space-y-3 mb-10">
@@ -643,9 +643,9 @@ export default function LiveTestsPage() {
                       onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
                       className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
                     >
-                      <span className="font-medium text-foreground">
+                      <h3 className="font-medium text-foreground text-base">
                         {index + 1}. {item.q}
-                      </span>
+                      </h3>
                       {expandedFaq === index ? (
                         <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                       ) : (

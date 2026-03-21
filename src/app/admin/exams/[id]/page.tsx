@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion, Save, XCircle, Loader2, Eye, EyeOff, BookOpen, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowLeft, Upload, Plus, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, FileText, CheckCircle2, Clock3, FileQuestion, Save, XCircle, Loader2, Eye, EyeOff, BookOpen, ArrowUp, ArrowDown, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { taxonomyService, Category, Subcategory, Difficulty } from '@/lib/api/taxonomyService';
@@ -14,6 +14,7 @@ import { ToastNotification } from '@/components/ui/toast-notification';
 import { InlineRichTextEditor } from '@/components/PageEditor/BlockEditor';
 import { adminService } from '@/lib/api/adminService';
 import { testSeriesService, TestSeries, TestSeriesSection, TestSeriesTopic } from '@/lib/api/testSeriesService';
+import { paperSectionsService, PaperSection, PaperTopic } from '@/lib/api/paperSectionsService';
 
 interface Option {
   id: string;
@@ -142,7 +143,9 @@ export default function ExamFormPage() {
     test_series_section_id: '',
     test_series_topic_id: '',
     exam_date: '',
-    display_order: 0
+    display_order: 0,
+    paper_section_id: '',
+    paper_topic_id: '',
   });
 
   const [sections, setSections] = useState<Section[]>([]);
@@ -221,7 +224,20 @@ export default function ExamFormPage() {
   const [showNewSeriesTopic, setShowNewSeriesTopic] = useState(false);
   const [newSeriesTopicName, setNewSeriesTopicName] = useState('');
   const [creatingSeriesTopic, setCreatingSeriesTopic] = useState(false);
+
+  // Paper sections/topics state (for previous year papers)
+  const [paperSections, setPaperSections] = useState<PaperSection[]>([]);
+  const [paperTopics, setPaperTopics] = useState<PaperTopic[]>([]);
+  const [paperSectionsLoading, setPaperSectionsLoading] = useState(false);
+  const [showNewPaperSection, setShowNewPaperSection] = useState(false);
+  const [newPaperSectionName, setNewPaperSectionName] = useState('');
+  const [creatingPaperSection, setCreatingPaperSection] = useState(false);
+  const [showNewPaperTopic, setShowNewPaperTopic] = useState(false);
+  const [newPaperTopicName, setNewPaperTopicName] = useState('');
+  const [creatingPaperTopic, setCreatingPaperTopic] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState('');
+  const [examUid, setExamUid] = useState<string>('');
+  const [copiedUid, setCopiedUid] = useState(false);
   const [showCSVImport, setShowCSVImport] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ total: 0, completed: 0, current: '' });
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string[]}>({});
@@ -352,6 +368,7 @@ export default function ExamFormPage() {
   useEffect(() => {
     fetchTaxonomies();
     fetchTestSeries();
+    fetchPaperSections();
     if (isEditMode && examId) {
       loadExamData();
     } else {
@@ -376,6 +393,15 @@ export default function ExamFormPage() {
       setFormData(prev => ({ ...prev, test_series_topic_id: '' }));
     }
   }, [formData.test_series_section_id]);
+
+  useEffect(() => {
+    if (formData.paper_section_id) {
+      fetchPaperTopics(formData.paper_section_id);
+    } else {
+      setPaperTopics([]);
+      setFormData(prev => ({ ...prev, paper_topic_id: '' }));
+    }
+  }, [formData.paper_section_id]);
 
   const uploadImagesAfterSave = async (questionIdMap: any[]) => {
     let uploadCount = 0;
@@ -545,6 +571,7 @@ export default function ExamFormPage() {
     if (!formData.title.trim()) missing.push('title');
     if (!formData.category_id) missing.push('category');
     if (formData.duration <= 0) missing.push('duration');
+    if (!formData.exam_date) missing.push('exam date');
     if (!formData.allow_anytime) {
       if (!formData.status) missing.push('status');
       if (!formData.start_date) missing.push('start date');
@@ -662,13 +689,16 @@ export default function ExamFormPage() {
           test_series_section_id: (examData as any).test_series_section_id || '',
           test_series_topic_id: (examData as any).test_series_topic_id || '',
           exam_date: (examData as any).exam_date ? new Date((examData as any).exam_date).toISOString().slice(0, 10) : '',
-          display_order: (examData as any).display_order || 0
+          display_order: (examData as any).display_order || 0,
+          paper_section_id: (examData as any).paper_section_id || '',
+          paper_topic_id: (examData as any).paper_topic_id || '',
         });
 
         if (examData.logo_url) setLogoPreview(examData.logo_url);
         if (examData.thumbnail_url) setThumbnailPreview(examData.thumbnail_url);
         if ((examData as any).pdf_url_en) setPdfUrlEn((examData as any).pdf_url_en);
         if ((examData as any).pdf_url_hi) setPdfUrlHi((examData as any).pdf_url_hi);
+        if ((examData as any).exam_uid) setExamUid((examData as any).exam_uid);
       }
 
       const apiSections = Array.isArray(sectionsData)
@@ -957,6 +987,67 @@ export default function ExamFormPage() {
       alert('Failed to create test series');
     } finally {
       setCreatingTestSeries(false);
+    }
+  };
+
+  // Paper sections/topics functions (for previous year papers)
+  const fetchPaperSections = async () => {
+    setPaperSectionsLoading(true);
+    try {
+      const sections = await paperSectionsService.getSections();
+      setPaperSections(sections);
+    } catch (error) {
+      console.error('Failed to fetch paper sections:', error);
+    } finally {
+      setPaperSectionsLoading(false);
+    }
+  };
+
+  const fetchPaperTopics = async (sectionId: string) => {
+    try {
+      const topics = await paperSectionsService.getTopicsBySection(sectionId);
+      setPaperTopics(topics);
+    } catch (error) {
+      console.error('Failed to fetch paper topics:', error);
+    }
+  };
+
+  const handleCreatePaperSection = async () => {
+    if (!newPaperSectionName.trim()) return;
+    setCreatingPaperSection(true);
+    try {
+      const newSection = await paperSectionsService.createSection({
+        name: newPaperSectionName,
+        display_order: paperSections.length
+      });
+      setPaperSections([...paperSections, newSection]);
+      setFormData(prev => ({ ...prev, paper_section_id: newSection.id }));
+      setNewPaperSectionName('');
+      setShowNewPaperSection(false);
+    } catch (error) {
+      alert('Failed to create section');
+    } finally {
+      setCreatingPaperSection(false);
+    }
+  };
+
+  const handleCreatePaperTopic = async () => {
+    if (!newPaperTopicName.trim() || !formData.paper_section_id) return;
+    setCreatingPaperTopic(true);
+    try {
+      const newTopic = await paperSectionsService.createTopic({
+        paper_section_id: formData.paper_section_id,
+        name: newPaperTopicName,
+        display_order: paperTopics.length
+      });
+      setPaperTopics([...paperTopics, newTopic]);
+      setFormData(prev => ({ ...prev, paper_topic_id: newTopic.id }));
+      setNewPaperTopicName('');
+      setShowNewPaperTopic(false);
+    } catch (error) {
+      alert('Failed to create topic');
+    } finally {
+      setCreatingPaperTopic(false);
     }
   };
 
@@ -1900,6 +1991,7 @@ export default function ExamFormPage() {
     if (!formData.title.trim()) requirements.push('❌ Exam title is required');
     if (!formData.category_id) requirements.push('❌ Category must be selected');
     if (formData.duration <= 0) requirements.push('❌ Duration must be greater than 0 minutes');
+    if (!formData.exam_date) requirements.push('❌ Exam Date is required');
     if (!scheduleComplete) requirements.push('❌ Start date, end date, and status are required (or enable "Allow anytime")');
 
     const MAX_ERRORS_TO_SHOW = 50;
@@ -2094,6 +2186,10 @@ export default function ExamFormPage() {
       end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date),
       status: formData.allow_anytime ? 'anytime' : formData.status
     };
+    
+    console.log('Draft payload being sent:', draftPayload);
+    console.log('Paper section ID:', draftPayload.paper_section_id);
+    console.log('Paper topic ID:', draftPayload.paper_topic_id);
 
     try {
       // Step 1: Save the exam
@@ -2197,6 +2293,11 @@ export default function ExamFormPage() {
         end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date),
         is_premium: formData.is_premium ?? false,
       };
+      
+      console.log('Exam payload being sent:', payload);
+      console.log('Paper section ID:', payload.paper_section_id);
+      console.log('Paper topic ID:', payload.paper_topic_id);
+      
       if (payload.exam_type !== 'past_paper') {
         payload.show_in_mock_tests = false;
       }
@@ -2462,6 +2563,23 @@ export default function ExamFormPage() {
             <p className="text-muted-foreground">
               {isEditMode ? 'Update exam details and content' : 'Fill in the details to create a new exam'}
             </p>
+            {examUid && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs font-mono text-muted-foreground/70">{examUid}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(examUid);
+                    setCopiedUid(true);
+                    setTimeout(() => setCopiedUid(false), 2000);
+                  }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Copy exam UID"
+                >
+                  {copiedUid ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            )}
           </div>
           <Button
             type="button"
@@ -2904,6 +3022,84 @@ export default function ExamFormPage() {
               )}
             </div>
 
+            {/* Paper Sections/Topics for Previous Year Papers */}
+            {formData.exam_type === 'past_paper' && (
+              <div className="md:col-span-2">
+                <div className="p-4 rounded-xl border border-blue-300/40 bg-blue-50/50">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <label className="text-sm font-semibold text-foreground">
+                        Previous Year Paper Organization
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Organize this paper by section (e.g., Tier I, Tier II) and topic (e.g., 2024, 2023) for the Previous Year Papers page.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-4 p-4 rounded-xl border border-border bg-muted/30">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Section</label>
+                    <div className="space-y-2">
+                      <select
+                        value={formData.paper_section_id}
+                        onChange={(e) => setFormData(prev => ({ ...prev, paper_section_id: e.target.value, paper_topic_id: '' }))}
+                        disabled={paperSectionsLoading}
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                      >
+                        <option value="">Select Section (Optional)</option>
+                        {paperSections.map(section => (
+                          <option key={section.id} value={section.id}>{section.name}</option>
+                        ))}
+                      </select>
+                      {paperSectionsLoading && <p className="text-xs text-muted-foreground">Loading sections...</p>}
+                      {!showNewPaperSection ? (
+                        <Button type="button" onClick={() => setShowNewPaperSection(true)} variant="outline" size="sm" className="w-full">
+                          <Plus className="h-3 w-3 mr-1" /> Create New Section
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Input value={newPaperSectionName} onChange={(e) => setNewPaperSectionName(e.target.value)} placeholder="e.g., Tier I, Tier II, Prelims, Mains" className="flex-1" />
+                          <Button type="button" onClick={handleCreatePaperSection} size="sm" disabled={creatingPaperSection}>{creatingPaperSection ? 'Adding...' : 'Add'}</Button>
+                          <Button type="button" onClick={() => setShowNewPaperSection(false)} variant="outline" size="sm">Cancel</Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {formData.paper_section_id && (
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Topic</label>
+                      <div className="space-y-2">
+                        <select
+                          value={formData.paper_topic_id}
+                          onChange={(e) => setFormData(prev => ({ ...prev, paper_topic_id: e.target.value }))}
+                          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">Select Topic (Optional)</option>
+                          {paperTopics.map(topic => (
+                            <option key={topic.id} value={topic.id}>{topic.name}</option>
+                          ))}
+                        </select>
+                        {!showNewPaperTopic ? (
+                          <Button type="button" onClick={() => setShowNewPaperTopic(true)} variant="outline" size="sm" className="w-full">
+                            <Plus className="h-3 w-3 mr-1" /> Create New Topic
+                          </Button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Input value={newPaperTopicName} onChange={(e) => setNewPaperTopicName(e.target.value)} placeholder="e.g., 2024, 2023, Subject Name" className="flex-1" />
+                            <Button type="button" onClick={handleCreatePaperTopic} size="sm" disabled={creatingPaperTopic}>{creatingPaperTopic ? 'Adding...' : 'Add'}</Button>
+                            <Button type="button" onClick={() => setShowNewPaperTopic(false)} variant="outline" size="sm">Cancel</Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
 
 
             <div>
@@ -3165,16 +3361,17 @@ export default function ExamFormPage() {
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Exam Date
+                Exam Date *
               </label>
               <Input
                 type="date"
                 name="exam_date"
                 value={formData.exam_date}
                 onChange={handleChange}
+                required
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Optional: Used for ordering or showing the original exam schedule
+                Used for ordering and displaying the original exam schedule
               </p>
             </div>
           </div>

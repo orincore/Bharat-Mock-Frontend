@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { examPdfService } from '@/lib/api/examPdfService';
 import { generateExamPDF } from '@/lib/utils/pdfGenerator';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { toast } from 'sonner';
 import { subcategoryService, type Subcategory, type SubcategoryOverview, type SubcategoryUpdate, type SubcategoryHighlight, type SubcategoryExamStat, type SubcategorySection, type SubcategoryTable, type SubcategoryQuestionPaper, type SubcategoryFAQ, type SubcategoryResource } from '@/lib/api/subcategoryService';
 import { getExamUrl } from '@/lib/utils/examUrl';
@@ -427,79 +428,16 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
             {exams.length === 0 ? (
               <p className="text-sm text-gray-600">No mock tests available at the moment.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {exams.map((exam) => (
-                  <div
+                  <StandardExamCard
                     key={exam.id}
-                    className="rounded-2xl ring-1 ring-black/5 bg-slate-50/70 p-4 shadow-[0_20px_50px_-45px_rgba(15,23,42,0.85)] flex flex-col md:flex-row gap-3 md:gap-6"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-start gap-3">
-                        {exam.logo_url && (
-                          <img src={exam.logo_url} alt={exam.title} className="w-12 h-12 rounded-lg object-cover" />
-                        )}
-                        <div className="space-y-2">
-                          <h3 className="font-semibold text-base text-gray-900">{exam.title}</h3>
-                          {exam.description && (
-                            <p className="text-xs text-gray-600 line-clamp-2">{exam.description}</p>
-                          )}
-                          <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-500">
-                            {exam.total_questions && (
-                              <span className="flex items-center gap-1">
-                                <FileText className="w-4 h-4" />
-                                {exam.total_questions} Qs
-                              </span>
-                            )}
-                            {exam.duration && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                {exam.duration} min
-                              </span>
-                            )}
-                            {exam.total_marks && (
-                              <span className="flex items-center gap-1">
-                                <TrendingUp className="w-3.5 h-3.5" />
-                                {exam.total_marks} Marks
-                              </span>
-                            )}
-                            {exam.difficulty && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-white text-[10px] font-semibold text-slate-600">
-                                {exam.difficulty}
-                              </span>
-                            )}
-                            {exam.supports_hindi && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">
-                                <span role="img" aria-label="Language">🌐</span>
-                                English + हिंदी
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 min-w-[180px]">
-                      <div className="text-right text-xs font-semibold text-blue-600">
-                        {exam.is_free ? 'Free Mock Test' : `₹${exam.price ?? 0}`}
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                          onClick={() => handleDownloadPDF(exam.id)}
-                          disabled={downloadingPdf === exam.id}
-                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-primary text-primary font-semibold px-3 py-1.5 hover:bg-primary/5 text-xs transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Download className="w-4 h-4" />
-                          {downloadingPdf === exam.id ? 'Generating...' : 'Download Paper'}
-                        </button>
-                        <Link
-                          href={getExamUrl(exam)}
-                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary text-white font-semibold px-3 py-1.5 text-xs shadow-md hover:-translate-y-0.5 transition"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Attempt Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
+                    exam={{ ...exam, url_path: getExamUrl(exam) }}
+                    pdfMode={true}
+                    onDownloadPDF={handleDownloadPDF}
+                    isDownloading={downloadingPdf === exam.id}
+                    ctaLabel="Attempt Now"
+                  />
                 ))}
               </div>
             )}
@@ -639,7 +577,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                 {faqs.map((faq) => (
                   <details key={faq.id} className="rounded-2xl ring-1 ring-black/5 bg-slate-50/80 p-4">
                     <summary className="font-semibold text-gray-900 cursor-pointer hover:text-blue-600">
-                      {faq.question}
+                      <h3 className="inline text-base font-semibold">{faq.question}</h3>
                     </summary>
                     <div className="mt-3 text-gray-600 prose max-w-none" dangerouslySetInnerHTML={{ __html: faq.answer }} />
                   </details>

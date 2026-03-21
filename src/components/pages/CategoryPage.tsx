@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { getExamUrl } from '@/lib/utils/examUrl';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -47,6 +48,7 @@ interface Exam {
   url_path: string | null;
   subcategory: string | null;
   supports_hindi?: boolean;
+  exam_categories?: { logo_url?: string; icon?: string } | null;
 }
 
 interface CategoryNotification {
@@ -466,82 +468,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                   {exams.map((exam) => (
-                    <Link
-                      key={exam.id}
-                      href={getExamUrl(exam)}
-                      className="group bg-card rounded-xl border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-200 overflow-hidden"
-                    >
-                      {exam.thumbnail_url && (
-                        <div className="aspect-video w-full overflow-hidden bg-muted">
-                          <img
-                            src={exam.thumbnail_url}
-                            alt={exam.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                          />
-                        </div>
-                      )}
-                      <div className="p-6">
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <h3 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
-                            {exam.title}
-                          </h3>
-                          {exam.logo_url && (
-                            <img src={exam.logo_url} alt="" className="w-10 h-10 object-contain flex-shrink-0" />
-                          )}
-                        </div>
-                        
-                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                          {exam.description}
-                        </p>
-
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(exam.status)}`}>
-                            {exam.status}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyBadge(exam.difficulty)}`}>
-                            {exam.difficulty}
-                          </span>
-                          {exam.subcategory && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                              {exam.subcategory}
-                            </span>
-                          )}
-                          {exam.supports_hindi && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 flex items-center gap-1">
-                              <span>🌐</span>
-                              <span>English + हिंदी</span>
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              <span>{exam.duration} min</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <BookOpen className="h-4 w-4" />
-                              <span>{exam.total_questions} Qs</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <TrendingUp className="h-4 w-4" />
-                              <span>{exam.total_marks} marks</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-lg">
-                            {exam.is_free ? 'Free' : `₹${exam.price}`}
-                          </span>
-                          <Button variant="ghost" size="sm" className="group-hover:text-primary">
-                            View Details
-                            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                          </Button>
-                        </div>
-                      </div>
-                    </Link>
+                    <StandardExamCard key={exam.id} exam={{ ...exam, url_path: getExamUrl(exam), category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }} />
                   ))}
                 </div>
 

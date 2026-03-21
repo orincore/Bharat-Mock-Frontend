@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, FileText, Loader2, Sparkles, Clock, BookOpen, CalendarDays, Filter } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, EyeOff, FileText, Loader2, Sparkles, Clock, BookOpen, CalendarDays, Filter, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { adminService } from '@/lib/api/adminService';
@@ -32,6 +32,7 @@ export default function AdminExamsPage() {
   const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
   const [vanishingExamId, setVanishingExamId] = useState<string | null>(null);
   const [deleteToast, setDeleteToast] = useState<{ title: string; subtitle: string } | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     category: '',
     subcategory: '',
@@ -509,6 +510,24 @@ export default function AdminExamsPage() {
                       <td className="px-6 py-4">
                         <div className="space-y-1">
                           <p className="font-medium text-foreground">{exam.title}</p>
+                          {exam.exam_uid && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-mono text-muted-foreground/70">{exam.exam_uid}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  navigator.clipboard.writeText(exam.exam_uid!);
+                                  setCopiedId(exam.id);
+                                  setTimeout(() => setCopiedId(null), 2000);
+                                }}
+                                className="text-muted-foreground hover:text-foreground transition-colors"
+                                title="Copy exam UID"
+                              >
+                                {copiedId === exam.id ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                              </button>
+                            </div>
+                          )}
                           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                             <span className="inline-flex items-center gap-1">
                               <Clock className="h-3.5 w-3.5" />

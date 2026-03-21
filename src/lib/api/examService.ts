@@ -81,6 +81,8 @@ export const examService = {
     if (options?.exam_type) params.append('exam_type', options.exam_type);
     if (options?.is_premium) params.append('is_premium', options.is_premium);
     if (options?.year) params.append('year', options.year);
+    if (options?.paper_section_id) params.append('paper_section_id', options.paper_section_id);
+    if (options?.paper_topic_id) params.append('paper_topic_id', options.paper_topic_id);
 
     const response = await apiClient.get<ExamResponse>(
       `/exams?${params.toString()}`

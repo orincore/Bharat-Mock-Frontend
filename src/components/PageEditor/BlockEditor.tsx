@@ -256,8 +256,9 @@ const AdBannerContentEditor = ({ content, onChange }: { content: any; onChange: 
 const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
   const examIds: string[] = content.examIds || [];
   const examNames: Record<string, string> = content.examNames || {};
+  const examUids: Record<string, string> = content.examUids || {};
   const [query, setQuery] = React.useState('');
-  const [results, setResults] = React.useState<{ id: string; title: string; category?: string; status?: string }[]>([]);
+  const [results, setResults] = React.useState<{ id: string; title: string; category?: string; status?: string; exam_uid?: string }[]>([]);
   const [searching, setSearching] = React.useState(false);
   const [showDropdown, setShowDropdown] = React.useState(false);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -269,13 +270,13 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
       setSearching(true);
       const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '') || '/api/v1';
       const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
-      const res = await fetch(`${apiBase}/exams?search=${encodeURIComponent(term.trim())}&limit=50&exam_type=all`, {
+      const res = await fetch(`${apiBase}/admin/exams?search=${encodeURIComponent(term.trim())}&limit=50`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!res.ok) throw new Error('Search failed');
       const data = await res.json();
       const exams = data.data || [];
-      setResults(exams.map((e: any) => ({ id: e.id, title: e.title, category: e.category, status: e.status })));
+      setResults(exams.map((e: any) => ({ id: e.id, title: e.title, category: e.category, status: e.status, exam_uid: e.exam_uid })));
       setShowDropdown(true);
     } catch (err) {
       console.error('[ExamCardsEditor] search failed', err);
@@ -291,12 +292,13 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
     debounceRef.current = setTimeout(() => searchExams(value), 300);
   };
 
-  const addExam = (exam: { id: string; title: string }) => {
+  const addExam = (exam: { id: string; title: string; exam_uid?: string }) => {
     if (examIds.includes(exam.id)) return;
     onChange({
       ...content,
       examIds: [...examIds, exam.id],
-      examNames: { ...examNames, [exam.id]: exam.title }
+      examNames: { ...examNames, [exam.id]: exam.title },
+      examUids: { ...examUids, [exam.id]: exam.exam_uid || '' }
     });
     setQuery('');
     setResults([]);
@@ -305,11 +307,14 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
 
   const removeExam = (id: string) => {
     const nextNames = { ...examNames };
+    const nextUids = { ...examUids };
     delete nextNames[id];
+    delete nextUids[id];
     onChange({
       ...content,
       examIds: examIds.filter((eid: string) => eid !== id),
-      examNames: nextNames
+      examNames: nextNames,
+      examUids: nextUids
     });
   };
 
@@ -392,7 +397,10 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{exam.title}</p>
-                      <p className="text-xs text-gray-500">{[exam.category, exam.status].filter(Boolean).join(' · ')}</p>
+                      <p className="text-xs text-gray-500">
+                        {[exam.category, exam.status].filter(Boolean).join(' · ')}
+                        {exam.exam_uid && <span className="ml-1 font-mono text-gray-400">· {exam.exam_uid}</span>}
+                      </p>
                     </div>
                     {alreadyAdded ? (
                       <span className="text-xs text-gray-400 ml-2 flex-shrink-0">Added</span>
@@ -414,9 +422,14 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
           <div className="mt-3 space-y-2">
             {examIds.map((id: string, index: number) => (
               <div key={id} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded px-3 py-2">
-                <span className="text-sm text-gray-700 truncate flex-1">
-                  {index + 1}. {examNames[id] || id}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-gray-700 truncate block">
+                    {index + 1}. {examNames[id] || id}
+                  </span>
+                  {examUids[id] && (
+                    <span className="text-xs font-mono text-gray-400">{examUids[id]}</span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => removeExam(id)}
@@ -2727,19 +2740,44 @@ const CodeContentEditor = ({ content, onChange }: { content: any; onChange: (con
 );
 
 const AccordionContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
-  const items = Array.isArray(content.items) && content.items.length ? content.items : [{ title: 'Accordion Title', content: 'Accordion content' }];
+  const items = Array.isArray(content.items) && content.items.length ? content.items : [{ title: 'Accordion Title', content: '', contentType: 'text' }];
 
   const updateItems = (next: any[]) => onChange({ ...content, items: next });
 
-  const addItem = () => updateItems([...items, { title: `Item ${items.length + 1}`, content: '' }]);
+  const addItem = () => updateItems([...items, { title: `Item ${items.length + 1}`, content: '', contentType: 'text' }]);
   const removeItem = (index: number) => {
     if (items.length === 1) return;
     updateItems(items.filter((_, i) => i !== index));
   };
 
-  const handleChange = (index: number, key: 'title' | 'content', value: string) => {
+  const handleChange = (index: number, key: string, value: any) => {
     const next = [...items];
     next[index] = { ...next[index], [key]: value };
+    updateItems(next);
+  };
+
+  const handleContentTypeChange = (index: number, type: 'text' | 'table') => {
+    const next = [...items];
+    if (type === 'table') {
+      next[index] = {
+        ...next[index],
+        contentType: 'table',
+        table: next[index].table || {
+          headers: ['Column 1', 'Column 2', 'Column 3'],
+          rows: [['', '', '']],
+          hasHeader: true,
+          striped: true,
+        },
+      };
+    } else {
+      next[index] = { ...next[index], contentType: 'text' };
+    }
+    updateItems(next);
+  };
+
+  const handleTableChange = (index: number, tableData: any) => {
+    const next = [...items];
+    next[index] = { ...next[index], table: tableData };
     updateItems(next);
   };
 
@@ -2748,39 +2786,168 @@ const AccordionContentEditor = ({ content, onChange }: { content: any; onChange:
       <button type="button" onClick={addItem} className="text-blue-600 text-sm font-semibold">
         + Add Accordion Item
       </button>
-      {items.map((item, index) => (
-        <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold">Item {index + 1}</p>
-            <button
-              type="button"
-              onClick={() => removeItem(index)}
-              className="text-red-600 text-sm"
-              disabled={items.length === 1}
-            >
-              Remove
-            </button>
+      {items.map((item, index) => {
+        const contentType = item.contentType || 'text';
+        const table = item.table || { headers: ['Column 1', 'Column 2', 'Column 3'], rows: [['', '', '']], hasHeader: true, striped: true };
+        return (
+          <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Item {index + 1}</p>
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                className="text-red-600 text-sm"
+                disabled={items.length === 1}
+              >
+                Remove
+              </button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Title</label>
+              <input
+                type="text"
+                value={item.title || ''}
+                onChange={(e) => handleChange(index, 'title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded"
+              />
+            </div>
+            {/* Content type toggle */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Content Type</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleContentTypeChange(index, 'text')}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${contentType === 'text' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'}`}
+                >
+                  Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleContentTypeChange(index, 'table')}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${contentType === 'table' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'}`}
+                >
+                  Table
+                </button>
+              </div>
+            </div>
+            {contentType === 'text' ? (
+              <div>
+                <label className="block text-sm font-medium mb-1">Content</label>
+                <textarea
+                  rows={4}
+                  value={item.content || ''}
+                  onChange={(e) => handleChange(index, 'content', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium mb-2">Table</label>
+                <AccordionTableEditor table={table} onChange={(t) => handleTableChange(index, t)} />
+              </div>
+            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
-            <input
-              type="text"
-              value={item.title || ''}
-              onChange={(e) => handleChange(index, 'title', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Content</label>
-            <textarea
-              rows={4}
-              value={item.content || ''}
-              onChange={(e) => handleChange(index, 'content', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded"
-            />
-          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const AccordionTableEditor = ({ table, onChange }: { table: any; onChange: (t: any) => void }) => {
+  const headers: string[] = Array.isArray(table.headers) && table.headers.length ? table.headers : ['Column 1'];
+  const rows: string[][] = Array.isArray(table.rows) && table.rows.length ? table.rows : [headers.map(() => '')];
+  const hasHeader = table.hasHeader ?? true;
+  const striped = table.striped ?? true;
+
+  const update = (next: Partial<any>) => onChange({ ...table, ...next });
+
+  const addColumn = () => {
+    const nextHeaders = [...headers, `Column ${headers.length + 1}`];
+    const nextRows = rows.map((row) => [...row, '']);
+    update({ headers: nextHeaders, rows: nextRows });
+  };
+
+  const removeColumn = (i: number) => {
+    if (headers.length === 1) return;
+    update({ headers: headers.filter((_, idx) => idx !== i), rows: rows.map((row) => row.filter((_, idx) => idx !== i)) });
+  };
+
+  const addRow = () => update({ rows: [...rows, headers.map(() => '')] });
+
+  const removeRow = (i: number) => {
+    if (rows.length === 1) return;
+    update({ rows: rows.filter((_, idx) => idx !== i) });
+  };
+
+  return (
+    <div className="space-y-3 border border-gray-200 rounded-lg p-3 bg-gray-50">
+      {/* Options */}
+      <div className="flex flex-wrap gap-4 text-xs">
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" checked={hasHeader} onChange={(e) => update({ hasHeader: e.target.checked })} />
+          <span className="font-medium">Header row</span>
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" checked={striped} onChange={(e) => update({ striped: e.target.checked })} />
+          <span className="font-medium">Striped rows</span>
+        </label>
+      </div>
+
+      {/* Headers */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-semibold text-gray-600">Columns</span>
+          <button type="button" onClick={addColumn} className="text-blue-600 text-xs font-semibold">+ Add Column</button>
         </div>
-      ))}
+        <div className="flex flex-wrap gap-2">
+          {headers.map((h, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <input
+                type="text"
+                value={h}
+                onChange={(e) => { const nh = [...headers]; nh[i] = e.target.value; update({ headers: nh }); }}
+                className="px-2 py-1 border border-gray-300 rounded text-xs w-28 focus:ring-1 focus:ring-blue-500"
+                placeholder={`Col ${i + 1}`}
+              />
+              <button type="button" onClick={() => removeColumn(i)} disabled={headers.length === 1} className="text-red-500 text-xs disabled:opacity-30">✕</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Rows */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-semibold text-gray-600">Rows</span>
+          <button type="button" onClick={addRow} className="text-blue-600 text-xs font-semibold">+ Add Row</button>
+        </div>
+        <div className="space-y-2">
+          {rows.map((row, ri) => (
+            <div key={ri} className="flex items-start gap-1">
+              <div className="flex flex-wrap gap-1 flex-1">
+                {headers.map((_, ci) => (
+                  <input
+                    key={ci}
+                    type="text"
+                    value={row[ci] || ''}
+                    onChange={(e) => {
+                      const nr = rows.map((r, rIdx) => {
+                        if (rIdx !== ri) return r;
+                        const nc = [...r]; nc[ci] = e.target.value; return nc;
+                      });
+                      update({ rows: nr });
+                    }}
+                    className="px-2 py-1 border border-gray-300 rounded text-xs w-28 focus:ring-1 focus:ring-blue-500"
+                    placeholder={headers[ci] || `Col ${ci + 1}`}
+                  />
+                ))}
+              </div>
+              <button type="button" onClick={() => removeRow(ri)} disabled={rows.length === 1} className="text-red-500 text-xs mt-1 disabled:opacity-30">✕</button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

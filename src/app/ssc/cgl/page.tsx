@@ -9,6 +9,7 @@ import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
 import { Calendar, Users, FileText, TrendingUp, Download, ChevronRight } from "lucide-react";
+import { StandardExamCard } from "@/components/exam/StandardExamCard";
 
 interface Block {
   id: string;
@@ -352,47 +353,16 @@ export default function SSCCGLPage() {
                 ) : mockTests.length === 0 ? (
                   <p className="text-sm text-gray-600">No mock tests available yet.</p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {mockTests.map((exam) => (
-                      <div key={exam.id} className="border rounded-xl p-4 flex flex-col gap-4">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-gray-900">{exam.title}</h3>
-                          {exam.description && <p className="text-sm text-gray-600 mt-1">{exam.description}</p>}
-                          <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                            {exam.total_questions && <span>{exam.total_questions} Questions</span>}
-                            {exam.duration && <span>{exam.duration} mins</span>}
-                            {exam.total_marks && <span>{exam.total_marks} Marks</span>}
-                            {exam.is_free ? <span className="text-green-600 font-semibold">Free</span> : exam.price ? <span>₹{exam.price}</span> : null}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                          <Link
-                            href={exam.url_path || `/exams/${exam.slug || exam.id}`}
-                            className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
-                          >
-                            Attempt Now
-                          </Link>
-                          <button
-                            onClick={() => handleDownloadExamPDF(exam.id)}
-                            disabled={downloadingExamId === exam.id}
-                            className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            {downloadingExamId === exam.id ? 'Preparing...' : 'Download PDF'}
-                          </button>
-                          {(exam.download_url || exam.pdf_url || exam.file_url) && (
-                            <a
-                              href={exam.download_url || exam.pdf_url || exam.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
-                            >
-                              <Download className="w-4 h-4 mr-2" />
-                              Download PDF
-                            </a>
-                          )}
-                        </div>
-                      </div>
+                      <StandardExamCard
+                        key={exam.id}
+                        exam={exam}
+                        pdfMode={true}
+                        ctaLabel="Attempt Now"
+                        onDownloadPDF={handleDownloadExamPDF}
+                        isDownloading={downloadingExamId === exam.id}
+                      />
                     ))}
                   </div>
                 )}
@@ -407,52 +377,31 @@ export default function SSCCGLPage() {
                 ) : questionPapers.length === 0 ? (
                   <p className="text-sm text-gray-600">No question papers available yet.</p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {questionPapers.map((paper: any) => {
                       const paperExamId = paper.exam_id || paper.exam?.id;
-                      const isDownloading = paperExamId && downloadingExamId === paperExamId;
-
+                      const mergedExam = {
+                        ...(paper.exam ?? {}),
+                        id: paperExamId || paper.id,
+                        title: paper.title || paper.exam?.title,
+                        url_path: paper.exam?.url_path,
+                        is_free: paper.exam?.is_free,
+                        total_questions: paper.total_questions ?? paper.exam?.total_questions,
+                        duration: paper.duration ?? paper.exam?.duration,
+                        total_marks: paper.total_marks ?? paper.exam?.total_marks,
+                        supports_hindi: paper.exam?.supports_hindi,
+                        difficulty: paper.exam?.difficulty,
+                        download_url: paper.download_url || paper.file_url,
+                      };
                       return (
-                        <div key={paper.id} className="border rounded-xl p-4">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                            <div>
-                              <p className="text-sm text-gray-500">{paper.year || '—'}</p>
-                              <h3 className="text-lg font-semibold text-gray-900">{paper.title || paper.exam?.title}</h3>
-                              {paper.description && <p className="text-sm text-gray-600 mt-1">{paper.description}</p>}
-                            </div>
-                            <div className="flex flex-wrap gap-3">
-                              {paper.exam?.url_path && (
-                                <Link
-                                  href={paper.exam.url_path}
-                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
-                                >
-                                  Attempt Online
-                                </Link>
-                              )}
-                              {paperExamId && (
-                                <button
-                                  onClick={() => handleDownloadExamPDF(paperExamId)}
-                                  disabled={isDownloading}
-                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  {isDownloading ? 'Preparing…' : 'Download PDF'}
-                                </button>
-                              )}
-                              {!paperExamId && (paper.download_url || paper.file_url) && (
-                                <a
-                                  href={paper.download_url || paper.file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Download PDF
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                        <StandardExamCard
+                          key={paper.id}
+                          exam={mergedExam}
+                          pdfMode={true}
+                          ctaLabel="Attempt Now"
+                          onDownloadPDF={paperExamId ? handleDownloadExamPDF : undefined}
+                          isDownloading={paperExamId && downloadingExamId === paperExamId}
+                        />
                       );
                     })}
                   </div>

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExamCard } from '@/components/exam/ExamCard';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { ArticleCard } from '@/components/article/ArticleCard';
 import { examService } from '@/lib/api/examService';
 import { blogService, Blog } from '@/lib/api/blogService';
@@ -715,78 +715,16 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
               </div>
             ) : (
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                {mostAttemptedExams.map((exam, index) => {
-                  const statusLabel = exam.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Ongoing';
-                  const difficultyLabel = exam.difficulty ? exam.difficulty.charAt(0).toUpperCase() + exam.difficulty.slice(1) : 'Medium';
-                  const languageLabel = exam.supports_hindi ? 'English + हिंदी' : 'English only';
-                  const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
-
-                  return (
-                    <div
-                      key={exam.id || index}
-                      className="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.08)] hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:border-slate-300 transition-all duration-300 hover:-translate-y-1"
-                    >
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500" />
-                      
-                      <div className="p-4 bg-gradient-to-br from-slate-50/50 via-white to-white">
-                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                          <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold shadow-sm">{statusLabel}</span>
-                          <span className="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold shadow-sm">{difficultyLabel}</span>
-                        </div>
-
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <span className="px-2.5 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 text-xs font-semibold shadow-sm">{exam.is_free ? 'Free' : 'Premium'}</span>
-                          {exam.category && (
-                            <span className="px-2.5 py-0.5 rounded-md border border-slate-200/60 bg-white text-slate-600 text-xs font-medium shadow-sm">
-                              {exam.category}
-                            </span>
-                          )}
-                        </div>
-
-                        <h3 className="font-display text-base font-semibold text-slate-900 leading-snug mb-3 line-clamp-2 group-hover:text-primary transition-colors">
-                          {exam.title}
-                        </h3>
-                      </div>
-
-                      <div className="px-4 pb-4 flex flex-col gap-3 flex-1">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50/80 border border-sky-100 text-xs text-sky-700 w-fit">
-                          <Languages className="h-3.5 w-3.5" />
-                          <span className="font-medium">{languageLabel}</span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-600">
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-                              <Clock className="h-3.5 w-3.5 text-sky-600" />
-                            </div>
-                            <span className="font-medium">{exam.duration} mins</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-                              <FileText className="h-3.5 w-3.5 text-sky-600" />
-                            </div>
-                            <span className="font-medium">{exam.total_questions} Qs</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-                              <TrendingUp className="h-3.5 w-3.5 text-sky-600" />
-                            </div>
-                            <span className="font-medium">{exam.total_marks} Marks</span>
-                          </div>
-                        </div>
-
-                        <div className="mt-auto pt-2">
-                          <Link href={examUrl} className="inline-flex w-full">
-                            <Button className="w-full rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-white font-semibold shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-amber-500 hover:via-orange-600 hover:to-orange-700 transition-all duration-300 group/btn" size="sm">
-                              View Details
-                              <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-0.5" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {mostAttemptedExams.map((exam) => (
+                  <StandardExamCard
+                    key={exam.id}
+                    exam={{
+                      ...exam,
+                      category_logo_url: exam.exam_categories?.logo_url,
+                      category_icon: exam.exam_categories?.icon,
+                    }}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -1024,78 +962,16 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {exams.map((exam) => {
-                const statusLabel = exam.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Ongoing';
-                const difficultyLabel = exam.difficulty ? exam.difficulty.charAt(0).toUpperCase() + exam.difficulty.slice(1) : 'Medium';
-                const languageLabel = exam.supports_hindi ? 'English + हिंदी' : 'English only';
-                const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
-                
-                return (
-                  <div
-                    key={exam.id}
-                    className="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.08)] hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:border-slate-300 transition-all duration-300 hover:-translate-y-1"
-                  >
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500" />
-                    
-                    <div className="p-4 bg-gradient-to-br from-slate-50/50 via-white to-white">
-                      <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold shadow-sm">{statusLabel}</span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold shadow-sm">{difficultyLabel}</span>
-                      </div>
-
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <span className="px-2.5 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 text-xs font-semibold shadow-sm">{exam.is_free ? 'Free' : 'Premium'}</span>
-                        {exam.category && (
-                          <span className="px-2.5 py-0.5 rounded-md border border-slate-200/60 bg-white text-slate-600 text-xs font-medium shadow-sm">
-                            {exam.category}
-                          </span>
-                        )}
-                      </div>
-
-                      <h3 className="font-display text-base font-semibold text-slate-900 leading-snug mb-3 line-clamp-2 group-hover:text-primary transition-colors">
-                        {exam.title}
-                      </h3>
-                    </div>
-
-                    <div className="px-4 pb-4 flex flex-col gap-3 flex-1">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50/80 border border-sky-100 text-xs text-sky-700 w-fit">
-                        <Languages className="h-3.5 w-3.5" />
-                        <span className="font-medium">{languageLabel}</span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-600">
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-                            <Clock className="h-3.5 w-3.5 text-sky-600" />
-                          </div>
-                          <span className="font-medium">{exam.duration} mins</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-                            <FileText className="h-3.5 w-3.5 text-sky-600" />
-                          </div>
-                          <span className="font-medium">{exam.total_questions} Qs</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-                            <TrendingUp className="h-3.5 w-3.5 text-sky-600" />
-                          </div>
-                          <span className="font-medium">{exam.total_marks} Marks</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-auto pt-2">
-                        <Link href={examUrl} className="inline-flex w-full">
-                          <Button className="w-full rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-white font-semibold shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-amber-500 hover:via-orange-600 hover:to-orange-700 transition-all duration-300 group/btn" size="sm">
-                            View Details
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-0.5" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {exams.map((exam) => (
+                <StandardExamCard
+                  key={exam.id}
+                  exam={{
+                    ...exam,
+                    category_logo_url: exam.exam_categories?.logo_url,
+                    category_icon: exam.exam_categories?.icon,
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>

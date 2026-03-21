@@ -22,12 +22,14 @@ import {
   PhoneCall,
   Layers,
   MessageSquareHeart,
-  Sparkles
+  Sparkles,
+  FileDown
 } from 'lucide-react';
 
 const adminNavItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, permission: null },
   { name: 'Exams', href: '/admin/exams', icon: FileText, permission: 'canAccessExams' },
+  { name: 'PDF Generator', href: '/admin/pdf-generator', icon: FileDown, permission: 'canAccessExams' },
   { name: 'Categories', href: '/admin/categories', icon: FolderTree, permission: 'canAccessCategories' },
   { name: 'Blogs', href: '/admin/blogs', icon: PenSquare, permission: 'canAccessBlogs' },
   { name: 'Pages', href: '/admin/pages', icon: Layers, permission: 'canAccessPages' },

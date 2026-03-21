@@ -27,6 +27,7 @@ export interface Exam {
   image?: string;
   logo_url?: string;
   thumbnail_url?: string;
+  exam_categories?: { logo_url?: string; icon?: string } | null;
   negative_marking: boolean;
   negative_mark_value: number;
   negativeMarking?: boolean;
@@ -47,6 +48,7 @@ export interface Exam {
   exam_type?: 'past_paper' | 'mock_test' | 'short_quiz';
   show_in_mock_tests?: boolean;
   is_premium?: boolean;
+  exam_uid?: string;
   supports_hindi?: boolean;
 }
 
@@ -680,4 +682,6 @@ export interface FilterOptions {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  paper_section_id?: string;
+  paper_topic_id?: string;
 }

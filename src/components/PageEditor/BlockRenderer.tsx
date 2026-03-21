@@ -376,7 +376,38 @@ const ButtonBlock: React.FC<{ content: any; settings?: any }> = ({ content, sett
 const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
   const { items = [] } = content;
   const [openIndex, setOpenIndex] = React.useState<number | null>(0);
-  
+
+  const renderItemContent = (item: any) => {
+    if (item.contentType === 'table' && item.table) {
+      const { headers = [], rows = [], hasHeader = true, striped = false } = item.table;
+      return (
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse border border-gray-300 text-sm">
+            {hasHeader && headers.length > 0 && (
+              <thead className="bg-blue-600 text-white">
+                <tr>
+                  {headers.map((h: string, i: number) => (
+                    <th key={i} className="border border-gray-300 px-4 py-2 text-left font-semibold">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {rows.map((row: string[], ri: number) => (
+                <tr key={ri} className={striped && ri % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                  {row.map((cell: string, ci: number) => (
+                    <td key={ci} className="border border-gray-300 px-4 py-2 text-gray-700">{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    return <div dangerouslySetInnerHTML={{ __html: item.content || '' }} />;
+  };
+
   return (
     <div className="mb-6 space-y-2">
       {items.map((item: any, index: number) => (
@@ -389,7 +420,9 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, s
             <ChevronDown className={`w-5 h-5 transition-transform ${openIndex === index ? 'rotate-180' : ''}`} />
           </button>
           {openIndex === index && (
-            <div className="px-4 py-3 bg-white" dangerouslySetInnerHTML={{ __html: item.content }} />
+            <div className="px-4 py-3 bg-white">
+              {renderItemContent(item)}
+            </div>
           )}
         </div>
       ))}
@@ -570,7 +603,40 @@ const AdBannerBlock: React.FC<{ content: any; settings?: any }> = ({ content }) 
 };
 
 const ExamCardsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
-  const { examIds = [], title, layout = 'grid', columns = 2 } = content || {};
+  const { examIds = [], examNames = {}, title, layout = 'grid', columns = 2 } = content || {};
+  const [examDetails, setExamDetails] = React.useState<Record<string, { title: string; category?: string; status?: string; exam_uid?: string } | null>>({});
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!examIds.length) return;
+    const missing = examIds.filter((id: string) => !(id in examDetails));
+    if (!missing.length) return;
+
+    setLoading(true);
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+    const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    Promise.all(
+      missing.map((id: string) =>
+        fetch(`${apiBase}/admin/exams/${encodeURIComponent(id)}`, { headers })
+          .then((r) => r.ok ? r.json() : null)
+          .then((json) => ({ id, data: json?.data ?? null }))
+          .catch(() => ({ id, data: null }))
+      )
+    ).then((results) => {
+      setExamDetails((prev) => {
+        const next = { ...prev };
+        results.forEach(({ id, data }) => {
+          next[id] = data ? { title: data.title, category: data.category, status: data.status, exam_uid: data.exam_uid } : null;
+        });
+        return next;
+      });
+      setLoading(false);
+    });
+  }, [examIds.join(',')]);
+
+  const colClass = columns === 1 ? 'grid-cols-1' : columns === 3 ? 'grid-cols-1 md:grid-cols-3' : columns === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2';
 
   return (
     <div className="mb-6" data-block-type="examCards" data-exam-ids={JSON.stringify(examIds)} data-layout={layout} data-columns={columns}>
@@ -578,23 +644,44 @@ const ExamCardsBlock: React.FC<{ content: any; settings?: any }> = ({ content })
       {examIds.length === 0 ? (
         <div className="p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
           <GraduationCap className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-          <p className="text-sm">No exams attached yet. Add exam IDs in the editor.</p>
+          <p className="text-sm">No exams attached yet. Add exams in the editor.</p>
         </div>
       ) : (
-        <div className={`grid gap-4 ${columns === 1 ? 'grid-cols-1' : columns === 3 ? 'grid-cols-1 md:grid-cols-3' : columns === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
-          {examIds.map((id: string) => (
-            <div key={id} className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
-                  <GraduationCap className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-700 truncate">Exam: {id}</p>
-                  <p className="text-xs text-gray-400">Loading...</p>
+        <div className={`grid gap-4 ${colClass}`}>
+          {examIds.map((id: string) => {
+            const detail = examDetails[id];
+            const fallbackName = examNames[id] || id;
+            return (
+              <div key={id} className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {detail === undefined ? (
+                      <>
+                        <p className="text-sm font-medium text-gray-700 truncate">{fallbackName}</p>
+                        <p className="text-xs text-gray-400">Loading...</p>
+                      </>
+                    ) : detail === null ? (
+                      <>
+                        <p className="text-sm font-medium text-gray-700 truncate">{fallbackName}</p>
+                        <p className="text-xs text-red-400">Exam not found</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-gray-800 truncate">{detail.title}</p>
+                        <p className="text-xs text-gray-500">
+                          {[detail.category, detail.status].filter(Boolean).join(' · ')}
+                          {detail.exam_uid && <span className="ml-1 font-mono text-gray-400">· {detail.exam_uid}</span>}
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

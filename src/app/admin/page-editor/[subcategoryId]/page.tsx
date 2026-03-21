@@ -30,6 +30,8 @@ export default function PageEditorPage() {
   const [seoData, setSeoData] = useState<any>({});
   const [customTabs, setCustomTabs] = useState<any[]>([]);
   const [tocOrder, setTocOrder] = useState<Record<string, number | ''>>({});
+  const [tabHeadings, setTabHeadings] = useState<Record<string, string>>({});
+  const [showTabHeadingsPanel, setShowTabHeadingsPanel] = useState(false);
 
   useEffect(() => {
     fetchPageContent();
@@ -63,6 +65,7 @@ export default function PageEditorPage() {
       setSeoData(data.seo || {});
       setCustomTabs(data.customTabs || []);
       setTocOrder(data.tocOrder || {});
+      setTabHeadings(data.tabHeadings || {});
     } catch (error) {
       console.error('Error fetching page content:', error);
     } finally {
@@ -160,7 +163,6 @@ export default function PageEditorPage() {
   const handleSaveTocOrder = async () => {
     try {
       const token = localStorage.getItem('token');
-      // Merge toc_order into existing structured_data
       const cleanOrder: Record<string, number> = {};
       Object.entries(tocOrder).forEach(([tab, val]) => {
         if (val !== '' && val !== null && val !== undefined) {
@@ -187,6 +189,36 @@ export default function PageEditorPage() {
     } catch (error) {
       console.error('Error saving TOC order:', error);
       alert('Failed to save TOC positions.');
+    }
+  };
+
+  const handleSaveTabHeadings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const cleanHeadings: Record<string, string> = {};
+      Object.entries(tabHeadings).forEach(([tab, val]) => {
+        if (val && val.trim()) cleanHeadings[tab] = val.trim();
+      });
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/${subcategoryId}/seo`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            ...seoData,
+            structured_data: { ...(seoData.structured_data || {}), tab_headings: cleanHeadings }
+          })
+        }
+      );
+      setSeoData((prev: any) => ({
+        ...prev,
+        structured_data: { ...(prev.structured_data || {}), tab_headings: cleanHeadings }
+      }));
+      alert('Tab headings saved!');
+      setShowTabHeadingsPanel(false);
+    } catch (error) {
+      console.error('Error saving tab headings:', error);
+      alert('Failed to save tab headings.');
     }
   };
 
@@ -241,6 +273,12 @@ export default function PageEditorPage() {
               className="px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 flex items-center gap-1.5 text-sm font-medium"
             >
               <span>TOC Order</span>
+            </button>
+            <button
+              onClick={() => setShowTabHeadingsPanel(true)}
+              className="px-3 py-2 border border-purple-300 text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1.5 text-sm font-medium"
+            >
+              <span>Tab Headings</span>
             </button>
             <button
               onClick={handlePreview}
@@ -314,6 +352,46 @@ export default function PageEditorPage() {
             <div className="p-6 border-t border-gray-200 flex justify-end space-x-2">
               <button onClick={() => setShowTocPanel(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleSaveTocOrder} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Positions</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Headings Panel */}
+      {showTabHeadingsPanel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Tab Headings</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Set a custom heading shown at the top of each tab's content. Leave blank to use the tab label.
+                </p>
+              </div>
+              <button onClick={() => setShowTabHeadingsPanel(false)} className="text-gray-500 hover:text-gray-700 ml-4">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'mock-tests', label: 'Mock Tests' },
+                { id: 'previous-papers', label: 'Previous Papers' },
+                ...customTabs.map(tab => ({ id: tab.id, label: tab.title }))
+              ].map(tab => (
+                <div key={tab.id} className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">{tab.label}</label>
+                  <input
+                    type="text"
+                    value={tabHeadings[tab.id] || ''}
+                    onChange={e => setTabHeadings(prev => ({ ...prev, [tab.id]: e.target.value }))}
+                    placeholder={`e.g. ${tab.label} for SSC CGL`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-2">
+              <button onClick={() => setShowTabHeadingsPanel(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSaveTabHeadings} className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Save Headings</button>
             </div>
           </div>
         </div>

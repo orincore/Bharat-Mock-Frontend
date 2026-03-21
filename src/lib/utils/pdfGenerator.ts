@@ -46,6 +46,22 @@ interface ExamData {
   }>;
 }
 
+export interface PdfOptions {
+  showAnswers: boolean;
+  showExplanations: boolean;
+  language: 'en' | 'hi';
+  showWatermark: boolean;
+  showCoverPage: boolean;
+  headerText: string;
+  footerText: string;
+  /** Full A4 first page banner — rendered as page 1 before all content */
+  coverBanner: string | null;
+  /** 20% height strip overlaid at the bottom of every content page */
+  footerBanner: string | null;
+  /** Full A4 last page banner — appended as the final page */
+  backCoverBanner: string | null;
+}
+
 interface ImageAsset {
   dataUrl: string;
   width: number;
@@ -152,7 +168,21 @@ const formatOptionText = (value?: string) =>
 
 const pxToMm = (px: number) => px * 0.264583;
 
-export async function generateExamPDF(examData: ExamData): Promise<void> {
+const DEFAULT_PDF_OPTIONS: PdfOptions = {
+  showAnswers: true,
+  showExplanations: true,
+  language: 'en',
+  showWatermark: true,
+  showCoverPage: true,
+  headerText: '',
+  footerText: '',
+  coverBanner: null,
+  footerBanner: null,
+  backCoverBanner: null,
+};
+
+export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<PdfOptions> = {}): Promise<void> {
+  const opts: PdfOptions = { ...DEFAULT_PDF_OPTIONS, ...pdfOptions };
   const { exam, sections, questions } = examData;
   
   const doc = new jsPDF({
@@ -168,6 +198,7 @@ export async function generateExamPDF(examData: ExamData): Promise<void> {
   const { brandLogo, watermarkLogo } = await getBrandAssets();
 
   const addWatermark = () => {
+    if (!opts.showWatermark) return;
     if (watermarkLogo) {
       const baseWidth = pxToMm(watermarkLogo.width);
       const baseHeight = pxToMm(watermarkLogo.height);
@@ -268,8 +299,123 @@ export async function generateExamPDF(examData: ExamData): Promise<void> {
     yPosition = (doc as any).lastAutoTable.finalY + 10;
   };
 
+  // ── Pre-load footer banner to get its natural aspect ratio ────────────────
+  interface LoadedImage {
+    dataUrl: string;
+    format: 'JPEG' | 'PNG' | 'WEBP';
+    naturalWidth: number;
+    naturalHeight: number;
+  }
+
+  const loadImage = async (url: string): Promise<LoadedImage> => {
+    // Strategy 1: fetch → blob → FileReader (no canvas, no CORS taint)
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const mime = blob.type || '';
+      const format: LoadedImage['format'] =
+        mime.includes('png') ? 'PNG' :
+        mime.includes('webp') ? 'WEBP' :
+        'JPEG';
+      const dataUrl = await convertBlobToDataUrl(blob);
+      const dims = await new Promise<{ w: number; h: number }>((res, rej) => {
+        const img = new Image();
+        img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight });
+        img.onerror = rej;
+        img.src = dataUrl;
+      });
+      return { dataUrl, format, naturalWidth: dims.w, naturalHeight: dims.h };
+    } catch (fetchErr) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { reject(new Error('No canvas context')); return; }
+            ctx.drawImage(img, 0, 0);
+            const ext = url.split('?')[0].split('.').pop()?.toLowerCase();
+            const format: LoadedImage['format'] = ext === 'png' ? 'PNG' : ext === 'webp' ? 'WEBP' : 'JPEG';
+            resolve({
+              dataUrl: canvas.toDataURL(format === 'PNG' ? 'image/png' : 'image/jpeg'),
+              format,
+              naturalWidth: canvas.width,
+              naturalHeight: canvas.height,
+            });
+          } catch (e) { reject(e); }
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+  };
+
+  // Fit image into a max bounding box preserving aspect ratio, returns mm dimensions.
+  // Uses pure aspect ratio — no DPI assumption, just scales to fit within maxW × maxH mm.
+  const fitImage = (naturalWidth: number, naturalHeight: number, maxWmm: number, maxHmm: number) => {
+    if (!naturalWidth || !naturalHeight) return { w: maxWmm, h: maxHmm };
+    const aspect = naturalHeight / naturalWidth;
+    // Start by fitting to max width
+    let w = maxWmm;
+    let h = w * aspect;
+    // If too tall, fit to max height instead
+    if (h > maxHmm) {
+      h = maxHmm;
+      w = h / aspect;
+    }
+    return { w, h };
+  };
+
+  let footerStripHMm = 0;
+  let footerBannerLoaded: LoadedImage | null = null;
+
+  if (opts.footerBanner) {
+    try {
+      const raw = await loadImage(opts.footerBanner);
+      // Compute strip height from image's natural aspect ratio at full page width
+      const imgAspect = raw.naturalHeight / raw.naturalWidth;
+      footerStripHMm = pageWidth * imgAspect;
+      // Cap at 30% of page height
+      footerStripHMm = Math.min(footerStripHMm, pageHeight * 0.30);
+
+      // Re-render the image onto a canvas at the exact output pixel size
+      // (300 DPI equivalent: pageWidth mm → pageWidth/25.4*300 px)
+      const DPI = 300;
+      const targetW = Math.round((pageWidth / 25.4) * DPI);
+      const targetH = Math.round((footerStripHMm / 25.4) * DPI);
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const img = new Image();
+        await new Promise<void>((res, rej) => {
+          img.onload = () => { ctx.drawImage(img, 0, 0, targetW, targetH); res(); };
+          img.onerror = rej;
+          img.src = raw.dataUrl;
+        });
+        footerBannerLoaded = {
+          dataUrl: canvas.toDataURL('image/jpeg', 0.95),
+          format: 'JPEG',
+          naturalWidth: targetW,
+          naturalHeight: targetH,
+        };
+      } else {
+        footerBannerLoaded = raw;
+      }
+    } catch (e) {
+      console.error('Failed to pre-load footer banner', e);
+    }
+  }
+
   const checkPageBreak = (requiredSpace: number) => {
-    if (yPosition + requiredSpace > pageHeight - margin) {
+    const bottomBoundary = footerStripHMm > 0
+      ? pageHeight - footerStripHMm - 2
+      : pageHeight - margin;
+    if (yPosition + requiredSpace > bottomBoundary) {
       doc.addPage();
       yPosition = margin;
       addWatermark();
@@ -280,143 +426,168 @@ export async function generateExamPDF(examData: ExamData): Promise<void> {
 
   const addSection = (section: any) => {
     checkPageBreak(20);
-    
-    doc.setFillColor(240, 240, 240);
-    doc.rect(margin, yPosition, pageWidth - 2 * margin, 8, 'F');
-    
+
+    doc.setFillColor(230, 240, 255);
+    doc.rect(margin, yPosition, pageWidth - 2 * margin, 9, 'F');
+    doc.setDrawColor(180, 200, 240);
+    doc.rect(margin, yPosition, pageWidth - 2 * margin, 9, 'S');
+
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Section: ${section.name}`, margin + 2, yPosition + 5);
-    
-    yPosition += 12;
+    doc.setTextColor(30, 60, 120);
+    doc.text(section.name, margin + 3, yPosition + 6);
+
+    yPosition += 13;
   };
 
   const addQuestion = async (question: any, questionNumber: number) => {
-    checkPageBreak(30);
+    checkPageBreak(35);
 
+    // Question text with plain number
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    
-    const questionPrefix = `Q.${questionNumber}`;
+    doc.setTextColor(20, 20, 20);
+
     const questionText = normalizeText(question.question_text || question.text || 'Question');
-    const questionLines = doc.splitTextToSize(
-      questionText,
-      pageWidth - 2 * margin - 10
-    );
-    
-    doc.text(questionPrefix, margin, yPosition);
-    doc.text(questionLines, margin + 10, yPosition);
-    yPosition += questionLines.length * 5 + 3;
+    const questionLines = doc.splitTextToSize(questionText, pageWidth - 2 * margin - 12);
+
+    doc.text(`${questionNumber}.`, margin, yPosition + 4);
+    doc.text(questionLines, margin + 10, yPosition + 4);
+    yPosition += questionLines.length * 5.5 + 5;
 
     if (question.image_url) {
       try {
-        checkPageBreak(50);
         const imgData = await loadImage(question.image_url);
-        doc.addImage(imgData, 'JPEG', margin + 10, yPosition, 60, 40);
-        yPosition += 45;
+        const maxW = pageWidth - 2 * margin - 12;
+        const { w, h } = fitImage(imgData.naturalWidth, imgData.naturalHeight, maxW, 60);
+        checkPageBreak(h + 6);
+        doc.addImage(imgData.dataUrl, imgData.format, margin + 10, yPosition, w, h, undefined, 'FAST');
+        yPosition += h + 4;
       } catch (error) {
         console.error('Failed to load question image:', error);
+        // skip — no black box left behind
       }
     }
 
-    doc.setFont('courier', 'normal');
-    doc.setFontSize(9);
-    const originalCharSpace = (doc as any).getCharSpace?.() ?? 0;
-    if ((doc as any).setCharSpace) {
-      (doc as any).setCharSpace(0);
-    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
 
-    const optionList = question.options || [];
+    // Sort options by order so A/B/C/D are always sequential
+    const optionList = [...(question.options || [])].sort((a, b) => {
+      const aOrder = a.display_order ?? a.option_order ?? 0;
+      const bOrder = b.display_order ?? b.option_order ?? 0;
+      return aOrder - bOrder;
+    });
+
     for (let optionIndex = 0; optionIndex < optionList.length; optionIndex++) {
       const option = optionList[optionIndex];
-      checkPageBreak(15);
+      checkPageBreak(12);
 
-      const optionLabel = String.fromCharCode(65 + (option.display_order ?? option.option_order ?? optionIndex));
+      // Always use sequential index for label (A, B, C, D...)
+      const optionLabel = String.fromCharCode(65 + optionIndex);
       const isCorrect = option.is_correct;
       const optionText = formatOptionText(option.option_text || option.text || '');
-      
-      if (isCorrect) {
-        doc.setTextColor(0, 128, 0);
-        doc.setFont('courier', 'bold');
+
+      if (opts.showAnswers && isCorrect) {
+        doc.setTextColor(0, 150, 0);
+        doc.setFont('helvetica', 'bold');
       } else {
-        doc.setTextColor(255, 0, 0);
-        doc.setFont('courier', 'normal');
+        doc.setTextColor(40, 40, 40);
+        doc.setFont('helvetica', 'normal');
       }
 
+      const prefix = `${optionLabel}. `;
+
       const optionLines = doc.splitTextToSize(
-        optionText,
-        pageWidth - 2 * margin - 15
+        prefix + optionText,
+        pageWidth - 2 * margin - 12
       );
-      
-      doc.text(`${optionLabel}. ${isCorrect ? '✓' : '✗'} ${optionLines[0]}`, margin + 5, yPosition);
-      
+
+      doc.text(optionLines[0], margin + 8, yPosition);
       if (optionLines.length > 1) {
         for (let i = 1; i < optionLines.length; i++) {
-          yPosition += 4;
-          doc.text(optionLines[i], margin + 10, yPosition);
+          yPosition += 5;
+          doc.text(optionLines[i], margin + 14, yPosition);
         }
       }
-      
-      yPosition += 5;
+      yPosition += 6;
 
       if (option.image_url) {
         try {
-          checkPageBreak(40);
           const imgData = await loadImage(option.image_url);
-          doc.addImage(imgData, 'JPEG', margin + 10, yPosition, 50, 30);
-          yPosition += 35;
+          const maxW = pageWidth - 2 * margin - 16;
+          const { w, h } = fitImage(imgData.naturalWidth, imgData.naturalHeight, maxW, 45);
+          checkPageBreak(h + 4);
+          doc.addImage(imgData.dataUrl, imgData.format, margin + 10, yPosition, w, h, undefined, 'FAST');
+          yPosition += h + 3;
         } catch (error) {
           console.error('Failed to load option image:', error);
+          // skip — no black box left behind
         }
       }
     }
 
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
-    yPosition += 3;
+    yPosition += 2;
 
     if (question.explanation) {
-      checkPageBreak(15);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(100, 100, 100);
-      const explanationLines = doc.splitTextToSize(
-        `Explanation: ${question.explanation}`,
-        pageWidth - 2 * margin - 10
-      );
-      doc.text(explanationLines, margin + 5, yPosition);
-      yPosition += explanationLines.length * 4 + 5;
+      if (opts.showExplanations) {
+        checkPageBreak(15);
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(22, 101, 52);
+        doc.setFillColor(240, 253, 244);
+        const expText = `Explanation: ${normalizeText(question.explanation)}`;
+        const expLines = doc.splitTextToSize(expText, pageWidth - 2 * margin - 14);
+        const expHeight = expLines.length * 4.5 + 4;
+        doc.roundedRect(margin + 6, yPosition - 1, pageWidth - 2 * margin - 6, expHeight, 1, 1, 'F');
+        doc.text(expLines, margin + 9, yPosition + 3);
+        yPosition += expHeight + 3;
+      }
     }
 
-    yPosition += 5;
+    yPosition += 4;
   };
 
-  const loadImage = (url: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
+  // Helper: resize image to exact mm output size at 300 DPI to prevent jsPDF clipping
+  const resizeForPdf = async (dataUrl: string, wMm: number, hMm: number): Promise<{ dataUrl: string; format: 'JPEG' }> => {
+    const DPI = 300;
+    const targetW = Math.round((wMm / 25.4) * DPI);
+    const targetH = Math.round((hMm / 25.4) * DPI);
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext('2d')!;
+    await new Promise<void>((res, rej) => {
       const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/jpeg'));
-        } else {
-          reject(new Error('Failed to get canvas context'));
-        }
-      };
-      img.onerror = reject;
-      img.src = url;
+      img.onload = () => { ctx.drawImage(img, 0, 0, targetW, targetH); res(); };
+      img.onerror = rej;
+      img.src = dataUrl;
     });
+    return { dataUrl: canvas.toDataURL('image/jpeg', 0.95), format: 'JPEG' };
   };
 
   addWatermark();
-  addHeader();
-  addExamInfoTable();
+
+  // ── Cover banner: full A4 first page ──────────────────────────────────────
+  if (opts.coverBanner) {
+    try {
+      const raw = await loadImage(opts.coverBanner);
+      const resized = await resizeForPdf(raw.dataUrl, pageWidth, pageHeight);
+      doc.addImage(resized.dataUrl, resized.format, 0, 0, pageWidth, pageHeight);
+      doc.addPage();
+      yPosition = margin;
+      addWatermark();
+    } catch (e) {
+      console.error('Failed to render cover banner', e);
+    }
+  }
+
+  if (opts.showCoverPage) {
+    addHeader();
+    addExamInfoTable();
+  }
 
   let questionNumber = 1;
   const sectionMap = new Map(sections.map(s => [s.id, s]));
@@ -436,21 +607,62 @@ export async function generateExamPDF(examData: ExamData): Promise<void> {
     questionNumber++;
   }
 
+  // ── Footer banner: auto-height strip at bottom of every content page ──────
+  if (opts.footerBanner && footerBannerLoaded && footerStripHMm > 0) {
+    try {
+      const totalPagesNow = doc.getNumberOfPages();
+      const startPage = opts.coverBanner ? 2 : 1;
+      for (let p = startPage; p <= totalPagesNow; p++) {
+        doc.setPage(p);
+        doc.addImage(
+          footerBannerLoaded.dataUrl,
+          footerBannerLoaded.format,
+          0,
+          pageHeight - footerStripHMm,
+          pageWidth,
+          footerStripHMm
+        );
+      }
+    } catch (e) {
+      console.error('Failed to render footer banner', e);
+    }
+  }
+
+  // ── Back cover banner: full A4 last page ──────────────────────────────────
+  if (opts.backCoverBanner) {
+    try {
+      const raw = await loadImage(opts.backCoverBanner);
+      const resized = await resizeForPdf(raw.dataUrl, pageWidth, pageHeight);
+      doc.addPage();
+      doc.addImage(resized.dataUrl, resized.format, 0, 0, pageWidth, pageHeight);
+    } catch (e) {
+      console.error('Failed to render back cover banner', e);
+    }
+  }
+
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
+
+    if (opts.headerText) {
+      doc.text(opts.headerText, pageWidth / 2, 8, { align: 'center' });
+    }
+
+    // Place page numbers above the footer strip if active
+    const pageNumY = footerStripHMm > 0
+      ? pageHeight - footerStripHMm - 3
+      : pageHeight - 10;
+    const footerTextY = footerStripHMm > 0
+      ? pageHeight - footerStripHMm - 8
+      : pageHeight - 5;
+
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageNumY, { align: 'center' });
     doc.text(
-      `Page ${i} of ${totalPages}`,
+      opts.footerText || 'Generated by Bharat Mock - www.bharatmock.com',
       pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
-    doc.text(
-      'Generated by Bharat Mock - www.bharatmock.com',
-      pageWidth / 2,
-      pageHeight - 5,
+      footerTextY,
       { align: 'center' }
     );
   }

@@ -70,6 +70,13 @@ const PAGES = [
     icon: Layers
   },
   {
+    id: 'previous-year-papers',
+    title: 'Previous Year Papers',
+    description: 'Manage sections and topics for the previous year papers page',
+    href: '/admin/pages/previous-year-papers',
+    icon: FileText
+  },
+  {
     id: 'live-tests-hero',
     title: 'Live Tests Page',
     description: 'Upload and configure the hero banner for live tests',

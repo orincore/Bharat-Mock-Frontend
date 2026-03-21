@@ -141,9 +141,11 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
               Premium
             </Badge>
           )}
-          <Badge className={`${statusColors[statusColorKey]} text-xs px-2.5 py-0.5`}>
-            {(exam.status || 'Upcoming').replace(/_/g, ' ').replace(/(^|\s)\w/g, (c) => c.toUpperCase())}
-          </Badge>
+          {normalizedStatus !== 'ongoing' && normalizedStatus !== 'anytime' && (
+            <Badge className={`${statusColors[statusColorKey]} text-xs px-2.5 py-0.5`}>
+              {(exam.status || 'Upcoming').replace(/_/g, ' ').replace(/(^|\s)\w/g, (c) => c.toUpperCase())}
+            </Badge>
+          )}
           {isLiveExam && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-red-300/60 bg-red-500/10 px-2.5 py-0.5 text-xs font-semibold text-red-600 uppercase tracking-wide">
               <span className="relative flex h-3 w-3 items-center justify-center">

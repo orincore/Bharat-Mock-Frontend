@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { ExamCard } from '@/components/exam/ExamCard';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { TestSeriesCard } from '@/components/exam/TestSeriesCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
@@ -428,10 +428,14 @@ export default function ExamsPage() {
                 >
                   <ChevronLeft className="h-5 w-5 text-slate-700" />
                 </button>
-                <div ref={popularTestsScrollRef} className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
+                <div ref={popularTestsScrollRef} className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
                   {popularTests.map((popularTest) => (
-                    <div key={popularTest.id} className="flex-shrink-0 w-72 snap-start">
-                      <ExamCard exam={popularTest.exam} size="compact" />
+                    <div key={popularTest.id} className="flex-shrink-0 snap-start" style={{ width: 'calc(25% - 15px)' }}>
+                      <StandardExamCard exam={{
+                        ...popularTest.exam,
+                        category_logo_url: popularTest.exam.exam_categories?.logo_url,
+                        category_icon: popularTest.exam.exam_categories?.icon,
+                      }} ctaLabel="Attempt Now" />
                     </div>
                   ))}
                 </div>
@@ -802,7 +806,7 @@ export default function ExamsPage() {
                 {newTestSeriesLoading ? (
                   <div className="flex gap-0 overflow-x-auto pb-4 hide-scrollbar">
                     {Array.from({ length: 4 }).map((_, index) => (
-                      <div key={index} className="flex-shrink-0 w-80">
+                      <div key={index} className="flex-shrink-0 w-80 mr-5">
                         <Skeleton className="h-64 w-full rounded-xl" />
                       </div>
                     ))}
@@ -816,10 +820,14 @@ export default function ExamsPage() {
                     >
                       <ChevronLeft className="h-5 w-5 text-slate-700" />
                     </button>
-                    <div ref={newTestSeriesScrollRef} className="flex gap-0 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
+                    <div ref={newTestSeriesScrollRef} className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
                       {newTestSeries.map((test) => (
-                        <div key={test.id} className="flex-shrink-0 w-72 snap-start">
-                          <ExamCard exam={test.exam} size="compact" />
+                        <div key={test.id} className="flex-shrink-0 snap-start" style={{ width: 'calc(25% - 15px)' }}>
+                          <StandardExamCard exam={{
+                            ...test.exam,
+                            category_logo_url: test.exam.exam_categories?.logo_url,
+                            category_icon: test.exam.exam_categories?.icon,
+                          }} ctaLabel="Attempt Now" />
                         </div>
                       ))}
                     </div>
@@ -1100,9 +1108,9 @@ export default function ExamsPage() {
                           onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
                           className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
                         >
-                          <span className="font-medium text-foreground">
+                          <h3 className="font-medium text-foreground text-base">
                             {index + 1}. {item.q}
-                          </span>
+                          </h3>
                           {expandedFaq === index ? (
                             <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                           ) : (

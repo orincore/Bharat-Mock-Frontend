@@ -135,6 +135,11 @@ export default function AdminSubcategoryEditorPage() {
   const [showSEOPanel, setShowSEOPanel] = useState(false);
   const [showTocPanel, setShowTocPanel] = useState(false);
   const [tocOrder, setTocOrder] = useState<Record<string, number | ''>>({});
+  const [tabHeadings, setTabHeadings] = useState<Record<string, string>>({});
+  const [showTabHeadingsPanel, setShowTabHeadingsPanel] = useState(false);
+  const [tabSeo, setTabSeo] = useState<Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }>>({});
+  const [showTabSeoPanel, setShowTabSeoPanel] = useState(false);
+  const [tabSeoActiveTab, setTabSeoActiveTab] = useState<string>('overview');
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [uploadingOgImage, setUploadingOgImage] = useState(false);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
@@ -580,6 +585,8 @@ export default function AdminSubcategoryEditorPage() {
       setCustomTabs(nextTabs);
       setTabConfig(nextTabConfig);
       setTocOrder(data.tocOrder || {});
+      setTabHeadings(data.tabHeadings || {});
+      setTabSeo(data.tabSeo || {});
 
       const positions: Record<string, number> = {};
       (data.sections || []).forEach((section: Section) => {
@@ -825,24 +832,106 @@ export default function AdminSubcategoryEditorPage() {
           cleanOrder[tab] = Number(val);
         }
       });
+      const existingStructuredToc = typeof seoData.structured_data === 'string'
+        ? (() => { try { return JSON.parse(seoData.structured_data); } catch { return {}; } })()
+        : (seoData.structured_data || {});
       const response = await fetch(buildApiUrl(`/page-content/${subcategoryId}/seo`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           ...seoData,
-          structured_data: { ...(typeof seoData.structured_data === 'object' ? seoData.structured_data : {}), toc_order: cleanOrder }
+          structured_data: { ...existingStructuredToc, toc_order: cleanOrder }
         })
       });
       if (!response.ok) throw new Error('Failed to save TOC order');
       setSeoData((prev) => ({
         ...prev,
-        structured_data: { ...(typeof prev.structured_data === 'object' ? prev.structured_data : {}), toc_order: cleanOrder }
+        structured_data: { ...existingStructuredToc, toc_order: cleanOrder }
       }));
       toast({ title: 'Success', description: 'TOC positions saved' });
       setShowTocPanel(false);
     } catch (error) {
       console.error('Error saving TOC order:', error);
       toast({ title: 'Error', description: 'Failed to save TOC positions', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveTabHeadings = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        toast({ title: 'Authentication Error', description: 'Please log in', variant: 'destructive' });
+        return;
+      }
+      const cleanHeadings: Record<string, string> = {};
+      Object.entries(tabHeadings).forEach(([tab, val]) => {
+        if (val && val.trim()) cleanHeadings[tab] = val.trim();
+      });
+      const existingStructured = typeof seoData.structured_data === 'string'
+        ? (() => { try { return JSON.parse(seoData.structured_data); } catch { return {}; } })()
+        : (seoData.structured_data || {});
+      const response = await fetch(buildApiUrl(`/page-content/${subcategoryId}/seo`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          ...seoData,
+          structured_data: { ...existingStructured, tab_headings: cleanHeadings }
+        })
+      });
+      if (!response.ok) throw new Error('Failed to save tab headings');
+      setSeoData((prev) => ({
+        ...prev,
+        structured_data: { ...existingStructured, tab_headings: cleanHeadings }
+      }));
+      toast({ title: 'Success', description: 'Tab headings saved' });
+      setShowTabHeadingsPanel(false);
+    } catch (error) {
+      console.error('Error saving tab headings:', error);
+      toast({ title: 'Error', description: 'Failed to save tab headings', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveTabSeo = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        toast({ title: 'Authentication Error', description: 'Please log in', variant: 'destructive' });
+        return;
+      }
+      const cleanTabSeo: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }> = {};
+      Object.entries(tabSeo).forEach(([tab, vals]) => {
+        const t = vals.meta_title?.trim();
+        const d = vals.meta_description?.trim();
+        const k = vals.meta_keywords?.trim();
+        if (t || d || k) {
+          cleanTabSeo[tab] = {};
+          if (t) cleanTabSeo[tab].meta_title = t;
+          if (d) cleanTabSeo[tab].meta_description = d;
+          if (k) cleanTabSeo[tab].meta_keywords = k;
+        }
+      });
+      const existingStructured = typeof seoData.structured_data === 'string'
+        ? (() => { try { return JSON.parse(seoData.structured_data); } catch { return {}; } })()
+        : (seoData.structured_data || {});
+      const response = await fetch(buildApiUrl(`/page-content/${subcategoryId}/seo`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          ...seoData,
+          structured_data: { ...existingStructured, tab_seo: cleanTabSeo }
+        })
+      });
+      if (!response.ok) throw new Error('Failed to save tab SEO');
+      setSeoData((prev) => ({
+        ...prev,
+        structured_data: { ...existingStructured, tab_seo: cleanTabSeo }
+      }));
+      setTabSeo(cleanTabSeo);
+      toast({ title: 'Success', description: 'Tab SEO saved' });
+      setShowTabSeoPanel(false);
+    } catch (error) {
+      console.error('Error saving tab SEO:', error);
+      toast({ title: 'Error', description: 'Failed to save tab SEO', variant: 'destructive' });
     }
   };
 
@@ -899,174 +988,110 @@ export default function AdminSubcategoryEditorPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/admin"
-                className="text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div>
-                <Breadcrumbs 
-                  items={[
-                    AdminBreadcrumb(),
-                    { label: 'Subcategories', href: '/admin' },
-                    { label: subcategoryInfo?.name || 'Loading...' }
-                  ]}
-                  className="mb-2"
-                />
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {subcategoryInfo?.name || 'Loading...'}
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  Edit page content and settings
-                </p>
-              </div>
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-6">
+          {/* Row 1: identity */}
+          <div className="flex items-center gap-3 py-3 border-b border-gray-100">
+            <Link href="/admin" className="text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div className="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {logoPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoPreview} alt="" className="w-full h-full object-contain p-0.5" />
+              ) : subcategoryInfo?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={subcategoryInfo.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
+              ) : (
+                <ImageIcon className="w-4 h-4 text-gray-400" />
+              )}
             </div>
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.back()}
-                className="flex items-center"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
+            <div className="min-w-0">
+              <Breadcrumbs
+                items={[
+                  AdminBreadcrumb(),
+                  { label: 'Subcategories', href: '/admin' },
+                  { label: subcategoryInfo?.name || 'Loading...' }
+                ]}
+                className="mb-0.5"
+              />
+              <h1 className="text-base font-bold text-gray-900 leading-tight truncate">
+                {subcategoryInfo?.name || 'Loading...'}
+                {subcategoryInfo?.category?.name && (
+                  <span className="ml-2 text-xs font-normal text-gray-400">
+                    {subcategoryInfo.category.name} / {subcategoryInfo.slug}
+                  </span>
+                )}
+              </h1>
+            </div>
+          </div>
+
+          {/* Row 2: actions */}
+          <div className="flex items-center gap-1 py-2">
+            {/* Left group */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-gray-500 hover:text-gray-800 h-8 w-8 p-0" title="Back">
+                <ArrowLeft className="w-4 h-4" />
               </Button>
-              <div className="border-l border-gray-300 h-6" />
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden">
-                  {logoPreview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoPreview} alt="Subcategory logo" className="w-full h-full object-contain p-1" />
-                  ) : subcategoryInfo?.logo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={subcategoryInfo.logo_url} alt="Subcategory logo" className="w-full h-full object-contain p-1" />
-                  ) : (
-                    <ImageIcon className="w-5 h-5 text-gray-400" />
-                  )}
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">
-                    {subcategoryInfo?.name || 'Page Editor'}
-                  </h1>
-                  <p className="text-sm text-gray-600">
-                    {subcategoryInfo?.category?.name && (
-                      <span>{subcategoryInfo.category.name} / </span>
-                    )}
-                    {subcategoryInfo?.slug}
-                  </p>
-                </div>
-              </div>
+              <div className="w-px h-5 bg-gray-200" />
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} className="h-8 w-8 p-0" title="Refresh">
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button
+                variant="outline" size="sm"
+                onClick={() => { if (subcategoryInfo) syncSettingsForm(subcategoryInfo); setShowSettingsPanel(true); }}
+                className="h-8 px-2.5 text-xs gap-1"
+                title="Settings"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Settings</span>
+              </Button>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={loading}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
+            <div className="w-px h-5 bg-gray-200 mx-0.5 flex-shrink-0" />
+
+            {/* SEO group */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button variant="outline" size="sm" onClick={() => setShowSEOPanel(true)} className="h-8 px-2.5 text-xs">
+                SEO
               </Button>
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (subcategoryInfo) syncSettingsForm(subcategoryInfo);
-                  setShowSettingsPanel(true);
-                }}
+                variant="outline" size="sm"
+                onClick={() => setShowTabHeadingsPanel(true)}
+                className="h-8 px-2.5 text-xs border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 whitespace-nowrap"
               >
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
+                Tab Headings
               </Button>
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSEOPanel(true)}
+                variant="outline" size="sm"
+                onClick={() => { setTabSeoActiveTab('overview'); setShowTabSeoPanel(true); }}
+                className="h-8 px-2.5 text-xs border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100 whitespace-nowrap"
               >
-                <Settings className="w-4 h-4 mr-2" />
-                SEO Settings
+                Tab SEO
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreview}
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Preview
+            </div>
+
+            {/* Right group — pushed to end */}
+            <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+              <Button variant="outline" size="sm" onClick={handlePreview} className="h-8 px-2.5 text-xs gap-1">
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Preview</span>
               </Button>
               <Button
                 size="sm"
                 onClick={() => handleSave(sections)}
                 disabled={saving}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1 whitespace-nowrap"
               >
                 {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span className="hidden sm:inline">Saving...</span></>
                 ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Changes
-                  </>
+                  <><Save className="w-3.5 h-3.5" /><span>Save Changes</span></>
                 )}
               </Button>
             </div>
           </div>
         </div>
       </header>
-
-      {/* Subcategory summary / description editor */}
-      <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-6">
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
-          <div className="flex flex-wrap justify-between gap-3 items-start">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">Subcategory description</p>
-              <h2 className="text-2xl font-semibold text-gray-900 mt-1">Pitch this exam in a sentence or two</h2>
-              <p className="text-sm text-gray-500">This copy shows on homepage cards and other quick summaries.</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-700">Status</p>
-              <p className={`text-sm font-semibold ${subcategoryInfo?.is_active ? 'text-green-600' : 'text-gray-500'}`}>
-                {subcategoryInfo?.is_active ? 'Active' : 'Inactive'}
-              </p>
-            </div>
-          </div>
-
-          <textarea
-            value={descriptionInput}
-            onChange={(e) => setDescriptionInput(e.target.value)}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
-            placeholder="e.g. Comprehensive SSC CGL prep with previous year papers, syllabus tracker, and smart revision plans."
-          />
-
-          <div className="flex flex-wrap justify-between gap-3 items-center">
-            <p className="text-xs text-gray-500">{descriptionInput.trim().length}/240 characters</p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={resetDescriptionInput} disabled={savingDescription}>
-                Reset
-              </Button>
-              <Button size="sm" onClick={handleSaveDescription} disabled={savingDescription || !subcategoryInfo}>
-                {savingDescription ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </span>
-                ) : (
-                  'Save Description'
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Tabs Manager */}
       <div className="bg-white shadow-sm border-b border-gray-200">
@@ -1195,6 +1220,181 @@ export default function AdminSubcategoryEditorPage() {
           </div>
         </div>
       )}
+
+      {/* Tab Headings Panel */}
+      {showTabHeadingsPanel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h2 className="text-xl font-bold">Tab Headings</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Set a custom heading shown at the top of each tab's content. Leave blank to use the tab label.
+                </p>
+              </div>
+              <button onClick={() => setShowTabHeadingsPanel(false)} className="text-gray-500 hover:text-gray-700 ml-4 text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              {[
+                { id: 'overview', title: 'Overview' },
+                { id: 'mock-tests', title: 'Mock Tests' },
+                { id: 'previous-papers', title: 'Previous Papers' },
+                ...customTabs.map((tab) => ({ id: tab.id, title: tab.title }))
+              ].map((tab) => (
+                <div key={tab.id} className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">{tab.title}</label>
+                  <input
+                    type="text"
+                    value={tabHeadings[tab.id] || ''}
+                    onChange={(e) => setTabHeadings((prev) => ({ ...prev, [tab.id]: e.target.value }))}
+                    placeholder={`e.g. ${tab.title} for SSC CGL`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
+              <button onClick={() => setShowTabHeadingsPanel(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
+              <button onClick={handleSaveTabHeadings} className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium">Save Headings</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab SEO Panel */}
+      {showTabSeoPanel && (() => {
+        const allTabs = [
+          { id: 'overview', title: 'Overview' },
+          { id: 'mock-tests', title: 'Mock Tests' },
+          { id: 'previous-papers', title: 'Previous Papers' },
+          ...customTabs.map((tab) => ({ id: tab.id, title: tab.title }))
+        ];
+        const activeTabSeo = tabSeo[tabSeoActiveTab] || {};
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Tab SEO</h2>
+                  <p className="text-sm text-gray-500 mt-1">Set per-tab meta title, description and keywords. Overrides global SEO for that tab.</p>
+                </div>
+                <button onClick={() => setShowTabSeoPanel(false)} className="text-gray-500 hover:text-gray-700 ml-4 text-xl">✕</button>
+              </div>
+
+              {/* Tab selector */}
+              <div className="px-6 pt-4 flex flex-wrap gap-2 flex-shrink-0">
+                {allTabs.map((tab) => {
+                  const hasSeo = tabSeo[tab.id]?.meta_title || tabSeo[tab.id]?.meta_description;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setTabSeoActiveTab(tab.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                        tabSeoActiveTab === tab.id
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'border-gray-300 text-gray-600 hover:border-teal-400 hover:text-teal-700'
+                      }`}
+                    >
+                      {tab.title}
+                      {hasSeo && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-teal-400 align-middle" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
+                    <span>Meta Title</span>
+                    <span className={`text-xs ${(activeTabSeo.meta_title?.length || 0) > 60 ? 'text-red-500' : 'text-gray-400'}`}>
+                      {activeTabSeo.meta_title?.length || 0}/60
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={activeTabSeo.meta_title || ''}
+                    onChange={(e) => setTabSeo((prev) => ({
+                      ...prev,
+                      [tabSeoActiveTab]: { ...prev[tabSeoActiveTab], meta_title: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    placeholder="e.g. SSC CGL Mock Tests 2025 | Bharat Mock"
+                    maxLength={70}
+                  />
+                  <p className="mt-1 text-xs text-gray-400">Leave blank to use the global meta title.</p>
+                </div>
+
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
+                    <span>Meta Description</span>
+                    <span className={`text-xs ${(activeTabSeo.meta_description?.length || 0) > 160 ? 'text-red-500' : 'text-gray-400'}`}>
+                      {activeTabSeo.meta_description?.length || 0}/160
+                    </span>
+                  </label>
+                  <textarea
+                    value={activeTabSeo.meta_description || ''}
+                    onChange={(e) => setTabSeo((prev) => ({
+                      ...prev,
+                      [tabSeoActiveTab]: { ...prev[tabSeoActiveTab], meta_description: e.target.value }
+                    }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    placeholder="e.g. Attempt free SSC CGL mock tests with detailed analytics..."
+                    maxLength={200}
+                  />
+                  <p className="mt-1 text-xs text-gray-400">Leave blank to use the global meta description.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Meta Keywords</label>
+                  <input
+                    type="text"
+                    value={activeTabSeo.meta_keywords || ''}
+                    onChange={(e) => setTabSeo((prev) => ({
+                      ...prev,
+                      [tabSeoActiveTab]: { ...prev[tabSeoActiveTab], meta_keywords: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    placeholder="keyword1, keyword2, keyword3"
+                  />
+                </div>
+
+                {/* Preview */}
+                {(activeTabSeo.meta_title || activeTabSeo.meta_description) && (
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-xs uppercase font-semibold text-gray-400 mb-2">Search Preview</p>
+                    <p className="text-xs text-gray-400">google.com › {subcategoryInfo?.slug || 'page'}</p>
+                    <p className="text-base text-blue-700 font-semibold leading-tight mt-0.5">
+                      {activeTabSeo.meta_title || seoData.meta_title || subcategoryInfo?.name || 'Title'}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {activeTabSeo.meta_description || seoData.meta_description || 'Description preview'}
+                    </p>
+                  </div>
+                )}
+
+                {(activeTabSeo.meta_title || activeTabSeo.meta_description || activeTabSeo.meta_keywords) && (
+                  <button
+                    onClick={() => setTabSeo((prev) => {
+                      const next = { ...prev };
+                      delete next[tabSeoActiveTab];
+                      return next;
+                    })}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                  >
+                    Clear SEO for this tab
+                  </button>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
+                <button onClick={() => setShowTabSeoPanel(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
+                <button onClick={handleSaveTabSeo} className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm font-medium">Save Tab SEO</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* SEO Settings Panel */}
       {showSEOPanel && (

@@ -10,6 +10,7 @@ import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
 import { Download, Lock, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from "@/context/AuthContext";
+import { StandardExamCard } from "@/components/exam/StandardExamCard";
 
 interface Block {
   id: string;
@@ -67,6 +68,8 @@ interface PageContentResponse {
   };
   customTabs?: CustomTab[];
   tocOrder?: Record<string, number>;
+  tabHeadings?: Record<string, string>;
+  tabSeo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }>;
 }
 
 interface ModernSubcategoryPageProps {
@@ -303,6 +306,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
   const normalizedInitialTabSlug = useMemo(() => sanitizeTabSlug(initialTabSlug), [initialTabSlug]);
   const [hasAppliedInitialTab, setHasAppliedInitialTab] = useState(!initialTabSlug);
+  const isInitialTabLoad = useRef(true);
 
   useEffect(() => {
     if (hasAppliedInitialTab) {
@@ -341,15 +345,36 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return null;
   }, [combinedSlug, resolvedSubcategorySlug]);
 
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!basePath || !tabDescriptors.length) return;
+      const pathParts = window.location.pathname.replace(/^\//, '').split('/');
+      const tabSlugFromUrl = pathParts.length >= 2 ? pathParts[pathParts.length - 1] : 'overview';
+      const match = tabDescriptors.find((t) => t.slug === tabSlugFromUrl) || tabDescriptors[0];
+      if (match && match.id !== activeTab) {
+        setActiveTab(match.id);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [basePath, tabDescriptors, activeTab]);
+
   useEffect(() => {
     if (!basePath || !hasAppliedInitialTab || typeof window === 'undefined') return;
     const normalizedTab = currentTabDescriptor?.slug || 'overview';
     const targetPath = normalizedTab === 'overview' ? `/${basePath}` : `/${basePath}/${normalizedTab}`;
     if (window.location.pathname === targetPath) {
+      isInitialTabLoad.current = false;
       return;
     }
     const nextUrl = `${targetPath}${window.location.search}${window.location.hash}`;
-    window.history.replaceState(window.history.state, '', nextUrl);
+    if (isInitialTabLoad.current) {
+      window.history.replaceState(window.history.state, '', nextUrl);
+      isInitialTabLoad.current = false;
+    } else {
+      window.history.pushState(window.history.state, '', nextUrl);
+    }
   }, [currentTabDescriptor?.slug, basePath, hasAppliedInitialTab]);
 
   useEffect(() => {
@@ -532,6 +557,22 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     () => (subcategoryInfo?.description || '').trim(),
     [subcategoryInfo]
   );
+
+  // Update document title when active tab or heroTitle changes
+  useEffect(() => {
+    if (!heroTitle) return;
+    const tabId = currentTabDescriptor?.id;
+    const tabOverride = tabId ? pageContent?.tabSeo?.[tabId] : undefined;
+    if (tabOverride?.meta_title) {
+      document.title = tabOverride.meta_title;
+      return;
+    }
+    const customHeading = tabId ? pageContent?.tabHeadings?.[tabId] : null;
+    const tabLabel = tabId && tabId !== 'overview'
+      ? (customHeading || currentTabDescriptor?.label)
+      : null;
+    document.title = tabLabel ? `${tabLabel} - ${heroTitle}` : heroTitle;
+  }, [currentTabDescriptor?.id, currentTabDescriptor?.label, heroTitle, pageContent?.tabHeadings, pageContent?.tabSeo]);
 
   const breadcrumbs = useMemo(() => {
     const items = [{ label: 'Home', href: '/' }];
@@ -918,14 +959,24 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     <div className="min-h-screen bg-gray-50">
       {pageContent.seo && (
         <Head>
-          <title>{pageContent.seo.meta_title || heroTitle}</title>
-          {pageContent.seo.meta_description && (
-            <meta name="description" content={pageContent.seo.meta_description} />
-          )}
-          {pageContent.seo.meta_keywords && (
-            <meta name="keywords" content={pageContent.seo.meta_keywords} />
-          )}
-          {pageContent.seo.canonical_url && <link rel="canonical" href={pageContent.seo.canonical_url} />}
+          {(() => {
+            const tabId = currentTabDescriptor?.id;
+            const tabOverride = tabId ? pageContent.tabSeo?.[tabId] : undefined;
+            const effectiveTitle = tabOverride?.meta_title
+              || (tabId && tabId !== 'overview'
+                ? `${pageContent.tabHeadings?.[tabId] || currentTabDescriptor?.label} - ${pageContent.seo.meta_title || heroTitle}`
+                : (pageContent.seo.meta_title || heroTitle));
+            const effectiveDesc = tabOverride?.meta_description || pageContent.seo.meta_description;
+            const effectiveKeywords = tabOverride?.meta_keywords || pageContent.seo.meta_keywords;
+            return (
+              <>
+                <title>{effectiveTitle}</title>
+                {effectiveDesc && <meta name="description" content={effectiveDesc} />}
+                {effectiveKeywords && <meta name="keywords" content={effectiveKeywords} />}
+                {pageContent.seo.canonical_url && <link rel="canonical" href={pageContent.seo.canonical_url} />}
+              </>
+            );
+          })()}
         </Head>
       )}
 
@@ -953,7 +1004,11 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               </div>
             )}
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-3">{heroTitle}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-3 leading-tight">
+                {(currentTabDescriptor && pageContent?.tabHeadings?.[currentTabDescriptor.id])
+                  ? pageContent.tabHeadings[currentTabDescriptor.id]
+                  : heroTitle}
+              </h1>
               {heroSubtitle && <p className="text-xl md:text-2xl text-blue-100 mb-4 max-w-3xl">{heroSubtitle}</p>}
               <nav className="flex flex-wrap items-center gap-2 text-sm text-blue-100/80">
                 {breadcrumbs.map((crumb, index) => (
@@ -985,17 +1040,28 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
             <div ref={tabScrollRef} className="flex-1 overflow-x-auto hide-scrollbar">
               <div className="flex items-center space-x-6">
-                {tabItems.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`whitespace-nowrap text-sm font-medium transition-colors ${
-                      activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-gray-700 hover:text-blue-600'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                {tabItems.map((tab) => {
+                  const tabDescriptor = tabDescriptors.find((t) => t.id === tab.id);
+                  const tabHref = tabDescriptor?.slug === 'overview' || !tabDescriptor?.slug
+                    ? `/${basePath}`
+                    : `/${basePath}/${tabDescriptor.slug}`;
+                  return (
+                    <a
+                      key={tab.id}
+                      href={tabHref}
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey) return; // let browser open new tab
+                        e.preventDefault();
+                        setActiveTab(tab.id);
+                      }}
+                      className={`whitespace-nowrap text-sm font-medium transition-colors ${
+                        activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-gray-700 hover:text-blue-600'
+                      }`}
+                    >
+                      {tab.label}
+                    </a>
+                  );
+                })}
               </div>
             </div>
 
@@ -1035,6 +1101,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
             {mobileFiltersOpen && <FiltersPanel className="mt-4" />}
           </div>
         )}
+        {/* Tab heading is shown in the hero h1 above */}
         {/* Mobile TOC and content grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
@@ -1077,71 +1144,49 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                             <div className="space-y-4">
                               {filteredMockTests.map((rawExam, examIndex) => {
                                 const examData = rawExam?.exam ?? rawExam;
-                                if (!examData) {
-                                  return null;
-                                }
-
+                                if (!examData) return null;
                                 const examKey = examData.id || examData.slug || `mock-exam-${examIndex}`;
                                 const canAccess = examData.is_free || user?.is_premium;
                                 const hasPdfEn = Boolean(examData.pdf_url_en);
                                 const hasPdfHi = Boolean(examData.pdf_url_hi);
                                 const fallbackPdf = examData.download_url || examData.pdf_url || examData.file_url;
                                 return (
-                                  <div key={examKey} className="border rounded-xl p-4 flex flex-col gap-4">
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-semibold text-gray-900">{examData.title}</h3>
-                                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                  <div key={examKey} className="border rounded-xl p-4 flex flex-col gap-3">
+                                    <h3 className="text-base font-semibold text-gray-900">{examData.title}</h3>
+                                    <div className="flex items-end justify-between gap-3 flex-wrap">
+                                      <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                                         {examData.total_questions && <span>{examData.total_questions} Questions</span>}
                                         {examData.duration && <span>{examData.duration} mins</span>}
                                         {examData.total_marks && <span>{examData.total_marks} Marks</span>}
                                         {examData.is_free && <span className="text-green-600 font-semibold">Free</span>}
                                       </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-3 w-full">
-                                      <Link
-                                        href={examData.url_path || `/exams/${examData.slug || examData.id}`}
-                                        className={`inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full transition-colors w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
-                                      >
-                                        {!canAccess && <Lock className="w-4 h-4 mr-2" />}
-                                        {canAccess ? 'Attempt Now' : 'Unlock Premium'}
-                                      </Link>
-                                      {(hasPdfEn || hasPdfHi) && (
-                                        <div className="flex flex-wrap gap-2">
-                                          {hasPdfEn && (
-                                            <a
-                                              href={examData.pdf_url_en}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                            >
-                                              <Download className="w-4 h-4 mr-2" />
-                                              English PDF
-                                            </a>
-                                          )}
-                                          {hasPdfHi && (
-                                            <a
-                                              href={examData.pdf_url_hi}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                            >
-                                              <Download className="w-4 h-4 mr-2" />
-                                              Hindi PDF
-                                            </a>
-                                          )}
-                                        </div>
-                                      )}
-                                      {!hasPdfEn && !hasPdfHi && fallbackPdf && (
-                                        <a
-                                          href={fallbackPdf}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                      <div className="flex flex-wrap gap-2 flex-shrink-0">
+                                        {hasPdfEn && (
+                                          <a href={examData.pdf_url_en} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            English
+                                          </a>
+                                        )}
+                                        {hasPdfHi && (
+                                          <a href={examData.pdf_url_hi} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Hindi
+                                          </a>
+                                        )}
+                                        {!hasPdfEn && !hasPdfHi && fallbackPdf && (
+                                          <a href={fallbackPdf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Download PDF
+                                          </a>
+                                        )}
+                                        <Link
+                                          href={examData.url_path || `/exams/${examData.slug || examData.id}`}
+                                          className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-full transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
                                         >
-                                          <Download className="w-4 h-4 mr-2" />
-                                          Download PDF
-                                        </a>
-                                      )}
+                                          {!canAccess && <Lock className="w-3.5 h-3.5 mr-1.5" />}
+                                          {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                        </Link>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -1157,7 +1202,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                           ) : filteredPreviousPapers.length === 0 ? (
                             <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No question papers found for selected years.' : 'No question papers available yet.'}</p>
                           ) : (
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               {filteredPreviousPapers.map((paper) => {
                                 const examData = paper.exam ?? paper;
                                 if (!examData) return null;
@@ -1166,69 +1211,27 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                                 const pdfEn = paper.pdf_url_en || examData.pdf_url_en;
                                 const pdfHi = paper.pdf_url_hi || examData.pdf_url_hi;
                                 const fallbackPdf = paper.download_url || paper.file_url;
-                                const hasPdfEn = Boolean(pdfEn);
-                                const hasPdfHi = Boolean(pdfHi);
-                                const totalQuestions = paper.total_questions ?? examData.total_questions;
-                                const duration = paper.duration ?? examData.duration;
-                                const totalMarks = paper.total_marks ?? examData.total_marks;
+                                const mergedExam = {
+                                  ...examData,
+                                  title: paper.title || examData.title,
+                                  total_questions: paper.total_questions ?? examData.total_questions,
+                                  duration: paper.duration ?? examData.duration,
+                                  total_marks: paper.total_marks ?? examData.total_marks,
+                                  url_path: paper.url_path || examData.url_path,
+                                  pdf_url_en: pdfEn,
+                                  pdf_url_hi: pdfHi,
+                                  download_url: fallbackPdf,
+                                };
                                 return (
-                                  <div key={paperKey} className="border rounded-xl p-4 flex flex-col gap-4">
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-semibold text-gray-900">{paper.title || examData.title}</h3>
-                                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                                        {totalQuestions && <span>{totalQuestions} Questions</span>}
-                                        {duration && <span>{duration} mins</span>}
-                                        {totalMarks && <span>{totalMarks} Marks</span>}
-                                        {examData.is_free && <span className="text-green-600 font-semibold">Free</span>}
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-3 w-full">
-                                      <Link
-                                        href={paper.url_path || examData.url_path || `/exams/${examData.slug || examData.id}`}
-                                        className={`inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full transition-colors w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
-                                      >
-                                        {!canAccess && <Lock className="w-4 h-4 mr-2" />}
-                                        {canAccess ? 'Attempt Now' : 'Unlock Premium'}
-                                      </Link>
-                                      {(hasPdfEn || hasPdfHi) && (
-                                        <div className="flex flex-wrap gap-2">
-                                          {hasPdfEn && (
-                                            <a
-                                              href={pdfEn}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                            >
-                                              <Download className="w-4 h-4 mr-2" />
-                                              English PDF
-                                            </a>
-                                          )}
-                                          {hasPdfHi && (
-                                            <a
-                                              href={pdfHi}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                            >
-                                              <Download className="w-4 h-4 mr-2" />
-                                              Hindi PDF
-                                            </a>
-                                          )}
-                                        </div>
-                                      )}
-                                      {!hasPdfEn && !hasPdfHi && fallbackPdf && (
-                                        <a
-                                          href={fallbackPdf}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                        >
-                                          <Download className="w-4 h-4 mr-2" />
-                                          Download PDF
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>
+                                  <StandardExamCard
+                                    key={paperKey}
+                                    exam={mergedExam}
+                                    pdfMode={true}
+                                    isLocked={!canAccess}
+                                    ctaLabel="Attempt Now"
+                                    onDownloadPDF={handleDownloadExamPDF}
+                                    isDownloading={downloadingExamId === examData.id}
+                                  />
                                 );
                               })}
                             </div>
@@ -1283,68 +1286,48 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                               {filteredMockTests.map((rawExam, examIndex) => {
                                 const examData = rawExam?.exam ?? rawExam;
                                 if (!examData) return null;
-
                                 const examKey = examData.id || examData.slug || `mock-exam-${examIndex}`;
                                 const canAccess = examData.is_free || user?.is_premium;
                                 const hasPdfEn = Boolean(examData.pdf_url_en);
                                 const hasPdfHi = Boolean(examData.pdf_url_hi);
                                 const fallbackPdf = examData.download_url || examData.pdf_url || examData.file_url;
                                 return (
-                                  <div key={examKey} className="border rounded-xl p-4 flex flex-col gap-4">
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-semibold text-gray-900">{examData.title}</h3>
-                                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                  <div key={examKey} className="border rounded-xl p-4 flex flex-col gap-3">
+                                    <h3 className="text-base font-semibold text-gray-900">{examData.title}</h3>
+                                    <div className="flex items-end justify-between gap-3 flex-wrap">
+                                      <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                                         {examData.total_questions && <span>{examData.total_questions} Questions</span>}
                                         {examData.duration && <span>{examData.duration} mins</span>}
                                         {examData.total_marks && <span>{examData.total_marks} Marks</span>}
                                         {examData.is_free && <span className="text-green-600 font-semibold">Free</span>}
                                       </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-3 w-full">
-                                      <Link
-                                        href={examData.url_path || `/exams/${examData.slug || examData.id}`}
-                                        className={`inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full transition-colors w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
-                                      >
-                                        {!canAccess && <Lock className="w-4 h-4 mr-2" />}
-                                        {canAccess ? 'Attempt Now' : 'Unlock Premium'}
-                                      </Link>
-                                      {(hasPdfEn || hasPdfHi) && (
-                                        <div className="flex flex-wrap gap-2">
-                                          {hasPdfEn && (
-                                            <a
-                                              href={examData.pdf_url_en}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                            >
-                                              <Download className="w-4 h-4 mr-2" />
-                                              English PDF
-                                            </a>
-                                          )}
-                                          {hasPdfHi && (
-                                            <a
-                                              href={examData.pdf_url_hi}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                            >
-                                              <Download className="w-4 h-4 mr-2" />
-                                              Hindi PDF
-                                            </a>
-                                          )}
-                                        </div>
-                                      )}
-                                      {!hasPdfEn && !hasPdfHi && fallbackPdf && (
-                                        <a
-                                          href={fallbackPdf}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                                      <div className="flex flex-wrap gap-2 flex-shrink-0">
+                                        {hasPdfEn && (
+                                          <a href={examData.pdf_url_en} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            English
+                                          </a>
+                                        )}
+                                        {hasPdfHi && (
+                                          <a href={examData.pdf_url_hi} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Hindi
+                                          </a>
+                                        )}
+                                        {!hasPdfEn && !hasPdfHi && fallbackPdf && (
+                                          <a href={fallbackPdf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Download PDF
+                                          </a>
+                                        )}
+                                        <Link
+                                          href={examData.url_path || `/exams/${examData.slug || examData.id}`}
+                                          className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-full transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
                                         >
-                                          <Download className="w-4 h-4 mr-2" />
-                                          Download PDF
-                                        </a>
-                                      )}
+                                          {!canAccess && <Lock className="w-3.5 h-3.5 mr-1.5" />}
+                                          {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                        </Link>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -1360,7 +1343,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                           ) : filteredPreviousPapers.length === 0 ? (
                             <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No question papers found for selected years.' : 'No question papers available yet.'}</p>
                           ) : (
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               {filteredPreviousPapers.map((paper) => {
                                 const examData = paper.exam ?? paper;
                                 if (!examData) return null;
@@ -1369,69 +1352,27 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                                 const pdfEn = paper.pdf_url_en || examData.pdf_url_en;
                                 const pdfHi = paper.pdf_url_hi || examData.pdf_url_hi;
                                 const fallbackPdf = paper.download_url || paper.file_url;
-                                const hasPdfEn = Boolean(pdfEn);
-                                const hasPdfHi = Boolean(pdfHi);
-                                const totalQuestions = paper.total_questions ?? examData.total_questions;
-                                const duration = paper.duration ?? examData.duration;
-                                const totalMarks = paper.total_marks ?? examData.total_marks;
+                                const mergedExam = {
+                                  ...examData,
+                                  title: paper.title || examData.title,
+                                  total_questions: paper.total_questions ?? examData.total_questions,
+                                  duration: paper.duration ?? examData.duration,
+                                  total_marks: paper.total_marks ?? examData.total_marks,
+                                  url_path: paper.url_path || examData.url_path,
+                                  pdf_url_en: pdfEn,
+                                  pdf_url_hi: pdfHi,
+                                  download_url: fallbackPdf,
+                                };
                                 return (
-                                  <div key={paperKey} className="border rounded-xl p-4 flex flex-col gap-4">
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-semibold text-gray-900">{paper.title || examData.title}</h3>
-                                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                                        {totalQuestions && <span>{totalQuestions} Questions</span>}
-                                        {duration && <span>{duration} mins</span>}
-                                        {totalMarks && <span>{totalMarks} Marks</span>}
-                                        {examData.is_free && <span className="text-green-600 font-semibold">Free</span>}
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-3 w-full">
-                                      <Link
-                                        href={paper.url_path || examData.url_path || `/exams/${examData.slug || examData.id}`}
-                                        className={`inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full transition-colors w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
-                                      >
-                                        {!canAccess && <Lock className="w-4 h-4 mr-2" />}
-                                        {canAccess ? 'Attempt Now' : 'Unlock Premium'}
-                                      </Link>
-                                      {(pdfEn || pdfHi) && (
-                                        <div className="flex flex-wrap gap-2">
-                                          {pdfEn && (
-                                            <a
-                                              href={pdfEn}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                            >
-                                              <Download className="w-4 h-4 mr-2" />
-                                              English PDF
-                                            </a>
-                                          )}
-                                          {pdfHi && (
-                                            <a
-                                              href={pdfHi}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                            >
-                                              <Download className="w-4 h-4 mr-2" />
-                                              Hindi PDF
-                                            </a>
-                                          )}
-                                        </div>
-                                      )}
-                                      {!pdfEn && !pdfHi && fallbackPdf && (
-                                        <a
-                                          href={fallbackPdf}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                                        >
-                                          <Download className="w-4 h-4 mr-2" />
-                                          Download PDF
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>
+                                  <StandardExamCard
+                                    key={paperKey}
+                                    exam={mergedExam}
+                                    pdfMode={true}
+                                    isLocked={!canAccess}
+                                    ctaLabel="Attempt Now"
+                                    onDownloadPDF={handleDownloadExamPDF}
+                                    isDownloading={downloadingExamId === examData.id}
+                                  />
                                 );
                               })}
                             </div>
