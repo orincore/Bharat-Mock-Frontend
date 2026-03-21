@@ -264,10 +264,10 @@ export default function ExamsPage() {
   const filtersPanelContent = (
     <div className="bg-card rounded-xl border border-border p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+        <p className="font-display text-lg font-bold text-foreground flex items-center gap-2">
           <Filter className="h-5 w-5 text-primary" />
           Filters
-        </h3>
+        </p>
         {hasCustomFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
         )}
@@ -364,24 +364,24 @@ export default function ExamsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/30">
       
-      <section className="border-b border-border bg-white/80">
-        <div className="container-main py-10 flex flex-col gap-4">
-          <div className="space-y-2">
+      <section className="gradient-hero py-10">
+        <div className="container-main">
+          <div className="space-y-4">
             <Breadcrumbs 
-            items={[
-              HomeBreadcrumb(),
-              { label: 'Mock Test Series' }
-            ]}
-            variant="light"
-            className="mb-6"
-          />
-            <p className="text-xs uppercase tracking-wide text-primary font-semibold">Bharat Mock Exams</p>
-            <h1 className="font-display text-3xl font-bold text-slate-900">Practice with thousands of mock tests</h1>
-            <p className="text-slate-600 max-w-3xl">Filter by category, difficulty, and status to find the perfect exam for your preparation.</p>
+              items={[
+                HomeBreadcrumb(),
+                { label: 'Mock Test Series' }
+              ]}
+              variant="dark"
+              className="mb-6"
+            />
+            <p className="text-xs uppercase tracking-wide text-background/70 font-semibold">Bharat Mock Exams</p>
+            <h1 className="font-display text-4xl md:text-5xl font-bold text-background">Practice with thousands of mock tests</h1>
+            <p className="text-lg text-background/80 max-w-3xl">Filter by category, difficulty, and status to find the perfect exam for your preparation.</p>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); setPagination(prev => ({ ...prev, page: 1 })); }} className="flex flex-col sm:flex-row gap-3">
+          <form onSubmit={(e) => { e.preventDefault(); setPagination(prev => ({ ...prev, page: 1 })); }} className="flex flex-col sm:flex-row gap-3 mt-6 max-w-2xl">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
@@ -484,7 +484,7 @@ export default function ExamsPage() {
               >
                 <ChevronLeft className="h-5 w-5 text-slate-700" />
               </button>
-              <div ref={categoriesScrollRef} className="flex gap-5 overflow-x-auto hide-scrollbar pb-3">
+              <div ref={categoriesScrollRef} className="flex gap-5 overflow-x-auto hide-scrollbar pb-3 justify-center">
                 {categories.map((category, index) => {
                 const isSelected = selectedCategoryId === category.id;
                 const badgeBackgrounds = [

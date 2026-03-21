@@ -202,10 +202,10 @@ export default function QuizzesPage() {
   const FiltersPanel = () => (
     <div className="bg-card rounded-xl border border-border p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+        <p className="font-display text-lg font-bold text-foreground flex items-center gap-2">
           <Filter className="h-5 w-5 text-primary" />
           Filters
-        </h3>
+        </p>
         {hasCustomFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
         )}

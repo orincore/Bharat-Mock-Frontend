@@ -131,7 +131,7 @@ export function Footer() {
             {renderedSections.map((section) => (
               <div key={section.title}>
                 <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                  <h3 className="font-display font-semibold text-background text-sm">{section.title}</h3>
+                  <p className="font-display font-semibold text-background text-sm">{section.title}</p>
                   {linkLoading && <span className="text-xs text-background/60">(loading...)</span>}
                 </div>
                 <ul className="space-y-1.5 sm:space-y-2">

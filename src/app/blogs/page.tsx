@@ -157,7 +157,7 @@ export default function BlogsPage() {
         <aside className="bg-white border border-border rounded-2xl p-6 space-y-6 h-fit">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-lg font-semibold text-slate-900">Categories</h3>
+              <p className="font-display text-lg font-semibold text-slate-900">Categories</p>
               <Button variant="ghost" size="sm" className="text-xs" onClick={clearFilters}>
                 Clear
               </Button>

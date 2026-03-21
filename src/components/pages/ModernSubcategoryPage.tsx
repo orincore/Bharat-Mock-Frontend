@@ -1103,8 +1103,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         )}
         {/* Tab heading is shown in the hero h1 above */}
         {/* Mobile TOC and content grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-3">
             {isContentTab && (
               <>
                 {pageContent?.orphanBlocks?.map((block) => (
@@ -1195,14 +1195,14 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                           )}
                         </div>
                       ) : (
-                        <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                           <h2 className="text-xl font-semibold mb-4">Previous Year Question Papers</h2>
                           {questionPapersLoading || pastPaperLoading ? (
                             <p className="text-sm text-gray-500">Loading question papers...</p>
                           ) : filteredPreviousPapers.length === 0 ? (
                             <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No question papers found for selected years.' : 'No question papers available yet.'}</p>
                           ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="space-y-4">
                               {filteredPreviousPapers.map((paper) => {
                                 const examData = paper.exam ?? paper;
                                 if (!examData) return null;
@@ -1222,16 +1222,47 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                                   pdf_url_hi: pdfHi,
                                   download_url: fallbackPdf,
                                 };
+                                const hasPdfEn = Boolean(pdfEn);
+                                const hasPdfHi = Boolean(pdfHi);
                                 return (
-                                  <StandardExamCard
-                                    key={paperKey}
-                                    exam={mergedExam}
-                                    pdfMode={true}
-                                    isLocked={!canAccess}
-                                    ctaLabel="Attempt Now"
-                                    onDownloadPDF={handleDownloadExamPDF}
-                                    isDownloading={downloadingExamId === examData.id}
-                                  />
+                                  <div key={paperKey} className="border rounded-xl p-4 flex flex-col gap-3">
+                                    <h3 className="text-base font-semibold text-gray-900">{mergedExam.title}</h3>
+                                    <div className="flex items-end justify-between gap-3 flex-wrap">
+                                      <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                                        {mergedExam.total_questions && <span>{mergedExam.total_questions} Questions</span>}
+                                        {mergedExam.duration && <span>{mergedExam.duration} mins</span>}
+                                        {mergedExam.total_marks && <span>{mergedExam.total_marks} Marks</span>}
+                                        {mergedExam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                      </div>
+                                      <div className="flex flex-wrap gap-2 flex-shrink-0">
+                                        {hasPdfEn && (
+                                          <a href={pdfEn} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            English
+                                          </a>
+                                        )}
+                                        {hasPdfHi && (
+                                          <a href={pdfHi} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Hindi
+                                          </a>
+                                        )}
+                                        {!hasPdfEn && !hasPdfHi && fallbackPdf && (
+                                          <a href={fallbackPdf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Download PDF
+                                          </a>
+                                        )}
+                                        <Link
+                                          href={mergedExam.url_path || `/exams/${mergedExam.slug || mergedExam.id}`}
+                                          className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-full transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                        >
+                                          {!canAccess && <Lock className="w-3.5 h-3.5 mr-1.5" />}
+                                          {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                        </Link>
+                                      </div>
+                                    </div>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -1336,14 +1367,14 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                           )}
                         </div>
                       ) : (
-                        <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                           <h2 className="text-xl font-semibold mb-4">Previous Year Question Papers</h2>
                           {questionPapersLoading || pastPaperLoading ? (
                             <p className="text-sm text-gray-500">Loading question papers...</p>
                           ) : filteredPreviousPapers.length === 0 ? (
                             <p className="text-sm text-gray-600">{selectedYears.length > 0 ? 'No question papers found for selected years.' : 'No question papers available yet.'}</p>
                           ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="space-y-4">
                               {filteredPreviousPapers.map((paper) => {
                                 const examData = paper.exam ?? paper;
                                 if (!examData) return null;
@@ -1359,20 +1390,48 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                                   duration: paper.duration ?? examData.duration,
                                   total_marks: paper.total_marks ?? examData.total_marks,
                                   url_path: paper.url_path || examData.url_path,
-                                  pdf_url_en: pdfEn,
-                                  pdf_url_hi: pdfHi,
-                                  download_url: fallbackPdf,
                                 };
+                                const hasPdfEn = Boolean(pdfEn);
+                                const hasPdfHi = Boolean(pdfHi);
                                 return (
-                                  <StandardExamCard
-                                    key={paperKey}
-                                    exam={mergedExam}
-                                    pdfMode={true}
-                                    isLocked={!canAccess}
-                                    ctaLabel="Attempt Now"
-                                    onDownloadPDF={handleDownloadExamPDF}
-                                    isDownloading={downloadingExamId === examData.id}
-                                  />
+                                  <div key={paperKey} className="border rounded-xl p-4 flex flex-col gap-3">
+                                    <h3 className="text-base font-semibold text-gray-900">{mergedExam.title}</h3>
+                                    <div className="flex items-end justify-between gap-3 flex-wrap">
+                                      <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                                        {mergedExam.total_questions && <span>{mergedExam.total_questions} Questions</span>}
+                                        {mergedExam.duration && <span>{mergedExam.duration} mins</span>}
+                                        {mergedExam.total_marks && <span>{mergedExam.total_marks} Marks</span>}
+                                        {mergedExam.is_free && <span className="text-green-600 font-semibold">Free</span>}
+                                      </div>
+                                      <div className="flex flex-wrap gap-2 flex-shrink-0">
+                                        {hasPdfEn && (
+                                          <a href={pdfEn} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            English
+                                          </a>
+                                        )}
+                                        {hasPdfHi && (
+                                          <a href={pdfHi} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Hindi
+                                          </a>
+                                        )}
+                                        {!hasPdfEn && !hasPdfHi && fallbackPdf && (
+                                          <a href={fallbackPdf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Download PDF
+                                          </a>
+                                        )}
+                                        <Link
+                                          href={mergedExam.url_path || `/exams/${mergedExam.slug || mergedExam.id}`}
+                                          className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-full transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                        >
+                                          {!canAccess && <Lock className="w-3.5 h-3.5 mr-1.5" />}
+                                          {canAccess ? 'Attempt Now' : 'Unlock Premium'}
+                                        </Link>
+                                      </div>
+                                    </div>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -1386,8 +1445,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
             )}
 
             {!isContentTab && activeTab === 'previous-papers' && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold mb-4">Last Year Question Papers</h2>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h2 className="text-xl font-semibold mb-4">Previous Year Question Papers</h2>
                 {questionPapersLoading || pastPaperLoading ? (
                   <p className="text-sm text-gray-500">Loading question papers...</p>
                 ) : combinedQuestionPapers.length === 0 ? (
@@ -1396,47 +1455,59 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                   <div className="space-y-4">
                     {combinedQuestionPapers.map((paper) => {
                       const paperExamId = paper.exam_id || paper.exam?.id;
-                      const isDownloading = paperExamId && downloadingExamId === paperExamId;
-                      const resolvedYear = resolvePaperYear(paper);
-
+                      const canAccess = (paper.exam?.is_free ?? true) || user?.is_premium;
+                      const pdfEn = paper.pdf_url_en || paper.exam?.pdf_url_en;
+                      const pdfHi = paper.pdf_url_hi || paper.exam?.pdf_url_hi;
+                      const fallbackPdf = paper.download_url || paper.file_url;
+                      const hasPdfEn = Boolean(pdfEn);
+                      const hasPdfHi = Boolean(pdfHi);
                       return (
-                        <div key={paper.id} className="border rounded-xl p-4">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                            <div>
-                              <p className="text-sm text-gray-500">{resolvedYear || '—'}</p>
-                              <h3 className="text-lg font-semibold text-gray-900">{paper.title || paper.exam?.title}</h3>
-                              {paper.description && <p className="text-sm text-gray-600 mt-1">{paper.description}</p>}
+                        <div key={paper.id} className="border rounded-xl p-4 flex flex-col gap-3">
+                          <h3 className="text-base font-semibold text-gray-900">{paper.title || paper.exam?.title}</h3>
+                          <div className="flex items-end justify-between gap-3 flex-wrap">
+                            <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                              {paper.exam?.total_questions && <span>{paper.exam.total_questions} Questions</span>}
+                              {paper.exam?.duration && <span>{paper.exam.duration} mins</span>}
+                              {paper.exam?.total_marks && <span>{paper.exam.total_marks} Marks</span>}
+                              {(paper.exam?.is_free ?? true) && <span className="text-green-600 font-semibold">Free</span>}
                             </div>
-                            <div className="flex flex-wrap gap-3">
+                            <div className="flex flex-wrap gap-2 flex-shrink-0">
+                              {hasPdfEn && (
+                                <a href={pdfEn} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                                  English
+                                </a>
+                              )}
+                              {hasPdfHi && (
+                                <a href={pdfHi} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                                  Hindi
+                                </a>
+                              )}
+                              {!hasPdfEn && !hasPdfHi && fallbackPdf && (
+                                <a href={fallbackPdf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 transition-colors">
+                                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                                  Download PDF
+                                </a>
+                              )}
+                              {!hasPdfEn && !hasPdfHi && !fallbackPdf && paperExamId && (
+                                <button
+                                  onClick={() => handleDownloadExamPDF(paperExamId)}
+                                  disabled={downloadingExamId === paperExamId}
+                                  className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+                                >
+                                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                                  {downloadingExamId === paperExamId ? 'Preparing…' : 'Download PDF'}
+                                </button>
+                              )}
                               {paper.exam?.url_path && (
                                 <Link
                                   href={paper.exam.url_path}
-                                  className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${(paper.exam?.is_free ?? true) ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                                  className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-full transition-colors ${canAccess ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
                                 >
-                                  {!(paper.exam?.is_free ?? true) && <Lock className="w-4 h-4 mr-2" />}
-                                  {(paper.exam?.is_free ?? true) ? 'Attempt Now' : 'Unlock Now'}
+                                  {!canAccess && <Lock className="w-3.5 h-3.5 mr-1.5" />}
+                                  {canAccess ? 'Attempt Now' : 'Unlock Premium'}
                                 </Link>
-                              )}
-                              {paperExamId && (
-                                <button
-                                  onClick={() => handleDownloadExamPDF(paperExamId)}
-                                  disabled={isDownloading}
-                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  {isDownloading ? 'Preparing…' : 'Download PDF'}
-                                </button>
-                              )}
-                              {!paperExamId && (paper.download_url || paper.file_url) && (
-                                <a
-                                  href={paper.download_url || paper.file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center justify-center px-4 py-2 rounded-full border text-sm font-semibold text-blue-600 border-blue-600 hover:bg-blue-50"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Download PDF
-                                </a>
                               )}
                             </div>
                           </div>

@@ -10,7 +10,9 @@ import {
   RefreshCw,
   Settings,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 import { BlockEditor, clearBlockEditorAutosave } from '@/components/PageEditor/BlockEditor';
@@ -146,6 +148,8 @@ export default function AdminSubcategoryEditorPage() {
   const [tabConfig, setTabConfig] = useState<TabConfig[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>('overview');
   const [reservedPositions, setReservedPositions] = useState<Record<string, number>>({});
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const [tabsCollapsed, setTabsCollapsed] = useState(false);
   const tabConfigInitAttemptedRef = useRef(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
@@ -987,6 +991,40 @@ export default function AdminSubcategoryEditorPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Collapsed mini-bar */}
+      {headerCollapsed && (
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10 px-4 md:px-6 flex items-center gap-3 h-10">
+          <Link href="/admin" className="text-gray-400 hover:text-gray-700 flex-shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <span className="text-sm font-semibold text-gray-800 truncate flex-1">
+            {subcategoryInfo?.name || 'Editor'}
+            <span className="ml-2 text-xs font-normal text-gray-400">
+              — {tabOptions.find((t) => t.id === activeTabId)?.title || 'Overview'}
+            </span>
+          </span>
+          <Button
+            size="sm"
+            onClick={() => handleSave(sections)}
+            disabled={saving}
+            className="h-7 px-2.5 text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1 flex-shrink-0"
+          >
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+            Save
+          </Button>
+          <button
+            onClick={() => setHeaderCollapsed(false)}
+            className="flex-shrink-0 p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+            title="Expand"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Full header + tabs (hidden when collapsed) */}
+      {!headerCollapsed && (
+        <>
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-6">
           {/* Row 1: identity */}
@@ -1005,7 +1043,7 @@ export default function AdminSubcategoryEditorPage() {
                 <ImageIcon className="w-4 h-4 text-gray-400" />
               )}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <Breadcrumbs
                 items={[
                   AdminBreadcrumb(),
@@ -1023,6 +1061,13 @@ export default function AdminSubcategoryEditorPage() {
                 )}
               </h1>
             </div>
+            <button
+              onClick={() => setHeaderCollapsed(true)}
+              className="ml-auto flex-shrink-0 p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              title="Collapse — maximize editor area"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Row 2: actions */}
@@ -1095,62 +1140,62 @@ export default function AdminSubcategoryEditorPage() {
 
       {/* Tabs Manager */}
       <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-4">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Page Tabs</h2>
-              <p className="text-sm text-gray-500">Organize sections across Overview and custom tabs.</p>
-            </div>
-            <Button size="sm" onClick={handleCreateTab} variant="secondary">+ Add Custom Tab</Button>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {tabOptions.map((tab) => {
-              const isActive = activeTabId === tab.id;
-              const isSpecial = tab.isSpecial || false;
-              const linkedCustomTab = !isSpecial ? customTabs.find((customTab) => customTab.id === tab.id) : null;
-              return (
-                <div key={tab.id} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-700'}`}>
-                  <button
-                    onClick={() => setActiveTabId(tab.id)}
-                    className="font-semibold text-sm"
-                  >
-                    {tab.title}
-                  </button>
-                  {isSpecial && (
-                    <span className="text-[10px] uppercase tracking-wide font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
-                      Reserved
-                    </span>
-                  )}
-                  {tab.id !== 'overview' && (
-                    <div className="flex items-center gap-1 text-xs">
-                      <button
-                        onClick={() => handleMoveTab(tab.id, 'left')}
-                        className={`px-1 ${canMoveTabDirection(tab.id, 'left') ? 'text-gray-500 hover:text-gray-800' : 'text-gray-300 cursor-not-allowed'}`}
-                        disabled={!canMoveTabDirection(tab.id, 'left')}
-                      >
-                        ◀
+            <div className="flex items-center gap-3">
+              {!tabsCollapsed && <span className="text-sm font-semibold text-gray-700">Page Tabs</span>}
+              {!tabsCollapsed && <div className="flex flex-wrap gap-2">
+                {tabOptions.map((tab) => {
+                  const isActive = activeTabId === tab.id;
+                  const isSpecial = tab.isSpecial || false;
+                  const linkedCustomTab = !isSpecial ? customTabs.find((customTab) => customTab.id === tab.id) : null;
+                  return (
+                    <div key={tab.id} className={`flex items-center gap-2 rounded-full border px-3 py-1 ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-700'}`}>
+                      <button onClick={() => setActiveTabId(tab.id)} className="font-semibold text-sm">
+                        {tab.title}
                       </button>
-                      <button
-                        onClick={() => handleMoveTab(tab.id, 'right')}
-                        className={`px-1 ${canMoveTabDirection(tab.id, 'right') ? 'text-gray-500 hover:text-gray-800' : 'text-gray-300 cursor-not-allowed'}`}
-                        disabled={!canMoveTabDirection(tab.id, 'right')}
-                      >
-                        ▶
-                      </button>
-                      {!isSpecial && linkedCustomTab && (
-                        <>
-                          <button onClick={() => handleRenameTab(linkedCustomTab)} className="px-1 text-gray-500 hover:text-gray-800">Edit</button>
-                          <button onClick={() => handleDeleteTab(linkedCustomTab)} className="px-1 text-red-500 hover:text-red-700">Delete</button>
-                        </>
+                      {isSpecial && (
+                        <span className="text-[10px] uppercase tracking-wide font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                          Reserved
+                        </span>
+                      )}
+                      {tab.id !== 'overview' && (
+                        <div className="flex items-center gap-1 text-xs">
+                          <button onClick={() => handleMoveTab(tab.id, 'left')} className={`px-1 ${canMoveTabDirection(tab.id, 'left') ? 'text-gray-500 hover:text-gray-800' : 'text-gray-300 cursor-not-allowed'}`} disabled={!canMoveTabDirection(tab.id, 'left')}>◀</button>
+                          <button onClick={() => handleMoveTab(tab.id, 'right')} className={`px-1 ${canMoveTabDirection(tab.id, 'right') ? 'text-gray-500 hover:text-gray-800' : 'text-gray-300 cursor-not-allowed'}`} disabled={!canMoveTabDirection(tab.id, 'right')}>▶</button>
+                          {!isSpecial && linkedCustomTab && (
+                            <>
+                              <button onClick={() => handleRenameTab(linkedCustomTab)} className="px-1 text-gray-500 hover:text-gray-800">Edit</button>
+                              <button onClick={() => handleDeleteTab(linkedCustomTab)} className="px-1 text-red-500 hover:text-red-700">Delete</button>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>}
+              {tabsCollapsed && (
+                <span className="text-sm text-gray-500">
+                  Tab: <span className="font-semibold text-gray-800">{tabOptions.find((t) => t.id === activeTabId)?.title || 'Overview'}</span>
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              {!tabsCollapsed && <Button size="sm" onClick={handleCreateTab} variant="secondary" className="h-7 text-xs px-2.5">+ Add Tab</Button>}
+              <button
+                onClick={() => setTabsCollapsed((v) => !v)}
+                className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                title={tabsCollapsed ? 'Show tabs' : 'Hide tabs'}
+              >
+                {tabsCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+        </>
+      )}
 
       {/* Block Editor */}
       <BlockEditor

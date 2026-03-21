@@ -28,9 +28,13 @@ interface StandardExamCardProps {
     download_url?: string;
     pdf_url?: string;
     file_url?: string;
+    start_date?: string | null;
+    end_date?: string | null;
+    allow_anytime?: boolean;
   };
   pdfMode?: boolean;
   isLocked?: boolean;
+  isLive?: boolean;
   ctaLabel?: string;
   onDownloadPDF?: (id: string) => void;
   isDownloading?: boolean;
@@ -40,11 +44,25 @@ export function StandardExamCard({
   exam,
   pdfMode = false,
   isLocked = false,
+  isLive = false,
   ctaLabel,
   onDownloadPDF,
   isDownloading = false,
 }: StandardExamCardProps) {
   const showStatusPill = exam.status && exam.status !== 'ongoing' && exam.status !== 'anytime';
+
+  // Derive live state if not explicitly passed
+  const nowTs = Date.now();
+  const startDate = exam.start_date ? new Date(exam.start_date) : null;
+  const endDate = exam.end_date ? new Date(exam.end_date) : null;
+  const windowStarted = Boolean(startDate && !Number.isNaN(startDate.getTime()) && startDate.getTime() <= nowTs);
+  const windowEnded = Boolean(endDate && !Number.isNaN(endDate.getTime()) && endDate.getTime() < nowTs);
+  const normalizedStatus = (exam.status || '').toLowerCase().trim();
+  const derivedIsLive = isLive ||
+    normalizedStatus === 'ongoing' ||
+    normalizedStatus.includes('live') ||
+    (windowStarted && !windowEnded && !exam.allow_anytime);
+  const isEndedWindow = windowEnded && !normalizedStatus.includes('live');
   const difficultyLabel = exam.difficulty
     ? exam.difficulty.charAt(0).toUpperCase() + exam.difficulty.slice(1)
     : 'Medium';
@@ -67,11 +85,21 @@ export function StandardExamCard({
   const logoSrc = exam.logo_url || exam.image_url || exam.thumbnail_url || exam.category_logo_url || exam.category_icon;
 
   return (
-    <div className="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.08)] hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:border-blue-200 transition-all duration-300 hover:-translate-y-1">
+    <div className={`group relative flex h-full flex-col rounded-2xl border bg-white overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 ${
+      derivedIsLive
+        ? 'border-red-200/80 hover:shadow-[0_8px_24px_rgba(239,68,68,0.15)] hover:border-red-300'
+        : 'border-slate-200/80 hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:border-blue-200'
+    }`}>
       {/* Top accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500" />
+      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${
+        derivedIsLive
+          ? 'from-red-400 via-rose-500 to-red-600'
+          : 'from-sky-400 via-blue-500 to-indigo-500'
+      }`} />
 
-      <div className="p-4 pt-5 bg-gradient-to-br from-slate-50/60 via-white to-white">
+      <div className={`p-4 pt-5 bg-gradient-to-br ${
+        derivedIsLive ? 'from-red-50/60 via-white to-white' : 'from-slate-50/60 via-white to-white'
+      }`}>
         {/* Free/Premium + Category row */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
@@ -92,6 +120,16 @@ export function StandardExamCard({
             }`}>
               {exam.is_free ? 'Free' : 'Premium'}
             </span>
+            {/* Live badge */}
+            {derivedIsLive && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-red-300/60 bg-red-500/10 px-2.5 py-0.5 text-[11px] font-bold text-red-600 uppercase tracking-wide">
+                <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+                  <span className="absolute inline-flex h-2.5 w-2.5 rounded-full bg-red-400/70 animate-ping" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                </span>
+                Live
+              </span>
+            )}
           </div>
           {exam.category && (
             <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-medium truncate max-w-[130px]">
@@ -156,15 +194,34 @@ export function StandardExamCard({
           <Link href={examUrl} className="inline-flex w-full">
             <Button
               className={`w-full rounded-xl font-semibold shadow-lg transition-all duration-300 group/btn ${
-                isLocked
-                  ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-white shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-orange-500 hover:to-orange-700'
-                  : 'bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-white shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-amber-500 hover:via-orange-600 hover:to-orange-700'
+                isEndedWindow
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                  : derivedIsLive
+                    ? 'bg-gradient-to-r from-red-500 via-red-600 to-rose-600 text-white shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-rose-700'
+                    : isLocked
+                      ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-white shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-orange-500 hover:to-orange-700'
+                      : 'bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-white shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-amber-500 hover:via-orange-600 hover:to-orange-700'
               }`}
               size="sm"
+              disabled={isEndedWindow}
             >
-              {isLocked && <Lock className="h-3.5 w-3.5 mr-1.5" />}
-              {defaultCta}
-              {!isLocked && <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover/btn:translate-x-0.5" />}
+              {isEndedWindow ? (
+                'Window Closed'
+              ) : derivedIsLive ? (
+                <span className="relative flex items-center justify-center gap-2 font-semibold uppercase tracking-wide">
+                  <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+                    <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-white/40 animate-ping" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                  </span>
+                  Join Live
+                </span>
+              ) : (
+                <>
+                  {isLocked && <Lock className="h-3.5 w-3.5 mr-1.5" />}
+                  {defaultCta}
+                  {!isLocked && <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover/btn:translate-x-0.5" />}
+                </>
+              )}
             </Button>
           </Link>
 

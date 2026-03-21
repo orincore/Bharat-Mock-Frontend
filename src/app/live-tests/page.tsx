@@ -26,6 +26,7 @@ import { taxonomyService, Category } from '@/lib/api/taxonomyService';
 import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
 import { Exam } from '@/types';
 import { ExamCard, getCountdownLabel } from '@/components/exam/ExamCard';
+import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { formatExamSummary } from '@/lib/utils/examSummary';
 import { TestimonialsSection } from '@/components/sections/TestimonialsSection';
 
@@ -483,7 +484,10 @@ export default function LiveTestsPage() {
                   </div>
                   <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     {mockExams.map((exam) => (
-                      <ExamCard key={exam.id} exam={exam} />
+                      <StandardExamCard key={exam.id} exam={exam} isLive={
+                        (exam.status || '').toLowerCase().includes('live') ||
+                        (exam.status || '').toLowerCase() === 'ongoing'
+                      } />
                     ))}
                   </div>
                 </div>
@@ -503,7 +507,10 @@ export default function LiveTestsPage() {
                   </div>
                   <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     {quizExams.map((exam) => (
-                      <ExamCard key={exam.id} exam={exam} />
+                      <StandardExamCard key={exam.id} exam={exam} isLive={
+                        (exam.status || '').toLowerCase().includes('live') ||
+                        (exam.status || '').toLowerCase() === 'ongoing'
+                      } />
                     ))}
                   </div>
                 </div>

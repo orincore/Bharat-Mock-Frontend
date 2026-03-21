@@ -22,8 +22,8 @@ import {
   UploadCloud,
   Trash,
   Trash2,
-  GripVertical,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Settings,
@@ -1419,30 +1419,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const syncingFromParentRef = useRef(false);
   const suppressHistoryRef = useRef(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  const [draggingSectionId, setDraggingSectionId] = useState<string | null>(null);
-  const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
-  const [sectionDragStart, setSectionDragStart] = useState<{ x: number; y: number } | null>(null);
-  const [draggingBlock, setDraggingBlock] = useState<{ sectionId: string; blockId: string } | null>(null);
-  const [dragOverBlock, setDragOverBlock] = useState<{ sectionId: string; blockId: string } | null>(null);
-  const [blockDragStart, setBlockDragStart] = useState<{ x: number; y: number } | null>(null);
-  const dragImageRef = useRef<HTMLImageElement | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const img = new Image();
-    img.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxIiBoZWlnaHQ9IjEiLz4=';
-    dragImageRef.current = img;
-  }, []);
-
-  const isMostlyVerticalDrag = (
-    start: { x: number; y: number } | null,
-    event: React.DragEvent<HTMLDivElement>
-  ) => {
-    if (!start) return true;
-    const deltaX = Math.abs(event.clientX - start.x);
-    const deltaY = Math.abs(event.clientY - start.y);
-    return deltaY >= deltaX;
-  };
+  const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
 
   useEffect(() => {
     if (!parentSectionsSignatureRef.current || parentSectionsSignatureRef.current === JSON.stringify(initialSections)) {
@@ -1634,44 +1611,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     });
   };
 
-  const handleSectionDragStart = (event: React.DragEvent<HTMLDivElement>, sectionId: string) => {
-    if (isPreview) return;
-    setDraggingSectionId(sectionId);
-    setDragOverSectionId(null);
-    setSectionDragStart({ x: event.clientX, y: event.clientY });
-    event.dataTransfer.setData('text/plain', sectionId);
-    event.dataTransfer.effectAllowed = 'move';
-    if (dragImageRef.current) {
-      event.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
-    }
-  };
-
-  const handleSectionDragOver = (event: React.DragEvent<HTMLDivElement>, sectionId: string) => {
-    if (!draggingSectionId || draggingSectionId === sectionId) return;
-    if (!isMostlyVerticalDrag(sectionDragStart, event)) {
-      return;
-    }
-    event.preventDefault();
-    setDragOverSectionId(sectionId);
-  };
-
-  const handleSectionDrop = (event: React.DragEvent<HTMLDivElement>, sectionId: string) => {
-    if (!draggingSectionId) return;
-    event.preventDefault();
-    if (isMostlyVerticalDrag(sectionDragStart, event)) {
-      reorderSections(draggingSectionId, sectionId);
-    }
-    setDraggingSectionId(null);
-    setDragOverSectionId(null);
-    setSectionDragStart(null);
-  };
-
-  const handleSectionDragEnd = () => {
-    setDraggingSectionId(null);
-    setDragOverSectionId(null);
-    setSectionDragStart(null);
-  };
-
   const updateSection = (sectionId: string, updates: Partial<Section>) => {
     setSections(sections.map(section => 
       section.id === sectionId ? { ...section, ...updates } : section
@@ -1774,58 +1713,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     );
   };
 
-  const handleBlockDragStart = (
-    event: React.DragEvent<HTMLDivElement>,
-    sectionId: string,
-    blockId: string
-  ) => {
-    if (isPreview) return;
-    setDraggingBlock({ sectionId, blockId });
-    setDragOverBlock(null);
-    setBlockDragStart({ x: event.clientX, y: event.clientY });
-    event.dataTransfer.setData('text/plain', blockId);
-    event.dataTransfer.effectAllowed = 'move';
-    if (dragImageRef.current) {
-      event.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
-    }
-  };
-
-  const handleBlockDragOver = (
-    event: React.DragEvent<HTMLDivElement>,
-    sectionId: string,
-    blockId: string
-  ) => {
-    if (!draggingBlock || draggingBlock.sectionId !== sectionId || draggingBlock.blockId === blockId) {
-      return;
-    }
-    if (!isMostlyVerticalDrag(blockDragStart, event)) {
-      return;
-    }
-    event.preventDefault();
-    setDragOverBlock({ sectionId, blockId });
-  };
-
-  const handleBlockDrop = (
-    event: React.DragEvent<HTMLDivElement>,
-    sectionId: string,
-    blockId: string
-  ) => {
-    if (!draggingBlock || draggingBlock.sectionId !== sectionId) return;
-    event.preventDefault();
-    if (isMostlyVerticalDrag(blockDragStart, event)) {
-      reorderBlocks(sectionId, draggingBlock.blockId, blockId);
-    }
-    setDraggingBlock(null);
-    setDragOverBlock(null);
-    setBlockDragStart(null);
-  };
-
-  const handleBlockDragEnd = () => {
-    setDraggingBlock(null);
-    setDragOverBlock(null);
-    setBlockDragStart(null);
-  };
-
   const handleSave = () => {
     onSave(sections);
   };
@@ -1835,44 +1722,66 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <button
-              className={`p-2 rounded ${canUndo ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'}`}
-              title="Undo"
-              onClick={handleUndo}
-              disabled={!canUndo}
-            >
-              <Undo className="w-5 h-5" />
-            </button>
-            <button
-              className={`p-2 rounded ${canRedo ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'}`}
-              title="Redo"
-              onClick={handleRedo}
-              disabled={!canRedo}
-            >
-              <Redo className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex items-center space-x-2">
-            {tabLabel && <span className="text-sm font-medium text-gray-500">Editing tab: {tabLabel}</span>}
-            {onTocOrderClick && (
+        <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between gap-2">
+          {!toolbarCollapsed && (
+            <>
+              <div className="flex items-center space-x-1">
+                <button
+                  className={`p-1.5 rounded ${canUndo ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'}`}
+                  title="Undo"
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                >
+                  <Undo className="w-4 h-4" />
+                </button>
+                <button
+                  className={`p-1.5 rounded ${canRedo ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'}`}
+                  title="Redo"
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                >
+                  <Redo className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex items-center space-x-2 ml-auto">
+                {tabLabel && <span className="text-xs font-medium text-gray-400">Tab: {tabLabel}</span>}
+                {onTocOrderClick && (
+                  <button
+                    onClick={onTocOrderClick}
+                    className="px-2.5 py-1.5 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded text-xs font-medium"
+                  >
+                    TOC Order
+                  </button>
+                )}
+                <button
+                  onClick={addSection}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded flex items-center space-x-1 text-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Section</span>
+                </button>
+              </div>
+            </>
+          )}
+          {toolbarCollapsed && (
+            <div className="flex items-center gap-2 ml-auto">
+              {tabLabel && <span className="text-xs text-gray-400">Tab: {tabLabel}</span>}
               <button
-                onClick={onTocOrderClick}
-                className="px-3 py-1.5 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded text-sm font-medium"
-                title="Set mobile Table of Contents position for this tab"
+                onClick={addSection}
+                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 rounded flex items-center space-x-1 text-xs"
               >
-                TOC Order
+                <Plus className="w-3 h-3" />
+                <span>Add Section</span>
               </button>
-            )}
-            <button
-              onClick={addSection}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Section</span>
-            </button>
-          </div>
+            </div>
+          )}
+          <button
+            onClick={() => setToolbarCollapsed((v) => !v)}
+            className="flex-shrink-0 p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+            title={toolbarCollapsed ? 'Show toolbar' : 'Hide toolbar'}
+          >
+            {toolbarCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </button>
         </div>
 
         {/* Content Area */}
@@ -1937,14 +1846,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                         </div>
                       )}
                       <div
-                  className={`mb-8 bg-white rounded-lg shadow-sm border transition-colors ${
-                    dragOverSectionId === section.id ? 'border-blue-400 shadow-md' : 'border-gray-200'
-                  } ${draggingSectionId === section.id ? 'opacity-70' : ''}`}
-                  draggable={!isPreview}
-                  onDragStart={(event) => handleSectionDragStart(event, section.id)}
-                  onDragOver={(event) => handleSectionDragOver(event, section.id)}
-                  onDrop={(event) => handleSectionDrop(event, section.id)}
-                  onDragEnd={handleSectionDragEnd}
+                  className={`mb-8 bg-white rounded-lg shadow-sm border border-gray-200 transition-colors`}
                 >
                   {/* Section Header */}
                   {!isPreview && (
@@ -2158,23 +2060,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                               key={block.id}
                               className={`relative group mb-4 rounded border transition-colors ${
                                 isSelected ? 'ring-2 ring-blue-500' : 'border-transparent'
-                              } ${
-                                dragOverBlock &&
-                                dragOverBlock.sectionId === section.id &&
-                                dragOverBlock.blockId === block.id
-                                  ? 'border-blue-300' : ''
-                              } ${
-                                draggingBlock &&
-                                draggingBlock.sectionId === section.id &&
-                                draggingBlock.blockId === block.id
-                                  ? 'opacity-70' : ''
                               }`}
                               onClick={() => setSelectedBlock(block.id)}
-                              draggable={!isPreview}
-                              onDragStart={(event) => handleBlockDragStart(event, section.id, block.id)}
-                              onDragOver={(event) => handleBlockDragOver(event, section.id, block.id)}
-                              onDrop={(event) => handleBlockDrop(event, section.id, block.id)}
-                              onDragEnd={handleBlockDragEnd}
                             >
                               {/* Block Controls */}
                               {!isPreview && (
@@ -2183,8 +2070,17 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                                     onClick={() => moveBlock(section.id, block.id, 'up')}
                                     disabled={blockIndex === 0}
                                     className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
+                                    title="Move block up"
                                   >
-                                    <GripVertical className="w-4 h-4" />
+                                    <ArrowUp className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => moveBlock(section.id, block.id, 'down')}
+                                    disabled={blockIndex === section.blocks.length - 1}
+                                    className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
+                                    title="Move block down"
+                                  >
+                                    <ArrowDown className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => deleteBlock(section.id, block.id)}
