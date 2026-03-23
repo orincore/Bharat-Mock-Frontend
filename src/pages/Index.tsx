@@ -425,7 +425,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
     <div className="min-h-screen">
       {/* Dynamic Hero Section */}
       <section className="relative w-full bg-[#e7f1ff]">
-        <div className="container-main py-3 md:py-12">
+        <div className="container-home py-3 md:py-12">
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
             {/* Left Content */}
             <div className="space-y-4 order-2 lg:order-1">
@@ -519,7 +519,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
       {/* Impact Stats Strip */}
       <section className="py-6 bg-background">
-        <div className="container-main">
+        <div className="container-home">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {impactStats.map((stat) => (
               <div
@@ -541,7 +541,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
       {/* Categories Section */}
       <section className="py-14 bg-background border-b border-border">
-        <div className="container-main space-y-6">
+        <div className="container-home space-y-6">
           <h2 className="font-display text-2xl font-bold">Choose your exam</h2>
 
           {isCategorySectionLoading ? (
@@ -653,7 +653,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
       {topBanners.length > 0 && (
         <section className="py-10 bg-background border-b border-border">
-          <div className="container-main space-y-6">
+          <div className="container-home space-y-6">
             <div className="space-y-6">
               {topBanners.map((banner) => {
                 const card = (
@@ -684,7 +684,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
       {(mostAttemptedLoading || mostAttemptedExams.length > 0) && (
         <section className="py-12 bg-background border-b border-border">
-          <div className="container-main space-y-8">
+          <div className="container-home space-y-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/80">Community Pulse</p>
@@ -733,7 +733,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
        {/* Learning Journey CTA */}
       <section className="py-6 -mt-6 bg-background">
-        <div className="container-main">
+        <div className="container-home">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/10 via-blue-100 to-sky-50 border border-primary/15 px-5 py-9 sm:px-8 text-center shadow-lg">
             <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
             <div className="relative space-y-5 sm:space-y-6">
@@ -767,7 +767,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
       {/* Why Choose BharatMock - Sixth Section */}
       <section className="py-12 bg-background">
-        <div className="container-main">
+        <div className="container-home">
           <div className="rounded-3xl border border-slate-200 bg-white/90 shadow-sm px-6 py-10 sm:px-10">
             <div className="flex flex-col gap-4 text-center max-w-3xl mx-auto">
               <span className="inline-flex items-center justify-center gap-2 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-primary/80">
@@ -802,7 +802,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
 {/* Featured On */}
       <section className="py-2 border-b border-slate-100 bg-background">
-        <div className="container-main">
+        <div className="container-home">
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3 sm:px-6 sm:py-4 overflow-hidden">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
               <div>
@@ -843,7 +843,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
       
       {/* BharatMock Pass Feature Section */}
       <section className="py-12 bg-background border-y border-slate-100">
-        <div className="container-main">
+        <div className="container-home">
           <div className="relative isolate overflow-hidden rounded-[44px] bg-white shadow-[0_40px_80px_-60px_rgba(15,23,42,0.8)]">
             <div className="absolute inset-0 bg-gradient-to-br from-sky-50 via-transparent to-white" />
             <div className="absolute -top-10 -right-4 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
@@ -938,7 +938,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
       {/* Featured Exams */}
       <section className="section-padding bg-background">
-        <div className="container-main">
+        <div className="container-home">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="font-display text-3xl font-bold text-foreground mb-2">Featured Exams</h2>
@@ -979,7 +979,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
       {midBanners.length > 0 && (
         <section className="py-10 bg-background border-b border-border">
-          <div className="container-main space-y-6">
+          <div className="container-home space-y-6">
             <div className="space-y-6">
               {midBanners.map((banner) => {
                 const card = (
@@ -1008,7 +1008,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
       {/* Final CTA Section */}
       <section className="py-10 bg-gradient-to-r from-primary via-indigo-600 to-sky-500 text-white">
-        <div className="container-main text-center space-y-2">
+        <div className="container-home text-center space-y-2">
           <div className="flex justify-center">
             
           </div>
