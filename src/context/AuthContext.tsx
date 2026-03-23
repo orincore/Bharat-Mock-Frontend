@@ -111,6 +111,8 @@ export function AuthProvider({ children, initProfile, initProfileLoading }: Auth
           return;
         }
 
+        // Always fetch fresh profile so fields like bio are up-to-date
+        // (cached user may be stale if new columns were added)
         setIsLoading(true);
         const userData = await authService.getProfile();
         const normalized = normalizeUser(userData);

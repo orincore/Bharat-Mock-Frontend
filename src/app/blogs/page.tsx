@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Calendar, Clock, Search, ChevronRight, ChevronLeft, TrendingUp, ArrowRight, X } from 'lucide-react';
+import { Calendar, Clock, Search, ChevronRight, ChevronLeft, ArrowRight, X, BookOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { blogService, Blog } from '@/lib/api/blogService';
 import { stripLineBreakTags } from '@/lib/utils';
@@ -218,44 +220,49 @@ export default function BlogsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-6 md:py-10">
-        <div className="container-home">
-          <Breadcrumbs items={[HomeBreadcrumb(), { label: 'Blogs' }]} variant="dark" className="mb-3 md:mb-6" />
-          <h1 className="text-2xl md:text-5xl font-bold mb-2 md:mb-4">Blog & Articles</h1>
-          <p className="text-sm md:text-xl text-blue-100 max-w-2xl">Insights, tips, and updates to help you excel in your exam preparation</p>
+      <section className="relative bg-gradient-to-br from-[#0a1833] via-[#0f2347] to-[#1a3a6b] text-white py-10">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,153,51,0.12),_transparent_55%)]" />
         </div>
-      </div>
-
-      {/* Top bar */}
-      <div className="bg-foreground text-background text-xs py-1.5">
-        <div className="container-home flex items-center justify-between gap-4">
-          <div className="hidden sm:flex items-center gap-2">
-            <TrendingUp className="h-3.5 w-3.5 text-primary" />
-            <span>{pagination.total} articles published</span>
-          </div>
-          <form onSubmit={handleSearch} className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
-            <div ref={searchWrapperRef} className="relative flex-1 sm:flex-none">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-background/60 z-10" />
-              <input
-                ref={searchRef}
-                type="text"
-                value={searchInput}
-                onChange={e => handleSearchInput(e.target.value)}
-                onFocus={() => { if (searchInput.trim() && dropdownResults.length > 0) setShowDropdown(true); }}
-                placeholder="Search articles..."
-                className="bg-white/10 text-background placeholder:text-background/50 text-xs rounded-full pl-8 pr-7 py-1 border border-white/20 focus:outline-none focus:border-primary w-full sm:w-48"
-                autoComplete="off"
-              />
-              {searchInput && (
-                <button type="button" onClick={() => { setSearchInput(''); setDropdownResults([]); setShowDropdown(false); setSearch(''); }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-background/50 hover:text-background transition">
-                  <X className="h-3 w-3" />
-                </button>
-              )}
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
+        <div className="relative container-main">
+          <div className="max-w-3xl">
+            <Breadcrumbs items={[HomeBreadcrumb(), { label: 'Blogs' }]} variant="dark" className="mb-6" />
+            <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight mb-4">
+              Blog &amp; Articles
+            </h1>
+            <p className="text-lg text-white/80 mb-8">
+              Insights, tips, and updates to help you excel in your exam preparation
+            </p>
+            <div ref={searchWrapperRef} className="relative">
+              <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 sm:items-stretch">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    ref={searchRef}
+                    type="text"
+                    placeholder="Search articles by title or category..."
+                    value={searchInput}
+                    onChange={e => handleSearchInput(e.target.value)}
+                    onFocus={() => { if (searchInput.trim() && dropdownResults.length > 0) setShowDropdown(true); }}
+                    className="pl-10 pr-8 bg-background text-foreground"
+                    autoComplete="off"
+                  />
+                  {searchInput && (
+                    <button type="button" onClick={() => { setSearchInput(''); setDropdownResults([]); setShowDropdown(false); setSearch(''); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <Button type="submit" onClick={() => setShowDropdown(false)} className="h-10 px-6 text-base font-semibold">
+                  Search
+                </Button>
+              </form>
 
               {/* Dropdown */}
               {showDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden min-w-[280px] sm:min-w-[320px]">
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
                   {dropdownLoading ? (
                     <div className="flex items-center justify-center py-4 gap-2 text-xs text-muted-foreground">
                       <LoadingSpinner size="sm" />Searching...
@@ -288,7 +295,7 @@ export default function BlogsPage() {
                         ))}
                       </ul>
                       <div className="border-t border-border">
-                        <button type="submit" onClick={() => { setSearch(searchInput); setPagination(p => ({ ...p, page: 1 })); setShowDropdown(false); }}
+                        <button type="button" onClick={() => { setSearch(searchInput); setPagination(p => ({ ...p, page: 1 })); setShowDropdown(false); }}
                           className="w-full py-2 text-xs text-primary font-semibold hover:bg-muted/40 transition text-center">
                           See all results for "{searchInput}"
                         </button>
@@ -298,24 +305,13 @@ export default function BlogsPage() {
                 </div>
               )}
             </div>
-            <button type="submit" onClick={() => setShowDropdown(false)} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-full font-semibold hover:bg-primary/90 transition flex-shrink-0">Go</button>
-          </form>
-        </div>
-      </div>
-
-      {/* Masthead — hidden on mobile to save space */}
-      <div className="hidden sm:block border-b border-border bg-card">
-        <div className="container-home py-4 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="font-display text-2xl font-extrabold text-foreground tracking-tight">Bharat Mock <span className="text-primary">Blog</span></h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Exam strategies · Paper analysis · Current affairs · Daily briefs</p>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Category tab bar */}
       <div className="sticky top-0 z-30 bg-card border-b border-border shadow-sm">
-        <div className="container-home relative">
+        <div className="container-main relative">
           {/* Left arrow — desktop only */}
           <button
             onClick={() => { tabBarRef.current?.scrollBy({ left: -200, behavior: 'smooth' }); }}
@@ -357,7 +353,7 @@ export default function BlogsPage() {
         </div>
       </div>
 
-      <div className="container-home py-5 sm:py-8 space-y-6 sm:space-y-10">
+      <div className="container-main py-5 sm:py-8 space-y-6 sm:space-y-10">
         {isLoading && (
           <div className="flex justify-center py-20"><LoadingSpinner /></div>
         )}

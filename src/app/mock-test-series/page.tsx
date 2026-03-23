@@ -49,6 +49,7 @@ export default function ExamsPage() {
   const [error, setError] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [pageReady, setPageReady] = useState(false);
   
   const [filters, setFilters] = useState({
     search: '',
@@ -167,7 +168,6 @@ export default function ExamsPage() {
       setCategoriesLoading(false);
     }
   };
-
   const fetchSubcategories = async () => {
     setSubcategoriesLoading(true);
     try {
@@ -205,6 +205,7 @@ export default function ExamsPage() {
     } finally {
       if (requestId !== activeRequestRef.current) return;
       setIsLoading(false);
+      setPageReady(true);
     }
   };
 
@@ -363,8 +364,76 @@ export default function ExamsPage() {
     }
   };
 
+  // Full-page skeleton shown until first data load completes
+  if (!pageReady) {
+    return (
+      <div className="min-h-screen bg-muted/30 animate-pulse">
+        {/* Hero skeleton */}
+        <div className="gradient-hero py-10">
+          <div className="container-main space-y-4">
+            <Skeleton className="h-4 w-32 bg-white/20 rounded-full" />
+            <Skeleton className="h-10 w-2/3 bg-white/20 rounded-lg" />
+            <Skeleton className="h-5 w-1/2 bg-white/20 rounded-lg" />
+            <div className="flex gap-3 mt-6 max-w-2xl">
+              <Skeleton className="h-10 flex-1 bg-white/20 rounded-lg" />
+              <Skeleton className="h-10 w-24 bg-white/20 rounded-lg" />
+            </div>
+          </div>
+        </div>
+        {/* Popular tests skeleton */}
+        <div className="bg-white border-b border-border">
+          <div className="container-main py-12">
+            <Skeleton className="h-7 w-56 mb-2 rounded-lg" />
+            <Skeleton className="h-4 w-40 mb-6 rounded-lg" />
+            <div className="flex gap-5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-64 rounded-xl flex-shrink-0" style={{ width: 'calc(25% - 15px)' }} />
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* Categories skeleton */}
+        <div className="bg-slate-900 border-b border-slate-800">
+          <div className="container-main py-6">
+            <Skeleton className="h-7 w-64 mb-4 bg-white/10 rounded-lg mx-auto" />
+            <div className="flex gap-5 justify-center">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-32 flex flex-col items-center gap-3">
+                  <Skeleton className="w-24 h-24 rounded-2xl bg-white/10" />
+                  <Skeleton className="h-3 w-20 bg-white/10 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* Grid skeleton */}
+        <div className="container-main py-8">
+          <div className="flex gap-8">
+            <Skeleton className="hidden lg:block lg:w-60 xl:w-64 h-64 rounded-xl flex-shrink-0" />
+            <div className="flex-1 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="border border-border rounded-xl overflow-hidden">
+                  <Skeleton className="h-32 w-full" />
+                  <div className="p-5 space-y-3">
+                    <Skeleton className="h-5 w-3/4 rounded" />
+                    <Skeleton className="h-4 w-full rounded" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Skeleton className="h-14 rounded-lg" />
+                      <Skeleton className="h-14 rounded-lg" />
+                    </div>
+                    <Skeleton className="h-9 w-full rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className={`min-h-screen bg-muted/30 transition-opacity duration-300 ${pageReady ? 'opacity-100' : 'opacity-0'}`}>
       
       <section className="gradient-hero py-10">
         <div className="container-main">
@@ -595,8 +664,8 @@ export default function ExamsPage() {
               )}
             </div>
 
-            {/* Initial skeleton load */}
-            {testSeriesLoading && (
+            {/* Initial skeleton load — only shown before pageReady, kept here as fallback */}
+            {testSeriesLoading && !pageReady && (
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite" aria-busy="true">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <div key={index} className="card-interactive overflow-hidden h-full flex flex-col border border-border rounded-xl">
@@ -617,7 +686,7 @@ export default function ExamsPage() {
             )}
 
             {/* Error State */}
-            {error && !testSeriesLoading && !isLoading && (
+            {error && !isLoading && (
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
                 <p className="text-destructive">{error}</p>
                 <Button onClick={fetchTestSeriesData} variant="outline" className="mt-4">
@@ -627,7 +696,7 @@ export default function ExamsPage() {
             )}
 
             {/* Empty State */}
-            {!testSeriesLoading && !isLoading && !error && testSeries.length === 0 && (
+            {!isLoading && !error && testSeries.length === 0 && (
               <div className="bg-card rounded-xl border border-border p-12 text-center">
                 <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-display text-xl font-bold text-foreground mb-2">
@@ -654,7 +723,7 @@ export default function ExamsPage() {
             )}
 
             {/* Test Series Grid — with overlay spinner when filter fetch is in progress */}
-            {!testSeriesLoading && !error && testSeries.length > 0 && (
+            {!error && testSeries.length > 0 && (
               <div className="relative">
                 {isLoading && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-sm">

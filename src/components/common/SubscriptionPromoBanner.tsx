@@ -167,13 +167,13 @@ export function SubscriptionPromoBanner() {
         <div className="relative overflow-hidden bg-gradient-to-r from-[#07142c] via-[#0f1f44] to-[#112b5f]">
           <div className="absolute inset-0 animate-banner-sheen bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.15),_transparent_50%)] opacity-60" />
           <div className="container-main relative py-1.5 sm:py-2">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-base">
-              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-base pr-8">
+              <div className="flex items-center gap-2 sm:gap-3 flex-none">
                 <span className="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white animate-bounce-subtle flex-shrink-0">
                   <Megaphone className="h-5 w-5" />
                 </span>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 min-w-0">
-                  <p className="text-[9px] uppercase tracking-[0.35em] text-white/70 whitespace-nowrap">Flash Offer</p>
+                  <p className="hidden sm:block text-[9px] uppercase tracking-[0.35em] text-white/70 whitespace-nowrap">Flash Offer</p>
                   <div className="font-semibold whitespace-nowrap sm:whitespace-normal leading-tight space-y-0.5">
                     <span className="sm:hidden inline-flex flex-wrap items-center gap-2">
                       <span className="text-[11px]">Buy Premium @</span>
@@ -188,24 +188,22 @@ export function SubscriptionPromoBanner() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
-                <Link
-                  href="/subscriptions"
-                  className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] sm:text-sm font-semibold text-[#0b1d3c] shadow-lg shadow-black/20 transition transform hover:-translate-y-0.5 hover:shadow-2xl whitespace-nowrap"
-                  onClick={handleEnrollClick}
-                >
-                  Enroll Now
-                </Link>
-                <button
-                  type="button"
-                  className="inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full border border-white/40 text-white/80 hover:bg-white/10"
-                  onClick={handleClose}
-                  aria-label="Dismiss subscription banner"
-                >
-                  <X className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                </button>
-              </div>
+              <Link
+                href="/subscriptions"
+                className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] sm:text-sm font-semibold text-[#0b1d3c] shadow-lg shadow-black/20 transition transform hover:-translate-y-0.5 hover:shadow-2xl whitespace-nowrap flex-none"
+                onClick={handleEnrollClick}
+              >
+                Enroll Now
+              </Link>
             </div>
+            <button
+              type="button"
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full border border-white/40 text-white/80 hover:bg-white/10"
+              onClick={handleClose}
+              aria-label="Dismiss subscription banner"
+            >
+              <X className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            </button>
           </div>
         </div>
       </div>

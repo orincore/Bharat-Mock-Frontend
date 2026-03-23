@@ -533,10 +533,6 @@ export default function PrevPapersPage() {
               variant="dark"
               className="mb-6"
             />
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-semibold uppercase tracking-widest text-white/80 mb-4">
-              <FileText className="h-3.5 w-3.5" />
-              Previous Year Papers
-            </div>
             <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight mb-4">
               Previous Year Question Papers
             </h1>

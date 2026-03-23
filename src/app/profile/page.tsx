@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading, updateProfile } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, updateProfile, refreshProfile } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -26,7 +26,12 @@ export default function ProfilePage() {
   const [statsError, setStatsError] = useState('');
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    // Always fetch fresh profile so bio and other fields are up-to-date
+    refreshProfile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const formatDateLabel = (value?: string | null) => {
     if (!value) return null;
@@ -69,7 +74,7 @@ export default function ProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         date_of_birth: user.date_of_birth || '',
-        bio: (user as any).bio || '',
+        bio: user.bio || '',
         education: {
           level: user.education?.level || '',
           institution: user.education?.institution || '',
@@ -162,7 +167,7 @@ export default function ProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         date_of_birth: user.date_of_birth || '',
-        bio: (user as any).bio || '',
+        bio: user.bio || '',
         education: {
           level: user.education?.level || '',
           institution: user.education?.institution || '',
