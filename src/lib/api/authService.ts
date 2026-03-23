@@ -71,6 +71,11 @@ export const authService = {
     }, true);
   },
 
+  async getPublicProfile(id: string): Promise<{ id: string; name: string; avatar_url?: string; bio?: string; role: string; created_at: string; blog_count: number }> {
+    const response = await apiClient.get<{ success: boolean; data: any }>(`/auth/author/${id}`);
+    return response.data;
+  },
+
   async completeOnboarding(data: { phone: string; date_of_birth: string; interested_categories: string[] }): Promise<void> {
     await apiClient.post('/auth/onboarding', data, true);
   },

@@ -9,7 +9,10 @@ import {
   Save,
   Upload,
   ChevronLeft,
-  Blocks
+  Blocks,
+  Search,
+  X,
+  User
 } from "lucide-react";
 
 import { BlockEditor, BlockEditorMediaUploadConfig } from "@/components/PageEditor/BlockEditor";
@@ -44,6 +47,8 @@ interface BlogFormState {
   status: BlogStatus;
   isCurrentAffairsNote: boolean;
   currentAffairsTag: string;
+  author_id: string;
+  author_name: string; // display only
 }
 
 const DEFAULT_FORM_STATE: BlogFormState = {
@@ -64,7 +69,9 @@ const DEFAULT_FORM_STATE: BlogFormState = {
   og_image_url: "",
   status: "draft",
   isCurrentAffairsNote: false,
-  currentAffairsTag: ""
+  currentAffairsTag: "",
+  author_id: "",
+  author_name: ""
 };
 
 export default function AdminBlogEditorPage() {
@@ -83,6 +90,46 @@ export default function AdminBlogEditorPage() {
   const [uploadingFeaturedImage, setUploadingFeaturedImage] = useState(false);
   const [localBlogId, setLocalBlogId] = useState<string | undefined>(!isNew ? blogId : undefined);
   const featuredImageInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Author picker state
+  const [authorSearch, setAuthorSearch] = useState('');
+  const [authorResults, setAuthorResults] = useState<{ id: string; name: string; email: string; avatar_url?: string; role: string }[]>([]);
+  const [authorSearchLoading, setAuthorSearchLoading] = useState(false);
+  const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
+  const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const authorWrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (authorWrapperRef.current && !authorWrapperRef.current.contains(e.target as Node)) {
+        setShowAuthorDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleAuthorSearch = (value: string) => {
+    setAuthorSearch(value);
+    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    if (!value.trim()) { setAuthorResults([]); setShowAuthorDropdown(false); return; }
+    authorDebounceRef.current = setTimeout(async () => {
+      setAuthorSearchLoading(true);
+      setShowAuthorDropdown(true);
+      try {
+        const results = await blogAdminService.searchUsers(value.trim());
+        setAuthorResults(results);
+      } catch { setAuthorResults([]); }
+      finally { setAuthorSearchLoading(false); }
+    }, 300);
+  };
+
+  const selectAuthor = (u: { id: string; name: string; email: string }) => {
+    setFormState(prev => ({ ...prev, author_id: u.id, author_name: u.name }));
+    setAuthorSearch('');
+    setAuthorResults([]);
+    setShowAuthorDropdown(false);
+  };
 
   useEffect(() => {
     setLocalBlogId(!isNew ? blogId : undefined);
@@ -136,7 +183,9 @@ export default function AdminBlogEditorPage() {
           og_image_url: blog.og_image_url || "",
           status: (blog.status as BlogStatus) || (blog.is_published ? "published" : "draft"),
           isCurrentAffairsNote: Boolean(blog.is_current_affairs_note),
-          currentAffairsTag: blog.current_affairs_tag || ""
+          currentAffairsTag: blog.current_affairs_tag || "",
+          author_id: (blog as any).author_id || "",
+          author_name: (blog as any).author?.name || ""
         });
         setSections(blogSections || []);
       } catch (error: any) {
@@ -206,7 +255,8 @@ export default function AdminBlogEditorPage() {
     og_description: formState.og_description,
     og_image_url: formState.og_image_url,
     is_current_affairs_note: formState.isCurrentAffairsNote,
-    current_affairs_tag: formState.currentAffairsTag?.trim() || null
+    current_affairs_tag: formState.currentAffairsTag?.trim() || null,
+    author_id: formState.author_id || null
   });
 
   const handleSave = async (nextStatus?: BlogStatus) => {
@@ -450,6 +500,63 @@ export default function AdminBlogEditorPage() {
             <div>
               <label className="text-sm font-medium text-gray-700">Canonical URL</label>
               <Input value={formState.canonical_url} onChange={(e) => handleFormChange("canonical_url", e.target.value)} />
+            </div>
+
+            {/* Author picker */}
+            <div ref={authorWrapperRef} className="relative space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Author</label>
+              {formState.author_id ? (
+                <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 bg-gray-50">
+                  <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-900 flex-1 truncate">{formState.author_name || formState.author_id}</span>
+                  <button type="button" onClick={() => setFormState(prev => ({ ...prev, author_id: '', author_name: '' }))}
+                    className="text-gray-400 hover:text-gray-600 transition flex-shrink-0">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={authorSearch}
+                    onChange={(e) => handleAuthorSearch(e.target.value)}
+                    onFocus={() => { if (authorSearch.trim() && authorResults.length > 0) setShowAuthorDropdown(true); }}
+                    className="pl-9"
+                    autoComplete="off"
+                  />
+                </div>
+              )}
+              {showAuthorDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                  {authorSearchLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-3 text-sm text-gray-500">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Searching...
+                    </div>
+                  ) : authorResults.length === 0 ? (
+                    <div className="py-3 text-center text-sm text-gray-500">No users found</div>
+                  ) : (
+                    <ul>
+                      {authorResults.map(u => (
+                        <li key={u.id}>
+                          <button type="button" onClick={() => selectAuthor(u)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition text-left">
+                            {u.avatar_url
+                              ? <img src={u.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                              : <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">{u.name?.[0] || '?'}</div>
+                            }
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">{u.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{u.email} · <span className="capitalize">{u.role}</span></p>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-gray-500">Leave empty to use the logged-in user as author.</p>
             </div>
           </div>
 

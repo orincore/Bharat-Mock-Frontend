@@ -26,6 +26,15 @@ declare global {
   }
 }
 
+const FEATURED_PARTNERS = [
+  { name: 'Aaj Tak', url: 'https://logowik.com/content/uploads/images/aaj-tak1841.jpg' },
+  { name: 'The Times of India', url: 'https://twoheadmarketing.wordpress.com/wp-content/uploads/2020/07/1546517908_1bhj7d_time-of-india.jpg' },
+  { name: 'NDTV', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/NDTV_logo.svg/2560px-NDTV_logo.svg.png' },
+  { name: 'Hindustan Times', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Hindustan_Times_logo.svg/2560px-Hindustan_Times_logo.svg.png' },
+  { name: 'India Today', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/India_Today_logo.svg/2560px-India_Today_logo.svg.png' },
+  { name: 'Zee News', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Zee_News_logo.svg/2560px-Zee_News_logo.svg.png' },
+];
+
 const formatCurrency = (amountCents: number, currency = 'INR') => {
   try {
     return new Intl.NumberFormat('en-IN', {
@@ -1003,6 +1012,36 @@ export default function SubscriptionLandingPage() {
               ))}
             </div>
           </div>
+        </section>
+
+        <section className="py-2 border-b border-slate-100 bg-background">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3 sm:px-6 sm:py-4 overflow-hidden">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Featured On</p>
+                <h3 className="font-display text-lg font-semibold text-slate-800">Trusted by India's leading media and hiring partners</h3>
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl border border-white/60 bg-gradient-to-r from-white via-slate-50 to-primary/5 px-2 py-2">
+              <div className="flex gap-8 animate-featured-marquee-sub">
+                {[...FEATURED_PARTNERS, ...FEATURED_PARTNERS].map((partner, index) => (
+                  <div key={`${partner.name}-${index}`} className="h-16 sm:h-20 flex items-center opacity-95 hover:opacity-100 transition drop-shadow-sm">
+                    <img src={partner.url} alt={partner.name} className="h-full w-auto max-w-[240px] object-contain" loading="lazy" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <style jsx>{`
+            @keyframes featured-marquee-sub {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-featured-marquee-sub {
+              width: max-content;
+              animation: featured-marquee-sub 25s linear infinite;
+            }
+          `}</style>
         </section>
 
         <TestimonialsSection

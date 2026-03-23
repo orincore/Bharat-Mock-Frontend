@@ -63,6 +63,7 @@ export interface BlogPayload {
   canonical_url?: string;
   is_current_affairs_note?: boolean;
   current_affairs_tag?: string | null;
+  author_id?: string | null;
 }
 
 export const blogAdminService = {
@@ -146,5 +147,12 @@ export const blogAdminService = {
     }
 
     return response.json();
+  },
+
+  async searchUsers(search: string): Promise<{ id: string; name: string; email: string; avatar_url?: string; role: string }[]> {
+    const params = new URLSearchParams({ search, limit: '8' });
+    const response = await authFetch(buildApiUrl(`/admin/users?${params.toString()}`));
+    const data = await response.json();
+    return data.data || [];
   }
 };

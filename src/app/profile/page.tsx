@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X, Crown } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X, Crown, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -24,6 +24,9 @@ export default function ProfilePage() {
   const [stats, setStats] = useState({ examsTaken: 0, daysActive: 0, avgScore: 0 });
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const formatDateLabel = (value?: string | null) => {
     if (!value) return null;
@@ -42,6 +45,7 @@ export default function ProfilePage() {
     email: '',
     phone: '',
     date_of_birth: '',
+    bio: '',
     education: {
       level: '',
       institution: '',
@@ -49,6 +53,8 @@ export default function ProfilePage() {
       percentage: 0
     }
   });
+
+  const canEditBio = ['admin', 'editor', 'author'].includes(user?.role || '');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -63,6 +69,7 @@ export default function ProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         date_of_birth: user.date_of_birth || '',
+        bio: (user as any).bio || '',
         education: {
           level: user.education?.level || '',
           institution: user.education?.institution || '',
@@ -122,7 +129,7 @@ export default function ProfilePage() {
     setSuccess('');
 
     try {
-      const payload: Partial<UserType> = {
+      const payload: Partial<UserType> & { bio?: string } = {
         name: formData.name,
         phone: formData.phone,
         date_of_birth: formData.date_of_birth || undefined,
@@ -134,6 +141,7 @@ export default function ProfilePage() {
           year: formData.education.year || undefined,
           percentage: formData.education.percentage || undefined,
         } as Education,
+        ...(canEditBio && { bio: formData.bio }),
       };
 
       await updateProfile(payload);
@@ -154,6 +162,7 @@ export default function ProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         date_of_birth: user.date_of_birth || '',
+        bio: (user as any).bio || '',
         education: {
           level: user.education?.level || '',
           institution: user.education?.institution || '',
@@ -167,7 +176,7 @@ export default function ProfilePage() {
     setSuccess('');
   };
 
-  if (authLoading) {
+  if (!mounted || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner />
@@ -360,6 +369,30 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Bio — only for admin/editor/author */}
+                {canEditBio && (
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      Bio
+                    </h3>
+                    <textarea
+                      id="bio"
+                      name="bio"
+                      rows={4}
+                      value={formData.bio}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, bio: e.target.value }));
+                        setError('');
+                        setSuccess('');
+                      }}
+                      disabled={!isEditing || isSaving}
+                      placeholder="Write a short bio about yourself..."
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                    />
+                  </div>
+                )}
 
                 {/* Education Information */}
                 <div>

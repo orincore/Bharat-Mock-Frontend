@@ -10,12 +10,11 @@ export interface Blog {
   author_id?: string;
   author?: {
     id: string;
-    email: string;
-    raw_user_meta_data?: {
-      name?: string;
-      avatar_url?: string;
-      bio?: string;
-    };
+    name?: string;
+    avatar_url?: string;
+    bio?: string;
+    role?: string;
+    email?: string;
   };
   category?: string;
   tags?: string[];

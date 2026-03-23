@@ -96,6 +96,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
       case 'embed':
         return <EmbedBlock content={content} settings={settings} />;
       case 'html':
+      case 'rich_text':
         return <HtmlBlock content={content} settings={settings} />;
       case 'columns':
         return <ColumnsBlock content={content} settings={settings} />;
