@@ -663,7 +663,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                     <img
                       src={banner.image_url}
                       alt={banner.title || 'Featured banner'}
-                      className="h-[260px] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] sm:h-[340px] lg:h-[420px]"
+                      className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.02]"
                       loading="lazy"
                     />
                   </div>
@@ -987,7 +987,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                     <img
                       src={banner.image_url}
                       alt={banner.title || 'Featured banner'}
-                      className="h-[240px] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] sm:h-[320px] lg:h-[400px]"
+                      className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.02]"
                       loading="lazy"
                     />
                   </div>
