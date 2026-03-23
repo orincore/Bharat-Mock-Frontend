@@ -26,11 +26,11 @@ const getAuthorMeta = (article: ArticleLike) => {
     };
   }
 
-  const rawMeta = blogAuthor?.raw_user_meta_data || {};
+  const rawMeta = blogAuthor || {};
   return {
-    name: rawMeta.name || 'Bharat Mock Team',
-    avatar: rawMeta.avatar_url,
-    bio: rawMeta.bio || 'Bharat Mock Expert'
+    name: (rawMeta as any).name || 'Bharat Mock Team',
+    avatar: (rawMeta as any).avatar_url,
+    bio: (rawMeta as any).bio || 'Bharat Mock Expert'
   };
 };
 
