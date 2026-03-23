@@ -150,7 +150,7 @@ const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content })
 
   return (
     <p
-      className={`text-${alignment} mb-4 text-gray-700 leading-relaxed`}
+      className={`text-${alignment} mb-4 text-gray-700 leading-relaxed rich-text-content`}
       style={{ fontSize }}
       dangerouslySetInnerHTML={{ __html: processedText }}
     />
@@ -164,7 +164,7 @@ const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
   return (
     <ListTag className={`mb-4 ml-6 ${type === 'ordered' ? 'list-decimal' : 'list-disc'} space-y-2`}>
       {items.map((item: string, index: number) => (
-        <li key={index} className="text-gray-700" dangerouslySetInnerHTML={{ __html: item }} />
+        <li key={index} className="text-gray-700 rich-text-content" dangerouslySetInnerHTML={{ __html: item }} />
       ))}
     </ListTag>
   );
@@ -191,7 +191,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
           {rows.map((row: string[], rowIndex: number) => (
             <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
               {row.map((cell: string, cellIndex: number) => (
-                <td key={cellIndex} className="border border-gray-300 px-4 py-3 text-gray-700">
+                <td key={cellIndex} className="border border-gray-300 px-4 py-3 text-gray-700 rich-text-content">
                   {cell}
                 </td>
               ))}
@@ -397,7 +397,7 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, s
               {rows.map((row: string[], ri: number) => (
                 <tr key={ri} className={striped && ri % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
                   {row.map((cell: string, ci: number) => (
-                    <td key={ci} className="border border-gray-300 px-4 py-2 text-gray-700">{cell}</td>
+                    <td key={ci} className="border border-gray-300 px-4 py-2 text-gray-700 rich-text-content">{cell}</td>
                   ))}
                 </tr>
               ))}
@@ -406,7 +406,7 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, s
         </div>
       );
     }
-    return <div dangerouslySetInnerHTML={{ __html: item.content || '' }} />;
+    return <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: item.content || '' }} />;
   };
 
   return (
@@ -454,7 +454,7 @@ const TabsBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
       </div>
       <div className="p-4 bg-white">
         {tabs[activeTab] && (
-          <div dangerouslySetInnerHTML={{ __html: tabs[activeTab].content }} />
+          <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: tabs[activeTab].content }} />
         )}
       </div>
     </div>
@@ -496,7 +496,7 @@ const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
     <div className={`mb-6 p-4 border-l-4 rounded ${typeClasses[type as keyof typeof typeClasses]}`}>
       <div className="flex items-start">
         <AlertCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
-        <div dangerouslySetInnerHTML={{ __html: text }} />
+        <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: text }} />
       </div>
     </div>
   );
@@ -532,7 +532,7 @@ const HtmlBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
   const { html } = content;
   
   return (
-    <div className="mb-6" dangerouslySetInnerHTML={{ __html: html }} />
+    <div className="mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: html }} />
   );
 };
 
@@ -542,7 +542,7 @@ const ColumnsBlock: React.FC<{ content: any; settings?: any }> = ({ content, set
   return (
     <div className={`mb-6 grid grid-cols-${columns.length} gap-6`}>
       {columns.map((column: any, index: number) => (
-        <div key={index} dangerouslySetInnerHTML={{ __html: column.content }} />
+        <div key={index} className="rich-text-content" dangerouslySetInnerHTML={{ __html: column.content }} />
       ))}
     </div>
   );
