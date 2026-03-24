@@ -107,28 +107,31 @@ export default function AdminExamsPage() {
   }, [selectedCategoryId]);
 
   useEffect(() => {
-    if (dateRange?.from) {
-      setFilters((prev) => ({
-        ...prev,
-        date_from: format(dateRange.from as Date, 'yyyy-MM-dd')
-      }));
-    } else {
-      setFilters((prev) => ({ ...prev, date_from: '' }));
-    }
-
-    if (dateRange?.to) {
-      setFilters((prev) => ({
-        ...prev,
-        date_to: format(dateRange.to as Date, 'yyyy-MM-dd')
-      }));
-    } else {
-      setFilters((prev) => ({ ...prev, date_to: '' }));
-    }
+    setFilters((prev) => ({
+      ...prev,
+      date_from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
+      date_to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '',
+    }));
   }, [dateRange]);
 
   const filterPills = useMemo(() => {
-    const entries = Object.entries(filters).filter(([, value]) => Boolean(value));
-    return entries.map(([key, value]) => ({ key, value }));
+    const pills: { key: string; label: string }[] = [];
+
+    // Show date range as a single pill
+    if (filters.date_from || filters.date_to) {
+      const label = filters.date_from && filters.date_to
+        ? `Date: ${filters.date_from} → ${filters.date_to}`
+        : filters.date_from
+          ? `Date ≥ ${filters.date_from}`
+          : `Date ≤ ${filters.date_to}`;
+      pills.push({ key: 'date_range', label });
+    }
+
+    Object.entries(filters)
+      .filter(([key, value]) => Boolean(value) && key !== 'date_from' && key !== 'date_to')
+      .forEach(([key, value]) => pills.push({ key, label: `${key.replace(/_/g, ' ')}: ${value}` }));
+
+    return pills;
   }, [filters]);
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
@@ -152,6 +155,8 @@ export default function AdminExamsPage() {
   const clearFilter = (key: keyof typeof filters) => {
     if (key === 'date_from' || key === 'date_to') {
       setDateRange(undefined);
+      setFilters((prev) => ({ ...prev, date_from: '', date_to: '' }));
+      return;
     }
     setFilters((prev) => ({ ...prev, [key]: '' }));
   };
@@ -411,30 +416,27 @@ export default function AdminExamsPage() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 bg-background border border-border shadow-lg" align="start">
                 <Calendar
                   mode="range"
                   selected={dateRange}
                   onSelect={(range) => setDateRange(range)}
                   numberOfMonths={2}
+                  className="bg-background"
                 />
               </PopoverContent>
             </Popover>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {filterPills.map((pill) => (
                 <Button
                   key={pill.key}
                   variant="secondary"
                   size="sm"
                   className="rounded-full"
-                  onClick={() => clearFilter(pill.key as keyof typeof filters)}
+                  onClick={() => clearFilter(pill.key === 'date_range' ? 'date_from' : pill.key as keyof typeof filters)}
                 >
-                  {pill.key === 'date_from' && filters.date_to
-                    ? `Date ≥ ${filters.date_from}`
-                    : pill.key === 'date_to'
-                      ? `Date ≤ ${filters.date_to}`
-                      : `${pill.key.replace('_', ' ')}: ${pill.value}`}
+                  {pill.label}
                   <span className="ml-2 text-xs">×</span>
                 </Button>
               ))}

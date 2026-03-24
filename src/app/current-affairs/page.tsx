@@ -209,7 +209,7 @@ export default function CurrentAffairsPage() {
                 if (!quiz.exam) return null;
                 const exam = quiz.exam as Exam;
                 return (
-                  <ExamCard key={quiz.id} exam={exam} size="default" />
+                  <ExamCard key={quiz.id} exam={exam} size="default" hideCategory />
                 );
               })}
             </div>

@@ -12,6 +12,7 @@ interface ExamCardProps {
   exam: Exam;
   variant?: 'default' | 'premium';
   size?: 'default' | 'compact';
+  hideCategory?: boolean;
 }
 
 export const getCountdownLabel = (startDate?: string | null) => {
@@ -36,7 +37,7 @@ export const getCountdownLabel = (startDate?: string | null) => {
   return parts.join(' ');
 };
 
-export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCardProps) {
+export function ExamCard({ exam, variant = 'default', size = 'default', hideCategory = false }: ExamCardProps) {
   const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
   const summary = formatExamSummary(exam);
   const supportsHindi = Boolean(exam.supports_hindi);
@@ -172,7 +173,7 @@ export function ExamCard({ exam, variant = 'default', size = 'default' }: ExamCa
           {!isPremiumVariant && (
             <Badge className={`${pricingBadgeClasses} border text-xs px-2.5 py-0.5`}>{pricingLabel}</Badge>
           )}
-          {exam.category && (
+          {exam.category && !hideCategory && (
             <span className="text-xs font-medium px-2.5 py-0.5 rounded-md bg-card text-muted-foreground border border-border ml-auto">
               {exam.category}
             </span>

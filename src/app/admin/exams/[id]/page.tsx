@@ -136,6 +136,7 @@ export default function ExamFormPage() {
     allow_anytime: false,
     exam_type: 'mock_test' as 'past_paper' | 'mock_test' | 'short_quiz',
     show_in_mock_tests: false,
+    is_current_affair: false,
     is_premium: false,
     syllabus: [] as string[],
     is_test_series: false,
@@ -682,6 +683,7 @@ export default function ExamFormPage() {
           allow_anytime: examData.allow_anytime ?? false,
           exam_type: (examData.exam_type || 'mock_test') as 'past_paper' | 'mock_test' | 'short_quiz',
           show_in_mock_tests: examData.show_in_mock_tests ?? false,
+          is_current_affair: (examData as any).is_current_affair ?? false,
           is_premium: examData.is_premium ?? false,
           syllabus: examData.syllabus || [],
           is_test_series: (examData as any).is_test_series ?? false,
@@ -2184,7 +2186,8 @@ export default function ExamFormPage() {
       exam_id: persistedExamId,
       start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
       end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date),
-      status: formData.allow_anytime ? 'anytime' : formData.status
+      status: formData.allow_anytime ? 'anytime' : formData.status,
+      is_current_affair: formData.exam_type === 'short_quiz' ? formData.is_current_affair : false,
     };
     
     //console.log('Draft payload being sent:', draftPayload);
@@ -2300,6 +2303,9 @@ export default function ExamFormPage() {
       
       if (payload.exam_type !== 'past_paper') {
         payload.show_in_mock_tests = false;
+      }
+      if (payload.exam_type !== 'short_quiz') {
+        payload.is_current_affair = false;
       }
       if (payload.allow_anytime) {
         payload.status = 'anytime';
@@ -2749,6 +2755,28 @@ export default function ExamFormPage() {
                       </label>
                       <p className="text-xs text-muted-foreground mt-1">
                         Enable this to show this past paper in both "Past Papers" and "Mock Tests" sections
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.exam_type === 'short_quiz' && (
+                <div className="mt-4 p-4 rounded-xl border border-green-300/40 bg-green-50/50 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      name="is_current_affair"
+                      checked={(formData as any).is_current_affair}
+                      onChange={handleChange}
+                      className="h-5 w-5 accent-green-600 mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <label className="text-sm font-semibold text-foreground cursor-pointer">
+                        Post to Current Affairs
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Automatically publish this quiz to the Current Affairs page without manual linking.
                       </p>
                     </div>
                   </div>
