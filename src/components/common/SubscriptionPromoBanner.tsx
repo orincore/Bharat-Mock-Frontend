@@ -51,20 +51,16 @@ export function SubscriptionPromoBanner() {
 
   useEffect(() => {
     if (!SHOULD_FETCH_PLANS) {
-      console.log('[SubscriptionPromoBanner] Plan fetching disabled');
       return;
     }
 
     let mounted = true;
     const loadPlans = async () => {
       try {
-        console.log('[SubscriptionPromoBanner] Fetching plans...');
         const fetched = await subscriptionService.getPlans();
-        console.log('[SubscriptionPromoBanner] Fetched plans:', fetched);
         if (!mounted) return;
         if (fetched.length) {
           setPlans(fetched);
-          console.log('[SubscriptionPromoBanner] Plans set:', fetched);
         } else {
           console.warn('[SubscriptionPromoBanner] No plans returned from API');
         }
@@ -95,12 +91,6 @@ export function SubscriptionPromoBanner() {
   const normalPriceFromPlan = highlightedPlan?.normal_price_cents ?? null;
   const salePriceFromPlan = highlightedPlan?.sale_price_cents ?? null;
   
-  console.log('[SubscriptionPromoBanner] Price resolution:', {
-    highlightedPlan,
-    normalPriceFromPlan,
-    salePriceFromPlan,
-    price_cents: highlightedPlan?.price_cents
-  });
   
   const resolvedNormalPriceCents = normalPriceFromPlan || FALLBACK_NORMAL_PRICE_CENTS;
   const resolvedSalePriceCents = (() => {
@@ -110,25 +100,18 @@ export function SubscriptionPromoBanner() {
       salePriceFromPlan > 0 &&
       salePriceFromPlan < resolvedNormalPriceCents
     ) {
-      console.log('[SubscriptionPromoBanner] Using sale price from plan:', salePriceFromPlan);
       return salePriceFromPlan;
     }
     const effective = getEffectivePriceCents(highlightedPlan);
     if (effective && effective < resolvedNormalPriceCents) {
-      console.log('[SubscriptionPromoBanner] Using effective price:', effective);
       return effective;
     }
-    console.log('[SubscriptionPromoBanner] Using fallback sale price:', FALLBACK_SALE_PRICE_CENTS);
     return FALLBACK_SALE_PRICE_CENTS;
   })();
 
   const hasDiscount = resolvedNormalPriceCents > resolvedSalePriceCents;
   
-  console.log('[SubscriptionPromoBanner] Final prices:', {
-    resolvedNormalPriceCents,
-    resolvedSalePriceCents,
-    hasDiscount
-  });
+
 
   const priceStack = (
     <span className="inline-flex items-baseline gap-1.5">

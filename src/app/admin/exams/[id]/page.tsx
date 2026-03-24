@@ -409,11 +409,11 @@ export default function ExamFormPage() {
 
     // Validate input
     if (!questionIdMap || !Array.isArray(questionIdMap) || questionIdMap.length === 0) {
-      console.log('No questionIdMap provided for image upload');
+      //console.log('No questionIdMap provided for image upload');
       return { uploadCount: 0, errors: [] };
     }
 
-    console.log(`Processing ${questionIdMap.length} question mappings for image upload`);
+    //console.log(`Processing ${questionIdMap.length} question mappings for image upload`);
 
     // Create a mutable copy of sections to avoid state mutation issues
     const updatedSections = [...sections];
@@ -425,7 +425,7 @@ export default function ExamFormPage() {
         continue;
       }
 
-      console.log(`Processing mapping: oldId=${mapping.oldId}, newId=${mapping.newId}`);
+      //console.log(`Processing mapping: oldId=${mapping.oldId}, newId=${mapping.newId}`);
 
       // Find the question in sections by old ID
       let questionFile: File | null = null;
@@ -438,7 +438,7 @@ export default function ExamFormPage() {
           sectionIdx = sIdx;
           questionIdx = qIdx;
           questionFile = updatedSections[sIdx].questions[qIdx].image as File;
-          console.log(`Found question at section ${sIdx}, question ${qIdx}, has image file: ${!!questionFile}`);
+          //console.log(`Found question at section ${sIdx}, question ${qIdx}, has image file: ${!!questionFile}`);
           break;
         }
       }
@@ -452,10 +452,10 @@ export default function ExamFormPage() {
       // Upload question image if it's a File object
       if (questionFile && questionFile instanceof File) {
         try {
-          console.log(`Uploading question image for newId: ${mapping.newId}`);
+          //console.log(`Uploading question image for newId: ${mapping.newId}`);
           const questionImageData = await adminService.uploadQuestionImage(mapping.newId, questionFile);
           if (questionImageData?.image_url) {
-            console.log(`Question image uploaded successfully: ${questionImageData.image_url}`);
+            //console.log(`Question image uploaded successfully: ${questionImageData.image_url}`);
             updatedSections[sectionIdx].questions[questionIdx].image_url = questionImageData.image_url;
             updatedSections[sectionIdx].questions[questionIdx].image = null;
             updatedSections[sectionIdx].questions[questionIdx].imagePreview = questionImageData.image_url;
@@ -496,10 +496,10 @@ export default function ExamFormPage() {
           const optionFile = updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image as File;
           if (optionFile && optionFile instanceof File) {
             try {
-              console.log(`Uploading option image for newId: ${optMapping.newId}`);
+              //console.log(`Uploading option image for newId: ${optMapping.newId}`);
               const optionImageData = await adminService.uploadOptionImage(optMapping.newId, optionFile);
               if (optionImageData?.image_url) {
-                console.log(`Option image uploaded successfully: ${optionImageData.image_url}`);
+                //console.log(`Option image uploaded successfully: ${optionImageData.image_url}`);
                 updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image_url = optionImageData.image_url;
                 updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image = null;
                 updatedSections[sectionIdx].questions[questionIdx].options[optIdx].imagePreview = optionImageData.image_url;
@@ -522,7 +522,7 @@ export default function ExamFormPage() {
       }
     }
 
-    console.log(`Image upload complete. Uploaded: ${uploadCount}, Errors: ${errors.length}`);
+    //console.log(`Image upload complete. Uploaded: ${uploadCount}, Errors: ${errors.length}`);
 
     // Update state with all changes at once
     if (uploadCount > 0 || questionIdMap.length > 0) {
@@ -639,13 +639,13 @@ export default function ExamFormPage() {
   useEffect(() => {
     if (!persistedExamId && basicsComplete) {
       // No draft saving needed with REST approach
-      console.log('Draft saving disabled - using REST API only');
+      //console.log('Draft saving disabled - using REST API only');
     }
   }, [basicsComplete, persistedExamId]);
 
   const loadDraftData = async () => {
     // No draft loading needed with REST approach
-    console.log('Draft loading disabled - using REST API only');
+    //console.log('Draft loading disabled - using REST API only');
   };
 
   const loadExamData = async () => {
@@ -2187,9 +2187,9 @@ export default function ExamFormPage() {
       status: formData.allow_anytime ? 'anytime' : formData.status
     };
     
-    console.log('Draft payload being sent:', draftPayload);
-    console.log('Paper section ID:', draftPayload.paper_section_id);
-    console.log('Paper topic ID:', draftPayload.paper_topic_id);
+    //console.log('Draft payload being sent:', draftPayload);
+    //console.log('Paper section ID:', draftPayload.paper_section_id);
+    //console.log('Paper topic ID:', draftPayload.paper_topic_id);
 
     try {
       // Step 1: Save the exam
@@ -2294,9 +2294,9 @@ export default function ExamFormPage() {
         is_premium: formData.is_premium ?? false,
       };
       
-      console.log('Exam payload being sent:', payload);
-      console.log('Paper section ID:', payload.paper_section_id);
-      console.log('Paper topic ID:', payload.paper_topic_id);
+      //console.log('Exam payload being sent:', payload);
+      //console.log('Paper section ID:', payload.paper_section_id);
+      //console.log('Paper topic ID:', payload.paper_topic_id);
       
       if (payload.exam_type !== 'past_paper') {
         payload.show_in_mock_tests = false;

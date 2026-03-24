@@ -87,7 +87,6 @@ export default function SSCCGLPage() {
         let resolved: any = null;
         for (const endpoint of endpoints) {
           if (process.env.NODE_ENV !== "production") {
-            console.log("[SSC CGL] Resolving subcategory", { endpoint });
           }
           const res = await fetch(endpoint);
           if (res.ok) {
@@ -120,7 +119,6 @@ export default function SSCCGLPage() {
       try {
         const endpoint = buildApiUrl(`/page-content/${subcategoryId}`);
         if (process.env.NODE_ENV !== "production") {
-          console.log("[SSC CGL] Fetching page content", { endpoint, subcategoryId });
         }
         const res = await fetch(endpoint);
         if (!res.ok) {

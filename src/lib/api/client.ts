@@ -98,7 +98,6 @@ class ApiClient {
     }
 
     const fullUrl = `${this.baseUrl}${endpoint}`;
-    console.log('[ApiClient] Request:', { method: config.method || 'GET', url: fullUrl, requiresAuth });
 
     try {
       const response = await fetch(fullUrl, config);
@@ -109,7 +108,6 @@ class ApiClient {
         console.warn('[ApiClient] Failed to parse JSON response:', error);
       }
 
-      console.log('[ApiClient] Response:', { url: fullUrl, status: response.status, ok: response.ok, data });
 
       if (!response.ok) {
           if (requiresAuth && response.status === 401) {

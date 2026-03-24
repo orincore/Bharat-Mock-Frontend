@@ -119,15 +119,7 @@ export default function ExamAttemptPage() {
     const result = Boolean(hasText || hasExplanation || hasImage || hasOptions);
     
     if (!result) {
-      console.log(`Question ${question.id} filtered out for ${language}:`, {
-        hasText,
-        hasExplanation,
-        hasImage,
-        hasOptions,
-        text: question.text?.substring(0, 30),
-        image_url: question.image_url,
-        options_count: question.options?.length
-      });
+      
     }
     
     return result;
@@ -187,16 +179,7 @@ export default function ExamAttemptPage() {
 
         const questionsResponse = await examService.getExamQuestions(examId, attemptId);
         
-        console.log('API Response:', {
-          sections_count: questionsResponse.sections.length,
-          questions_count: questionsResponse.questions.length,
-          questions: questionsResponse.questions.map((q: any) => ({
-            id: q.id,
-            text: q.text?.substring(0, 30),
-            image_url: q.image_url,
-            options_count: q.options?.length
-          }))
-        });
+       
 
         const normalizedQuestions = sortQuestionsByNumber(questionsResponse.questions);
         const allQuestions: QuestionWithStatus[] = normalizedQuestions.map((q: any) => {
@@ -220,7 +203,6 @@ export default function ExamAttemptPage() {
           };
         });
 
-        console.log('All questions after mapping:', allQuestions.length);
 
         const sectionsData: SectionWithQuestions[] = questionsResponse.sections.map((s: any) => ({
           ...s,
@@ -228,18 +210,13 @@ export default function ExamAttemptPage() {
           questions: sortQuestionsByNumber(allQuestions.filter(q => q.section_id === s.id))
         }));
 
-        console.log('Sections data:', sectionsData.map(s => ({ id: s.id, name: s.name, language: s.language, questions: s.questions.length })));
 
         setAllSections(sectionsData);
         setAllQuestions(allQuestions);
 
         const { filteredSections, filteredQuestions } = filterContentByLanguage(requestedLanguage, sectionsData, allQuestions);
         
-        console.log('After filtering for language', requestedLanguage, ':', {
-          filteredSections: filteredSections.length,
-          filteredQuestions: filteredQuestions.length,
-          sections: filteredSections.map(s => ({ id: s.id, name: s.name, questions: s.questions.length }))
-        });
+        
 
         if (filteredSections.length === 0) {
           const fallback = filterContentByLanguage('en', sectionsData, allQuestions);

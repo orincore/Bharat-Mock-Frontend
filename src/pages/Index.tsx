@@ -209,7 +209,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   const initialCategories = useMemo((): Category[] => {
     if (!initialData?.categories) return [];
     return initialData.categories
-      .filter((c) => c.is_active !== false)
+      .filter((c) => c.is_active !== false && c.name !== 'Current Affairs')
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
       .map((c) => ({ ...c, created_at: '', updated_at: '' } as Category));
   }, [initialData]);
@@ -340,7 +340,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         setExams(examsData);
         setArticles(blogsResponse.data || []);
         const visibleCategories = categoriesData
-          .filter((category) => category.is_active !== false)
+          .filter((category) => category.is_active !== false && category.name !== 'Current Affairs')
           .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
         setCategories(visibleCategories);
         if (visibleCategories.length > 0) {

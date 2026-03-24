@@ -186,7 +186,6 @@ export default function ResultPage() {
 
         const reviewJson = await reviewResponse.json();
         if (process.env.NODE_ENV !== 'production') {
-          console.log('[ResultPage] Sample option payload:', reviewJson.data?.[0]?.options?.[0]);
         }
         setReviewData(reviewJson.data || []);
       } catch (err: any) {

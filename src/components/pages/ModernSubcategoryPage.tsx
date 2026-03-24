@@ -383,7 +383,6 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       try {
         const endpoint = buildApiUrl(`/page-content/${subcategoryId}`);
         if (process.env.NODE_ENV !== "production") {
-          console.log("[ModernSubcategory] Fetching page content", { endpoint, subcategoryId });
         }
         const res = await fetch(endpoint);
         if (!res.ok) {
@@ -438,11 +437,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           return;
         }
         const payload = await response.json();
-        console.log('[DEBUG] Mock tests API payload:', payload);
-        console.log('[DEBUG] payload.data:', payload?.data);
-        console.log('[DEBUG] payload.data.data:', payload?.data?.data);
+        
         const mockTestsData = Array.isArray(payload?.data) ? payload.data : payload?.data?.data || [];
-        console.log('[DEBUG] Setting mockTests to:', mockTestsData);
         setMockTests(mockTestsData);
       } catch (err) {
         console.error('[ModernSubcategory] mock tests fetch failed', err);
@@ -469,7 +465,6 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         }
         const payload = await response.json();
         if (process.env.NODE_ENV !== 'production') {
-          console.log('[ModernSubcategory] question papers payload', payload);
         }
         setQuestionPapers(Array.isArray(payload?.data) ? payload.data : payload?.data?.data || []);
       } catch (err) {
@@ -498,15 +493,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         const payload = await response.json();
         const parsedData = Array.isArray(payload?.data) ? payload.data : payload?.data?.data || [];
         if (process.env.NODE_ENV !== 'production') {
-          console.log('[ModernSubcategory] past paper exams payload', payload);
-          console.log('[ModernSubcategory] past paper exams parsed data count:', parsedData.length);
-          console.log('[ModernSubcategory] past paper exams with show_in_mock_tests:', 
-            parsedData.filter((exam: any) => exam?.show_in_mock_tests).map((exam: any) => ({
-              id: exam.id,
-              title: exam.title,
-              show_in_mock_tests: exam.show_in_mock_tests
-            }))
-          );
+          
         }
         setPastPaperExams(parsedData);
       } catch (err) {
@@ -677,14 +664,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       const combinedFlags = combinedQuestionPapers
         .filter((paper) => paper?.show_in_mock_tests || paper.exam?.show_in_mock_tests)
         .map((paper) => paper.exam_id || paper.id);
-      console.log('[ModernSubcategory] extendedMockTests summary', {
-        mockTestsCount: mockTests.length,
-        flaggedPastPapers,
-        sectionExamIds: sectionExams,
-        combinedFlaggedIds: combinedFlags,
-        resultCount: result.length,
-        resultIds: result.map((exam) => exam.id || exam.slug || 'unknown')
-      });
+      
     }
 
     return result;

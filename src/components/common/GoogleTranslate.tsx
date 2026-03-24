@@ -31,7 +31,6 @@ export function GoogleTranslate() {
           // Clear any existing content
           container.innerHTML = '';
           
-          console.log('Initializing Google Translate...');
           new window.google.translate.TranslateElement(
             {
               pageLanguage: 'en',
@@ -41,7 +40,6 @@ export function GoogleTranslate() {
             },
             'google_translate_element'
           );
-          console.log('Google Translate widget created');
           
           setTimeout(() => {
             window.dispatchEvent(new Event('googleTranslateReady'));
@@ -52,7 +50,6 @@ export function GoogleTranslate() {
       } else {
         initAttempts++;
         if (initAttempts < maxAttempts) {
-          console.log(`Google Translate API not ready, attempt ${initAttempts}/${maxAttempts}`);
           setTimeout(initializeTranslate, 300);
         } else {
           console.error('Failed to initialize Google Translate after multiple attempts');
@@ -71,9 +68,7 @@ export function GoogleTranslate() {
       script.async = true;
       script.onerror = () => console.error('Failed to load Google Translate script');
       document.head.appendChild(script);
-      console.log('Google Translate script added to head');
     } else {
-      console.log('Google Translate script already exists, initializing...');
       initializeTranslate();
     }
 

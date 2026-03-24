@@ -49,7 +49,6 @@ export function SocialShare({
         return;
       } catch (error) {
         // User cancelled or sharing failed, fall back to other methods
-        console.log('Native sharing cancelled or failed:', error);
       } finally {
         setIsSharing(false);
       }

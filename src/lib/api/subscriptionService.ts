@@ -41,11 +41,9 @@ const asData = <T>(response: { success: boolean; data: T }): T => response.data;
 
 export const subscriptionService = {
   async getPlans(): Promise<SubscriptionPlan[]> {
-    console.log('[subscriptionService] Calling GET /subscriptions/plans');
     const response = await apiClient.get<{ success: boolean; data: SubscriptionPlan[] }>(
       '/subscriptions/plans'
     );
-    console.log('[subscriptionService] Response:', response);
     return asData(response);
   },
 

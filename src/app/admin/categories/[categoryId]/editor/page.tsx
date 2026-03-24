@@ -93,7 +93,7 @@ export default function AdminCategoryEditorPage() {
   };
   const debugLog = (...args: unknown[]) => {
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[AdminCategoryEditor]', ...args);
+      // console.log('[AdminCategoryEditor]', ...args);
     }
   };
 

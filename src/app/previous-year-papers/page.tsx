@@ -113,15 +113,12 @@ export default function PrevPapersPage() {
     try {
       const sections = await paperSectionsService.getSections();
       const topics = await paperSectionsService.getTopics();
-      console.log('Fetched paper sections:', sections);
-      console.log('Fetched paper topics:', topics);
       setPaperSections(sections.filter(s => s.is_active !== false));
       setPaperTopics(topics.filter(t => t.is_active !== false));
       
       // Set first section as active by default
       if (sections.length > 0 && !activeSectionId) {
         setActiveSectionId(sections[0].id);
-        console.log('Set active section:', sections[0].id, sections[0].name);
       }
     } catch (err) {
       console.error('Failed to fetch paper sections:', err);
@@ -340,7 +337,6 @@ export default function PrevPapersPage() {
   const currentSectionTopics = useMemo(() => {
     if (!activeSectionId) return [];
     const topics = paperTopics.filter(topic => topic.section_id === activeSectionId);
-    console.log('Current section topics for', activeSectionId, ':', topics);
     return topics;
   }, [activeSectionId, paperTopics]);
 
