@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "../index.css";
 import { Providers } from "./providers";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -47,6 +48,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <ScrollToTopButton />
+          <SpeedInsights />
         </Providers>
       </body>
     </html>
