@@ -321,7 +321,9 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         src={asset.url}
         alt={asset.alt_text || heroTitle}
         className={`${className} ${options.disableShadow ? '' : 'shadow-[0_25px_80px_-40px_rgba(15,23,42,0.9)]'}`.trim()}
-        loading="lazy"
+        loading="eager"
+        fetchPriority="high"
+        decoding="async"
       />
     );
   };
