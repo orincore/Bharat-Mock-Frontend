@@ -2,14 +2,25 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/a
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
+  timeout?: number;
+  retries?: number;
+}
+
+interface CacheEntry {
+  data: unknown;
+  timestamp: number;
+  ttl: number;
 }
 
 class ApiClient {
   private baseUrl: string;
   private refreshPromise: Promise<boolean> | null = null;
+  private requestCache = new Map<string, CacheEntry>();
+  private pendingRequests = new Map<string, Promise<unknown>>();
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+    setInterval(() => this.cleanupCache(), 60000);
   }
 
   private getAuthToken(): string | null {
@@ -28,38 +39,63 @@ class ApiClient {
     localStorage.removeItem('refresh_token');
   }
 
-  private async refreshAccessToken(): Promise<boolean> {
-    if (this.refreshPromise) {
-      return this.refreshPromise;
+  private getCacheKey(url: string, options: RequestOptions): string {
+    const method = options.method || 'GET';
+    const body = options.body ? JSON.stringify(options.body) : '';
+    return `${method}:${url}:${body}`;
+  }
+
+  private getCachedResponse(cacheKey: string): unknown | null {
+    const entry = this.requestCache.get(cacheKey);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > entry.ttl) {
+      this.requestCache.delete(cacheKey);
+      return null;
     }
+    return entry.data;
+  }
+
+  private setCachedResponse(cacheKey: string, data: unknown, ttl: number = 300000): void {
+    this.requestCache.set(cacheKey, { data, timestamp: Date.now(), ttl });
+  }
+
+  private cleanupCache(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.requestCache.entries()) {
+      if (now - entry.timestamp > entry.ttl) this.requestCache.delete(key);
+    }
+  }
+
+  private getTTLForEndpoint(endpoint: string): number {
+    if (endpoint.includes('/categories') || endpoint.includes('/subcategories')) return 3600000;
+    if (endpoint.includes('/popular-tests')) return 1800000;
+    if (endpoint.includes('/test-series')) return 900000;
+    if (endpoint.includes('/exams')) return 600000;
+    return 300000;
+  }
+
+  private async refreshAccessToken(): Promise<boolean> {
+    if (this.refreshPromise) return this.refreshPromise;
 
     const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      return false;
-    }
+    if (!refreshToken) return false;
 
     this.refreshPromise = (async () => {
       try {
         const response = await fetch(`${this.baseUrl}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken })
+          body: JSON.stringify({ refreshToken }),
         });
-
         const data = await response.json();
-
         if (!response.ok || !data?.success || !data?.data?.token) {
           this.clearTokens();
           return false;
         }
-
         if (typeof window !== 'undefined') {
           localStorage.setItem('auth_token', data.data.token);
-          if (data.data.refreshToken) {
-            localStorage.setItem('refresh_token', data.data.refreshToken);
-          }
+          if (data.data.refreshToken) localStorage.setItem('refresh_token', data.data.refreshToken);
         }
-
         return true;
       } catch (error) {
         console.error('[ApiClient] Refresh token error:', error);
@@ -73,171 +109,142 @@ class ApiClient {
     return this.refreshPromise;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestOptions = {}
-  ): Promise<T> {
-    const { requiresAuth = false, headers = {}, ...restOptions } = options;
+  private async fetchWithTimeout(url: string, options: RequestOptions, timeout: number = 10000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
 
-    const config: RequestInit = {
-      ...restOptions,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
+  private async retryRequest<T>(url: string, options: RequestOptions, maxRetries: number = 2): Promise<T> {
+    let lastError: Error = new Error('Unknown error');
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await this.fetchWithTimeout(url, options, options.timeout);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return await response.json() as T;
+      } catch (error) {
+        lastError = error as Error;
+        if (error instanceof Error && error.message.includes('HTTP 4') && !error.message.includes('HTTP 401')) {
+          throw error;
+        }
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 5000)));
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  private async executeRequest<T>(url: string, options: RequestOptions): Promise<T> {
+    const { requiresAuth, headers = {}, timeout, retries, ...restOptions } = options;
+
+    const requestHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(headers as Record<string, string>),
     };
 
     if (requiresAuth) {
       const token = this.getAuthToken();
-      if (token) {
-        config.headers = {
-          ...config.headers,
-          Authorization: `Bearer ${token}`,
-        };
-      }
+      if (token) requestHeaders['Authorization'] = `Bearer ${token}`;
     }
-
-    const fullUrl = `${this.baseUrl}${endpoint}`;
 
     try {
-      const response = await fetch(fullUrl, config);
-      let data: any = null;
-      try {
-        data = await response.json();
-      } catch (error) {
-        console.warn('[ApiClient] Failed to parse JSON response:', error);
-      }
-
-
-      if (!response.ok) {
-          if (requiresAuth && response.status === 401) {
-            const refreshed = await this.refreshAccessToken();
-            if (refreshed) {
-              return this.request<T>(endpoint, options);
-            }
-          }
-
-        const message = data?.message || 'API request failed';
-        throw new Error(message);
-      }
-
-      return data;
+      return await this.retryRequest<T>(url, { ...restOptions, headers: requestHeaders, timeout }, retries);
     } catch (error) {
-      console.error('[ApiClient] Error:', { url: fullUrl, error });
+      if (error instanceof Error && error.message.includes('HTTP 401') && requiresAuth) {
+        const refreshed = await this.refreshAccessToken();
+        if (refreshed) {
+          const newToken = this.getAuthToken();
+          if (newToken) {
+            requestHeaders['Authorization'] = `Bearer ${newToken}`;
+            return await this.retryRequest<T>(url, { ...restOptions, headers: requestHeaders, timeout }, retries);
+          }
+        }
+      }
       throw error;
     }
+  }
+
+  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    const { requiresAuth = false, headers = {}, timeout = 10000, retries = 2, ...restOptions } = options;
+    const url = `${this.baseUrl}${endpoint}`;
+    const method = restOptions.method || 'GET';
+
+    if (method === 'GET') {
+      const cacheKey = this.getCacheKey(url, restOptions);
+
+      const cachedResponse = this.getCachedResponse(cacheKey);
+      if (cachedResponse) return cachedResponse as T;
+
+      const pendingRequest = this.pendingRequests.get(cacheKey);
+      if (pendingRequest) return pendingRequest as Promise<T>;
+
+      const requestPromise = this.executeRequest<T>(url, { requiresAuth, headers, timeout, retries, ...restOptions });
+      this.pendingRequests.set(cacheKey, requestPromise);
+
+      try {
+        const result = await requestPromise;
+        this.setCachedResponse(cacheKey, result, this.getTTLForEndpoint(endpoint));
+        return result;
+      } finally {
+        this.pendingRequests.delete(cacheKey);
+      }
+    }
+
+    return this.executeRequest<T>(url, { requiresAuth, headers, timeout, retries, ...restOptions });
   }
 
   async get<T>(endpoint: string, requiresAuth = false): Promise<T> {
     return this.request<T>(endpoint, { method: 'GET', requiresAuth });
   }
 
-  async post<T>(
-    endpoint: string,
-    body?: any,
-    requiresAuth = false
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      requiresAuth,
-    });
+  async post<T>(endpoint: string, body?: unknown, requiresAuth = false): Promise<T> {
+    return this.request<T>(endpoint, { method: 'POST', body: JSON.stringify(body), requiresAuth });
   }
 
-  async put<T>(
-    endpoint: string,
-    body?: any,
-    requiresAuth = false
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-      requiresAuth,
-    });
+  async put<T>(endpoint: string, body?: unknown, requiresAuth = false): Promise<T> {
+    return this.request<T>(endpoint, { method: 'PUT', body: JSON.stringify(body), requiresAuth });
   }
 
-  async patch<T>(
-    endpoint: string,
-    body?: any,
-    requiresAuth = false
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-      requiresAuth,
-    });
+  async patch<T>(endpoint: string, body?: unknown, requiresAuth = false): Promise<T> {
+    return this.request<T>(endpoint, { method: 'PATCH', body: JSON.stringify(body), requiresAuth });
   }
 
   async delete<T>(endpoint: string, requiresAuth = false): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE', requiresAuth });
   }
 
-  async postFormData<T>(
-    endpoint: string,
-    formData: FormData,
-    requiresAuth = false
-  ): Promise<T> {
-    const config: RequestInit = {
-      method: 'POST',
-      body: formData,
-    };
-
+  async postFormData<T>(endpoint: string, formData: FormData, requiresAuth = false): Promise<T> {
+    const config: RequestInit = { method: 'POST', body: formData };
     if (requiresAuth) {
       const token = this.getAuthToken();
-      if (token) {
-        config.headers = {
-          Authorization: `Bearer ${token}`,
-        };
-      }
+      if (token) config.headers = { Authorization: `Bearer ${token}` };
     }
-
-    try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, config);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'API request failed');
-      }
-
-      return data;
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
-    }
+    const response = await fetch(`${this.baseUrl}${endpoint}`, config);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'API request failed');
+    return data;
   }
 
-  async putFormData<T>(
-    endpoint: string,
-    formData: FormData,
-    requiresAuth = false
-  ): Promise<T> {
-    const config: RequestInit = {
-      method: 'PUT',
-      body: formData,
-    };
-
+  async putFormData<T>(endpoint: string, formData: FormData, requiresAuth = false): Promise<T> {
+    const config: RequestInit = { method: 'PUT', body: formData };
     if (requiresAuth) {
       const token = this.getAuthToken();
-      if (token) {
-        config.headers = {
-          Authorization: `Bearer ${token}`,
-        };
-      }
+      if (token) config.headers = { Authorization: `Bearer ${token}` };
     }
-
-    try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, config);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'API request failed');
-      }
-
-      return data;
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
-    }
+    const response = await fetch(`${this.baseUrl}${endpoint}`, config);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'API request failed');
+    return data;
   }
 }
 

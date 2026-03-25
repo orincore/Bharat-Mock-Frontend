@@ -57,8 +57,16 @@ export const pagePopularTestsService = {
       throw new Error('Failed to fetch popular tests');
     }
     
-    const data = await response.json();
-    return data.data || [];
+    const json = await response.json();
+    const items: Array<{ id: string; display_order?: number; displayOrder?: number; exam?: Exam; exams?: Exam }> = json.data || [];
+
+    return items
+      .map(item => ({
+        id: item.id,
+        displayOrder: item.displayOrder ?? item.display_order ?? 0,
+        exam: (item.exam ?? item.exams) as Exam,
+      }))
+      .filter(item => Boolean(item.exam));
   },
 
   async getPopularTestsAdmin(pageIdentifier: string): Promise<PopularTestAdmin[]> {

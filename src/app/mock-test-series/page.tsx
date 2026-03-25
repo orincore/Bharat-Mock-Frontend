@@ -385,9 +385,9 @@ export default function ExamsPage() {
           <div className="container-main py-12">
             <Skeleton className="h-7 w-56 mb-2 rounded-lg" />
             <Skeleton className="h-4 w-40 mb-6 rounded-lg" />
-            <div className="flex gap-5">
+            <div className="flex gap-3 sm:gap-4 lg:gap-5">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-64 rounded-xl flex-shrink-0" style={{ width: 'calc(25% - 15px)' }} />
+                <Skeleton key={i} className="h-64 rounded-xl flex-shrink-0 w-72 sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]" />
               ))}
             </div>
           </div>
@@ -471,19 +471,19 @@ export default function ExamsPage() {
       {/* Popular Mock Test Series Section - Hide when searching */}
       {!debouncedSearch && popularTests.length > 0 && (
         <section className="bg-white border-b border-border">
-          <div className="container-main py-12">
-            <div className="flex items-center justify-between mb-6">
+          <div className="container-main py-8 sm:py-12">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Popular Mock Test Series</h2>
-                <p className="text-gray-600 mt-1">Trending tests chosen by our experts</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Popular Mock Test Series</h2>
+                <p className="text-gray-600 mt-1 text-sm sm:text-base">Trending tests chosen by our experts</p>
               </div>
-              <ChevronRight className="h-6 w-6 text-gray-400" />
+              <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" />
             </div>
             
             {popularTestsLoading ? (
-              <div className="flex gap-6 overflow-x-auto pb-4 hide-scrollbar">
+              <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 hide-scrollbar">
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="flex-shrink-0 w-80">
+                  <div key={index} className="flex-shrink-0 w-72 sm:w-80">
                     <Skeleton className="h-64 w-full rounded-xl" />
                   </div>
                 ))}
@@ -492,25 +492,25 @@ export default function ExamsPage() {
               <div className="relative group">
                 <button
                   onClick={() => scrollLeft(popularTestsScrollRef)}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 hidden sm:flex"
                   aria-label="Scroll left"
                 >
                   <ChevronLeft className="h-5 w-5 text-slate-700" />
                 </button>
-                <div ref={popularTestsScrollRef} className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
-                  {popularTests.map((popularTest) => (
-                    <div key={popularTest.id} className="flex-shrink-0 snap-start" style={{ width: 'calc(25% - 15px)' }}>
+                <div ref={popularTestsScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
+                  {popularTests.filter(pt => pt?.exam).map((popularTest) => (
+                    <div key={popularTest.id} className="flex-shrink-0 snap-start w-72 sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
                       <StandardExamCard exam={{
                         ...popularTest.exam,
-                        category_logo_url: popularTest.exam.exam_categories?.logo_url,
-                        category_icon: popularTest.exam.exam_categories?.icon,
+                        category_logo_url: popularTest.exam?.exam_categories?.logo_url,
+                        category_icon: popularTest.exam?.exam_categories?.icon,
                       }} ctaLabel="Attempt Now" />
                     </div>
                   ))}
                 </div>
                 <button
                   onClick={() => scrollRight(popularTestsScrollRef)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 hidden sm:flex"
                   aria-label="Scroll right"
                 >
                   <ChevronRight className="h-5 w-5 text-slate-700" />
@@ -733,7 +733,7 @@ export default function ExamsPage() {
                     </div>
                   </div>
                 )}
-                <div className={`grid gap-5 sm:grid-cols-2 lg:grid-cols-3 transition-opacity duration-200 ${isLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                <div className={`grid gap-3 sm:gap-4 lg:gap-5 sm:grid-cols-2 lg:grid-cols-3 transition-opacity duration-200 ${isLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
                   {testSeries.map((series) => (
                     <TestSeriesCard key={series.id} testSeries={series} />
                   ))}
@@ -859,23 +859,23 @@ export default function ExamsPage() {
 
       {/* New Test Series For You Section - Hide when searching */}
       {!debouncedSearch && newTestSeries.length > 0 && (
-        <div className="container-main mt-12 mb-8">
-                <div className="flex items-center justify-between mb-6">
+        <div className="container-main mt-8 sm:mt-12 mb-6 sm:mb-8">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
                   <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-sm text-orange-600 dark:text-orange-300 mb-2">
-                      <Flame className="w-4 h-4 text-orange-500" />
+                    <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-xs sm:text-sm text-orange-600 dark:text-orange-300 mb-2">
+                      <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
                       New
                     </div>
-                    <h2 className="font-display text-2xl font-bold text-foreground">New Test Series For You</h2>
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">New Test Series For You</h2>
                     <p className="text-sm text-muted-foreground mt-1">Fresh test series tailored for your preparation</p>
                   </div>
-                  <ChevronRight className="h-6 w-6 text-muted-foreground" />
+                  <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                 </div>
                 
                 {newTestSeriesLoading ? (
-                  <div className="flex gap-0 overflow-x-auto pb-4 hide-scrollbar">
+                  <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 hide-scrollbar">
                     {Array.from({ length: 4 }).map((_, index) => (
-                      <div key={index} className="flex-shrink-0 w-80 mr-5">
+                      <div key={index} className="flex-shrink-0 w-72 sm:w-80">
                         <Skeleton className="h-64 w-full rounded-xl" />
                       </div>
                     ))}
@@ -884,25 +884,25 @@ export default function ExamsPage() {
                   <div className="relative group">
                     <button
                       onClick={() => scrollLeft(newTestSeriesScrollRef)}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 hidden sm:flex"
                       aria-label="Scroll left"
                     >
                       <ChevronLeft className="h-5 w-5 text-slate-700" />
                     </button>
-                    <div ref={newTestSeriesScrollRef} className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth">
-                      {newTestSeries.map((test) => (
-                        <div key={test.id} className="flex-shrink-0 snap-start" style={{ width: 'calc(25% - 15px)' }}>
+                    <div ref={newTestSeriesScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
+                      {newTestSeries.filter(t => t?.exam).map((test) => (
+                        <div key={test.id} className="flex-shrink-0 snap-start w-72 sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
                           <StandardExamCard exam={{
                             ...test.exam,
-                            category_logo_url: test.exam.exam_categories?.logo_url,
-                            category_icon: test.exam.exam_categories?.icon,
+                            category_logo_url: test.exam?.exam_categories?.logo_url,
+                            category_icon: test.exam?.exam_categories?.icon,
                           }} ctaLabel="Attempt Now" />
                         </div>
                       ))}
                     </div>
                     <button
                       onClick={() => scrollRight(newTestSeriesScrollRef)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 hidden sm:flex"
                       aria-label="Scroll right"
                     >
                       <ChevronRight className="h-5 w-5 text-slate-700" />

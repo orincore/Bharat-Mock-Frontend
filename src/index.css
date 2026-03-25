@@ -23,6 +23,24 @@
   display: none;
 }
 
+/* Mobile-optimized horizontal scrolling */
+@media (max-width: 640px) {
+  .mobile-scroll-snap {
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+  }
+  
+  .mobile-scroll-snap > * {
+    scroll-snap-align: start;
+  }
+  
+  /* Ensure proper touch scrolling on iOS */
+  .mobile-scroll-container {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+}
+
 /* Google Translate Customization */
 .goog-te-banner-frame,
 .goog-te-banner-frame.skiptranslate {
