@@ -196,9 +196,9 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
           {rows.map((row: string[], rowIndex: number) => (
             <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
               {row.map((cell: string, cellIndex: number) => (
-                <td key={cellIndex} className="border border-gray-300 px-4 py-3 text-gray-700 rich-text-content">
-                  {cell}
-                </td>
+                <td key={cellIndex} className="border border-gray-300 px-4 py-3 text-gray-700 rich-text-content"
+                  dangerouslySetInnerHTML={{ __html: cell }}
+                />
               ))}
             </tr>
           ))}

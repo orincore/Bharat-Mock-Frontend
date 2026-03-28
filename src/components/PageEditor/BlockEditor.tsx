@@ -2447,6 +2447,17 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
     update({ rows: rows.filter((_, i) => i !== index) });
   };
 
+  const BoldButton = () => (
+    <button
+      type="button"
+      title="Bold (Ctrl+B)"
+      onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold'); }}
+      className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded hover:bg-gray-100 bg-white leading-none"
+    >
+      B
+    </button>
+  );
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -2459,12 +2470,25 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
         <div className="space-y-2">
           {headers.map((header, index) => (
             <div key={index} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={header}
-                onChange={(e) => handleHeaderChange(index, e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex-1 flex flex-col gap-1">
+                <div className="flex items-center gap-1">
+                  <BoldButton />
+                  <span className="text-xs text-gray-400">Ctrl+B to bold</span>
+                </div>
+                <div
+                  contentEditable
+                  suppressContentEditableWarning
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  dangerouslySetInnerHTML={{ __html: header }}
+                  onBlur={(e) => handleHeaderChange(index, e.currentTarget.innerHTML)}
+                  onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                      e.preventDefault();
+                      document.execCommand('bold');
+                    }
+                  }}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => removeColumn(index)}
@@ -2501,13 +2525,24 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
               </div>
               <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${headers.length}, minmax(0, 1fr))` }}>
                 {headers.map((_, colIndex) => (
-                  <textarea
-                    key={colIndex}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    value={row[colIndex] || ''}
-                    onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                  />
+                  <div key={colIndex} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1">
+                      <BoldButton />
+                    </div>
+                    <div
+                      contentEditable
+                      suppressContentEditableWarning
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[56px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      dangerouslySetInnerHTML={{ __html: row[colIndex] || '' }}
+                      onBlur={(e) => handleCellChange(rowIndex, colIndex, e.currentTarget.innerHTML)}
+                      onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                          e.preventDefault();
+                          document.execCommand('bold');
+                        }
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -2517,19 +2552,11 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
 
       <div className="grid grid-cols-2 gap-4">
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={hasHeader}
-            onChange={(e) => update({ hasHeader: e.target.checked })}
-          />
+          <input type="checkbox" checked={hasHeader} onChange={(e) => update({ hasHeader: e.target.checked })} />
           Show header row
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={striped}
-            onChange={(e) => update({ striped: e.target.checked })}
-          />
+          <input type="checkbox" checked={striped} onChange={(e) => update({ striped: e.target.checked })} />
           Striped rows
         </label>
       </div>
@@ -3005,9 +3032,24 @@ const InlineTableEditor = ({
     return null;
   }
 
+  // Bold toolbar button for a contentEditable cell
+  const BoldButton = () => (
+    <button
+      type="button"
+      title="Bold (Ctrl+B)"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        document.execCommand('bold');
+      }}
+      className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded hover:bg-gray-100 bg-white leading-none"
+    >
+      B
+    </button>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-center">
         <button type="button" onClick={addColumn} className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-full">
           + Column
         </button>
@@ -3022,6 +3064,7 @@ const InlineTableEditor = ({
           <input type="checkbox" checked={striped} onChange={(e) => update({ striped: e.target.checked })} />
           Striped Rows
         </label>
+        <span className="text-xs text-gray-400 ml-auto">Select text → <kbd className="px-1 py-0.5 border rounded text-xs">Ctrl+B</kbd> or use <strong>B</strong> button to bold</span>
       </div>
 
       <div className="overflow-x-auto border border-gray-200 rounded-lg">
@@ -3030,12 +3073,24 @@ const InlineTableEditor = ({
             <thead className="bg-gray-100">
               <tr>
                 {headers.map((header, index) => (
-                  <th key={index} className="border border-gray-200 p-2 align-top">
-                    <div className="flex flex-col gap-2">
-                      <input
-                        value={header}
-                        onChange={(e) => handleHeaderChange(index, e.target.value)}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                  <th key={index} className="border border-gray-200 p-2 align-top min-w-[120px]">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1 mb-1">
+                        <BoldButton />
+                        <span className="text-xs text-gray-400">header</span>
+                      </div>
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[32px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        dangerouslySetInnerHTML={{ __html: header }}
+                        onBlur={(e) => handleHeaderChange(index, e.currentTarget.innerHTML)}
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                            e.preventDefault();
+                            document.execCommand('bold');
+                          }
+                        }}
                       />
                       <button
                         type="button"
@@ -3048,6 +3103,7 @@ const InlineTableEditor = ({
                     </div>
                   </th>
                 ))}
+                <th className="p-2 w-20" />
               </tr>
             </thead>
           )}
@@ -3055,13 +3111,25 @@ const InlineTableEditor = ({
             {rows.map((row, rowIndex) => (
               <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-gray-50' : ''}>
                 {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} className="border border-gray-200 p-2">
-                    <textarea
-                      value={cell}
-                      onChange={(e) => handleCellChange(rowIndex, cellIndex, e.target.value)}
-                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      rows={2}
-                    />
+                  <td key={cellIndex} className="border border-gray-200 p-2 align-top min-w-[120px]">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1 mb-1">
+                        <BoldButton />
+                      </div>
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[48px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        dangerouslySetInnerHTML={{ __html: cell }}
+                        onBlur={(e) => handleCellChange(rowIndex, cellIndex, e.currentTarget.innerHTML)}
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                            e.preventDefault();
+                            document.execCommand('bold');
+                          }
+                        }}
+                      />
+                    </div>
                   </td>
                 ))}
                 <td className="p-2 align-top">
