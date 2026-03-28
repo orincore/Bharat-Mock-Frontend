@@ -1,6 +1,43 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+// Load editor fonts lazily — only when the block editor is mounted (admin only)
+// This keeps them off the critical path for all public pages
+const EDITOR_FONTS_URL =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700' +
+  '&family=Roboto:wght@400;500;700' +
+  '&family=Nunito:wght@400;600;700' +
+  '&family=Source+Serif+Pro:wght@400;600;700' +
+  '&family=Playfair+Display:wght@400;600;700' +
+  '&family=Space+Mono:wght@400;700' +
+  '&family=Open+Sans:wght@400;600;700' +
+  '&family=Lato:wght@400;700' +
+  '&family=Poppins:wght@400;600;700' +
+  '&family=Merriweather:wght@400;700' +
+  '&family=Lora:wght@400;700' +
+  '&family=Montserrat:wght@400;600;700' +
+  '&family=Work+Sans:wght@400;600;700' +
+  '&family=Fira+Sans:wght@400;600' +
+  '&family=Karla:wght@400;600' +
+  '&family=DM+Sans:wght@400;600' +
+  '&family=Raleway:wght@400;600' +
+  '&family=Rubik:wght@400;600' +
+  '&family=Barlow:wght@400;600' +
+  '&family=Mulish:wght@400;600' +
+  '&display=swap';
+
+function useEditorFonts() {
+  useEffect(() => {
+    if (document.querySelector('link[data-editor-fonts]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = EDITOR_FONTS_URL;
+    link.setAttribute('data-editor-fonts', 'true');
+    document.head.appendChild(link);
+  }, []);
+}
+
 import {
   Bold,
   Italic,
@@ -1406,6 +1443,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   availableTabs,
   onTocOrderClick
 }) => {
+  // Load editor fonts lazily — only when this admin component mounts
+  useEditorFonts();
+
   const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
   const parentSectionsSignatureRef = useRef<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
