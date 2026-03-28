@@ -25,3 +25,24 @@ frontend:
     paths:
       - node_modules/**/*
       - .next/cache/**/*
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: Strict-Transport-Security
+          value: 'max-age=31536000; includeSubDomains'
+  redirects:
+    # 1. HTTP → HTTPS (www)
+    - source: 'http://www.bharatmock.com/<*>'
+      target: 'https://bharatmock.com/<*>'
+      status: '301'
+      condition: null
+    # 2. HTTP → HTTPS (non-www)
+    - source: 'http://bharatmock.com/<*>'
+      target: 'https://bharatmock.com/<*>'
+      status: '301'
+      condition: null
+    # 3. HTTPS www → HTTPS non-www
+    - source: 'https://www.bharatmock.com/<*>'
+      target: 'https://bharatmock.com/<*>'
+      status: '301'
+      condition: null
