@@ -111,6 +111,11 @@ export function StandardExamCard({
                   src={logoSrc}
                   alt={exam.title}
                   className="h-7 w-7 sm:h-8 sm:w-8 object-contain p-0.5"
+                  loading="lazy"
+                  decoding="async"
+                  width={32}
+                  height={32}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               </div>
             )}

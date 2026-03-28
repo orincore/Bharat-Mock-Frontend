@@ -485,7 +485,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
 
             {/* Right Illustration */}
             <div className="order-1 lg:order-2 flex justify-center lg:justify-end mt-1 sm:mt-4 lg:mt-0">
-              <div className="relative w-full max-w-[260px] sm:max-w-md lg:max-w-lg">
+              <div className="relative w-full max-w-none sm:max-w-md lg:max-w-lg">
                 {heroMediaPrimary ? (
                   renderMediaAsset(heroMediaPrimary, 'w-full h-auto object-contain', { disableShadow: true })
                 ) : (

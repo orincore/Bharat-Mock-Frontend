@@ -43,7 +43,16 @@ export const TestSeriesCard: React.FC<TestSeriesCardProps> = ({ testSeries }) =>
             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
               {displayLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={displayLogo} alt={testSeries.title} className="h-8 w-8 sm:h-10 sm:w-10 object-cover p-1" loading="lazy" />
+                <img
+                  src={displayLogo}
+                  alt={testSeries.title}
+                  className="h-8 w-8 sm:h-10 sm:w-10 object-cover p-1"
+                  loading="lazy"
+                  decoding="async"
+                  width={40}
+                  height={40}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
               ) : (
                 <span className="text-[10px] sm:text-xs font-bold text-slate-600">{initials}</span>
               )}

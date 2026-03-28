@@ -17,6 +17,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import {
   ArrowDown,
   ArrowUp,
@@ -210,23 +211,21 @@ export default function HomepageAdminPage() {
     setBanners((prev) => prev.filter((banner) => banner.tempId !== tempId));
   };
 
+  const bannerUploadHook = useImageUpload({
+    label: 'Banner image',
+    onSuccess: () => {},
+  });
+
   const handleBannerUpload = async (tempId: string, file?: FileList | null) => {
     const selectedFile = file?.[0];
     if (!selectedFile) return;
     setBannerUploading(true);
-    try {
-      const uploaded = await homepageAdminService.uploadBannerImage(selectedFile);
+    await bannerUploadHook.upload(selectedFile, async (f) => {
+      const uploaded = await homepageAdminService.uploadBannerImage(f);
       handleBannerFieldChange(tempId, 'image_url', uploaded.url);
-      toast({ title: 'Banner image uploaded' });
-    } catch (error: any) {
-      toast({
-        title: 'Upload failed',
-        description: error?.message || 'Unable to upload banner image.',
-        variant: 'destructive'
-      });
-    } finally {
-      setBannerUploading(false);
-    }
+      return uploaded;
+    });
+    setBannerUploading(false);
   };
 
   const handleSaveBanners = async () => {
@@ -280,12 +279,15 @@ export default function HomepageAdminPage() {
     });
   };
 
+  const buttonCardUploadHook = useImageUpload({ label: 'Button icon' });
+  const heroIllustrationUploadHook = useImageUpload({ label: 'Hero illustration' });
+
   const handleButtonCardUpload = async (tempId: string, files?: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
     setButtonUploadTarget(tempId);
-    try {
-      const upload = await homepageAdminService.uploadMedia(file, hero.slug || 'default');
+    await buttonCardUploadHook.upload(file, async (f) => {
+      const upload = await homepageAdminService.uploadMedia(f, hero.slug || 'default');
       updateButtonCards((cards) =>
         cards.map((card) =>
           card.tempId === tempId
@@ -293,37 +295,27 @@ export default function HomepageAdminPage() {
             : card
         )
       );
-      toast({ title: 'Button icon uploaded' });
-    } catch (error: any) {
-      toast({ title: 'Upload failed', description: error?.message || 'Please try again.', variant: 'destructive' });
-    } finally {
-      setButtonUploadTarget(null);
-    }
+      return upload;
+    });
+    setButtonUploadTarget(null);
   };
 
   const handleHeroIllustrationUpload = async (files?: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
     setHeroIllustrationUploading(true);
-    try {
-      const upload = await homepageAdminService.uploadMedia(file, hero.slug || 'default');
+    await heroIllustrationUploadHook.upload(file, async (f) => {
+      const upload = await homepageAdminService.uploadMedia(f, hero.slug || 'default');
       setHeroIllustrationItem({
         url: upload.url,
         asset_type: upload.asset_type,
         tempId: generateTempId(),
         alt_text: upload.original_name,
-        overlay_color: 'hero-visual'
+        overlay_color: 'hero-visual',
       });
-      toast({ title: 'Hero illustration updated' });
-    } catch (error: any) {
-      toast({
-        title: 'Upload failed',
-        description: error?.message || 'Unable to upload illustration. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setHeroIllustrationUploading(false);
-    }
+      return upload;
+    });
+    setHeroIllustrationUploading(false);
   };
 
   const handleSave = async () => {
