@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Clock, FileText, TrendingUp, Languages, ArrowRight, Lock, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { logoUrl } from '@/lib/utils/imageUrl';
 
 interface StandardExamCardProps {
   exam: {
@@ -82,7 +83,7 @@ export function StandardExamCard({
 
   const defaultCta = isLocked ? 'Unlock Premium' : (ctaLabel || 'Attempt Now');
 
-  const logoSrc = exam.logo_url || exam.image_url || exam.thumbnail_url || exam.category_logo_url || exam.category_icon;
+  const logoSrc = logoUrl(exam.logo_url || exam.image_url || exam.thumbnail_url || exam.category_logo_url || exam.category_icon || '');
 
   return (
     <div className={`group relative flex h-full flex-col rounded-2xl border bg-white overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 ${

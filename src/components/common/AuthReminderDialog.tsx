@@ -330,12 +330,13 @@ export function AuthReminderDialog() {
     <div className="px-5 py-5 space-y-4">
       <div className="-mx-5 -mt-5">
         <Image
-          src="/assets/login_banner_image.png"
+          src="/assets/login_banner_image.jpg"
           alt="Login reminder"
-          width={1536}
-          height={1024}
+          width={800}
+          height={534}
           className="w-full h-auto object-cover"
           priority
+          quality={80}
         />
       </div>
       <DialogHeader className="text-left space-y-2">

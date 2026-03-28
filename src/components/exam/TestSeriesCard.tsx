@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Languages, NotebookText, Users, ArrowRight, Clock, FileText, TrendingUp } from 'lucide-react';
 import { TestSeries } from '@/lib/api/testSeriesService';
 import { Button } from '@/components/ui/button';
+import { logoUrl } from '@/lib/utils/imageUrl';
 
 interface TestSeriesCardProps {
   testSeries: TestSeries;
@@ -10,8 +11,9 @@ interface TestSeriesCardProps {
 
 export const TestSeriesCard: React.FC<TestSeriesCardProps> = ({ testSeries }) => {
   const categoryName = testSeries.category?.name || 'Test Series';
+
   const categoryLogo = testSeries.category?.logo_url || null;
-  const displayLogo = testSeries.logo_url || categoryLogo;
+  const displayLogo = logoUrl(testSeries.logo_url || categoryLogo || '');
   const seriesUrl = testSeries.slug ? `/test-series/${testSeries.slug}` : `/test-series/${testSeries.id}`;
   const totalTests = testSeries.total_tests ?? testSeries.exams?.length ?? 0;
   const freeTests = testSeries.free_tests ?? testSeries.exams?.filter(exam => exam.is_free)?.length ?? 0;

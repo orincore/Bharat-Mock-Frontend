@@ -10,10 +10,15 @@ frontend:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
           NEXT_PUBLIC_GRAPHQL_URL=${NEXT_PUBLIC_GRAPHQL_URL}
           NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}
+          NEXT_PUBLIC_R2_PUBLIC_URL=${NEXT_PUBLIC_R2_PUBLIC_URL}
           EOF
         - echo "Generated .env file:"
         - cat .env
         - npm ci --prefer-offline || npm install
+        # Ensure sharp is available for Next.js image optimization on Amplify
+        - npm install sharp
+        # Compress public assets before build
+        - node scripts/compress-assets.js
     build:
       commands:
         - npm run build
