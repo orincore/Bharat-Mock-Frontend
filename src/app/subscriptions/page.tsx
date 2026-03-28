@@ -547,7 +547,7 @@ export default function SubscriptionLandingPage() {
                   >
                     {category.logo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={category.logo_url} alt={category.name} className="w-10 h-10 object-contain" />
+                      <img src={category.logo_url} alt={category.name} width={40} height={40} className="w-10 h-10 object-contain" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                         <GraduationCap className="h-5 w-5" />
@@ -1026,7 +1026,7 @@ export default function SubscriptionLandingPage() {
               <div className="flex gap-8 animate-featured-marquee-sub">
                 {[...FEATURED_PARTNERS, ...FEATURED_PARTNERS].map((partner, index) => (
                   <div key={`${partner.name}-${index}`} className="h-16 sm:h-20 flex items-center opacity-95 hover:opacity-100 transition drop-shadow-sm">
-                    <img src={partner.url} alt={partner.name} className="h-full w-auto max-w-[240px] object-contain" loading="lazy" />
+                    <img src={partner.url} alt={partner.name} width={240} height={80} className="h-full w-auto max-w-[240px] object-contain" loading="lazy" />
                   </div>
                 ))}
               </div>
@@ -1040,6 +1040,8 @@ export default function SubscriptionLandingPage() {
             .animate-featured-marquee-sub {
               width: max-content;
               animation: featured-marquee-sub 25s linear infinite;
+              will-change: transform;
+              transform: translateZ(0);
             }
           `}</style>
         </section>

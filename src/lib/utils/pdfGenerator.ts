@@ -1,5 +1,15 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jsPDF and autoTable are loaded dynamically at call-time so they never
+// land in the initial JS bundle (saves ~500 KB on every page load).
+let _jsPDF: any = null;
+let _autoTable: any = null;
+
+async function getJsPDF() {
+  if (!_jsPDF) {
+    _jsPDF = (await import('jspdf')).default;
+    _autoTable = (await import('jspdf-autotable')).default;
+  }
+  return { jsPDF: _jsPDF, autoTable: _autoTable };
+}
 
 interface ExamData {
   exam: {
@@ -185,6 +195,7 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
   const opts: PdfOptions = { ...DEFAULT_PDF_OPTIONS, ...pdfOptions };
   const { exam, sections, questions } = examData;
   
+  const { jsPDF, autoTable } = await getJsPDF();
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

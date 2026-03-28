@@ -165,7 +165,7 @@ export default function AdminCategoriesPage() {
                 <tr key={category.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-6 py-4">
                     {category.logo_url ? (
-                      <img src={category.logo_url} alt={category.name} className="w-12 h-12 object-contain rounded" />
+                      <img src={category.logo_url} alt={category.name} width={48} height={48} className="w-12 h-12 object-contain rounded" />
                     ) : (
                       <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
                         <ImageIcon className="h-6 w-6 text-muted-foreground" />

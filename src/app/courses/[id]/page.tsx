@@ -117,6 +117,8 @@ export default function CourseDetailPage() {
                 <img 
                   src={course.image_url}
                   alt={course.name}
+                  width={384}
+                  height={256}
                   className="w-full h-64 object-cover rounded-xl border-4 border-background/20"
                 />
               </div>

@@ -22,6 +22,7 @@ import { Exam, Article } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { HomepageHero, HomepageHeroMediaItem, HomepageData, HomepageBanner } from '@/lib/api/homepageService';
 import { useAuth } from '@/context/AuthContext';
+import { heroUrl, bannerUrl, logoUrl } from '@/lib/utils/imageUrl';
 
 // Isolated client component so useAuth doesn't break SSR prerender of Index
 function GetStartedButton() {
@@ -318,12 +319,14 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
     }
     return (
       <img
-        src={asset.url}
+        src={heroUrl(asset.url)}
         alt={asset.alt_text || heroTitle}
         className={`${className} ${options.disableShadow ? '' : 'shadow-[0_25px_80px_-40px_rgba(15,23,42,0.9)]'}`.trim()}
         loading="eager"
         fetchPriority="high"
         decoding="async"
+        width={665}
+        height={443}
       />
     );
   };
@@ -462,7 +465,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                         <div className="flex items-start gap-3">
                           {item.url ? (
                           <div className="w-10 h-10 flex-shrink-0">
-                            <img src={item.url} alt={item.alt_text || examLabels} className="w-full h-full object-contain" />
+                            <img src={item.url} alt={item.alt_text || examLabels} width={40} height={40} className="w-full h-full object-contain" />
                           </div>
                         ) : (
                           <div className="text-3xl">{examIcons[idx]}</div>
@@ -613,12 +616,16 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                               <img
                                 src={sub.logo_url}
                                 alt=""
+                                width={32}
+                                height={32}
                                 className="w-8 h-8 object-contain"
                               />
                             ) : selectedCategory.logo_url ? (
                               <img
                                 src={selectedCategory.logo_url}
                                 alt=""
+                                width={32}
+                                height={32}
                                 className="w-8 h-8 object-contain"
                               />
                             ) : (
@@ -665,6 +672,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                     <img
                       src={banner.image_url}
                       alt={banner.title || 'Featured banner'}
+                      width={1200}
+                      height={400}
                       className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.02]"
                       loading="lazy"
                     />
@@ -822,6 +831,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                     <img
                       src={partner.url}
                       alt={partner.name}
+                      width={240}
+                      height={80}
                       className="h-full w-auto max-w-[240px] object-contain"
                       loading="lazy"
                     />
@@ -839,6 +850,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
           .animate-featured-marquee {
             width: max-content;
             animation: featured-marquee 25s linear infinite;
+            will-change: transform;
+            transform: translateZ(0);
           }
         `}</style>
       </section>
@@ -989,6 +1002,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                     <img
                       src={banner.image_url}
                       alt={banner.title || 'Featured banner'}
+                      width={1200}
+                      height={400}
                       className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.02]"
                       loading="lazy"
                     />

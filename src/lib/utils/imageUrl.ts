@@ -52,7 +52,8 @@ export const getOptimizedImageUrl = (
 
 // Preset helpers — safe to use everywhere, no-op until CF resizing is enabled
 export const thumbnailUrl = (url: string) => getOptimizedImageUrl(url, { width: 400,  quality: 82, format: 'auto' });
-export const logoUrl      = (url: string) => getOptimizedImageUrl(url, { width: 128,  quality: 85, format: 'auto' });
-export const bannerUrl    = (url: string) => getOptimizedImageUrl(url, { width: 1200, quality: 80, format: 'auto' });
+export const logoUrl      = (url: string) => getOptimizedImageUrl(url, { width: 64,   quality: 85, format: 'auto' }); // displayed at 32-40px, 2x for retina
+export const bannerUrl    = (url: string) => getOptimizedImageUrl(url, { width: 800,  quality: 80, format: 'auto' }); // max display width ~665px
 export const avatarUrl    = (url: string) => getOptimizedImageUrl(url, { width: 96,   quality: 85, format: 'auto' });
 export const cardImageUrl = (url: string) => getOptimizedImageUrl(url, { width: 600,  quality: 82, format: 'auto' });
+export const heroUrl      = (url: string) => getOptimizedImageUrl(url, { width: 1200, quality: 82, format: 'auto' }); // hero illustration

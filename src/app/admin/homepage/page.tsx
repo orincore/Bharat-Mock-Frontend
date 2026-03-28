@@ -450,6 +450,52 @@ export default function HomepageAdminPage() {
                 placeholder="Start Your Journey With Free Videos, Test Series, Quizzes, Notes, & Information About Government Exams"
               />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Meta Title</Label>
+                <Input
+                  value={hero.meta_title || ''}
+                  onChange={(e) => handleFieldChange('meta_title', e.target.value)}
+                  placeholder="Bharat Mock — India's Smart Exam Companion"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Canonical URL</Label>
+                <Input
+                  value={hero.canonical_url || ''}
+                  onChange={(e) => handleFieldChange('canonical_url', e.target.value)}
+                  placeholder="https://bharatmock.com"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Meta Description</Label>
+              <Textarea
+                rows={2}
+                value={hero.meta_description || ''}
+                onChange={(e) => handleFieldChange('meta_description', e.target.value)}
+                placeholder="Practice adaptive mock tests, explore govt exam resources, and stay ahead with Bharat Mock."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Robots Meta</Label>
+              <Select
+                value={hero.robots_meta || 'index,follow'}
+                onValueChange={(value) => handleFieldChange('robots_meta', value)}
+              >
+                <SelectTrigger className="bg-card text-foreground border border-border">
+                  <SelectValue placeholder="Select robots directive" />
+                </SelectTrigger>
+                <SelectContent className="bg-card text-foreground border border-border shadow-lg">
+                  {robotsOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Use <strong>index,follow</strong> for the homepage to appear in search results.
+              </p>
+            </div>
           </div>
         </SectionCard>
 

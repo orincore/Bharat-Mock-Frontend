@@ -1,22 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { stripLineBreakTags } from '@/lib/utils';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  CartesianGrid,
-  Cell
-} from 'recharts';
+import dynamic from 'next/dynamic';
+
+// Dynamically import recharts — it's ~200KB and only needed for chart blocks
+// Cast to `any` to avoid next/dynamic's strict ComponentType check against
+// recharts' internal defaultProps types (e.g. Bar.defaultProps.layout: string).
+const dyn = (loader: () => Promise<any>) => dynamic(loader, { ssr: false }) as any;
+
+const ResponsiveContainer: any = dyn(() => import('recharts').then(m => m.ResponsiveContainer));
+const BarChart: any            = dyn(() => import('recharts').then(m => m.BarChart));
+const Bar: any                 = dyn(() => import('recharts').then(m => m.Bar));
+const LineChart: any           = dyn(() => import('recharts').then(m => m.LineChart));
+const Line: any                = dyn(() => import('recharts').then(m => m.Line));
+const PieChart: any            = dyn(() => import('recharts').then(m => m.PieChart));
+const Pie: any                 = dyn(() => import('recharts').then(m => m.Pie));
+const XAxis: any               = dyn(() => import('recharts').then(m => m.XAxis));
+const YAxis: any               = dyn(() => import('recharts').then(m => m.YAxis));
+const Tooltip: any             = dyn(() => import('recharts').then(m => m.Tooltip));
+const Legend: any              = dyn(() => import('recharts').then(m => m.Legend));
+const CartesianGrid: any       = dyn(() => import('recharts').then(m => m.CartesianGrid));
+const Cell: any                = dyn(() => import('recharts').then(m => m.Cell));
 import {
   Heading,
   FileText,
@@ -216,6 +221,8 @@ const ImageBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
       <img 
         src={safeUrl} 
         alt={alt} 
+        width={800}
+        height={600}
         className="rounded-lg shadow-md mx-auto"
         style={{ width, maxWidth: '100%' }}
       />
@@ -467,7 +474,7 @@ const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
   return (
     <div className="mb-6 border border-gray-300 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
       {image && (
-        <img src={image} alt={title} className="w-full h-48 object-cover" />
+        <img src={image} alt={title} width={800} height={192} className="w-full h-48 object-cover" />
       )}
       <div className="p-4">
         {title && <h3 className="text-xl font-semibold mb-2">{title}</h3>}
@@ -581,7 +588,7 @@ const AdBannerBlock: React.FC<{ content: any; settings?: any }> = ({ content }) 
       {imageUrl && (
         <div className="p-4">
           <div className="rounded-xl overflow-hidden bg-white/10 border border-white/10">
-            <img src={imageUrl} alt={headline || 'Ad banner'} className="w-full object-cover" />
+            <img src={imageUrl} alt={headline || 'Ad banner'} width={800} height={400} className="w-full object-cover" />
           </div>
         </div>
       )}

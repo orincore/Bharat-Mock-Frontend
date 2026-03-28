@@ -364,7 +364,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                   <div className="prose max-w-none mb-4" dangerouslySetInnerHTML={{ __html: section.content }} />
                 )}
                 {section.media_url && (
-                  <img src={section.media_url} alt={section.title} className="rounded-lg mb-4" />
+                  <img src={section.media_url} alt={section.title} width={800} height={450} className="rounded-lg mb-4" />
                 )}
                 {section.button_label && section.button_url && (
                   <Link
@@ -540,7 +540,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                   {resources.map((resource) => (
                   <div key={resource.id} className="rounded-2xl ring-1 ring-black/5 bg-slate-50 p-4 shadow-[0_25px_60px_-45px_rgba(15,23,42,0.8)]">
                       {resource.thumbnail_url && (
-                        <img src={resource.thumbnail_url} alt={resource.title} className="w-full h-32 object-cover rounded mb-4" />
+                        <img src={resource.thumbnail_url} alt={resource.title} width={600} height={128} className="w-full h-32 object-cover rounded mb-4" />
                       )}
                       <h3 className="font-semibold text-gray-900 mb-2">{resource.title}</h3>
                       {resource.description && (

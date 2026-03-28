@@ -294,7 +294,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 py-10 flex flex-col lg:flex-row gap-12 items-center">
           {category.logo_url && (
             <div className="w-32 h-32 rounded-3xl bg-white/10 shadow-xl flex items-center justify-center overflow-hidden border border-white/30">
-              <img src={category.logo_url} alt={category.name} className="w-full h-full object-contain" />
+              <img src={category.logo_url} alt={category.name} width={128} height={128} className="w-full h-full object-contain" />
             </div>
           )}
           <div className="flex-1 text-center lg:text-left space-y-6">
@@ -399,7 +399,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
                       <div className="flex items-center gap-3">
                         {category.logo_url && (
                           <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden">
-                            <img src={category.logo_url} alt={`${category.name} logo`} className="w-full h-full object-cover" />
+                            <img src={category.logo_url} alt={`${category.name} logo`} width={40} height={40} className="w-full h-full object-cover" />
                           </div>
                         )}
                         <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">

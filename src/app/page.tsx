@@ -24,8 +24,10 @@ async function fetchHomepageData(): Promise<HomepageData | null> {
   }
 }
 
-const parseRobots = (value?: string) => {
-  const normalized = value?.toLowerCase?.() ?? "index,follow";
+const parseRobots = (value?: string | null) => {
+  // Treat null/undefined/empty as index,follow — never block the homepage by default
+  if (!value) return { index: true, follow: true };
+  const normalized = value.toLowerCase();
   const index = !normalized.includes("noindex");
   const follow = !normalized.includes("nofollow");
   return { index, follow };

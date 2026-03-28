@@ -1,9 +1,21 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import katex from 'katex';
-import 'katex/dist/katex.min.css';
 import DOMPurify from 'dompurify';
+
+// katex is ~280 KB — load it dynamically so it never blocks the initial bundle.
+// It's only needed on exam attempt / review pages.
+type KatexType = { renderToString: (tex: string, opts?: object) => string };
+let _katex: KatexType | null = null;
+async function getKatex(): Promise<KatexType> {
+  if (!_katex) {
+    const katexModule = await import('katex');
+    // Inject the katex CSS once, lazily — ignore if it fails (SSR/test env)
+    import('katex/dist/katex.min.css' as string).catch(() => null);
+    _katex = (katexModule.default ?? katexModule) as unknown as KatexType;
+  }
+  return _katex;
+}
 
 const MATHML_TAGS = [
   'math', 'mrow', 'mi', 'mn', 'mo', 'mfrac', 'msup', 'msub', 'msubsup',
@@ -26,48 +38,6 @@ const SANITIZE_CONFIG = {
 };
 
 /**
- * Renders inline KaTeX for $...$ and $$...$$ patterns in a string.
- * Returns an array of React nodes (text + rendered math spans).
- */
-function renderLatexInText(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  // Match $$...$$ (display) then $...$ (inline)
-  const regex = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g;
-  let last = 0;
-  let match: RegExpExecArray | null;
-  let key = 0;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > last) {
-      parts.push(text.slice(last, match.index));
-    }
-    const raw = match[0];
-    const isDisplay = raw.startsWith('$$');
-    const latex = isDisplay ? raw.slice(2, -2).trim() : raw.slice(1, -1).trim();
-    try {
-      const html = katex.renderToString(latex, {
-        displayMode: isDisplay,
-        throwOnError: false,
-        output: 'html',
-      });
-      parts.push(
-        <span
-          key={key++}
-          className={isDisplay ? 'block text-center my-2' : 'inline'}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      );
-    } catch {
-      parts.push(raw);
-    }
-    last = match.index + raw.length;
-  }
-
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
-}
-
-/**
  * Strip color/font-size from HTML DOM nodes (skip MathML).
  */
 function stripStyling(container: HTMLElement) {
@@ -88,8 +58,9 @@ function stripStyling(container: HTMLElement) {
 
 /**
  * Process HTML: sanitize, strip colors, then render any $...$ LaTeX inline.
+ * katex is loaded lazily — returns a Promise<string>.
  */
-function processHtml(html: string): string {
+async function processHtml(html: string): Promise<string> {
   if (typeof window === 'undefined') return html;
 
   // 1. Sanitize
@@ -100,7 +71,13 @@ function processHtml(html: string): string {
   tmp.innerHTML = clean;
   stripStyling(tmp);
 
-  // 3. Walk text nodes and render LaTeX $...$ patterns
+  // 3. Check if there's any LaTeX before loading katex
+  const hasLatex = tmp.textContent?.includes('$') ?? false;
+  if (!hasLatex) return tmp.innerHTML;
+
+  // 4. Load katex lazily, then walk text nodes
+  const katex = await getKatex();
+
   const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_TEXT);
   const textNodes: Text[] = [];
   let node: Node | null;
@@ -157,23 +134,25 @@ interface MathRendererProps {
  * - LaTeX ($...$ and $$...$$)
  * - Regular HTML with sup/sub/fractions
  * All in black color, no source styling.
+ * katex is loaded lazily — zero cost on pages that don't use it.
  */
 export function MathRenderer({ html, className = '' }: MathRendererProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!ref.current || typeof window === 'undefined') return;
-    ref.current.innerHTML = processHtml(html);
+    processHtml(html).then((processed) => {
+      if (ref.current) ref.current.innerHTML = processed;
+    });
   }, [html]);
 
   return <div ref={ref} className={className} />;
 }
 
 /**
- * Exported helper — same processing, returns cleaned HTML string.
- * Use this when you need the string (e.g. for dangerouslySetInnerHTML).
+ * Exported helper — same processing, returns cleaned HTML string (async).
  */
-export function sanitizeAndRenderMath(html?: string): string {
+export async function sanitizeAndRenderMath(html?: string): Promise<string> {
   if (!html) return '';
   if (typeof window === 'undefined') return html;
   return processHtml(html);

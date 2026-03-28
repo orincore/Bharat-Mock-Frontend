@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 import { pagePopularTestsService, PopularTestAdmin } from '@/lib/api/pagePopularTestsService';
 import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
@@ -382,21 +383,15 @@ export default function ExamPageAdmin() {
     }
   };
 
+  const bannerImageUpload = useImageUpload({
+    label: 'Banner image',
+    onSuccess: (result) => setBannerForm(prev => ({ ...prev, imageUrl: result.url })),
+  });
+
   const handleBannerImageUpload = async (file: File) => {
     setBannerUploading(true);
-    try {
-      const result = await pageBannersService.uploadBannerImage(file);
-      setBannerForm(prev => ({ ...prev, imageUrl: result.url }));
-      toast({ title: 'Success', description: 'Image uploaded successfully' });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to upload image',
-        variant: 'destructive'
-      });
-    } finally {
-      setBannerUploading(false);
-    }
+    await bannerImageUpload.upload(file, (f) => pageBannersService.uploadBannerImage(f));
+    setBannerUploading(false);
   };
 
   const handleSaveBanner = async () => {

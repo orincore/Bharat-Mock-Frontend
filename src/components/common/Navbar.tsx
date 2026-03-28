@@ -195,7 +195,7 @@ export function Navbar() {
                                 <div className="h-10 w-10 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                                   {category.logo_url ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={category.logo_url} alt={category.name} className="h-full w-full object-contain p-1.5" />
+                                    <img src={category.logo_url} alt={category.name} width={32} height={32} className="h-full w-full object-contain p-1.5" />
                                   ) : (
                                     <span className="text-xs font-bold text-gray-500">
                                       {category.name.slice(0, 3).toUpperCase()}
@@ -232,10 +232,10 @@ export function Navbar() {
                                     <div className="h-7 w-7 rounded-xl bg-slate-50 border border-border/40 flex items-center justify-center overflow-hidden">
                                       {sub.logo_url ? (
                                         // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={sub.logo_url} alt={sub.name} className="h-full w-full object-contain p-1" />
+                                        <img src={sub.logo_url} alt={sub.name} width={24} height={24} className="h-full w-full object-contain p-1" />
                                       ) : currentCategory?.logo_url ? (
                                         // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={currentCategory.logo_url} alt={currentCategory.name || ''} className="h-full w-full object-contain p-1" />
+                                        <img src={currentCategory.logo_url} alt={currentCategory.name || ''} width={24} height={24} className="h-full w-full object-contain p-1" />
                                       ) : (
                                         <span className="text-[10px] font-semibold text-gray-500">
                                           {sub.name.slice(0, 2).toUpperCase()}
@@ -406,7 +406,7 @@ export function Navbar() {
                             <div className="h-8 w-8 rounded-lg bg-white border border-border/40 flex items-center justify-center overflow-hidden flex-shrink-0">
                               {category.logo_url ? (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={category.logo_url} alt={category.name} className="h-full w-full object-contain p-1" />
+                                <img src={category.logo_url} alt={category.name} width={24} height={24} className="h-full w-full object-contain p-1" />
                               ) : (
                                 <span className="text-xs font-bold text-gray-500">
                                   {category.name.slice(0, 2).toUpperCase()}

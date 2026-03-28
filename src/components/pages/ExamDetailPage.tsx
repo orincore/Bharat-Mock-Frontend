@@ -562,7 +562,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
 
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
-                <img src="/favicon.jpg" alt="Bharat Mock" className="h-10 w-10 rounded" />
+                <img src="/favicon.jpg" alt="Bharat Mock" width={40} height={40} className="h-10 w-10 rounded" />
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Helpdesk</p>
                   <p className="font-semibold text-slate-900">Bharat Mock Support Cell</p>

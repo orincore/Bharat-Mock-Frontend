@@ -119,6 +119,8 @@ export default function CollegeDetailPage() {
                   <img 
                     src={college.logo_url} 
                     alt={college.name}
+                    width={80}
+                    height={80}
                     className="h-20 w-20 object-contain bg-background rounded-lg p-2"
                   />
                 </div>
@@ -176,6 +178,8 @@ export default function CollegeDetailPage() {
                 <img 
                   src={college.image_url}
                   alt={college.name}
+                  width={384}
+                  height={256}
                   className="w-full h-64 object-cover rounded-xl border-4 border-background/20"
                 />
               </div>
