@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Education, User } from '@/types';
 import { authService } from '@/lib/api/authService';
+import { apiClient } from '@/lib/api/client';
 
 interface AuthContextType {
   user: User | null;
@@ -85,6 +86,48 @@ export function AuthProvider({ children, initProfile, initProfileLoading, onAuth
   const [isLoading, setIsLoading] = useState(!initialUser);
   const hydratedFromInit = useRef(false);
 
+  // Sync auth state across tabs via storage events
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        if (!e.newValue) {
+          // Token removed in another tab — log out this tab
+          setUser(null);
+          persistUser(null);
+          hydratedFromInit.current = false;
+        } else if (e.newValue && !e.oldValue) {
+          // Token added in another tab — load the stored user
+          const stored = getStoredUser();
+          if (stored) {
+            setUser(stored);
+          } else {
+            // No cached user yet, fetch profile
+            authService.getProfile()
+              .then(userData => {
+                const normalized = normalizeUser(userData);
+                setUser(normalized);
+                persistUser(normalized);
+              })
+              .catch(() => {});
+          }
+        }
+      }
+      if (e.key === 'auth_user') {
+        if (!e.newValue) {
+          setUser(null);
+        } else {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            setUser(parsed);
+          } catch {}
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   useEffect(() => {
     if (initProfileLoading) return;
 
@@ -112,18 +155,21 @@ export function AuthProvider({ children, initProfile, initProfileLoading, onAuth
           return;
         }
 
-        // Always fetch fresh profile so fields like bio are up-to-date
-        // (cached user may be stale if new columns were added)
         setIsLoading(true);
         const userData = await authService.getProfile();
         const normalized = normalizeUser(userData);
         setUser(normalized);
         persistUser(normalized);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Auth check failed:', error);
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('refresh_token');
-        persistUser(null);
+        // 401/403 means token is invalid — clear everything
+        const status = error?.message || '';
+        if (status.includes('401') || status.includes('403')) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('refresh_token');
+          persistUser(null);
+          apiClient.clearAuthCache();
+        }
         setUser(null);
       } finally {
         setIsLoading(false);

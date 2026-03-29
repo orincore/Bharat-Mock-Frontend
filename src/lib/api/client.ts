@@ -214,7 +214,9 @@ class ApiClient {
         return await response.json() as T;
       } catch (error) {
         lastError = error as Error;
-        if (error instanceof Error && error.message.includes('HTTP 4') && !error.message.includes('HTTP 401')) {
+        // Don't retry auth errors (401/403) — let executeRequest handle token refresh
+        // Don't retry other 4xx client errors
+        if (error instanceof Error && error.message.match(/HTTP 4\d\d/)) {
           throw error;
         }
         if (attempt < maxRetries) {
@@ -242,7 +244,12 @@ class ApiClient {
     try {
       return await this.retryRequest<T>(url, { ...restOptions, headers: requestHeaders, timeout }, retries);
     } catch (error) {
-      if (error instanceof Error && error.message.includes('HTTP 401') && requiresAuth) {
+      // Handle 401 (unauthorized) and 403 (forbidden/token expired) — attempt token refresh
+      if (
+        error instanceof Error &&
+        (error.message.includes('HTTP 401') || error.message.includes('HTTP 403')) &&
+        requiresAuth
+      ) {
         const refreshed = await this.refreshAccessToken();
         if (refreshed) {
           const newToken = this.getAuthToken();
@@ -251,6 +258,8 @@ class ApiClient {
             return await this.retryRequest<T>(url, { ...restOptions, headers: requestHeaders, timeout }, retries);
           }
         }
+        // Refresh failed — clear tokens so user gets logged out cleanly
+        this.clearTokens();
       }
       throw error;
     }
