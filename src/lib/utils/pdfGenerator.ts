@@ -11,6 +11,72 @@ async function getJsPDF() {
   return { jsPDF: _jsPDF, autoTable: _autoTable };
 }
 
+// Render Hindi text to a canvas image using the browser's text shaping engine.
+// Returns { dataUrl, widthMm, heightMm } at the given font size (pt).
+function renderHindiTextToImage(
+  text: string,
+  fontSizePt: number,
+  maxWidthMm: number,
+  color = '#141414',
+  bold = false
+): { dataUrl: string; widthMm: number; heightMm: number } {
+  const DPI = 150;
+  const PT_TO_PX = DPI / 72;
+  const MM_TO_PX = DPI / 25.4;
+  const maxWidthPx = Math.round(maxWidthMm * MM_TO_PX);
+  const fontSizePx = Math.round(fontSizePt * PT_TO_PX);
+  const fontWeight = bold ? '700' : '400';
+  const fontFamily = "'Noto Sans Devanagari', 'Noto Sans', Arial, sans-serif";
+
+  // Measure and wrap text
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+  ctx.font = `${fontWeight} ${fontSizePx}px ${fontFamily}`;
+
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if (!word) continue;
+    const test = current ? current + ' ' + word : word;
+    if (ctx.measureText(test).width <= maxWidthPx) {
+      current = test;
+    } else {
+      if (current) lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  if (lines.length === 0) lines.push(text);
+
+  const lineHeightPx = Math.round(fontSizePx * 1.5);
+  const paddingPx = Math.round(fontSizePx * 0.2);
+  const totalHeightPx = lines.length * lineHeightPx + paddingPx * 2;
+  const totalWidthPx = Math.min(
+    maxWidthPx,
+    Math.max(...lines.map(l => Math.ceil(ctx.measureText(l).width))) + paddingPx * 2
+  );
+
+  canvas.width = totalWidthPx;
+  canvas.height = totalHeightPx;
+
+  // Transparent background
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = `${fontWeight} ${fontSizePx}px ${fontFamily}`;
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'top';
+
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], paddingPx, paddingPx + i * lineHeightPx);
+  }
+
+  return {
+    dataUrl: canvas.toDataURL('image/png'),
+    widthMm: totalWidthPx / MM_TO_PX,
+    heightMm: totalHeightPx / MM_TO_PX,
+  };
+}
+
 interface ExamData {
   exam: {
     id: string;
@@ -202,6 +268,28 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
     format: 'a4'
   });
 
+  const useHindiFont = opts.language === 'hi';
+
+  // Helper: add Hindi text as a canvas-rendered image (proper shaping via browser engine)
+  const addHindiText = (
+    text: string,
+    x: number,
+    y: number,
+    maxWidthMm: number,
+    fontSizePt = 10,
+    color = '#141414',
+    bold = false
+  ): number => {
+    if (!text.trim()) return 0;
+    const { dataUrl, widthMm, heightMm } = renderHindiTextToImage(text, fontSizePt, maxWidthMm, color, bold);
+    doc.addImage(dataUrl, 'PNG', x, y, widthMm, heightMm);
+    return heightMm;
+  };
+
+  const setFont = (style: 'normal' | 'bold' | 'italic') => {
+    doc.setFont('helvetica', style);
+  };
+
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 15;
@@ -234,7 +322,9 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
     } else {
       const originalFontSize = doc.getFontSize();
       const originalColor = doc.getTextColor();
+      const originalFont = doc.getFont();
       doc.setFontSize(58);
+      doc.setFont('helvetica', 'normal');
       doc.setTextColor(200, 200, 200);
       doc.text('Bharat Mock', pageWidth / 2, pageHeight / 2, {
         align: 'center',
@@ -242,6 +332,7 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
       });
       doc.setFontSize(originalFontSize);
       doc.setTextColor(originalColor as any);
+      doc.setFont(originalFont.fontName, originalFont.fontStyle);
     }
   };
 
@@ -443,10 +534,15 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
     doc.setDrawColor(180, 200, 240);
     doc.rect(margin, yPosition, pageWidth - 2 * margin, 9, 'S');
 
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 60, 120);
-    doc.text(section.name, margin + 3, yPosition + 6);
+    const sectionName = (opts.language === 'hi' && section.name_hi) ? section.name_hi : section.name;
+    if (useHindiFont) {
+      addHindiText(sectionName, margin + 3, yPosition + 1, pageWidth - 2 * margin - 6, 11, '#1e3a8a', true);
+    } else {
+      doc.setFontSize(11);
+      setFont('bold');
+      doc.setTextColor(30, 60, 120);
+      doc.text(sectionName, margin + 3, yPosition + 6);
+    }
 
     yPosition += 13;
   };
@@ -454,18 +550,27 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
   const addQuestion = async (question: any, questionNumber: number) => {
     checkPageBreak(35);
 
-    // Question text with plain number
+    // Question number always in helvetica
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(20, 20, 20);
-
-    const questionText = normalizeText(question.question_text || question.text || 'Question');
-    const questionLines = doc.splitTextToSize(questionText, pageWidth - 2 * margin - 12);
-
     doc.text(`${questionNumber}.`, margin, yPosition + 4);
-    doc.text(questionLines, margin + 10, yPosition + 4);
-    yPosition += questionLines.length * 5.5 + 5;
 
+    const questionText = normalizeText(
+      (opts.language === 'hi' && (question as any).text_hi)
+        ? (question as any).text_hi
+        : (question.question_text || question.text || 'Question')
+    );
+
+    if (useHindiFont) {
+      const h = addHindiText(questionText, margin + 10, yPosition, pageWidth - 2 * margin - 12, 10, '#141414', true);
+      yPosition += Math.max(h, 6) + 3;
+    } else {
+      setFont('bold');
+      const questionLines = doc.splitTextToSize(questionText, pageWidth - 2 * margin - 12);
+      doc.text(questionLines, margin + 10, yPosition + 4);
+      yPosition += questionLines.length * 5.5 + 5;
+    }
     if (question.image_url) {
       try {
         const imgData = await loadImage(question.image_url);
@@ -480,7 +585,7 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
       }
     }
 
-    doc.setFont('helvetica', 'normal');
+    setFont('normal');
     doc.setFontSize(10);
 
     // Sort options by order so A/B/C/D are always sequential
@@ -488,6 +593,9 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
       const aOrder = a.display_order ?? a.option_order ?? 0;
       const bOrder = b.display_order ?? b.option_order ?? 0;
       return aOrder - bOrder;
+    }).filter((option) => {
+      // Only filter out options that have no text at all in any language
+      return option.option_text || option.text || (option as any).option_text_hi;
     });
 
     for (let optionIndex = 0; optionIndex < optionList.length; optionIndex++) {
@@ -497,31 +605,43 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
       // Always use sequential index for label (A, B, C, D...)
       const optionLabel = String.fromCharCode(65 + optionIndex);
       const isCorrect = option.is_correct;
-      const optionText = formatOptionText(option.option_text || option.text || '');
+      const optionText = formatOptionText(
+        (opts.language === 'hi' && (option as any).option_text_hi)
+          ? (option as any).option_text_hi
+          : (option.option_text || option.text || '')
+      );
 
+      // Reset to known good state before rendering
+      doc.setFontSize(10);
+      setFont('normal');
       if (opts.showAnswers && isCorrect) {
         doc.setTextColor(0, 150, 0);
-        doc.setFont('helvetica', 'bold');
       } else {
         doc.setTextColor(40, 40, 40);
-        doc.setFont('helvetica', 'normal');
       }
 
       const prefix = `${optionLabel}. `;
+      const fullText = prefix + optionText;
 
-      const optionLines = doc.splitTextToSize(
-        prefix + optionText,
-        pageWidth - 2 * margin - 12
-      );
-
-      doc.text(optionLines[0], margin + 8, yPosition);
-      if (optionLines.length > 1) {
-        for (let i = 1; i < optionLines.length; i++) {
-          yPosition += 5;
-          doc.text(optionLines[i], margin + 14, yPosition);
+      try {
+        if (useHindiFont) {
+          const color = (opts.showAnswers && isCorrect) ? '#16a34a' : '#374151';
+          // Label in helvetica
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(opts.showAnswers && isCorrect ? 0 : 40, opts.showAnswers && isCorrect ? 150 : 40, opts.showAnswers && isCorrect ? 0 : 40);
+          doc.text(prefix, margin + 8, yPosition + 3.5);
+          // Hindi text as canvas image
+          const h = addHindiText(optionText, margin + 8 + 7, yPosition, pageWidth - 2 * margin - 20, 10, color, false);
+          yPosition += Math.max(h, 5) + 2;
+        } else {
+          const optionLines = doc.splitTextToSize(fullText, pageWidth - 2 * margin - 12);
+          doc.text(optionLines, margin + 8, yPosition);
+          yPosition += (optionLines.length - 1) * 5 + 6;
         }
+      } catch (err) {
+        console.error('[PDF] option render failed:', err);
+        yPosition += 6;
       }
-      yPosition += 6;
 
       if (option.image_url) {
         try {
@@ -539,22 +659,38 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
     }
 
     doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'normal');
+    setFont('normal');
     yPosition += 2;
 
-    if (question.explanation) {
+    if (question.explanation || question.explanation_hi) {
       if (opts.showExplanations) {
         checkPageBreak(15);
         doc.setFontSize(8.5);
-        doc.setFont('helvetica', 'italic');
+        setFont('italic');
         doc.setTextColor(22, 101, 52);
         doc.setFillColor(240, 253, 244);
-        const expText = `Explanation: ${normalizeText(question.explanation)}`;
-        const expLines = doc.splitTextToSize(expText, pageWidth - 2 * margin - 14);
-        const expHeight = expLines.length * 4.5 + 4;
-        doc.roundedRect(margin + 6, yPosition - 1, pageWidth - 2 * margin - 6, expHeight, 1, 1, 'F');
-        doc.text(expLines, margin + 9, yPosition + 3);
-        yPosition += expHeight + 3;
+        const explanationText = normalizeText(
+          (opts.language === 'hi' && question.explanation_hi)
+            ? question.explanation_hi
+            : question.explanation
+        );
+        if (useHindiFont) {
+          doc.setFillColor(240, 253, 244);
+          const expH = addHindiText('Explanation: ' + explanationText, margin + 9, yPosition, pageWidth - 2 * margin - 15, 8.5, '#166534', false);
+          const boxH = Math.max(expH, 8) + 4;
+          // Draw background behind the image (draw first, then re-render image on top)
+          doc.setFillColor(240, 253, 244);
+          doc.roundedRect(margin + 6, yPosition - 1, pageWidth - 2 * margin - 6, boxH, 1, 1, 'F');
+          addHindiText('Explanation: ' + explanationText, margin + 9, yPosition, pageWidth - 2 * margin - 15, 8.5, '#166534', false);
+          yPosition += boxH + 3;
+        } else {
+          const expText = `Explanation: ${explanationText}`;
+          const expLines = doc.splitTextToSize(expText, pageWidth - 2 * margin - 14);
+          const expHeight = expLines.length * 4.5 + 4;
+          doc.roundedRect(margin + 6, yPosition - 1, pageWidth - 2 * margin - 6, expHeight, 1, 1, 'F');
+          doc.text(expLines, margin + 9, yPosition + 3);
+          yPosition += expHeight + 3;
+        }
       }
     }
 
@@ -606,6 +742,13 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
   let currentSectionId: string | null = null;
 
   for (const question of questions) {
+    // Skip questions that don't have content in the selected language
+    const hasEnglish = question.question_text || question.text;
+    const hasHindi = (question as any).text_hi;
+    
+    if (opts.language === 'en' && !hasEnglish) continue;
+    if (opts.language === 'hi' && !hasHindi) continue;
+
     if (question.section_id !== currentSectionId) {
       const section = sectionMap.get(question.section_id);
       if (section) {

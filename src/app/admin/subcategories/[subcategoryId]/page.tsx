@@ -106,6 +106,8 @@ interface SEOData {
   canonical_url?: string;
   robots_meta?: string;
   structured_data?: string | Record<string, any>;
+  author_name?: string;
+  updated_at?: string;
 }
 
 export default function AdminSubcategoryEditorPage() {
@@ -304,6 +306,11 @@ export default function AdminSubcategoryEditorPage() {
       const currentSubset: Section[] = [];
 
       prev.forEach((section) => {
+        // Sidebar sections are never part of the editor subset — always retain them
+        if (section.is_sidebar) {
+          retain.push(section);
+          return;
+        }
         const sectionSpecialTab = section.settings?.special_tab_type;
         const belongsToActive = activeTabId === 'overview'
           ? !section.custom_tab_id && !sectionSpecialTab
@@ -350,15 +357,30 @@ export default function AdminSubcategoryEditorPage() {
       .filter((section) => {
         const sectionSpecialTab = section.settings?.special_tab_type;
         if (activeTabId === 'overview') {
-          return !section.custom_tab_id && !sectionSpecialTab;
+          return !section.is_sidebar && !section.custom_tab_id && !sectionSpecialTab;
         }
         if (activeTabId === 'mock-tests' || activeTabId === 'previous-papers') {
-          return sectionSpecialTab === activeTabId;
+          return !section.is_sidebar && sectionSpecialTab === activeTabId;
         }
-        return section.custom_tab_id === activeTabId;
+        return !section.is_sidebar && section.custom_tab_id === activeTabId;
       })
       .sort((a, b) => a.display_order - b.display_order)
   ), [sections, activeTabId]);
+
+  // Sidebar sections relevant to the active tab (shared + tab-specific)
+  const sidebarSectionsForActiveTab = useMemo(() => (
+    sections.filter((section) => {
+      if (!section.is_sidebar) return false;
+      if (!section.sidebar_tab_id) return true; // shared across all tabs
+      return section.sidebar_tab_id === activeTabId;
+    })
+  ), [sections, activeTabId]);
+
+  // Stable merged array for BlockEditor — sidebar sections first so they appear at top
+  const editorSections = useMemo(
+    () => [...sidebarSectionsForActiveTab, ...sectionsForActiveTab],
+    [sidebarSectionsForActiveTab, sectionsForActiveTab]
+  );
 
   const autosaveKey = useMemo(() => `subcategory:${subcategoryId}:${activeTabId}`, [subcategoryId, activeTabId]);
 
@@ -571,9 +593,12 @@ export default function AdminSubcategoryEditorPage() {
     if (!subcategoryId) return;
 
     try {
+      const token = getAuthToken();
       const endpoint = buildApiUrl(`/page-content/${subcategoryId}`);
       debugLog('Fetching page content', endpoint);
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch page content');
@@ -685,9 +710,9 @@ export default function AdminSubcategoryEditorPage() {
         throw new Error('Section sync failed');
       }
 
+      // Create revision asynchronously (don't wait for it)
       const revisionEndpoint = buildApiUrl(`/page-content/${subcategoryId}/revisions`);
-      debugLog('Creating revision', revisionEndpoint);
-      const revisionResponse = await fetch(revisionEndpoint, {
+      fetch(revisionEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -696,11 +721,7 @@ export default function AdminSubcategoryEditorPage() {
         body: JSON.stringify({
           change_summary: 'Content updated via block editor'
         })
-      });
-
-      if (!revisionResponse.ok) {
-        console.warn('Failed to create revision');
-      }
+      }).catch(err => console.warn('Failed to create revision:', err));
 
       toast({
         title: 'Success',
@@ -1200,10 +1221,24 @@ export default function AdminSubcategoryEditorPage() {
       {/* Block Editor */}
       <BlockEditor
         key={activeTabId}
-        sections={sectionsForActiveTab}
+        sections={editorSections}
         onSave={() => handleSave(sections)}
         autosaveKey={autosaveKey}
-        onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
+        onSectionsChange={(next) => {
+          // Split back into sidebar and main sections
+          const nextSidebar = (next as Section[]).filter(s => s.is_sidebar);
+          const nextMain = (next as Section[]).filter(s => !s.is_sidebar);
+          // Update sidebar sections directly in state
+          if (nextSidebar.length > 0 || sidebarSectionsForActiveTab.length > 0) {
+            setSections(prev => {
+              const otherSections = prev.filter(s =>
+                !sidebarSectionsForActiveTab.some(sb => sb.id === s.id)
+              );
+              return [...otherSections, ...nextSidebar];
+            });
+          }
+          updateSectionsForActiveTab(nextMain);
+        }}
         tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
         mediaUploadConfig={mediaUploadConfig}
         onTocOrderClick={() => setShowTocPanel(true)}
@@ -1632,6 +1667,26 @@ export default function AdminSubcategoryEditorPage() {
                     placeholder="Add reminders for schema markup (e.g., FAQ, Breadcrumbs)"
                   />
                 </div>
+              </section>
+
+              <section className="border border-blue-100 rounded-2xl p-4 bg-blue-50/40">
+                <p className="text-xs uppercase font-semibold text-blue-600 mb-3">Page Attribution</p>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Author Name</label>
+                  <input
+                    type="text"
+                    value={seoData.author_name || ''}
+                    onChange={(e) => handleSeoChange('author_name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. Bharat Mock Editorial Team"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Shown on the public page below the title. Leave blank to hide.</p>
+                </div>
+                {seoData.updated_at && (
+                  <p className="mt-3 text-xs text-gray-500">
+                    Last updated: <span className="font-medium text-gray-700">{new Date(seoData.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                  </p>
+                )}
               </section>
             </div>
 

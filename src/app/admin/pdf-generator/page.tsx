@@ -63,7 +63,7 @@ export default function PdfGeneratorPage() {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     try {
-      const result = await adminService.getExams({ search: searchQuery, limit: 10 });
+      const result = await adminService.getExams({ search: searchQuery, limit: 20 });
       setSearchResults(result.data);
     } catch (e) {
       console.error(e);
@@ -78,6 +78,14 @@ export default function PdfGeneratorPage() {
     setSearchQuery('');
     setPreviewHtml(null);
     setExamData(null);
+    
+    // Auto-select available language
+    if (!exam.pdf_url_en && (exam.supports_hindi || exam.pdf_url_hi)) {
+      setOptions(prev => ({ ...prev, language: 'hi' }));
+    } else if (exam.pdf_url_en) {
+      setOptions(prev => ({ ...prev, language: 'en' }));
+    }
+    
     try {
       const [fullExam, sectionsData] = await Promise.all([
         adminService.getExamById(exam.id),
@@ -101,6 +109,12 @@ export default function PdfGeneratorPage() {
       setIsLoadingPreview(false);
     }
   }, [examData, options]);
+
+  // Auto-refresh preview when options or examData change
+  useEffect(() => {
+    if (!examData) return;
+    setPreviewHtml(buildPreviewHtml(examData, options));
+  }, [options, examData]);
 
   const handleGenerate = useCallback(async () => {
     if (!examData) return;
@@ -198,15 +212,32 @@ export default function PdfGeneratorPage() {
                 <li
                   key={exam.id}
                   onClick={() => handleSelectExam(exam)}
-                  className="px-4 py-3 hover:bg-blue-50 cursor-pointer flex items-center justify-between"
+                  className="px-4 py-3 hover:bg-blue-50 cursor-pointer"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{exam.title}</p>
-                    <p className="text-xs text-gray-500">
-                      {exam.exam_uid || exam.id} &middot; {exam.total_questions} Qs &middot; {exam.duration} min
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{exam.title}</p>
+                      <p className="text-xs text-gray-500">
+                        {exam.exam_uid || exam.id} &middot; {exam.total_questions} Qs &middot; {exam.duration} min
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Language badges */}
+                      <div className="flex gap-1">
+                        {exam.pdf_url_en && (
+                          <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                            EN
+                          </span>
+                        )}
+                        {(exam.supports_hindi || exam.pdf_url_hi) && (
+                          <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">
+                            HI
+                          </span>
+                        )}
+                      </div>
+                      <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180" />
+                    </div>
                   </div>
-                  <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180" />
                 </li>
               ))}
             </ul>
@@ -219,6 +250,18 @@ export default function PdfGeneratorPage() {
                 <p className="text-xs text-blue-600">
                   {selectedExam.exam_uid || selectedExam.id} &middot; {selectedExam.total_questions} questions &middot; {selectedExam.duration} min
                 </p>
+                <div className="flex gap-1 mt-1">
+                  {selectedExam.pdf_url_en && (
+                    <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                      English PDF
+                    </span>
+                  )}
+                  {(selectedExam.supports_hindi || selectedExam.pdf_url_hi) && (
+                    <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">
+                      Hindi PDF
+                    </span>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => { setSelectedExam(null); setExamData(null); setPreviewHtml(null); }}
@@ -307,19 +350,25 @@ export default function PdfGeneratorPage() {
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">Language</p>
                 <div className="flex gap-2">
-                  {(['en', 'hi'] as const).map(lang => (
-                    <button
-                      key={lang}
-                      onClick={() => opt('language', lang)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        options.language === lang
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                      }`}
-                    >
-                      {lang === 'en' ? 'English' : 'Hindi'}
-                    </button>
-                  ))}
+                  {(['en', 'hi'] as const)
+                    .filter(lang =>
+                      lang === 'en'
+                        ? true // English always available — PDF generated from questions
+                        : Boolean(selectedExam?.supports_hindi || selectedExam?.pdf_url_hi)
+                    )
+                    .map(lang => (
+                      <button
+                        key={lang}
+                        onClick={() => opt('language', lang)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                          options.language === lang
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                        }`}
+                      >
+                        {lang === 'en' ? 'English' : 'Hindi'}
+                      </button>
+                    ))}
                 </div>
               </div>
 
@@ -564,18 +613,30 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
   for (let qi = 0; qi < questions.length; qi++) {
     const q = questions[qi];
 
+    // Skip questions that don't have content in the selected language
+    const hasEnglish = q.text || q.question_text;
+    const hasHindi = q.text_hi;
+    
+    if (options.language === 'en' && !hasEnglish) continue;
+    if (options.language === 'hi' && !hasHindi) continue;
+
     if (q.section_id !== lastSectionId) {
       const sec = sectionMap.get(q.section_id) as any;
       if (sec) {
         if (pageQCount >= QUESTIONS_PER_PAGE) flushPage();
-        pageBuffer += `<div style="background:#dbeafe;border:1px solid #bfdbfe;padding:6px 10px;border-radius:4px;font-weight:700;font-size:11px;color:#1e3a8a;margin:12px 0 8px">${sec.name}</div>`;
+        const sectionName = (options.language === 'hi' && sec.name_hi) ? sec.name_hi : sec.name;
+        pageBuffer += `<div style="background:#dbeafe;border:1px solid #bfdbfe;padding:6px 10px;border-radius:4px;font-weight:700;font-size:11px;color:#1e3a8a;margin:12px 0 8px">${sectionName}</div>`;
         lastSectionId = q.section_id;
       }
     }
 
     if (pageQCount >= QUESTIONS_PER_PAGE) flushPage();
 
-    const qText = stripHtml(q.text || q.question_text || '');
+    const qText = stripHtml(
+      (options.language === 'hi' && q.text_hi)
+        ? q.text_hi
+        : (q.text || q.question_text || '')
+    );
     pageBuffer += `<div style="margin-bottom:10px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:5px;background:#fafafa">`;
     pageBuffer += `<div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:6px">`;
     pageBuffer += `<span style="font-weight:700;flex-shrink:0;font-size:11px">${qNum}.</span>`;
@@ -588,13 +649,17 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
 
     const sortedOpts = [...(q.options || [])].sort((a: any, b: any) =>
       (a.display_order ?? a.option_order ?? 0) - (b.display_order ?? b.option_order ?? 0)
-    );
+    ).filter((o: any) => o.option_text || o.text || o.option_text_hi);
 
     pageBuffer += `<div style="margin-left:20px">`;
     for (let i = 0; i < sortedOpts.length; i++) {
       const o = sortedOpts[i] as any;
       const label = String.fromCharCode(65 + i);
-      const oText = stripHtml(o.option_text || o.text || '');
+      const oText = stripHtml(
+        (options.language === 'hi' && o.option_text_hi)
+          ? o.option_text_hi
+          : (o.option_text || o.text || '')
+      );
       const isCorrect = options.showAnswers && o.is_correct;
       const color = isCorrect ? '#166534' : '#374151';
       const weight = isCorrect ? '700' : '400';
@@ -608,8 +673,13 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
     pageBuffer += `</div>`;
 
     if (options.showExplanations && q.explanation) {
+      const explanationText = stripHtml(
+        (options.language === 'hi' && q.explanation_hi)
+          ? q.explanation_hi
+          : q.explanation
+      );
       pageBuffer += `<div style="margin-top:6px;margin-left:20px;padding:5px 8px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 3px 3px 0;color:#166534;font-size:10px;font-style:italic">`;
-      pageBuffer += `<strong style="font-style:normal">Explanation:</strong> ${stripHtml(q.explanation)}`;
+      pageBuffer += `<strong style="font-style:normal">Explanation:</strong> ${explanationText}`;
       pageBuffer += `</div>`;
     }
 

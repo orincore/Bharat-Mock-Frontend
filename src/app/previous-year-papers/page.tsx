@@ -12,6 +12,7 @@ import { examService } from '@/lib/api/examService';
 import { taxonomyService, Difficulty, Category, Subcategory } from '@/lib/api/taxonomyService';
 import { paperSectionsService, PaperSection, PaperTopic } from '@/lib/api/paperSectionsService';
 import { Exam } from '@/types';
+import { PageSeoSections } from '@/components/sections/PageSeoSections';
 
 const PAPER_EXAM_TYPE = 'past_paper';
 
@@ -815,6 +816,34 @@ export default function PrevPapersPage() {
             </div>
           </div>
         </div>
+      </div>
+      <div className="container-main">
+        <section className="bg-card border border-border rounded-3xl p-8 space-y-6 max-w-4xl mx-auto mt-10">
+          <header className="space-y-2">
+            <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
+            <h2 className="font-display text-3xl font-bold">Why solving Previous Year Papers is the highest-ROI activity in govt exam preparation</h2>
+            <p className="text-base" style={{ color: '#1a1a1a' }}>
+              A deep dive into how past papers reveal examiner psychology, build time management instincts, and give you a measurable edge over aspirants who rely only on textbooks and mock tests.
+            </p>
+          </header>
+          <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
+            <p>Previous year question papers are the closest thing to a cheat code in competitive exam preparation—not because they repeat verbatim, but because they reveal the examiner's mind. Every paper is a curated artifact of what the conducting body considers important, how it frames difficulty, and which topics it returns to year after year. When you solve five years of SSC CGL papers, you are not just practicing arithmetic; you are learning the rhythm of the exam, the vocabulary of its distractors, and the subtle patterns that distinguish a 95-percentile attempt from a 70-percentile one. No textbook can teach you this. Only the papers themselves can.</p>
+            <p>Time management is the invisible skill that separates candidates who clear cutoffs from those who fall just short, and previous year papers are the only training ground where you can develop it authentically. A full-length past paper attempted under exam conditions—strict timer, no interruptions, no second chances—forces you to make the same micro-decisions you will face on the actual day: which questions to attempt first, when to skip and return, how many seconds to spend on a calculation before moving on. These decisions become instinctive only through repetition, and each paper you solve under timed conditions is one more repetition of the exact cognitive workout your brain needs.</p>
+            <p>The difficulty calibration of previous year papers is uniquely valuable because it is real, not simulated. Mock test designers, however skilled, are approximating what they think the exam will look like. Previous year papers are what the exam actually looked like. When you notice that the 2023 SSC CHSL paper had significantly harder English comprehension than the 2021 paper, you are gathering intelligence about the exam's trajectory that no coaching material can provide. This longitudinal view of difficulty trends helps you calibrate your preparation intensity and identify whether the exam is getting harder or easier in specific sections.</p>
+            <p>Subject-wise analysis of previous year papers reveals the hidden weightage that official syllabi often obscure. The syllabus for most government exams is broad and vague—"General Awareness" can mean anything from ancient history to last month's cabinet reshuffle. But when you analyze five years of papers, you discover that certain topics appear in almost every edition while others appear once in a decade. This empirical weightage analysis lets you allocate your preparation time with the precision of a portfolio manager: maximum time on high-frequency topics, minimum time on low-probability ones. The result is a preparation strategy that is evidence-based rather than anxiety-driven.</p>
+            <p>The explanation layer attached to each question on Bharat Mock transforms past papers from a testing tool into a learning tool. When you get a question wrong, the explanation does not just tell you the correct answer—it shows you the reasoning path, the shortcut, and the common trap that the examiner set. Over time, these explanations build a mental library of problem-solving frameworks that you can apply to novel questions in the actual exam. This is the difference between rote practice and deliberate practice: every wrong answer becomes a lesson rather than a setback.</p>
+            <p>Bilingual access to previous year papers is a feature that disproportionately benefits aspirants from Hindi-medium backgrounds. Many state PSC and central government exams offer bilingual question papers, and practicing with bilingual past papers builds the language-switching fluency that saves precious seconds during the actual exam. When you have seen the same question in both English and Hindi dozens of times, you stop translating and start comprehending directly in whichever language the question appears. This cognitive efficiency is a genuine competitive advantage that monolingual practice cannot develop.</p>
+            <p>The section-wise and topic-wise filtering on this page lets you use previous year papers as a targeted revision tool rather than just a full-length practice resource. In the final two weeks before an exam, when time is scarce, you can filter for only the Quantitative Aptitude questions from the last three years and run a focused sprint on your weakest topics. This modular approach to past paper practice is far more efficient than reattempting full papers repeatedly, and it ensures that your revision is driven by your personal performance data rather than a generic study plan.</p>
+            <p>Ultimately, the aspirants who consistently appear in merit lists share one preparation habit above all others: they solve previous year papers early, often, and analytically. Not as a final-week panic exercise, but as a weekly diagnostic ritual that keeps their preparation honest and their strategy adaptive. Bharat Mock's Previous Year Papers section is built to support exactly this habit—with organized access, detailed explanations, performance tracking, and the full archive of papers that have shaped the careers of lakhs of government servants before you.</p>
+          </div>
+        </section>
+        <PageSeoSections
+          whyTitle="Why practice with Bharat Mock Previous Year Papers?"
+          whySubtitle="Solving real past papers is the single most effective way to understand exam patterns, manage time, and build the confidence to clear cutoffs."
+          faqTitle="Previous Year Papers FAQ"
+          faqSubtitle="Everything you need to know about accessing, attempting, and learning from previous year question papers on Bharat Mock."
+          testimonialsDescription="Real feedback from aspirants who cracked govt exams by consistently practising previous year papers on Bharat Mock."
+        />
       </div>
     </div>
   );

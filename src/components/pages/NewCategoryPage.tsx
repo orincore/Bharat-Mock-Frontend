@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
@@ -55,8 +54,11 @@ interface PageContentResponse {
     meta_description?: string;
     meta_keywords?: string;
     canonical_url?: string;
+    author_name?: string;
+    updated_at?: string;
   };
   customTabs?: CustomTab[];
+  tabSeo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }>;
 }
 
 interface Category {
@@ -340,6 +342,55 @@ export default function NewCategoryPage({
     return items;
   }, [category, categorySlug, currentTabDescriptor]);
 
+  // Update all meta tags (title, description, keywords, canonical) when active tab or content changes
+  useEffect(() => {
+    if (!pageContent) return;
+    const tabId = currentTabDescriptor?.id;
+    const tabOverride = tabId ? pageContent?.tabSeo?.[tabId] : undefined;
+
+    console.log('[Tab SEO Debug - Category]', { tabId, tabOverride, allTabSeo: pageContent?.tabSeo, globalSeo: pageContent?.seo });
+
+    // --- Title ---
+    if (tabOverride?.meta_title) {
+      document.title = tabOverride.meta_title;
+    } else {
+      const tabLabel = tabId && tabId !== 'overview' ? currentTabDescriptor?.label : null;
+      document.title = tabLabel ? `${tabLabel} - ${heroTitle}` : (pageContent?.seo?.meta_title || heroTitle);
+    }
+
+    const setMeta = (name: string, content: string | undefined) => {
+      let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+      if (content) {
+        if (!el) {
+          el = document.createElement('meta');
+          el.setAttribute('name', name);
+          document.head.appendChild(el);
+        }
+        el.setAttribute('content', content);
+      } else if (el) {
+        el.remove();
+      }
+    };
+
+    const setCanonical = (url: string | undefined) => {
+      let el = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+      if (url) {
+        if (!el) {
+          el = document.createElement('link');
+          el.setAttribute('rel', 'canonical');
+          document.head.appendChild(el);
+        }
+        el.setAttribute('href', url);
+      } else if (el) {
+        el.remove();
+      }
+    };
+
+    setMeta('description', tabOverride?.meta_description || pageContent?.seo?.meta_description);
+    setMeta('keywords', tabOverride?.meta_keywords || pageContent?.seo?.meta_keywords);
+    setCanonical(pageContent?.seo?.canonical_url);
+  }, [currentTabDescriptor?.id, currentTabDescriptor?.label, heroTitle, pageContent]);
+
   const sections = pageContent?.sections ?? [];
   const sidebarSections = sections.filter((s) => s.is_sidebar);
   const hasSidebar = sidebarSections.length > 0;
@@ -395,24 +446,6 @@ export default function NewCategoryPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {pageContent?.seo && (
-        <Head>
-          <title>{pageContent.seo.meta_title || heroTitle}</title>
-          {pageContent.seo.meta_description && (
-            <meta
-              name="description"
-              content={pageContent.seo.meta_description}
-            />
-          )}
-          {pageContent.seo.meta_keywords && (
-            <meta name="keywords" content={pageContent.seo.meta_keywords} />
-          )}
-          {pageContent.seo.canonical_url && (
-            <link rel="canonical" href={pageContent.seo.canonical_url} />
-          )}
-        </Head>
-      )}
-
       {/* Hero */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12">
         <div className={containerClass}>
@@ -424,6 +457,23 @@ export default function NewCategoryPage({
               <p className="text-xl md:text-2xl text-blue-100 mb-4 max-w-3xl">
                 {heroSubtitle}
               </p>
+            )}
+            {(pageContent?.seo?.author_name || pageContent?.seo?.updated_at) && (
+              <div className="flex flex-wrap items-center gap-3 mb-3 text-sm text-blue-100/80">
+                {pageContent.seo.author_name && (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    {pageContent.seo.author_name}
+                  </span>
+                )}
+                {pageContent.seo.author_name && pageContent.seo.updated_at && <span className="text-blue-200/40">·</span>}
+                {pageContent.seo.updated_at && (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    Updated {new Date(pageContent.seo.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                )}
+              </div>
             )}
             <nav className="flex flex-wrap items-center gap-2 text-sm text-blue-100/80">
               {breadcrumbs.map((crumb, index) => (

@@ -123,6 +123,7 @@ export default function LiveTestsPage() {
   const [bannerLoading, setBannerLoading] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
   const activeRequestRef = useRef(0);
 
   const faqItems = useMemo(
@@ -147,6 +148,20 @@ export default function LiveTestsPage() {
         q: 'Will my analytics sync with the main Bharat Mock dashboard?',
         a: 'Absolutely. Every live attempt feeds into your profile. Accuracy, sectional speed, and percentile trends are visible on the analytics tab so you can measure improvements over time.'
       }
+    ],
+    []
+  );
+
+  const paymentFaqItems = useMemo(
+    () => [
+      { q: 'What payment methods are accepted?', a: 'We accept UPI (GPay, PhonePe, Paytm), Net Banking, Credit/Debit Cards (Visa, Mastercard, RuPay), and popular wallets via Razorpay.' },
+      { q: 'Is my payment information secure?', a: 'Yes. All transactions are processed through Razorpay, a PCI-DSS compliant payment gateway. We never store your card details on our servers.' },
+      { q: 'Can I get a refund if I am not satisfied?', a: 'We offer a 7-day refund policy for premium subscriptions. If you face any issues, contact support@bharatmock.com within 7 days of purchase.' },
+      { q: 'Will I get a receipt or invoice for my payment?', a: 'Yes. A payment confirmation email with a GST invoice is sent to your registered email address immediately after a successful transaction.' },
+      { q: 'What happens if my payment fails but money is deducted?', a: 'In case of a failed transaction where money is deducted, it is automatically refunded to your source account within 5–7 business days. Contact us if it takes longer.' },
+      { q: 'Are there any hidden charges or auto-renewals?', a: 'No hidden charges. Subscriptions do not auto-renew unless you explicitly enable it. You will always be notified before any renewal.' },
+      { q: 'Can I upgrade or downgrade my subscription plan?', a: 'Yes. You can upgrade your plan at any time and pay only the prorated difference. Downgrades take effect at the end of the current billing cycle.' },
+      { q: 'Do you offer student discounts or group pricing?', a: 'Yes, we periodically offer discounts for students and group enrollments. Check the Subscriptions page or contact us for bulk pricing.' },
     ],
     []
   );
@@ -394,24 +409,26 @@ export default function LiveTestsPage() {
 
             <div>
               <div className="bg-background rounded-3xl shadow-2xl border border-border/40 overflow-hidden">
-                
-                {bannerLoading ? (
-                  <Skeleton className="w-full h-64" />
-                ) : heroBanner ? (
-                  <div className="bg-slate-50 flex items-center justify-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                <div className="relative min-h-[200px] bg-slate-100" suppressHydrationWarning>
+                  {bannerLoading && (
+                    <Skeleton className="absolute inset-0 w-full h-full rounded-none" />
+                  )}
+                  {heroBanner ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={heroBanner.image_url}
                       alt={heroBanner.alt_text || 'Live tests highlight banner'}
-                      className="w-full h-auto object-contain"
-                      loading="lazy"
+                      className="w-full h-auto object-contain transition-opacity duration-300"
+                      loading="eager"
+                      onLoad={(e) => (e.currentTarget.style.opacity = '1')}
+                      style={{ opacity: bannerLoading ? 0 : 1 }}
                     />
-                  </div>
-                ) : (
-                  <div className="border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
-                    No live tests banner uploaded yet.
-                  </div>
-                )}
+                  ) : !bannerLoading ? (
+                    <div className="border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                      No live tests banner uploaded yet.
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div className="mt-6 bg-secondary text-secondary-foreground rounded-2xl p-3 shadow-md">
                 <p className="text-xs uppercase tracking-wide text-secondary-foreground/80">Next mega slot</p>
@@ -591,15 +608,15 @@ export default function LiveTestsPage() {
             description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to remind you that live fixtures here translate into real selection stories."
           />
 
-          <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
+          <section className="bg-card border border-border rounded-3xl p-8 space-y-6 max-w-4xl mx-auto">
             <header className="space-y-2">
               <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
               <h2 className="font-display text-3xl font-bold">Why the Live Tests calendar is your competitive advantage</h2>
-              <p className="text-base text-muted-foreground">
+              <p className="text-base" style={{ color: '#1a1a1a' }}>
                 Settle in for a detailed narrative that connects the UI you are scrolling through with the discipline, analytics, and accountability needed to ace nationwide exams.
               </p>
             </header>
-            <div className="space-y-4 text-muted-foreground leading-relaxed text-base md:text-lg">
+            <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
               <p>
                 Bharat Mock live fixtures are built to replicate the electric tension of center-based exams while still giving you the convenience of attempting from wherever you are. Every timer tick, leaderboard update, and proctored checkpoint is meticulously choreographed so that your muscle memory for actual exam day is forged weeks in advance. Instead of passively reading notes, you are inserted into a vibrant arena where lakhs of aspirants jostle for the same selection and every mark reclaimed from negative marking counts toward a life-changing cutoff. The Live Tests page acts as a central pit lane where you configure your car, refuel, and preview the circuit before another blistering lap of competition.
               </p>
@@ -635,7 +652,7 @@ export default function LiveTestsPage() {
 
           <section className="py-12">
             <div className="max-w-5xl mx-auto">
-              <div className="text-center space-y-3 mb-10">
+              <div className="text-center space-y-3 mb-8">
                 <p className="text-sm uppercase tracking-[0.35em] text-primary font-semibold">Answers on demand</p>
                 <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">Live Tests FAQ</h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -643,8 +660,25 @@ export default function LiveTestsPage() {
                 </p>
               </div>
 
+              {/* FAQ Tabs */}
+              <div className="flex gap-2 mb-8 border-b border-border">
+                {(['All', 'Payments'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => { setExpandedFaq(null); setActiveFaqTab(tab); }}
+                    className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+                      activeFaqTab === tab
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {tab === 'All' ? 'All FAQ' : 'Payment FAQ'}
+                  </button>
+                ))}
+              </div>
+
               <div className="space-y-4">
-                {faqItems.map((item, index) => (
+                {(activeFaqTab === 'All' ? faqItems : paymentFaqItems).map((item, index) => (
                   <div key={item.q} className="bg-card border border-border rounded-xl overflow-hidden">
                     <button
                       onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}

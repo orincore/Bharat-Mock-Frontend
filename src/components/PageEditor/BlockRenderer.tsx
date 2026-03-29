@@ -3,6 +3,7 @@
 import React, { lazy, Suspense } from 'react';
 import { stripLineBreakTags } from '@/lib/utils';
 import dynamic from 'next/dynamic';
+import { AutoExamCardsBlock } from './AutoExamCardsBlock';
 
 // Dynamically import recharts — it's ~200KB and only needed for chart blocks
 // Cast to `any` to avoid next/dynamic's strict ComponentType check against
@@ -111,8 +112,9 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
         return <AdBannerBlock content={content} settings={settings} />;
       case 'examCards':
         return <ExamCardsBlock content={content} settings={settings} />;
-      default:
-        return <div className="p-4 bg-gray-100 rounded">Unknown block type: {block_type}</div>;
+      case 'autoExamCards':
+        return <AutoExamCardsBlock content={content} />;
+      default:        return <div className="p-4 bg-gray-100 rounded">Unknown block type: {block_type}</div>;
     }
   };
 
@@ -176,16 +178,28 @@ const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
 };
 
 const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
-  const { headers = [], rows = [], hasHeader = true, striped = false } = content;
+  const { 
+    headers = [], 
+    rows = [], 
+    hasHeader = true, 
+    striped = false,
+    headerBgColor = '#2563eb',
+    headerTextColor = '#ffffff',
+    borderColor = '#d1d5db',
+    cellLinks = {},
+    cellColors = {}
+  } = content;
+  
+  const borderStyle = { borderColor };
   
   return (
     <div className="overflow-x-auto mb-6">
-      <table className="min-w-full border-collapse border border-gray-300">
+      <table className="min-w-full border-collapse" style={{ border: `1px solid ${borderColor}` }}>
         {hasHeader && headers.length > 0 && (
-          <thead className="bg-blue-600 text-white">
+          <thead style={{ backgroundColor: headerBgColor, color: headerTextColor }}>
             <tr>
               {headers.map((header: string, index: number) => (
-                <th key={index} className="border border-gray-300 px-4 py-3 text-left font-semibold">
+                <th key={index} className="px-4 py-3 text-left font-semibold" style={borderStyle}>
                   {header}
                 </th>
               ))}
@@ -195,11 +209,34 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
         <tbody>
           {rows.map((row: string[], rowIndex: number) => (
             <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-              {row.map((cell: string, cellIndex: number) => (
-                <td key={cellIndex} className="border border-gray-300 px-4 py-3 text-gray-700 rich-text-content"
-                  dangerouslySetInnerHTML={{ __html: cell }}
-                />
-              ))}
+              {row.map((cell: string, cellIndex: number) => {
+                const cellKey = `${rowIndex}-${cellIndex}`;
+                const cellLinkData = cellLinks[cellKey];
+                const cellLink = typeof cellLinkData === 'object' ? cellLinkData.url : cellLinkData;
+                const cellLinkTarget = typeof cellLinkData === 'object' ? cellLinkData.target : '_blank';
+                const cellColor = cellColors[cellKey] || { bg: '', text: '' };
+                const cellStyle = {
+                  ...borderStyle,
+                  ...(cellColor.bg && { backgroundColor: cellColor.bg }),
+                  ...(cellColor.text && { color: cellColor.text })
+                };
+                
+                return (
+                  <td key={cellIndex} className="px-4 py-3 text-gray-700 rich-text-content" style={cellStyle}>
+                    {cellLink ? (
+                      <a 
+                        href={cellLink} 
+                        className="text-blue-600 hover:underline"
+                        target={cellLinkTarget}
+                        rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
+                        dangerouslySetInnerHTML={{ __html: cell }}
+                      />
+                    ) : (
+                      <span dangerouslySetInnerHTML={{ __html: cell }} />
+                    )}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -387,15 +424,27 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, s
 
   const renderItemContent = (item: any) => {
     if (item.contentType === 'table' && item.table) {
-      const { headers = [], rows = [], hasHeader = true, striped = false } = item.table;
+      const { 
+        headers = [], 
+        rows = [], 
+        hasHeader = true, 
+        striped = false,
+        headerBgColor = '#2563eb',
+        headerTextColor = '#ffffff',
+        borderColor = '#d1d5db',
+        cellLinks = {},
+        cellColors = {}
+      } = item.table;
+      const borderStyle = { borderColor };
+      
       return (
         <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-gray-300 text-sm">
+          <table className="min-w-full border-collapse text-sm" style={{ border: `1px solid ${borderColor}` }}>
             {hasHeader && headers.length > 0 && (
-              <thead className="bg-blue-600 text-white">
+              <thead style={{ backgroundColor: headerBgColor, color: headerTextColor }}>
                 <tr>
                   {headers.map((h: string, i: number) => (
-                    <th key={i} className="border border-gray-300 px-4 py-2 text-left font-semibold">{h}</th>
+                    <th key={i} className="px-4 py-2 text-left font-semibold" style={borderStyle}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -403,9 +452,34 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, s
             <tbody>
               {rows.map((row: string[], ri: number) => (
                 <tr key={ri} className={striped && ri % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-                  {row.map((cell: string, ci: number) => (
-                    <td key={ci} className="border border-gray-300 px-4 py-2 text-gray-700 rich-text-content">{cell}</td>
-                  ))}
+                  {row.map((cell: string, ci: number) => {
+                    const cellKey = `${ri}-${ci}`;
+                    const cellLinkData = cellLinks[cellKey];
+                    const cellLink = typeof cellLinkData === 'object' ? cellLinkData.url : cellLinkData;
+                    const cellLinkTarget = typeof cellLinkData === 'object' ? cellLinkData.target : '_blank';
+                    const cellColor = cellColors[cellKey] || { bg: '', text: '' };
+                    const cellStyle = {
+                      ...borderStyle,
+                      ...(cellColor.bg && { backgroundColor: cellColor.bg }),
+                      ...(cellColor.text && { color: cellColor.text })
+                    };
+                    
+                    return (
+                      <td key={ci} className="px-4 py-2 text-gray-700 rich-text-content" style={cellStyle}>
+                        {cellLink ? (
+                          <a 
+                            href={cellLink} 
+                            className="text-blue-600 hover:underline"
+                            target={cellLinkTarget}
+                            rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
+                            dangerouslySetInnerHTML={{ __html: cell }}
+                          />
+                        ) : (
+                          <span dangerouslySetInnerHTML={{ __html: cell }} />
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -696,6 +770,22 @@ const ExamCardsBlock: React.FC<{ content: any; settings?: any }> = ({ content })
   );
 };
 
+// Preview block for editor (shows a placeholder, actual rendering done in PageBlockRenderer)
+const AutoExamCardsPreviewBlock: React.FC<{ content: any }> = ({ content }) => {
+  const labels: Record<string, string> = { category: 'Category Exams', subcategory: 'Subcategory Exams', quizzes: 'Quizzes', live: 'Live Exams' };
+  const variant = content?.variant || 'category';
+  return (
+    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+      <div className="flex items-center gap-2 mb-2">
+        <GraduationCap className="w-5 h-5 text-blue-600" />
+        <span className="font-semibold text-blue-800">{content?.title || labels[variant]}</span>
+        <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{labels[variant]}</span>
+      </div>
+      <p className="text-xs text-blue-600">Auto-fetches up to {content?.limit || 10} exams · Renders as horizontal slider on public page</p>
+    </div>
+  );
+};
+
 export const getBlockIcon = (blockType: string) => {
   const icons: Record<string, any> = {
     heading: Heading,
@@ -718,7 +808,8 @@ export const getBlockIcon = (blockType: string) => {
     columns: Columns,
     spacer: Minus,
     adBanner: Megaphone,
-    examCards: GraduationCap
+    examCards: GraduationCap,
+    autoExamCards: GraduationCap
   };
   
   return icons[blockType] || FileText;

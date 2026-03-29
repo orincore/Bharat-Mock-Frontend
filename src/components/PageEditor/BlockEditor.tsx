@@ -910,12 +910,15 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     return () => document.removeEventListener('mousedown', close);
   }, [showMathPicker]);
 
+  const updateActiveFormatsRef = useRef(updateActiveFormats);
+  useEffect(() => { updateActiveFormatsRef.current = updateActiveFormats; });
+
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const handleSelectionChange = () => updateActiveFormats();
+    const handleSelectionChange = () => updateActiveFormatsRef.current();
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [updateActiveFormats]);
+  }, []);
 
   const buttons = [
     { label: 'B', title: 'Bold', action: () => exec('bold'), key: 'bold' as const },
@@ -1419,7 +1422,8 @@ const BLOCK_TYPES = [
   { type: 'html', label: 'HTML', description: 'Custom HTML' },
   { type: 'spacer', label: 'Spacer', description: 'Add vertical space' },
   { type: 'adBanner', label: 'Ad Banner', description: 'Display an ad image with link' },
-  { type: 'examCards', label: 'Exam Cards', description: 'Attach and display exam cards' }
+  { type: 'examCards', label: 'Exam Cards', description: 'Attach and display exam cards' },
+  { type: 'autoExamCards', label: 'Auto Exam Cards', description: 'Auto-fetch category, subcategory, quiz or live exam cards with slider' }
 ];
 
 const INLINE_EDITABLE_BLOCKS = new Set([
@@ -1447,7 +1451,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   useEditorFonts();
 
   const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
-  const parentSectionsSignatureRef = useRef<string | null>(null);
+  const parentSectionsSignatureRef = useRef<string | null>(JSON.stringify(initialSections));
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [reservedPosition, setReservedPosition] = useState<number>(reservedTabInfo?.position ?? 0);
   const isPreview = false;
@@ -1458,15 +1462,19 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [historyIndex, setHistoryIndex] = useState(0);
   const syncingFromParentRef = useRef(false);
   const suppressHistoryRef = useRef(false);
+  const onSectionsChangeRef = useRef(onSectionsChange);
+  useEffect(() => { onSectionsChangeRef.current = onSectionsChange; });
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
 
   useEffect(() => {
-    if (!parentSectionsSignatureRef.current || parentSectionsSignatureRef.current === JSON.stringify(initialSections)) {
+    const sig = JSON.stringify(initialSections);
+    if (parentSectionsSignatureRef.current === sig) {
       return;
     }
-    parentSectionsSignatureRef.current = JSON.stringify(initialSections);
+    parentSectionsSignatureRef.current = sig;
     syncingFromParentRef.current = true;
+    suppressHistoryRef.current = true;
     const normalized = normalizeSections(initialSections);
     setSections(normalized);
     historyRef.current = [snapshotSections(normalized)];
@@ -1518,7 +1526,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     if (syncingFromParentRef.current) {
       syncingFromParentRef.current = false;
       suppressHistoryRef.current = false;
-      onSectionsChange?.(sections);
+      // Don't call onSectionsChange when syncing from parent — would cause loop
       return;
     }
 
@@ -1536,8 +1544,10 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       suppressHistoryRef.current = false;
     }
 
-    onSectionsChange?.(sections);
-  }, [sections, onSectionsChange]);
+    // Update parent signature so parent sync doesn't re-fire for this change
+    parentSectionsSignatureRef.current = JSON.stringify(sections);
+    onSectionsChangeRef.current?.(sections);
+  }, [sections]);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < historyRef.current.length - 1;
@@ -2271,6 +2281,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Sidebar Sections Panel - now shown at top of editor */}
     </div>
   );
 };
@@ -2361,6 +2373,9 @@ const BlockContentEditor: React.FC<{
     case 'examCards':
       return <ExamCardsContentEditor content={content} onChange={onChange} />;
 
+    case 'autoExamCards':
+      return <AutoExamCardsContentEditor content={content} onChange={onChange} />;
+
     default:
       return (
         <div className="mb-4">
@@ -2449,6 +2464,10 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
   const rows: string[][] = Array.isArray(content.rows) && content.rows.length ? content.rows : [headers.map(() => '')];
   const hasHeader = content.hasHeader ?? true;
   const striped = content.striped ?? true;
+  const headerBgColor = content.headerBgColor || '#2563eb';
+  const headerTextColor = content.headerTextColor || '#ffffff';
+  const borderColor = content.borderColor || '#d1d5db';
+  const cellLinks = content.cellLinks || {}; // Format: { "rowIndex-colIndex": "url" }
 
   const update = (next: Partial<any>) => onChange({ ...content, ...next });
 
@@ -2468,7 +2487,21 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
     if (headers.length === 1) return;
     const nextHeaders = headers.filter((_, i) => i !== index);
     const nextRows = rows.map((row) => row.filter((_, i) => i !== index));
-    update({ headers: nextHeaders, rows: nextRows });
+    
+    // Remove links for deleted column
+    const nextLinks = { ...cellLinks };
+    Object.keys(nextLinks).forEach(key => {
+      const [_, colIdx] = key.split('-').map(Number);
+      if (colIdx === index) delete nextLinks[key];
+      else if (colIdx > index) {
+        const [rowIdx] = key.split('-').map(Number);
+        const newKey = `${rowIdx}-${colIdx - 1}`;
+        nextLinks[newKey] = nextLinks[key];
+        delete nextLinks[key];
+      }
+    });
+    
+    update({ headers: nextHeaders, rows: nextRows, cellLinks: nextLinks });
   };
 
   const handleCellChange = (rowIndex: number, colIndex: number, value: string) => {
@@ -2481,10 +2514,35 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
     update({ rows: nextRows });
   };
 
+  const handleCellLinkChange = (rowIndex: number, colIndex: number, url: string) => {
+    const key = `${rowIndex}-${colIndex}`;
+    const nextLinks = { ...cellLinks };
+    if (url.trim()) {
+      nextLinks[key] = url.trim();
+    } else {
+      delete nextLinks[key];
+    }
+    update({ cellLinks: nextLinks });
+  };
+
   const addRow = () => update({ rows: [...rows, headers.map(() => '')] });
   const removeRow = (index: number) => {
     if (rows.length === 1) return;
-    update({ rows: rows.filter((_, i) => i !== index) });
+    
+    // Remove links for deleted row
+    const nextLinks = { ...cellLinks };
+    Object.keys(nextLinks).forEach(key => {
+      const [rowIdx] = key.split('-').map(Number);
+      if (rowIdx === index) delete nextLinks[key];
+      else if (rowIdx > index) {
+        const [_, colIdx] = key.split('-').map(Number);
+        const newKey = `${rowIdx - 1}-${colIdx}`;
+        nextLinks[newKey] = nextLinks[key];
+        delete nextLinks[key];
+      }
+    });
+    
+    update({ rows: rows.filter((_, i) => i !== index), cellLinks: nextLinks });
   };
 
   const BoldButton = () => (
@@ -2500,6 +2558,58 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
 
   return (
     <div className="space-y-4">
+      {/* Color Options */}
+      <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Header Background</label>
+          <input
+            type="color"
+            value={headerBgColor}
+            onChange={(e) => update({ headerBgColor: e.target.value })}
+            className="w-full h-9 rounded border border-gray-300 cursor-pointer"
+          />
+          <input
+            type="text"
+            value={headerBgColor}
+            onChange={(e) => update({ headerBgColor: e.target.value })}
+            className="w-full mt-1 px-2 py-1 text-xs border border-gray-300 rounded"
+            placeholder="#2563eb"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Header Text</label>
+          <input
+            type="color"
+            value={headerTextColor}
+            onChange={(e) => update({ headerTextColor: e.target.value })}
+            className="w-full h-9 rounded border border-gray-300 cursor-pointer"
+          />
+          <input
+            type="text"
+            value={headerTextColor}
+            onChange={(e) => update({ headerTextColor: e.target.value })}
+            className="w-full mt-1 px-2 py-1 text-xs border border-gray-300 rounded"
+            placeholder="#ffffff"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Border Color</label>
+          <input
+            type="color"
+            value={borderColor}
+            onChange={(e) => update({ borderColor: e.target.value })}
+            className="w-full h-9 rounded border border-gray-300 cursor-pointer"
+          />
+          <input
+            type="text"
+            value={borderColor}
+            onChange={(e) => update({ borderColor: e.target.value })}
+            className="w-full mt-1 px-2 py-1 text-xs border border-gray-300 rounded"
+            placeholder="#d1d5db"
+          />
+        </div>
+      </div>
+
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium">Headers</label>
@@ -2564,26 +2674,41 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
                 </button>
               </div>
               <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${headers.length}, minmax(0, 1fr))` }}>
-                {headers.map((_, colIndex) => (
-                  <div key={colIndex} className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1">
-                      <BoldButton />
+                {headers.map((_, colIndex) => {
+                  const cellKey = `${rowIndex}-${colIndex}`;
+                  const cellLink = cellLinks[cellKey] || '';
+                  
+                  return (
+                    <div key={colIndex} className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1">
+                        <BoldButton />
+                        {cellLink && (
+                          <span className="text-xs text-blue-600 font-medium">🔗</span>
+                        )}
+                      </div>
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[56px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        dangerouslySetInnerHTML={{ __html: row[colIndex] || '' }}
+                        onBlur={(e) => handleCellChange(rowIndex, colIndex, e.currentTarget.innerHTML)}
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                            e.preventDefault();
+                            document.execCommand('bold');
+                          }
+                        }}
+                      />
+                      <input
+                        type="text"
+                        value={cellLink}
+                        onChange={(e) => handleCellLinkChange(rowIndex, colIndex, e.target.value)}
+                        placeholder="Add link URL (optional)"
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                      />
                     </div>
-                    <div
-                      contentEditable
-                      suppressContentEditableWarning
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[56px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                      dangerouslySetInnerHTML={{ __html: row[colIndex] || '' }}
-                      onBlur={(e) => handleCellChange(rowIndex, colIndex, e.currentTarget.innerHTML)}
-                      onKeyDown={(e) => {
-                        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-                          e.preventDefault();
-                          document.execCommand('bold');
-                        }
-                      }}
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -2599,6 +2724,82 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
           <input type="checkbox" checked={striped} onChange={(e) => update({ striped: e.target.checked })} />
           Striped rows
         </label>
+      </div>
+    </div>
+  );
+};
+
+const AutoExamCardsContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
+  const variant = content.variant || 'category';
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Card Type</label>
+        <select
+          value={variant}
+          onChange={(e) => onChange({ ...content, variant: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="category">Category Exams</option>
+          <option value="subcategory">Subcategory Exams</option>
+          <option value="quizzes">Quizzes</option>
+          <option value="live">Live Exams</option>
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Section Title (optional)</label>
+        <input
+          type="text"
+          value={content.title || ''}
+          onChange={(e) => onChange({ ...content, title: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          placeholder={variant === 'quizzes' ? 'Quizzes' : variant === 'live' ? 'Live Exams' : variant === 'subcategory' ? 'Subcategory Exams' : 'Category Exams'}
+        />
+      </div>
+      {variant === 'category' && (
+        <div>
+          <label className="block text-sm font-medium mb-2">Category ID (optional — leave blank for all)</label>
+          <input
+            type="text"
+            value={content.categoryId || ''}
+            onChange={(e) => onChange({ ...content, categoryId: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            placeholder="e.g. uuid of category"
+          />
+        </div>
+      )}
+      {variant === 'subcategory' && (
+        <div>
+          <label className="block text-sm font-medium mb-2">Subcategory ID (optional — leave blank for all)</label>
+          <input
+            type="text"
+            value={content.subcategoryId || ''}
+            onChange={(e) => onChange({ ...content, subcategoryId: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            placeholder="e.g. uuid of subcategory"
+          />
+        </div>
+      )}
+      <div>
+        <label className="block text-sm font-medium mb-2">Max cards to fetch</label>
+        <input
+          type="number"
+          min={4}
+          max={50}
+          value={content.limit || 10}
+          onChange={(e) => onChange({ ...content, limit: Number(e.target.value) })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">View More URL (optional)</label>
+        <input
+          type="text"
+          value={content.viewMoreUrl || ''}
+          onChange={(e) => onChange({ ...content, viewMoreUrl: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+          placeholder="e.g. /quizzes or /live-tests"
+        />
       </div>
     </div>
   );
@@ -3013,6 +3214,11 @@ const InlineTableEditor = ({
   const rows: string[][] = Array.isArray(content.rows) ? content.rows : [];
   const hasHeader = content.hasHeader ?? true;
   const striped = content.striped ?? false;
+  const headerBgColor = content.headerBgColor || '#2563eb';
+  const headerTextColor = content.headerTextColor || '#ffffff';
+  const borderColor = content.borderColor || '#d1d5db';
+  const cellLinks = content.cellLinks || {}; // Format: { "rowIndex-colIndex": "url" }
+  const cellColors = content.cellColors || {}; // Format: { "rowIndex-colIndex": { bg: "#fff", text: "#000" } }
 
   const update = (next: Partial<any>) => onChange({ ...content, ...next });
 
@@ -3026,7 +3232,39 @@ const InlineTableEditor = ({
     if (headers.length <= 1) return;
     const nextHeaders = headers.filter((_, i) => i !== index);
     const nextRows = rows.map((row) => row.filter((_, i) => i !== index));
-    update({ headers: nextHeaders, rows: nextRows });
+    
+    // Remove links and colors for deleted column
+    const nextLinks = { ...cellLinks };
+    const nextColors = { ...cellColors };
+    Object.keys(nextLinks).forEach(key => {
+      const [_, colIdx] = key.split('-').map(Number);
+      if (colIdx === index) {
+        delete nextLinks[key];
+        delete nextColors[key];
+      } else if (colIdx > index) {
+        const [rowIdx] = key.split('-').map(Number);
+        const newKey = `${rowIdx}-${colIdx - 1}`;
+        nextLinks[newKey] = nextLinks[key];
+        if (nextColors[key]) nextColors[newKey] = nextColors[key];
+        delete nextLinks[key];
+        delete nextColors[key];
+      }
+    });
+    Object.keys(nextColors).forEach(key => {
+      if (!nextLinks[key]) {
+        const [_, colIdx] = key.split('-').map(Number);
+        if (colIdx === index) {
+          delete nextColors[key];
+        } else if (colIdx > index) {
+          const [rowIdx] = key.split('-').map(Number);
+          const newKey = `${rowIdx}-${colIdx - 1}`;
+          nextColors[newKey] = nextColors[key];
+          delete nextColors[key];
+        }
+      }
+    });
+    
+    update({ headers: nextHeaders, rows: nextRows, cellLinks: nextLinks, cellColors: nextColors });
   };
 
   const addRow = () => {
@@ -3036,7 +3274,39 @@ const InlineTableEditor = ({
 
   const removeRow = (index: number) => {
     if (rows.length <= 1) return;
-    update({ rows: rows.filter((_, i) => i !== index) });
+    
+    // Remove links and colors for deleted row
+    const nextLinks = { ...cellLinks };
+    const nextColors = { ...cellColors };
+    Object.keys(nextLinks).forEach(key => {
+      const [rowIdx] = key.split('-').map(Number);
+      if (rowIdx === index) {
+        delete nextLinks[key];
+        delete nextColors[key];
+      } else if (rowIdx > index) {
+        const [_, colIdx] = key.split('-').map(Number);
+        const newKey = `${rowIdx - 1}-${colIdx}`;
+        nextLinks[newKey] = nextLinks[key];
+        if (nextColors[key]) nextColors[newKey] = nextColors[key];
+        delete nextLinks[key];
+        delete nextColors[key];
+      }
+    });
+    Object.keys(nextColors).forEach(key => {
+      if (!nextLinks[key]) {
+        const [rowIdx] = key.split('-').map(Number);
+        if (rowIdx === index) {
+          delete nextColors[key];
+        } else if (rowIdx > index) {
+          const [_, colIdx] = key.split('-').map(Number);
+          const newKey = `${rowIdx - 1}-${colIdx}`;
+          nextColors[newKey] = nextColors[key];
+          delete nextColors[key];
+        }
+      }
+    });
+    
+    update({ rows: rows.filter((_, i) => i !== index), cellLinks: nextLinks, cellColors: nextColors });
   };
 
   const handleHeaderChange = (index: number, value: string) => {
@@ -3053,6 +3323,43 @@ const InlineTableEditor = ({
       return nextRow;
     });
     update({ rows: nextRows });
+  };
+
+  const handleCellLinkChange = (rowIndex: number, colIndex: number, url: string) => {
+    const key = `${rowIndex}-${colIndex}`;
+    const nextLinks = { ...cellLinks };
+    if (url.trim()) {
+      // Preserve existing target if it exists
+      const existingTarget = typeof nextLinks[key] === 'object' ? nextLinks[key].target : '_blank';
+      nextLinks[key] = { url: url.trim(), target: existingTarget };
+    } else {
+      delete nextLinks[key];
+    }
+    update({ cellLinks: nextLinks });
+  };
+
+  const handleCellLinkTargetChange = (rowIndex: number, colIndex: number, target: '_blank' | '_self') => {
+    const key = `${rowIndex}-${colIndex}`;
+    const nextLinks = { ...cellLinks };
+    if (nextLinks[key]) {
+      const url = typeof nextLinks[key] === 'object' ? nextLinks[key].url : nextLinks[key];
+      nextLinks[key] = { url, target };
+      update({ cellLinks: nextLinks });
+    }
+  };
+
+  const handleCellColorChange = (rowIndex: number, colIndex: number, colorType: 'bg' | 'text', color: string) => {
+    const key = `${rowIndex}-${colIndex}`;
+    const nextColors = { ...cellColors };
+    if (!nextColors[key]) {
+      nextColors[key] = { bg: '', text: '' };
+    }
+    nextColors[key][colorType] = color;
+    // Remove entry if both colors are empty
+    if (!nextColors[key].bg && !nextColors[key].text) {
+      delete nextColors[key];
+    }
+    update({ cellColors: nextColors });
   };
 
   const ensureStructure = () => {
@@ -3089,6 +3396,58 @@ const InlineTableEditor = ({
 
   return (
     <div className="space-y-4">
+      {/* Color Options */}
+      <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Header Background</label>
+          <input
+            type="color"
+            value={headerBgColor}
+            onChange={(e) => update({ headerBgColor: e.target.value })}
+            className="w-full h-9 rounded border border-gray-300 cursor-pointer"
+          />
+          <input
+            type="text"
+            value={headerBgColor}
+            onChange={(e) => update({ headerBgColor: e.target.value })}
+            className="w-full mt-1 px-2 py-1 text-xs border border-gray-300 rounded"
+            placeholder="#2563eb"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Header Text</label>
+          <input
+            type="color"
+            value={headerTextColor}
+            onChange={(e) => update({ headerTextColor: e.target.value })}
+            className="w-full h-9 rounded border border-gray-300 cursor-pointer"
+          />
+          <input
+            type="text"
+            value={headerTextColor}
+            onChange={(e) => update({ headerTextColor: e.target.value })}
+            className="w-full mt-1 px-2 py-1 text-xs border border-gray-300 rounded"
+            placeholder="#ffffff"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Border Color</label>
+          <input
+            type="color"
+            value={borderColor}
+            onChange={(e) => update({ borderColor: e.target.value })}
+            className="w-full h-9 rounded border border-gray-300 cursor-pointer"
+          />
+          <input
+            type="text"
+            value={borderColor}
+            onChange={(e) => update({ borderColor: e.target.value })}
+            className="w-full mt-1 px-2 py-1 text-xs border border-gray-300 rounded"
+            placeholder="#d1d5db"
+          />
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-3 items-center">
         <button type="button" onClick={addColumn} className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-full">
           + Column
@@ -3150,28 +3509,77 @@ const InlineTableEditor = ({
           <tbody>
             {rows.map((row, rowIndex) => (
               <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-gray-50' : ''}>
-                {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} className="border border-gray-200 p-2 align-top min-w-[120px]">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1 mb-1">
-                        <BoldButton />
+                {row.map((cell, cellIndex) => {
+                  const cellKey = `${rowIndex}-${cellIndex}`;
+                  const cellLinkData = cellLinks[cellKey];
+                  const cellLink = typeof cellLinkData === 'object' ? cellLinkData.url : cellLinkData || '';
+                  const cellLinkTarget = typeof cellLinkData === 'object' ? cellLinkData.target : '_blank';
+                  const cellColor = cellColors[cellKey] || { bg: '', text: '' };
+                  
+                  return (
+                    <td key={cellIndex} className="border border-gray-200 p-2 align-top min-w-[120px]">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1 mb-1">
+                          <BoldButton />
+                          {cellLink && (
+                            <span className="text-xs text-blue-600 font-medium">🔗</span>
+                          )}
+                        </div>
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[48px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          dangerouslySetInnerHTML={{ __html: cell }}
+                          onBlur={(e) => handleCellChange(rowIndex, cellIndex, e.currentTarget.innerHTML)}
+                          onKeyDown={(e) => {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                              e.preventDefault();
+                              document.execCommand('bold');
+                            }
+                          }}
+                        />
+                        <input
+                          type="text"
+                          value={cellLink}
+                          onChange={(e) => handleCellLinkChange(rowIndex, cellIndex, e.target.value)}
+                          placeholder="Add link URL (optional)"
+                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                        />
+                        {cellLink && (
+                          <label className="flex items-center gap-1 text-[10px] text-gray-600">
+                            <input
+                              type="checkbox"
+                              checked={cellLinkTarget === '_blank'}
+                              onChange={(e) => handleCellLinkTargetChange(rowIndex, cellIndex, e.target.checked ? '_blank' : '_self')}
+                              className="w-3 h-3"
+                            />
+                            Open in new tab
+                          </label>
+                        )}
+                        <div className="flex gap-2 mt-1">
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-gray-500 mb-0.5">Cell BG</label>
+                            <input
+                              type="color"
+                              value={cellColor.bg || '#ffffff'}
+                              onChange={(e) => handleCellColorChange(rowIndex, cellIndex, 'bg', e.target.value)}
+                              className="w-full h-6 rounded border border-gray-300 cursor-pointer"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-gray-500 mb-0.5">Text Color</label>
+                            <input
+                              type="color"
+                              value={cellColor.text || '#000000'}
+                              onChange={(e) => handleCellColorChange(rowIndex, cellIndex, 'text', e.target.value)}
+                              className="w-full h-6 rounded border border-gray-300 cursor-pointer"
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div
-                        contentEditable
-                        suppressContentEditableWarning
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[48px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                        dangerouslySetInnerHTML={{ __html: cell }}
-                        onBlur={(e) => handleCellChange(rowIndex, cellIndex, e.currentTarget.innerHTML)}
-                        onKeyDown={(e) => {
-                          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-                            e.preventDefault();
-                            document.execCommand('bold');
-                          }
-                        }}
-                      />
-                    </div>
-                  </td>
-                ))}
+                    </td>
+                  );
+                })}
                 <td className="p-2 align-top">
                   <button
                     type="button"

@@ -33,7 +33,6 @@ export const metadata: Metadata = {
     default: "Bharat Mock — India's Smart Exam Companion",
     template: "%s | Bharat Mock",
   },
-  description: "Practice adaptive mock tests, explore govt exam resources, and stay ahead with Bharat Mock.",
   authors: [{ name: "Bharat Mock" }],
   robots: { index: true, follow: true },
   icons: {
@@ -43,7 +42,6 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Bharat Mock — India's Smart Exam Companion",
-    description: "Practice adaptive mock tests, explore govt exam resources, and stay ahead with Bharat Mock.",
     type: "website",
     url: "https://bharatmock.com",
     siteName: "Bharat Mock",

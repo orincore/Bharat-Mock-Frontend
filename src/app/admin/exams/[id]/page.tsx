@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { taxonomyService, Category, Subcategory, Difficulty } from '@/lib/api/taxonomyService';
 import { CSVImportDialog } from '@/components/admin/CSVImportDialog';
 import { ParsedSection } from '@/lib/utils/csvParser';
+import { compressPdf } from '@/lib/utils/compressPdf';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToastNotification } from '@/components/ui/toast-notification';
@@ -1816,13 +1817,16 @@ export default function ExamFormPage() {
 
     try {
       setUploadingPdfEn(true);
-      setToastMessage('Uploading English PDF...');
+      setToastMessage('Compressing English PDF...');
       setToastType('loading');
       setShowToast(true);
 
-      const result = await adminService.uploadExamPdfEn(persistedExamId, file);
+      const fileToUpload = await compressPdf(file);
+
+      setToastMessage('Uploading English PDF...');
+      const result = await adminService.uploadExamPdfEn(persistedExamId, fileToUpload);
       setPdfUrlEn(result.pdf_url_en);
-      setPdfFileEn(file);
+      setPdfFileEn(fileToUpload);
 
       setToastMessage('English PDF uploaded successfully');
       setToastType('success');
@@ -1857,13 +1861,16 @@ export default function ExamFormPage() {
 
     try {
       setUploadingPdfHi(true);
-      setToastMessage('Uploading Hindi PDF...');
+      setToastMessage('Compressing Hindi PDF...');
       setToastType('loading');
       setShowToast(true);
 
-      const result = await adminService.uploadExamPdfHi(persistedExamId, file);
+      const fileToUpload = await compressPdf(file);
+
+      setToastMessage('Uploading Hindi PDF...');
+      const result = await adminService.uploadExamPdfHi(persistedExamId, fileToUpload);
       setPdfUrlHi(result.pdf_url_hi);
-      setPdfFileHi(file);
+      setPdfFileHi(fileToUpload);
 
       setToastMessage('Hindi PDF uploaded successfully');
       setToastType('success');

@@ -48,6 +48,7 @@ export default function ExamsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [pageReady, setPageReady] = useState(false);
   
@@ -351,6 +352,30 @@ export default function ExamsPage() {
     const originalWords = content.trim().split(/\s+/);
     return originalWords.length > limit ? `${limited}…` : limited;
   };
+
+  const allFaqs = [
+    { q: 'Are Bharat Mock tests really free to attempt?', a: 'Yes. Every registered user gets instant access to curated free tests across SSC, IBPS, SBI, Railways, NDA, and more. Premium series exist for deeper analytics, but the entry tier is always free.' },
+    { q: 'How often are exam patterns updated?', a: 'Our content team refreshes question banks every time TCS/NTA updates the blueprint or releases a new notification, ensuring alignment with 2026 exam trends.' },
+    { q: 'Can I attempt tests anytime on mobile?', a: 'Absolutely. The platform is responsive and supports Android/iOS browsers. You can attempt, pause, and resume on any device with stable internet.' },
+    { q: 'Do I get AIR (All India Rank) after each mock?', a: 'Yes. After submitting, you receive All India Rank, percentile, accuracy, and topic-level insights driven by our analytics engine.' },
+    { q: 'How many exams are covered right now?', a: 'We cover 80+ central and state exams—from SSC CGL, CHSL, JE to SBI PO, IBPS Clerk, Railway NTPC, Group D, CDS, AFCAT, and more.' },
+    { q: 'Can I download solutions or explanations?', a: 'Each question carries explainers, shortcuts, and PDF exports so you can revise offline and share notes with friends.' },
+    { q: 'Is there sectional timing like the actual CBT?', a: 'Yes, our mock engine simulates sectional timing, negative marking, and auto-submit behavior exactly like SSC and Banking CBTs.' },
+    { q: 'How do I track progress across attempts?', a: 'Navigate to your dashboard to view attempt history, accuracy trendlines, and topic heatmaps that highlight weak zones.' },
+    { q: 'Can I retake the same mock?', a: 'You can retake most free tests multiple times. Scores are stored separately so you can benchmark improvement.' },
+    { q: 'Do you provide bilingual tests?', a: 'Yes. Most of our mock tests support English and Hindi, and we continue to add more regional language support based on demand.' },
+  ];
+
+  const paymentFaqs = [
+    { q: 'What payment methods are accepted?', a: 'We accept UPI (GPay, PhonePe, Paytm), Net Banking, Credit/Debit Cards (Visa, Mastercard, RuPay), and popular wallets via Razorpay.' },
+    { q: 'Is my payment information secure?', a: 'Yes. All transactions are processed through Razorpay, a PCI-DSS compliant payment gateway. We never store your card details on our servers.' },
+    { q: 'Can I get a refund if I am not satisfied?', a: 'We offer a 7-day refund policy for premium subscriptions. If you face any issues, contact support@bharatmock.com within 7 days of purchase.' },
+    { q: 'Will I get a receipt or invoice for my payment?', a: 'Yes. A payment confirmation email with a GST invoice is sent to your registered email address immediately after a successful transaction.' },
+    { q: 'What happens if my payment fails but money is deducted?', a: 'In case of a failed transaction where money is deducted, it is automatically refunded to your source account within 5–7 business days. Contact us if it takes longer.' },
+    { q: 'Are there any hidden charges or auto-renewals?', a: 'No hidden charges. Subscriptions do not auto-renew unless you explicitly enable it. You will always be notified before any renewal.' },
+    { q: 'Can I upgrade or downgrade my subscription plan?', a: 'Yes. You can upgrade your plan at any time and pay only the prorated difference. Downgrades take effect at the end of the current billing cycle.' },
+    { q: 'Do you offer student discounts or group pricing?', a: 'Yes, we periodically offer discounts for students and group enrollments. Check the Subscriptions page or contact us for bulk pricing.' },
+  ];
 
   const scrollLeft = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
@@ -1122,81 +1147,56 @@ export default function ExamsPage() {
       {!debouncedSearch && (
       <section className="py-10">
         <div className="container-main">
-                <div className="max-w-4xl mx-auto">
-                  <h2 className="font-display text-4xl font-bold text-foreground mb-12 text-center">
-                    FAQ's
-                  </h2>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        q: 'Are Bharat Mock tests really free to attempt?',
-                        a: 'Yes. Every registered user gets instant access to curated free tests across SSC, IBPS, SBI, Railways, NDA, and more. Premium series exist for deeper analytics, but the entry tier is always free.'
-                      },
-                      {
-                        q: 'How often are exam patterns updated?',
-                        a: 'Our content team refreshes question banks every time TCS/NTA updates the blueprint or releases a new notification, ensuring alignment with 2026 exam trends.'
-                      },
-                      {
-                        q: 'Can I attempt tests anytime on mobile?',
-                        a: 'Absolutely. The platform is responsive and supports Android/iOS browsers. You can attempt, pause, and resume on any device with stable internet.'
-                      },
-                      {
-                        q: 'Do I get AIR (All India Rank) after each mock?',
-                        a: 'Yes. After submitting, you receive All India Rank, percentile, accuracy, and topic-level insights driven by our analytics engine.'
-                      },
-                      {
-                        q: 'How many exams are covered right now?',
-                        a: 'We cover 80+ central and state exams—from SSC CGL, CHSL, JE to SBI PO, IBPS Clerk, Railway NTPC, Group D, CDS, AFCAT, and more.'
-                      },
-                      {
-                        q: 'Can I download solutions or explanations?',
-                        a: 'Each question carries explainers, shortcuts, and PDF exports so you can revise offline and share notes with friends.'
-                      },
-                      {
-                        q: 'Is there sectional timing like the actual CBT?',
-                        a: 'Yes, our mock engine simulates sectional timing, negative marking, and auto-submit behavior exactly like SSC and Banking CBTs.'
-                      },
-                      {
-                        q: 'How do I track progress across attempts?',
-                        a: 'Navigate to your dashboard to view attempt history, accuracy trendlines, and topic heatmaps that highlight weak zones.'
-                      },
-                      {
-                        q: 'Can I retake the same mock?',
-                        a: 'You can retake most free tests multiple times. Scores are stored separately so you can benchmark improvement.'
-                      },
-                      {
-                        q: 'Do you provide bilingual tests?',
-                        a: 'Yes. Most of our mock tests support English and Hindi, and we continue to add more regional language support based on demand.'
-                      }
-                    ].map((item, index) => (
-                      <div 
-                        key={item.q}
-                        className="bg-card border border-border rounded-lg overflow-hidden"
-                      >
-                        <button
-                          onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                          className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
-                        >
-                          <h3 className="font-medium text-foreground text-base">
-                            {index + 1}. {item.q}
-                          </h3>
-                          {expandedFaq === index ? (
-                            <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                          )}
-                        </button>
-                        {expandedFaq === index && (
-                          <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                            <p className="text-muted-foreground">
-                              {item.a}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+          <div className="max-w-4xl mx-auto">
+            <h2 className="font-display text-4xl font-bold text-foreground mb-8 text-center">
+              FAQ's
+            </h2>
+
+            {/* FAQ Tabs */}
+            <div className="flex gap-2 mb-8 border-b border-border">
+              {(['All', 'Payments'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => { setExpandedFaq(null); setActiveFaqTab(tab); }}
+                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+                    activeFaqTab === tab
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {tab === 'All' ? 'All FAQ' : 'Payment FAQ'}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-4">
+              {(activeFaqTab === 'All' ? allFaqs : paymentFaqs).map((item, index) => (
+                <div
+                  key={item.q}
+                  className="bg-card border border-border rounded-lg overflow-hidden"
+                >
+                  <button
+                    onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
+                  >
+                    <h3 className="font-medium text-foreground text-base">
+                      {index + 1}. {item.q}
+                    </h3>
+                    {expandedFaq === index ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    )}
+                  </button>
+                  {expandedFaq === index && (
+                    <div className="px-6 py-4 bg-muted/30 border-t border-border">
+                      <p className="text-muted-foreground">{item.a}</p>
+                    </div>
+                  )}
                 </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
       )}

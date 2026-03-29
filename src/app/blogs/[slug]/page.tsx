@@ -208,7 +208,7 @@ export default function BlogDetailPage() {
 
       {/* Social share bar */}
       <div className="bg-muted/40 border-b border-border">
-        <div className="container-home py-2 flex items-center justify-between gap-3">
+        <div className="container-home py-2 flex items-center gap-3">
           <span className="text-xs text-muted-foreground font-medium hidden sm:block">Share this article</span>
           <SocialShare title={article.title} description={article.excerpt} url={shareUrl} variant="compact" size="sm" showLabel={false} />
         </div>
