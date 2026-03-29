@@ -1,6 +1,17 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import DynamicPageWrapper from './DynamicPageWrapper';
+
+// Known static route prefixes — Next.js has dedicated pages for these.
+// If the catch-all somehow receives them, return 404 so Next.js falls back correctly.
+const STATIC_PREFIXES = new Set([
+  'blogs', 'exams', 'mock-test-series', 'live-tests', 'quizzes',
+  'previous-year-papers', 'current-affairs', 'subscriptions', 'profile',
+  'login', 'register', 'auth', 'admin', 'results', 'test-series',
+  'courses', 'colleges', 'about', 'contact', 'privacy', 'privacy-policy',
+  'refund-policy', 'disclaimer', 'terms', 'onboarding', 'ssc',
+]);
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
@@ -62,6 +73,11 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const slugArray = Array.isArray(slug) ? slug : [slug];
+
+  // Don't generate metadata for static routes caught here by mistake
+  if (slugArray.length > 0 && STATIC_PREFIXES.has(slugArray[0].toLowerCase())) {
+    return {};
+  }
   const seo = await fetchSeoForSlug(slugArray);
 
   const tabSlug = slugArray.length === 2 ? slugArray[1] : undefined;
@@ -91,6 +107,12 @@ export default async function DynamicPage(
 ) {
   const { slug } = await params;
   const slugArray = Array.isArray(slug) ? slug : [slug];
+
+  // If this is a known static route prefix, it shouldn't be here — return 404
+  // so Next.js routing falls back to the correct dedicated page
+  if (slugArray.length > 0 && STATIC_PREFIXES.has(slugArray[0].toLowerCase())) {
+    notFound();
+  }
 
   return (
     <Suspense fallback={

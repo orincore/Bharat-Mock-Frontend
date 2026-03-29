@@ -158,7 +158,21 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
   return <ExamDetailPage urlPath={`/${first}/${second}`} />;
 }
 
+// These are static Next.js routes — never handle them in the catch-all
+const STATIC_ROUTE_PREFIXES = new Set([
+  'blogs', 'exams', 'mock-test-series', 'live-tests', 'quizzes',
+  'previous-year-papers', 'current-affairs', 'subscriptions', 'profile',
+  'login', 'register', 'auth', 'admin', 'results', 'test-series',
+  'courses', 'colleges', 'about', 'contact', 'privacy', 'privacy-policy',
+  'refund-policy', 'disclaimer', 'terms', 'onboarding', 'ssc',
+]);
+
 export default function DynamicPageClient({ slugArray }: { slugArray: string[] }) {
+  // If the first segment is a known static route, don't handle it here
+  if (slugArray.length > 0 && STATIC_ROUTE_PREFIXES.has(slugArray[0].toLowerCase())) {
+    return null;
+  }
+
   if (slugArray.length >= 3) {
     return <ExamDetailPage urlPath={`/${slugArray.join('/')}`} />;
   }
