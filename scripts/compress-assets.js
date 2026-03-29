@@ -19,8 +19,8 @@ const targets = [
     resize: { width: 800, withoutEnlargement: true },
   },
   {
-    input: 'assets/subscription_banner.jpg',
-    output: 'assets/subscription_banner.jpg',
+    input: '/assets/subimg.jpg"',
+    output: '/assets/subimg.jpg"',
     options: { quality: 80, progressive: true },
     format: 'jpeg',
     resize: { width: 1200, withoutEnlargement: true },

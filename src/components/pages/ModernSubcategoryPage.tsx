@@ -7,7 +7,7 @@ import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { toast } from "sonner";
-import { Download, Lock, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Lock, Filter, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
 import { useAuth } from "@/context/AuthContext";
 import { StandardExamCard } from "@/components/exam/StandardExamCard";
 
@@ -169,26 +169,52 @@ const MobileTOC = ({
 }: {
   tableOfContents: TableOfContentsEntry[];
   scrollToAnchor: (id: string) => void;
-}) => (
-  <section className="lg:hidden mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-    <div className="p-4 border-b border-slate-100">
-      <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">On this page</p>
-      <p className="text-sm text-slate-500 mt-1">Jump to a section</p>
+}) => {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="lg:hidden">
+      {/* Backdrop */}
+      {open && (
+        <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setOpen(false)} />
+      )}
+
+      {/* Bottom drawer */}
+      <div className={`fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-2xl shadow-2xl transition-transform duration-300 ${open ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <List className="h-4 w-4 text-primary" />
+            <span className="font-bold text-sm text-foreground">Table of Contents</span>
+          </div>
+          <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-muted transition">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+        <nav className="overflow-y-auto max-h-[60vh] pb-safe p-3 space-y-0.5">
+          {tableOfContents.map((entry, idx) => (
+            <button
+              key={`${entry.id || 'toc'}-${idx}`}
+              type="button"
+              onClick={() => { scrollToAnchor(entry.id); setOpen(false); }}
+              className="w-full flex items-start gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted hover:text-primary transition text-left group"
+            >
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary/40 flex-shrink-0 group-hover:bg-primary" />
+              <span className="text-foreground group-hover:text-primary leading-snug">{entry.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Floating button */}
+      <button
+        onClick={() => setOpen(true)}
+        className="fixed bottom-5 left-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg text-sm font-semibold"
+      >
+        <List className="h-4 w-4" />
+        Contents
+      </button>
     </div>
-    <div className="divide-y">
-      {tableOfContents.map((entry, idx) => (
-        <button
-          key={`${entry.id || 'toc'}-${idx}`}
-          type="button"
-          onClick={() => scrollToAnchor(entry.id)}
-          className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-blue-50"
-        >
-          {entry.label}
-        </button>
-      ))}
-    </div>
-  </section>
-);
+  );
+};
 
 export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, combinedSlug, initialTabSlug }: ModernSubcategoryPageProps) {
   const router = useRouter();
@@ -937,11 +963,21 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return visibleSections
       .map((section) => {
         const rawLabel = section.title || 'Untitled Section';
-        // Strip HTML tags so TOC shows plain text
-        const plainLabel = rawLabel.replace(/<[^>]*>/g, '').trim() || 'Untitled Section';
+        // Strip HTML tags and decode HTML entities so TOC shows plain text
+        const stripped = rawLabel.replace(/<[^>]*>/g, '');
+        const decoded = stripped
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&[a-z]+;/gi, ' ')
+          .replace(/&#\d+;/g, (m) => String.fromCharCode(parseInt(m.slice(2, -1), 10)))
+          .trim() || 'Untitled Section';
         return {
           id: buildSectionAnchor(section),
-          label: plainLabel,
+          label: decoded,
         };
       })
       .filter((entry) => Boolean(entry.id));

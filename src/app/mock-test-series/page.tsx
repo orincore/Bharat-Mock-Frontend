@@ -460,7 +460,8 @@ export default function ExamsPage() {
   return (
     <div className={`min-h-screen bg-muted/30 transition-opacity duration-300 ${pageReady ? 'opacity-100' : 'opacity-0'}`}>
       
-      <section className="gradient-hero py-10">
+      <section className="relative gradient-hero py-10">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="container-main">
           <div className="space-y-4">
             <Breadcrumbs 
@@ -948,7 +949,7 @@ export default function ExamsPage() {
 
           <div className="relative z-10 space-y-10">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div className="max-w-2xl space-y-4">
+              <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
                   Social Proof
                 </div>
@@ -1145,9 +1146,8 @@ export default function ExamsPage() {
 
       {/* FAQ Section - Hide when searching */}
       {!debouncedSearch && (
-      <section className="py-10">
-        <div className="container-main">
-          <div className="max-w-4xl mx-auto">
+      <section className="container-main mt-16 mb-12">
+        <div>
             <h2 className="font-display text-4xl font-bold text-foreground mb-8 text-center">
               FAQ's
             </h2>
@@ -1190,14 +1190,13 @@ export default function ExamsPage() {
                   </button>
                   {expandedFaq === index && (
                     <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                      <p className="text-muted-foreground">{item.a}</p>
+                      <p className="text-slate-700">{item.a}</p>
                     </div>
                   )}
                 </div>
               ))}
             </div>
           </div>
-        </div>
       </section>
       )}
     </div>

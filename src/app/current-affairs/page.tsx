@@ -121,7 +121,8 @@ export default function CurrentAffairsPage() {
 
   return (
     <div className="bg-muted/20">
-      <section className="gradient-hero py-10 text-white">
+      <section className="relative gradient-hero py-10 text-white">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="container-main">
           <Breadcrumbs
             items={[HomeBreadcrumb(), { label: 'Current Affairs' }]}
@@ -289,25 +290,6 @@ export default function CurrentAffairsPage() {
           )}
         </section>
 
-        <section className="bg-card border border-border rounded-3xl p-8 space-y-6 max-w-4xl mx-auto">
-          <header className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
-            <h2 className="font-display text-3xl font-bold">Why Daily Current Affairs is your competitive edge in every govt exam</h2>
-            <p className="text-base" style={{ color: '#1a1a1a' }}>
-              A deep dive into how staying updated with current events transforms your preparation strategy and directly impacts your score in SSC, Banking, UPSC, Railways, and State PSC exams.
-            </p>
-          </header>
-          <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
-            <p>Every competitive exam in India reserves a significant portion of its question paper for General Awareness and Current Affairs. Whether it is the SSC CGL Tier-I, IBPS PO Prelims, UPSC Prelims, or any State PSC, the GK section is often the differentiator between candidates who clear the cutoff and those who fall just short. Bharat Mock's Current Affairs page is engineered to close that gap by delivering daily, weekly, and monthly capsules that are directly mapped to the question patterns observed in recent exam cycles.</p>
-            <p>The architecture of this page mirrors the way toppers actually consume current affairs. They do not read everything—they read strategically. The category filters on this page let you zero in on National, International, Economy, Science & Technology, Sports, Environment, and Defence topics in seconds.</p>
-            <p>Consistency is the single most underrated factor in current affairs preparation. A candidate who reads 15 minutes of current affairs every day for six months will outperform someone who crammed three months of news in the final week before the exam.</p>
-            <p>The integration between current affairs content and mock tests on this platform is a force multiplier. When you read about a new government scheme in the morning capsule and then encounter a question about it in an afternoon mock test, the neural pathway for that fact becomes significantly stronger.</p>
-            <p>Language accessibility is another dimension that sets this platform apart. A large percentage of government exam aspirants are more comfortable in Hindi than in English, and the bilingual support on this page ensures that the language barrier never becomes a preparation barrier.</p>
-            <p>Beyond individual articles, the monthly compilations serve as revision anchors. In the final weeks before an exam, when time is scarce and anxiety is high, a well-structured monthly PDF or on-screen digest lets you review three hundred events in under two hours.</p>
-            <p>The quiz component embedded within this section is perhaps the most powerful tool for converting passive reading into active recall. After consuming a week's worth of current affairs, attempting a 20-question quiz on those exact topics reveals your retention gaps with surgical precision.</p>
-            <p>Ultimately, the Current Affairs page is not just a content repository—it is a preparation ecosystem. It connects the news you read today with the mock tests you attempt this week, the revision you do next month, and the confidence you carry into the exam hall.</p>
-          </div>
-        </section>
           </div>
 
           {/* Sticky sidebar - desktop only */}
@@ -363,6 +345,27 @@ export default function CurrentAffairsPage() {
             </div>
           </aside>
         </div>
+      </div>
+      <div className="container-main">
+        <section className="bg-card border border-border rounded-3xl p-8 space-y-6 mt-10">
+          <header className="space-y-2">
+            <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
+            <h2 className="font-display text-3xl font-bold">Why Daily Current Affairs is your competitive edge in every govt exam</h2>
+            <p className="text-base" style={{ color: '#1a1a1a' }}>
+              A deep dive into how staying updated with current events transforms your preparation strategy and directly impacts your score in SSC, Banking, UPSC, Railways, and State PSC exams.
+            </p>
+          </header>
+          <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
+            <p>Every competitive exam in India reserves a significant portion of its question paper for General Awareness and Current Affairs. Whether it is the SSC CGL Tier-I, IBPS PO Prelims, UPSC Prelims, or any State PSC, the GK section is often the differentiator between candidates who clear the cutoff and those who fall just short. Bharat Mock's Current Affairs page is engineered to close that gap by delivering daily, weekly, and monthly capsules that are directly mapped to the question patterns observed in recent exam cycles.</p>
+            <p>The architecture of this page mirrors the way toppers actually consume current affairs. They do not read everything—they read strategically. The category filters on this page let you zero in on National, International, Economy, Science & Technology, Sports, Environment, and Defence topics in seconds.</p>
+            <p>Consistency is the single most underrated factor in current affairs preparation. A candidate who reads 15 minutes of current affairs every day for six months will outperform someone who crammed three months of news in the final week before the exam.</p>
+            <p>The integration between current affairs content and mock tests on this platform is a force multiplier. When you read about a new government scheme in the morning capsule and then encounter a question about it in an afternoon mock test, the neural pathway for that fact becomes significantly stronger.</p>
+            <p>Language accessibility is another dimension that sets this platform apart. A large percentage of government exam aspirants are more comfortable in Hindi than in English, and the bilingual support on this page ensures that the language barrier never becomes a preparation barrier.</p>
+            <p>Beyond individual articles, the monthly compilations serve as revision anchors. In the final weeks before an exam, when time is scarce and anxiety is high, a well-structured monthly PDF or on-screen digest lets you review three hundred events in under two hours.</p>
+            <p>The quiz component embedded within this section is perhaps the most powerful tool for converting passive reading into active recall. After consuming a week's worth of current affairs, attempting a 20-question quiz on those exact topics reveals your retention gaps with surgical precision.</p>
+            <p>Ultimately, the Current Affairs page is not just a content repository—it is a preparation ecosystem. It connects the news you read today with the mock tests you attempt this week, the revision you do next month, and the confidence you carry into the exam hall.</p>
+          </div>
+        </section>
       </div>
       <div className="container-main">
         <PageSeoSections

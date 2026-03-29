@@ -53,6 +53,9 @@ export default function PrevPapersPage() {
   const [sectionsLoading, setSectionsLoading] = useState(true);
   const [activeSectionId, setActiveSectionId] = useState<string>('');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
+  const [sectionCounts, setSectionCounts] = useState<Record<string, number>>({});
+  const [allPapersTotal, setAllPapersTotal] = useState<number>(0);
+  const [topicCounts, setTopicCounts] = useState<Record<string, number>>({});
   const sectionsScrollRef = useRef<HTMLDivElement>(null);
   const topicsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -114,13 +117,43 @@ export default function PrevPapersPage() {
     try {
       const sections = await paperSectionsService.getSections();
       const topics = await paperSectionsService.getTopics();
-      setPaperSections(sections.filter(s => s.is_active !== false));
-      setPaperTopics(topics.filter(t => t.is_active !== false));
-      
-      // Set first section as active by default
+      const activeSections = sections.filter(s => s.is_active !== false);
+      const activeTopics = topics.filter(t => t.is_active !== false);
+      setPaperSections(activeSections);
+      setPaperTopics(activeTopics);
+
+      // Keep "All Papers" selected by default — do not auto-select first section
       if (sections.length > 0 && !activeSectionId) {
-        setActiveSectionId(sections[0].id);
+        setActiveSectionId('');
       }
+
+      // Fetch total count for "All Papers" and per-section counts in parallel
+      const [allRes, ...countEntries] = await Promise.all([
+        examService.getExams({ exam_type: PAPER_EXAM_TYPE, limit: 1, page: 1 } as any),
+        ...activeSections.map(async (section) => {
+          try {
+            const res = await examService.getExams({ exam_type: PAPER_EXAM_TYPE, paper_section_id: section.id, limit: 1, page: 1 } as any);
+            return [section.id, res.total ?? 0] as [string, number];
+          } catch {
+            return [section.id, 0] as [string, number];
+          }
+        })
+      ]);
+      setAllPapersTotal(allRes.total ?? 0);
+      setSectionCounts(Object.fromEntries(countEntries as [string, number][]));
+
+      // Fetch counts for each topic in parallel
+      const topicCountEntries = await Promise.all(
+        activeTopics.map(async (topic) => {
+          try {
+            const res = await examService.getExams({ exam_type: PAPER_EXAM_TYPE, paper_topic_id: topic.id, limit: 1, page: 1 } as any);
+            return [topic.id, res.total ?? 0] as [string, number];
+          } catch {
+            return [topic.id, 0] as [string, number];
+          }
+        })
+      );
+      setTopicCounts(Object.fromEntries(topicCountEntries));
     } catch (err) {
       console.error('Failed to fetch paper sections:', err);
     } finally {
@@ -292,6 +325,13 @@ export default function PrevPapersPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
+  const handleAccessFilter = (value: string) => {
+    setFilters((prev) => ({ ...prev, is_premium: value }));
+    // Keep activeTab in sync
+    setActiveTab(value === 'true' ? 'premium' : 'all');
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
   const handleTabChange = (tab: PremiumTab) => {
     setActiveTab(tab);
     setFilters((prev) => ({
@@ -304,7 +344,9 @@ export default function PrevPapersPage() {
 
   const handleSectionChange = (sectionId: string) => {
     setActiveSectionId(sectionId);
-    setSelectedTopicId('');
+    // Auto-select first topic of the new section
+    const firstTopic = paperTopics.find(t => t.section_id === sectionId && t.is_active !== false);
+    setSelectedTopicId(firstTopic?.id ?? '');
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -321,8 +363,9 @@ export default function PrevPapersPage() {
       difficulty: '',
       status: '',
       exam_type: PAPER_EXAM_TYPE,
-      is_premium: activeTab === 'premium' ? 'true' : '',
+      is_premium: '',
     });
+    setActiveTab('all');
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
     setSelectedDifficultyId('');
@@ -341,28 +384,18 @@ export default function PrevPapersPage() {
     return topics;
   }, [activeSectionId, paperTopics]);
 
-  const sectionCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    paperSections.forEach(section => {
-      const sectionExams = exams.filter(exam => 
-        (exam as any).paper_section_id === section.id
-      );
-      counts[section.id] = sectionExams.length;
-    });
-    return counts;
-  }, [paperSections, exams]);
-
   const isFilterDataLoading = categoriesLoading || difficultiesLoading || subcategoriesLoading;
   const hasCustomFilters = Boolean(
     filters.search ||
     selectedCategoryId ||
     selectedSubcategoryId ||
     selectedDifficultyId ||
-    selectedYear
+    selectedYear ||
+    filters.is_premium
   );
 
   const FiltersPanel = () => (
-    <div className="bg-card rounded-xl border border-border p-6">
+    <div className="bg-card rounded-xl border border-border p-6 max-h-[calc(100vh-6rem)] overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <p className="font-display text-lg font-bold text-foreground flex items-center gap-2">
           <Filter className="h-5 w-5 text-primary" />
@@ -511,6 +544,43 @@ export default function PrevPapersPage() {
                   <span>{year}</span>
                 </label>
               ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Access
+            </label>
+            <div className="border border-border rounded-lg p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="radio"
+                  name="access"
+                  className="h-4 w-4 accent-primary"
+                  checked={filters.is_premium === ''}
+                  onChange={() => handleAccessFilter('')}
+                />
+                <span>All</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="radio"
+                  name="access"
+                  className="h-4 w-4 accent-primary"
+                  checked={filters.is_premium === 'false'}
+                  onChange={() => handleAccessFilter('false')}
+                />
+                <span>Free</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="radio"
+                  name="access"
+                  className="h-4 w-4 accent-primary"
+                  checked={filters.is_premium === 'true'}
+                  onChange={() => handleAccessFilter('true')}
+                />
+                <span>Premium</span>
+              </label>
             </div>
           </div>
         </div>
@@ -665,7 +735,7 @@ export default function PrevPapersPage() {
                           activeSectionId === '' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
                         }`}
                       >
-                        All Papers ({exams.length})
+                        All Papers ({allPapersTotal})
                         {activeSectionId === '' && (
                           <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
                         )}
@@ -717,7 +787,7 @@ export default function PrevPapersPage() {
                             selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                           }`}
                         >
-                          {topic.name}
+                          {topic.name} ({topicCounts[topic.id] ?? 0})
                         </button>
                       ))}
                     </div>
@@ -818,7 +888,7 @@ export default function PrevPapersPage() {
         </div>
       </div>
       <div className="container-main">
-        <section className="bg-card border border-border rounded-3xl p-8 space-y-6 max-w-4xl mx-auto mt-10">
+        <section className="bg-card border border-border rounded-3xl p-8 space-y-6 mt-10">
           <header className="space-y-2">
             <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
             <h2 className="font-display text-3xl font-bold">Why solving Previous Year Papers is the highest-ROI activity in govt exam preparation</h2>
@@ -837,6 +907,35 @@ export default function PrevPapersPage() {
             <p>Ultimately, the aspirants who consistently appear in merit lists share one preparation habit above all others: they solve previous year papers early, often, and analytically. Not as a final-week panic exercise, but as a weekly diagnostic ritual that keeps their preparation honest and their strategy adaptive. Bharat Mock's Previous Year Papers section is built to support exactly this habit—with organized access, detailed explanations, performance tracking, and the full archive of papers that have shaped the careers of lakhs of government servants before you.</p>
           </div>
         </section>
+        <section className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
+          <div className="max-w-5xl mx-auto space-y-4">
+            <p className="text-xs uppercase tracking-[0.4em] text-blue-300">Master your exams</p>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
+              Ace 2026 exams with Bharat Mock's previous year paper archive
+            </h2>
+            <p className="text-slate-100 text-base leading-relaxed">
+              Each year more than five million aspirants compete for coveted roles across SSC, Banking, Railways, Defence, and State services. The ones who succeed build a habit of solving <strong className="text-blue-200">real previous year papers that reveal the exact examiner mindset</strong>. Bharat Mock curates a free, fully explained archive mapped to RBI Grade B, IBPS PO, SBI Clerk, SSC CGL, NTPC, and 70+ other competitive tracks so you stay exam-ready without guesswork.
+            </p>
+            <p className="text-slate-100 text-base leading-relaxed">
+              Our team organizes papers section-wise and topic-wise, attaches detailed explanations, and tracks your performance over time. That means you master time management, accuracy, and question selection before the real paper. Whether you're targeting full-length past papers, sectional drills, or bilingual practice sets, Bharat Mock's archive ensures you're always preparing on the most authentic <em className="text-blue-200">exam pattern for 2026</em>.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-4 text-sm text-slate-200">
+              <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
+                <p className="text-3xl font-bold text-blue-200">70+</p>
+                <p className="mt-1">exam categories with full previous year coverage</p>
+              </div>
+              <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
+                <p className="text-3xl font-bold text-blue-200">5M+</p>
+                <p className="mt-1">aspirants practicing with real past papers annually</p>
+              </div>
+              <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
+                <p className="text-3xl font-bold text-blue-200">100%</p>
+                <p className="mt-1">free access with detailed bilingual explanations</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <PageSeoSections
           whyTitle="Why practice with Bharat Mock Previous Year Papers?"
           whySubtitle="Solving real past papers is the single most effective way to understand exam patterns, manage time, and build the confidence to clear cutoffs."

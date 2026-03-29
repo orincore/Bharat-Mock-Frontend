@@ -55,7 +55,7 @@ export function PageSeoSections({
         <div className="text-center space-y-3">
           <p className="text-sm uppercase tracking-[0.3em] text-secondary font-semibold">Reasons to trust Bharat Mock</p>
           <h2 className="font-display text-3xl font-bold text-foreground">{whyTitle}</h2>
-          <p className="text-muted-foreground max-w-3xl mx-auto">{whySubtitle}</p>
+          <p className="text-muted-foreground mx-auto">{whySubtitle}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -114,9 +114,9 @@ export function PageSeoSections({
 
       {/* FAQ */}
       <section className="py-10">
-        <div className="max-w-4xl mx-auto">
+        <div>
           <h2 className="font-display text-4xl font-bold text-foreground mb-8 text-center">{faqTitle}</h2>
-          <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">{faqSubtitle}</p>
+          <p className="text-center text-muted-foreground mb-8">{faqSubtitle}</p>
 
           {/* Tabs */}
           <div className="flex gap-2 mb-8 border-b border-border">
@@ -150,7 +150,7 @@ export function PageSeoSections({
                 </button>
                 {expandedFaq === index && (
                   <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                    <p className="text-muted-foreground">{item.a}</p>
+                    <p className="text-slate-700">{item.a}</p>
                   </div>
                 )}
               </div>

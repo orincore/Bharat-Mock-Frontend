@@ -746,7 +746,7 @@ export default function TestSeriesDetailPage() {
                 <AccordionTrigger className="text-left text-base font-semibold text-slate-800">
                   <h3 className="inline text-base font-semibold text-slate-800 text-left">{item.question}</h3>
                 </AccordionTrigger>
-                <AccordionContent className="text-sm text-slate-600 leading-relaxed">
+                <AccordionContent className="text-sm text-slate-700 leading-relaxed">
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>

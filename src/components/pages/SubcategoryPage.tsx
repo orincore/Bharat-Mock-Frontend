@@ -579,7 +579,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                     <summary className="font-semibold text-gray-900 cursor-pointer hover:text-blue-600">
                       <h3 className="inline text-base font-semibold">{faq.question}</h3>
                     </summary>
-                    <div className="mt-3 text-gray-600 prose max-w-none" dangerouslySetInnerHTML={{ __html: faq.answer }} />
+                    <div className="mt-3 text-slate-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: faq.answer }} />
                   </details>
                 ))}
               </div>

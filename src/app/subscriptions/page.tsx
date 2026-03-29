@@ -1079,7 +1079,7 @@ export default function SubscriptionLandingPage() {
                   </button>
                   {expandedFaq === block.id && block.content && (
                     <div className="px-5 py-4 bg-gray-50 border-t border-gray-200">
-                      <p className="text-sm text-gray-700 leading-relaxed">{block.content}</p>
+                      <p className="text-sm text-slate-700 leading-relaxed">{block.content}</p>
                     </div>
                   )}
                 </div>

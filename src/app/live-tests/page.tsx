@@ -121,6 +121,7 @@ export default function LiveTestsPage() {
   const [activeCalendarExam, setActiveCalendarExam] = useState<Exam | null>(null);
   const [heroBanner, setHeroBanner] = useState<PageBanner | null>(null);
   const [bannerLoading, setBannerLoading] = useState(true);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
@@ -195,8 +196,10 @@ export default function LiveTestsPage() {
         const banners = await pageBannersService.getBanners(HERO_BANNER_IDENTIFIER);
         const active = banners.find((banner) => banner.is_active) || banners[0] || null;
         setHeroBanner(active ?? null);
+        if (!active) setHeroImageLoaded(true); // no image to wait for
       } catch (err) {
         console.error('Failed to load live tests hero banner', err);
+        setHeroImageLoaded(true); // show hero even if banner fails
       } finally {
         setBannerLoading(false);
       }
@@ -373,9 +376,36 @@ export default function LiveTestsPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Hero */}
-      <section className="gradient-hero py-10">
+      <section className="relative gradient-hero py-10">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="container-main">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Skeleton hero — shown until banner image loads */}
+          {!heroImageLoaded && (
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-40 bg-white/20" />
+                <Skeleton className="h-4 w-32 bg-white/20" />
+                <Skeleton className="h-10 w-3/4 bg-white/20" />
+                <Skeleton className="h-10 w-2/3 bg-white/20" />
+                <Skeleton className="h-6 w-full bg-white/20" />
+                <Skeleton className="h-6 w-5/6 bg-white/20" />
+                <div className="flex gap-3 pt-2">
+                  <Skeleton className="h-11 flex-1 bg-white/20" />
+                  <Skeleton className="h-11 w-36 bg-white/20" />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <Skeleton className="h-64 w-full rounded-3xl bg-white/20" />
+                <Skeleton className="h-20 w-full rounded-2xl bg-white/20" />
+              </div>
+            </div>
+          )}
+
+          {/* Real hero — fades in once image loaded */}
+          <div
+            className="grid lg:grid-cols-2 gap-12 items-center"
+            style={{ opacity: heroImageLoaded ? 1 : 0, transition: 'opacity 0.4s ease', position: heroImageLoaded ? 'static' : 'absolute', pointerEvents: heroImageLoaded ? 'auto' : 'none' }}
+          >
             <div>
               <Breadcrumbs
                 items={[HomeBreadcrumb(), { label: 'Live Tests' }]}
@@ -389,7 +419,6 @@ export default function LiveTestsPage() {
               <p className="text-lg text-background/80 mb-6">
                 Reserve your slot, compete with thousands of aspirants in real time, and receive instant analytics after every live test.
               </p>
-
               <form onSubmit={handleHeroSearch} className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground" />
@@ -410,18 +439,14 @@ export default function LiveTestsPage() {
             <div>
               <div className="bg-background rounded-3xl shadow-2xl border border-border/40 overflow-hidden">
                 <div className="relative min-h-[200px] bg-slate-100" suppressHydrationWarning>
-                  {bannerLoading && (
-                    <Skeleton className="absolute inset-0 w-full h-full rounded-none" />
-                  )}
                   {heroBanner ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={heroBanner.image_url}
                       alt={heroBanner.alt_text || 'Live tests highlight banner'}
-                      className="w-full h-auto object-contain transition-opacity duration-300"
+                      className="w-full h-auto object-contain"
                       loading="eager"
-                      onLoad={(e) => (e.currentTarget.style.opacity = '1')}
-                      style={{ opacity: bannerLoading ? 0 : 1 }}
+                      onLoad={() => setHeroImageLoaded(true)}
                     />
                   ) : !bannerLoading ? (
                     <div className="border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
@@ -608,7 +633,7 @@ export default function LiveTestsPage() {
             description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to remind you that live fixtures here translate into real selection stories."
           />
 
-          <section className="bg-card border border-border rounded-3xl p-8 space-y-6 max-w-4xl mx-auto">
+          <section className="mt-16 bg-card border border-border rounded-3xl p-8 space-y-6">
             <header className="space-y-2">
               <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
               <h2 className="font-display text-3xl font-bold">Why the Live Tests calendar is your competitive advantage</h2>
@@ -650,8 +675,8 @@ export default function LiveTestsPage() {
             </div>
           </section>
 
-          <section className="py-12">
-            <div className="max-w-5xl mx-auto">
+          <section className="mt-16">
+            <div>
               <div className="text-center space-y-3 mb-8">
                 <p className="text-sm uppercase tracking-[0.35em] text-primary font-semibold">Answers on demand</p>
                 <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">Live Tests FAQ</h2>
@@ -695,7 +720,7 @@ export default function LiveTestsPage() {
                     </button>
                     {expandedFaq === index && (
                       <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                        <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
+                        <p className="text-sm text-slate-700 leading-relaxed">{item.a}</p>
                       </div>
                     )}
                   </div>

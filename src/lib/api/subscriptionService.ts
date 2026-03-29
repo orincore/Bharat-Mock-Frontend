@@ -90,5 +90,13 @@ export const subscriptionService = {
       true
     );
     return response;
+  },
+
+  async getMySubscription(): Promise<{ id: string; status: string; expires_at: string | null; auto_renew: boolean; plan: { id: string; name: string } | null } | null> {
+    const response = await apiClient.get<{ success: boolean; data: any }>(
+      '/subscriptions/my',
+      true
+    );
+    return response.data ?? null;
   }
 };

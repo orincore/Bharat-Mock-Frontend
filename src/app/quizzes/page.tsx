@@ -37,6 +37,7 @@ export default function QuizzesPage() {
     subcategory: '',
     difficulty: '',
     status: '',
+    is_premium: '',
     exam_type: QUIZ_EXAM_TYPE,
   });
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -57,7 +58,7 @@ export default function QuizzesPage() {
 
   useEffect(() => {
     fetchExams();
-  }, [filters.category, filters.subcategory, filters.difficulty, filters.status, pagination.page, debouncedSearch]);
+  }, [filters.category, filters.subcategory, filters.difficulty, filters.status, filters.is_premium, pagination.page, debouncedSearch]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -116,6 +117,7 @@ export default function QuizzesPage() {
       if (filters.subcategory.trim()) params.subcategory = filters.subcategory.trim();
       if (filters.difficulty.trim()) params.difficulty = filters.difficulty.trim();
       if (filters.status.trim()) params.status = filters.status.trim();
+      if (filters.is_premium.trim()) params.is_premium = filters.is_premium.trim();
 
       const response = await examService.getExams(params);
       if (requestId !== activeRequestRef.current) return;
@@ -186,10 +188,15 @@ export default function QuizzesPage() {
   };
 
   const clearFilters = () => {
-    setFilters({ search: '', category: '', subcategory: '', difficulty: '', status: '', exam_type: QUIZ_EXAM_TYPE });
+    setFilters({ search: '', category: '', subcategory: '', difficulty: '', status: '', is_premium: '', exam_type: QUIZ_EXAM_TYPE });
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
     setSelectedDifficultyId('');
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleAccessFilter = (value: string) => {
+    setFilters((prev) => ({ ...prev, is_premium: value }));
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -198,10 +205,10 @@ export default function QuizzesPage() {
     : subcategories;
 
   const isFilterDataLoading = categoriesLoading || difficultiesLoading || subcategoriesLoading;
-  const hasCustomFilters = Boolean(filters.search || selectedCategoryId || selectedSubcategoryId || selectedDifficultyId);
+  const hasCustomFilters = Boolean(filters.search || selectedCategoryId || selectedSubcategoryId || selectedDifficultyId || filters.is_premium);
 
   const FiltersPanel = () => (
-    <div className="bg-card rounded-xl border border-border p-6">
+    <div className="bg-card rounded-xl border border-border p-6 max-h-[calc(100vh-6rem)] overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <p className="font-display text-lg font-bold text-foreground flex items-center gap-2">
           <Filter className="h-5 w-5 text-primary" />
@@ -284,6 +291,19 @@ export default function QuizzesPage() {
               ))}
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Access</label>
+            <div className="border border-border rounded-lg p-3 space-y-2">
+              {[{ label: 'All', value: '' }, { label: 'Free', value: 'false' }, { label: 'Premium', value: 'true' }].map(({ label, value }) => (
+                <label key={value} className="flex items-center gap-2 text-sm text-foreground">
+                  <input type="radio" name="quiz-access" className="h-4 w-4 accent-primary"
+                    checked={filters.is_premium === value}
+                    onChange={() => handleAccessFilter(value)} />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -291,7 +311,8 @@ export default function QuizzesPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <section className="gradient-hero py-10">
+      <section className="relative gradient-hero py-10">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="container-main">
           <div className="max-w-3xl">
             <Breadcrumbs items={[HomeBreadcrumb(), { label: 'Quizzes' }]} variant="dark" className="mb-6" />
@@ -396,7 +417,7 @@ export default function QuizzesPage() {
         </div>
       </div>
       <div className="container-main">
-        <section className="bg-card border border-border rounded-3xl p-8 space-y-6 max-w-4xl mx-auto mt-10">
+        <section className="bg-card border border-border rounded-3xl p-8 space-y-6 mt-10">
           <header className="space-y-2">
             <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
             <h2 className="font-display text-3xl font-bold">Why Bharat Mock Quizzes are the sharpest tool in your exam prep arsenal</h2>

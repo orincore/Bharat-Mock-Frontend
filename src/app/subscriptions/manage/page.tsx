@@ -46,6 +46,8 @@ export default function ManageSubscriptionPage() {
   const [toggling, setToggling] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState<{ open: boolean; nextValue: boolean }>({ open: false, nextValue: false });
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [subscription, setSubscription] = useState<{ id: string; status: string; expires_at: string | null; auto_renew: boolean; plan: { id: string; name: string } | null } | null>(null);
+  const [subLoading, setSubLoading] = useState(true);
 
   useEffect(() => {
     setConfirmToggle((prev) => ({ ...prev, open: false }));
@@ -57,13 +59,19 @@ export default function ManageSubscriptionPage() {
         router.replace('/login?redirect=/subscriptions/manage');
       } else {
         setAutoRenew(Boolean(user?.subscription_auto_renew));
+        // Fetch actual subscription status
+        subscriptionService.getMySubscription()
+          .then(setSubscription)
+          .catch(() => setSubscription(null))
+          .finally(() => setSubLoading(false));
       }
     }
   }, [isAuthenticated, isLoading, router, user?.subscription_auto_renew]);
 
+  const isCancelled = subscription?.status === 'canceled';
   const hasActiveSubscription = Boolean(user?.is_premium && user?.subscription_plan);
-  const planName = user?.subscription_plan?.name || 'No active plan';
-  const expiresAt = user?.subscription_expires_at ? formatDate(user.subscription_expires_at) : '—';
+  const planName = subscription?.plan?.name || user?.subscription_plan?.name || 'No active plan';
+  const expiresAt = subscription?.expires_at ? formatDate(subscription.expires_at) : (user?.subscription_expires_at ? formatDate(user.subscription_expires_at) : '—');
 
   const performToggle = async (checked: boolean) => {
     if (!hasActiveSubscription) {
@@ -123,7 +131,7 @@ export default function ManageSubscriptionPage() {
       setConfirmCancelOpen(false);
       setAutoRenew(false);
       await refreshProfile();
-      toast({ title: 'Subscription cancelled', description: 'Premium access has been revoked.' });
+      toast({ title: 'Subscription cancelled', description: 'Your premium access remains active until the expiry date.' });
       router.refresh();
     } catch (error: any) {
       console.error('Cancel subscription failed', error);
@@ -139,9 +147,12 @@ export default function ManageSubscriptionPage() {
 
   const renderPlanBadge = useMemo(() => {
     if (!hasActiveSubscription) {
+      return <Badge variant="secondary" className="text-sm">Free Account</Badge>;
+    }
+    if (isCancelled) {
       return (
-        <Badge variant="secondary" className="text-sm">
-          Free Account
+        <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-200 text-sm">
+          <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Cancelled — Active till {expiresAt}
         </Badge>
       );
     }
@@ -150,9 +161,9 @@ export default function ManageSubscriptionPage() {
         <Crown className="h-3.5 w-3.5 mr-1" /> Premium Active
       </Badge>
     );
-  }, [hasActiveSubscription]);
+  }, [hasActiveSubscription, isCancelled, expiresAt]);
 
-  if (isLoading || (isAuthenticated && !user)) {
+  if (isLoading || subLoading || (isAuthenticated && !user)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/20">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -192,14 +203,26 @@ export default function ManageSubscriptionPage() {
                 <div className="rounded-2xl border border-border/80 p-4">
                   <p className="text-xs text-muted-foreground">Status</p>
                   <p className="text-sm font-medium mt-1">
-                    {hasActiveSubscription ? 'Active' : 'No active subscription'}
+                    {!hasActiveSubscription
+                      ? 'No active subscription'
+                      : isCancelled
+                      ? 'Cancelled — access until expiry'
+                      : 'Active'}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border/80 p-4">
-                  <p className="text-xs text-muted-foreground">Expires on</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isCancelled ? 'Access until' : 'Expires on'}
+                  </p>
                   <p className="text-sm font-medium mt-1">{expiresAt}</p>
                 </div>
               </div>
+
+              {isCancelled && (
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">
+                  You cancelled your subscription. Your premium access remains active until <strong>{expiresAt}</strong>. After that, your account will revert to free.
+                </div>
+              )}
 
               <div className="rounded-2xl border border-border/80 p-4 flex items-center justify-between">
                 <div>
@@ -211,7 +234,7 @@ export default function ManageSubscriptionPage() {
                 <Switch
                   checked={autoRenew}
                   onCheckedChange={handleToggle}
-                  disabled={toggling || !hasActiveSubscription}
+                  disabled={toggling || !hasActiveSubscription || isCancelled}
                 />
               </div>
 
@@ -234,7 +257,7 @@ export default function ManageSubscriptionPage() {
               <Button asChild variant="outline">
                 <Link href="/profile">Back to Profile</Link>
               </Button>
-              {hasActiveSubscription && (
+              {hasActiveSubscription && !isCancelled && (
                 <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" disabled={toggling}>
@@ -245,7 +268,7 @@ export default function ManageSubscriptionPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will revoke premium access immediately. You can resubscribe anytime, but current plan benefits will end once cancelled.
+                        This will disable auto-renewal. Your premium access will remain active until the current expiry date.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

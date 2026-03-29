@@ -12,15 +12,75 @@ interface CacheEntry {
   ttl: number;
 }
 
+const LS_CACHE_PREFIX = 'bm_api_';
+const LS_CACHE_INDEX = 'bm_api_index';
+const MAX_LS_ENTRIES = 150;
+
+// Lightweight localStorage cache — survives page refreshes
+const lsCache = {
+  get(key: string): unknown | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(LS_CACHE_PREFIX + key);
+      if (!raw) return null;
+      const entry: CacheEntry = JSON.parse(raw);
+      if (Date.now() - entry.timestamp > entry.ttl) {
+        localStorage.removeItem(LS_CACHE_PREFIX + key);
+        return null;
+      }
+      return entry.data;
+    } catch { return null; }
+  },
+
+  set(key: string, data: unknown, ttl: number): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const entry: CacheEntry = { data, timestamp: Date.now(), ttl };
+      localStorage.setItem(LS_CACHE_PREFIX + key, JSON.stringify(entry));
+      // Track index for eviction
+      const index: string[] = JSON.parse(localStorage.getItem(LS_CACHE_INDEX) || '[]');
+      const updated = [...index.filter(k => k !== key), key];
+      if (updated.length > MAX_LS_ENTRIES) {
+        // Evict oldest
+        const toRemove = updated.splice(0, updated.length - MAX_LS_ENTRIES);
+        toRemove.forEach(k => localStorage.removeItem(LS_CACHE_PREFIX + k));
+      }
+      localStorage.setItem(LS_CACHE_INDEX, JSON.stringify(updated));
+    } catch { /* storage full — skip */ }
+  },
+
+  cleanup(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const index: string[] = JSON.parse(localStorage.getItem(LS_CACHE_INDEX) || '[]');
+      const now = Date.now();
+      const valid = index.filter(key => {
+        const raw = localStorage.getItem(LS_CACHE_PREFIX + key);
+        if (!raw) return false;
+        try {
+          const entry: CacheEntry = JSON.parse(raw);
+          if (now - entry.timestamp > entry.ttl) {
+            localStorage.removeItem(LS_CACHE_PREFIX + key);
+            return false;
+          }
+          return true;
+        } catch { return false; }
+      });
+      localStorage.setItem(LS_CACHE_INDEX, JSON.stringify(valid));
+    } catch { /* ignore */ }
+  }
+};
+
 class ApiClient {
   private baseUrl: string;
   private refreshPromise: Promise<boolean> | null = null;
+  // In-memory cache for same-session deduplication (fast path)
   private requestCache = new Map<string, CacheEntry>();
   private pendingRequests = new Map<string, Promise<unknown>>();
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    setInterval(() => this.cleanupCache(), 60000);
+    setInterval(() => { this.cleanupCache(); lsCache.cleanup(); }, 60000);
   }
 
   private getAuthToken(): string | null {
@@ -46,17 +106,28 @@ class ApiClient {
   }
 
   private getCachedResponse(cacheKey: string): unknown | null {
+    // 1. Check in-memory first (fastest)
     const entry = this.requestCache.get(cacheKey);
-    if (!entry) return null;
-    if (Date.now() - entry.timestamp > entry.ttl) {
-      this.requestCache.delete(cacheKey);
-      return null;
+    if (entry) {
+      if (Date.now() - entry.timestamp > entry.ttl) {
+        this.requestCache.delete(cacheKey);
+      } else {
+        return entry.data;
+      }
     }
-    return entry.data;
+    // 2. Fall back to localStorage (survives refresh)
+    return lsCache.get(cacheKey);
   }
 
   private setCachedResponse(cacheKey: string, data: unknown, ttl: number = 300000): void {
-    this.requestCache.set(cacheKey, { data, timestamp: Date.now(), ttl });
+    const entry: CacheEntry = { data, timestamp: Date.now(), ttl };
+    // Write to both layers
+    this.requestCache.set(cacheKey, entry);
+    // Only persist non-auth, non-sensitive data to localStorage
+    // Skip user-specific endpoints
+    if (!cacheKey.includes('/auth') && !cacheKey.includes('/profile') && !cacheKey.includes('/results')) {
+      lsCache.set(cacheKey, data, ttl);
+    }
   }
 
   private cleanupCache(): void {
@@ -67,11 +138,22 @@ class ApiClient {
   }
 
   private getTTLForEndpoint(endpoint: string): number {
-    if (endpoint.includes('/categories') || endpoint.includes('/subcategories')) return 3600000;
-    if (endpoint.includes('/popular-tests')) return 1800000;
-    if (endpoint.includes('/test-series')) return 900000;
-    if (endpoint.includes('/exams')) return 600000;
-    return 300000;
+    // Static/rarely-changing data — cache for longer
+    if (endpoint.includes('/categories') || endpoint.includes('/subcategories')) return 6 * 3600000;   // 6h
+    if (endpoint.includes('/taxonomy')) return 6 * 3600000;                                            // 6h
+    if (endpoint.includes('/navigation')) return 6 * 3600000;                                          // 6h
+    if (endpoint.includes('/footer')) return 6 * 3600000;                                              // 6h
+    if (endpoint.includes('/homepage')) return 3600000;                                                 // 1h
+    if (endpoint.includes('/testimonials')) return 3600000;                                             // 1h
+    if (endpoint.includes('/popular-tests')) return 1800000;                                            // 30m
+    if (endpoint.includes('/page-banners')) return 1800000;                                             // 30m
+    if (endpoint.includes('/blogs') || endpoint.includes('/articles')) return 1800000;                  // 30m
+    if (endpoint.includes('/current-affairs')) return 900000;                                           // 15m
+    if (endpoint.includes('/test-series')) return 900000;                                               // 15m
+    if (endpoint.includes('/exams')) return 600000;                                                     // 10m
+    if (endpoint.includes('/subscription')) return 600000;                                              // 10m
+    if (endpoint.includes('/paper-sections') || endpoint.includes('/paper-topics')) return 3600000;     // 1h
+    return 300000;                                                                                       // 5m default
   }
 
   private async refreshAccessToken(): Promise<boolean> {

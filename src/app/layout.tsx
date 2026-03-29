@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "../index.css";
 import { Providers } from "./providers";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
+import { ServiceWorkerRegistration } from "@/components/common/ServiceWorkerRegistration";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // Only load the two fonts actually used in tailwind.config.ts
@@ -63,6 +64,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://media.bharatmock.com" />
         <link rel="preconnect" href="https://api.bharatmock.com" />
+        {/* Preconnect to R2 bucket for fast image loads */}
+        <link rel="preconnect" href="https://pub-bharatmock.r2.dev" crossOrigin="anonymous" />
 
         {/* DNS prefetch for non-critical origins */}
         <link rel="dns-prefetch" href="https://translate.google.com" />
@@ -71,10 +74,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <Providers>
           {children}
           <ScrollToTopButton />
+          <ServiceWorkerRegistration />
           <SpeedInsights />
         </Providers>
       </body>

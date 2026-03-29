@@ -26,16 +26,25 @@ import { heroUrl, bannerUrl, logoUrl } from '@/lib/utils/imageUrl';
 
 // Isolated client component so useAuth doesn't break SSR prerender of Index
 function GetStartedButton() {
+  const [mounted, setMounted] = useState(false);
   let isAuthenticated = false;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const auth = useAuth();
-    isAuthenticated = auth.isAuthenticated;
+    isAuthenticated = mounted && auth.isAuthenticated;
   } catch {
     // AuthProvider not available during prerender — default to guest
   }
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Always render /mock-test-series on server to avoid hydration mismatch.
+  // After mount, authenticated users stay on /mock-test-series anyway.
+  // Only unauthenticated users after mount go to /register.
+  const href = !mounted || isAuthenticated ? '/mock-test-series' : '/register';
+
   return (
-    <Link href={isAuthenticated ? '/mock-test-series' : '/register'}>
+    <Link href={href}>
       <Button
         size="xl"
         className="bg-white text-primary hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-0.5"

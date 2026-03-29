@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Calendar, Clock, Eye, Tag, ChevronRight, BookOpen, TrendingUp, Mail, ArrowLeft, List, X } from 'lucide-react';
+import { Calendar, Clock, Eye, ChevronRight, BookOpen, TrendingUp, Mail, ArrowLeft, List, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingPage } from '@/components/common/LoadingStates';
@@ -269,21 +269,6 @@ export default function BlogDetailPage() {
               </div>
             )}
 
-            {article.tags && article.tags.length > 0 && (
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-center gap-2 text-foreground mb-2 font-semibold text-sm">
-                  <Tag className="h-4 w-4 text-primary" />Tags
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {article.tags.map((tag, i) => (
-                    <Link key={i} href={`/blogs?search=${tag}`}
-                      className="px-3 py-1 rounded-full bg-primary/10 text-sm text-primary hover:bg-primary/20 transition font-medium">
-                      #{tag}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Author box */}
             {(() => {

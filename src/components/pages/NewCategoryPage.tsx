@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
-import { Download, ChevronRight, ChevronLeft, ArrowRight, BookOpen } from "lucide-react";
+import { Download, ChevronRight, ChevronLeft, ArrowRight, BookOpen, List, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Block {
@@ -416,6 +416,36 @@ export default function NewCategoryPage({
   const tabItems = tabDescriptors.map(({ id, label }) => ({ id, label }));
   const isContentTab = true;
 
+  const scrollToAnchor = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      const offset = 90;
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  };
+
+  const tableOfContents = useMemo(() => {
+    return visibleSections
+      .filter(s => !s.is_sidebar)
+      .map(section => {
+        const rawLabel = section.title || 'Untitled Section';
+        const stripped = rawLabel.replace(/<[^>]*>/g, '');
+        const decoded = stripped
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&[a-z]+;/gi, ' ')
+          .replace(/&#\d+;/g, (m) => String.fromCharCode(parseInt(m.slice(2, -1), 10)))
+          .trim() || 'Untitled Section';
+        return { id: section.section_key, label: decoded };
+      })
+      .filter(e => Boolean(e.id));
+  }, [visibleSections]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -680,8 +710,28 @@ export default function NewCategoryPage({
 
           {/* Sidebar */}
           <aside className="lg:col-span-1">
-            {sidebarSections.length > 0 && (
-              <div className="sticky top-24 space-y-6">
+            {(sidebarSections.length > 0 || tableOfContents.length > 0) && (
+              <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto">
+                {tableOfContents.length > 0 && (
+                  <section className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="p-4 border-b border-gray-200 bg-gray-50">
+                      <h3 className="text-lg font-semibold text-gray-900">Table of Contents</h3>
+                      <p className="mt-1 text-sm text-gray-600">Jump to any section on this tab.</p>
+                    </div>
+                    <div className="divide-y">
+                      {tableOfContents.map((entry, idx) => (
+                        <button
+                          key={`${entry.id}-${idx}`}
+                          type="button"
+                          onClick={() => scrollToAnchor(entry.id)}
+                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50"
+                        >
+                          {entry.label}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 {sidebarSections.map((section) => (
                   <section
                     key={section.id}
@@ -718,6 +768,50 @@ export default function NewCategoryPage({
           </aside>
         </div>
       </div>
+
+      {/* Mobile TOC — floating button + bottom drawer */}
+      {tableOfContents.length > 0 && (() => {
+        const MobileTocDrawer = () => {
+          const [open, setOpen] = React.useState(false);
+          return (
+            <div className="lg:hidden">
+              {open && <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setOpen(false)} />}
+              <div className={`fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-2xl shadow-2xl transition-transform duration-300 ${open ? 'translate-y-0' : 'translate-y-full'}`}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <List className="h-4 w-4 text-primary" />
+                    <span className="font-bold text-sm text-foreground">Table of Contents</span>
+                  </div>
+                  <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-muted transition">
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <nav className="overflow-y-auto max-h-[60vh] pb-safe p-3 space-y-0.5">
+                  {tableOfContents.map((entry, idx) => (
+                    <button
+                      key={`${entry.id}-${idx}`}
+                      type="button"
+                      onClick={() => { scrollToAnchor(entry.id); setOpen(false); }}
+                      className="w-full flex items-start gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted hover:text-primary transition text-left group"
+                    >
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary/40 flex-shrink-0 group-hover:bg-primary" />
+                      <span className="text-foreground group-hover:text-primary leading-snug">{entry.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+              <button
+                onClick={() => setOpen(true)}
+                className="fixed bottom-5 left-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg text-sm font-semibold"
+              >
+                <List className="h-4 w-4" />
+                Contents
+              </button>
+            </div>
+          );
+        };
+        return <MobileTocDrawer />;
+      })()}
 
       {/* Mobile tab list overlay */}
       {isTabListOpen && (

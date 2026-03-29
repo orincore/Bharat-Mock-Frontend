@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Megaphone, X } from 'lucide-react';
 import { subscriptionService, SubscriptionPlan } from '@/lib/api/subscriptionService';
+import { useAuth } from '@/context/AuthContext';
 
 const FALLBACK_NORMAL_PRICE_CENTS = 0;
 const FALLBACK_SALE_PRICE_CENTS = 0;
@@ -47,6 +48,7 @@ const getEffectivePriceCents = (plan?: SubscriptionPlan | null) => {
 export function SubscriptionPromoBanner() {
   const [visible, setVisible] = useState<boolean>(true);
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null);
+  const { user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -142,7 +144,7 @@ export function SubscriptionPromoBanner() {
     }
   };
 
-  if (!visible) return null;
+  if (!visible || user?.is_premium) return null;
 
   return (
     <>

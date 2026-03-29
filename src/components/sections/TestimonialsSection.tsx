@@ -156,7 +156,7 @@ export function TestimonialsSection({
 
       <div className="relative z-10 space-y-10">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-2xl space-y-4">
+          <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
               {eyebrow}
             </div>

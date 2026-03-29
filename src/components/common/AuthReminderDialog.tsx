@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { subscriptionService, SubscriptionPlan } from '@/lib/api/subscriptionService';
+import { useRazorpayCheckout } from '@/lib/hooks/useRazorpayCheckout';
 
 const STORAGE_KEY = 'auth_reminder_dismissed';
 const GUEST_DISMISS_KEY = 'login_reminder_dismissed';
@@ -18,6 +19,7 @@ type DialogVariant = 'guest' | 'upsell' | null;
 
 export function AuthReminderDialog() {
   const { user, isAuthenticated } = useAuth();
+  const { startCheckout, processing } = useRazorpayCheckout();
   const [open, setOpen] = useState(false);
   const [variant, setVariant] = useState<DialogVariant>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -238,7 +240,7 @@ export function AuthReminderDialog() {
       {/* Left — image, exactly half the dialog width, hidden on mobile */}
       <div className="relative hidden sm:block sm:w-1/2 flex-shrink-0 overflow-hidden bg-[#0a1628]">
         <Image
-          src="/assets/subscription_banner.jpg"
+          src="/assets/subimg.jpg"
           alt="Bharat Mock Premium"
           width={500}
           height={600}
@@ -307,13 +309,17 @@ export function AuthReminderDialog() {
         <div className="mt-4 space-y-2">
           <Button
             className="w-full h-12 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-base shadow-lg shadow-amber-200 hover:from-amber-300 hover:to-orange-400 transition-all"
-            asChild
-            onClick={handleActionClick}
+            disabled={!selectedPlan || processing}
+            onClick={() => {
+              if (!selectedPlan) return;
+              startCheckout({
+                plan: selectedPlan,
+                onSuccess: () => handleActionClick(),
+              });
+            }}
           >
-            <Link href="/subscriptions">
-              <Crown className="mr-2 h-4 w-4" />
-              Unlock Premium Now
-            </Link>
+            <Crown className="mr-2 h-4 w-4" />
+            {processing ? 'Processing…' : 'Unlock Premium Now'}
           </Button>
           <button
             onClick={handleActionClick}
@@ -330,7 +336,7 @@ export function AuthReminderDialog() {
     <div className="px-5 py-5 space-y-4">
       <div className="-mx-5 -mt-5">
         <Image
-          src="/assets/login_banner_image.jpg"
+          src="/assets/subimg.jpg"
           alt="Login reminder"
           width={800}
           height={534}

@@ -17,6 +17,16 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppData } from '@/context/AppDataContext';
 import { LanguageSelector } from './LanguageSelector';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type NavigationItem = {
   label: string;
@@ -82,6 +92,7 @@ export function Navbar() {
   const [isMobileExamsOpen, setIsMobileExamsOpen] = useState(false);
   const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
   const { categories, subcategories } = useAppData();
@@ -341,7 +352,7 @@ export function Navbar() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={logout}
+                    onClick={() => setLogoutConfirmOpen(true)}
                     className="cursor-pointer text-destructive rounded-lg"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
@@ -349,6 +360,26 @@ export function Navbar() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <AlertDialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Log out?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You'll need to sign in again to access your account.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={logout}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Log out
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               </>
             ) : (
               <>
@@ -490,8 +521,8 @@ export function Navbar() {
                   </Link>
                   <button
                     onClick={() => {
-                      logout();
                       setIsMobileMenuOpen(false);
+                      setLogoutConfirmOpen(true);
                     }}
                     className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10"
                   >

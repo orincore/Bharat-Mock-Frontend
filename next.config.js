@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig = {
   distDir: '.next',
   poweredByHeader: false,
@@ -14,15 +16,15 @@ const nextConfig = {
       { protocol: 'https', hostname: '*.bharatmock.com' },
       { protocol: 'https', hostname: 'media.bharatmock.com' },
     ],
-    formats: ['image/avif', 'image/webp'], // avif first — better compression
+    formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 86400, // 24 hours
+    minimumCacheTTL: 86400,
     dangerouslyAllowSVG: true,
     unoptimized: false,
   },
 
-  // Performance optimizations
+  // optimizePackageImports is experimental in Next.js 16
   experimental: {
     optimizePackageImports: [
       'lucide-react',
@@ -37,86 +39,14 @@ const nextConfig = {
     ],
   },
 
-  // Webpack optimizations
-  webpack: (config, { dev }) => {
-    if (!dev) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          maxInitialRequests: 25,
-          minSize: 20000,
-          cacheGroups: {
-            // Separate heavy chart library
-            recharts: {
-              test: /[\\/]node_modules[\\/]recharts/,
-              name: 'recharts',
-              chunks: 'async', // only load when needed
-              priority: 30,
-            },
-            // Separate PDF libraries — only needed on demand
-            pdf: {
-              test: /[\\/]node_modules[\\/](jspdf|jspdf-autotable|html2pdf\.js)/,
-              name: 'pdf',
-              chunks: 'async',
-              priority: 35,
-            },
-            // Separate katex — only needed on exam/review pages
-            katex: {
-              test: /[\\/]node_modules[\\/]katex/,
-              name: 'katex',
-              chunks: 'async',
-              priority: 34,
-            },
-            // Separate radix UI
-            radix: {
-              test: /[\\/]node_modules[\\/]@radix-ui/,
-              name: 'radix',
-              chunks: 'all',
-              priority: 20,
-            },
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              chunks: 'all',
-              priority: 10,
-            },
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              enforce: true,
-              priority: 5,
-            },
-          },
-        },
-      };
-    }
-
-    if (dev && process.env.ANALYZE === 'true') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-      config.plugins.push(new BundleAnalyzerPlugin({ analyzerMode: 'server', openAnalyzer: true }));
-    }
-
-    return config;
-  },
-
   skipTrailingSlashRedirect: true,
 
   async headers() {
-    return [
+    const rules = [
       // Admin pages — no indexing
       {
         source: '/admin/:path*',
         headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
-      },
-      // Next.js static assets — immutable long-lived cache
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
       },
       // Images — long cache
       {
@@ -125,7 +55,7 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
         ],
       },
-      // All pages — security headers (exclude static assets)
+      // Security headers for all pages
       {
         source: '/((?!_next/static|_next/image|favicon.ico).*)',
         headers: [
@@ -136,6 +66,18 @@ const nextConfig = {
         ],
       },
     ];
+
+    // Only add static asset cache header in production — dev handles this internally
+    if (!isDev) {
+      rules.splice(1, 0, {
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      });
+    }
+
+    return rules;
   },
 
   async redirects() {
