@@ -127,7 +127,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
 
 const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { text = '', level = 2, alignment = 'left', color } = content;
-  const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+  const Tag = `h${level}` as keyof React.JSX.IntrinsicElements;
 
   const baseClasses = [
     level === 1 ? 'text-4xl font-bold' : '',
