@@ -1,7 +1,9 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
 import DynamicPageWrapper from './DynamicPageWrapper';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // Known static route prefixes — Next.js has dedicated pages for these.
 // If the catch-all somehow receives them, return 404 so Next.js falls back correctly.
@@ -27,12 +29,12 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<{
     const [first] = slugArray;
     if (!first) return null;
 
-    const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`), { next: { revalidate: 300 } });
+    const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`), { cache: 'no-store' });
     if (subRes.ok) {
       const subData = await subRes.json();
       const subcategoryId = subData?.data?.id;
       if (subcategoryId) {
-        const contentRes = await fetch(buildApiUrl(`/page-content/${subcategoryId}`), { next: { revalidate: 300 } });
+        const contentRes = await fetch(buildApiUrl(`/page-content/${subcategoryId}`), { cache: 'no-store' });
         if (contentRes.ok) {
           const content = await contentRes.json();
           return {
@@ -46,12 +48,12 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<{
       }
     }
 
-    const catRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`), { next: { revalidate: 300 } });
+    const catRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`), { cache: 'no-store' });
     if (catRes.ok) {
       const catData = await catRes.json();
       const categoryId = catData?.data?.id;
       if (categoryId) {
-        const contentRes = await fetch(buildApiUrl(`/category-page-content/${categoryId}`), { next: { revalidate: 300 } });
+        const contentRes = await fetch(buildApiUrl(`/category-page-content/${categoryId}`), { cache: 'no-store' });
         if (contentRes.ok) {
           const content = await contentRes.json();
           return {
@@ -108,10 +110,9 @@ export default async function DynamicPage(
   const { slug } = await params;
   const slugArray = Array.isArray(slug) ? slug : [slug];
 
-  // If this is a known static route prefix, it shouldn't be here — return 404
-  // so Next.js routing falls back to the correct dedicated page
+  // If this is a known static route prefix, it shouldn't be here — render nothing
   if (slugArray.length > 0 && STATIC_PREFIXES.has(slugArray[0].toLowerCase())) {
-    notFound();
+    return null;
   }
 
   return (
