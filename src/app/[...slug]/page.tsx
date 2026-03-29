@@ -110,6 +110,11 @@ export default async function DynamicPage(
   const { slug } = await params;
   const slugArray = Array.isArray(slug) ? slug : [slug];
 
+  // Prevent catch-all from handling system paths
+  if (slugArray.length > 0 && slugArray[0].startsWith('_')) {
+    return null;
+  }
+
   // If this is a known static route prefix, it shouldn't be here — render nothing
   if (slugArray.length > 0 && STATIC_PREFIXES.has(slugArray[0].toLowerCase())) {
     return null;

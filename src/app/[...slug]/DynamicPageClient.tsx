@@ -168,6 +168,11 @@ const STATIC_ROUTE_PREFIXES = new Set([
 ]);
 
 export default function DynamicPageClient({ slugArray }: { slugArray: string[] }) {
+  // Prevent handling system paths
+  if (slugArray.length > 0 && slugArray[0].startsWith('_')) {
+    return null;
+  }
+
   // If the first segment is a known static route, don't handle it here
   if (slugArray.length > 0 && STATIC_ROUTE_PREFIXES.has(slugArray[0].toLowerCase())) {
     return null;
@@ -185,5 +190,13 @@ export default function DynamicPageClient({ slugArray }: { slugArray: string[] }
     return <SlugResolver slug={slugArray[0]} />;
   }
 
-  return null;
+  // Fallback for empty or invalid slugs
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-800">Page Not Found</h1>
+        <p className="text-gray-600 mt-2">The page you're looking for doesn't exist.</p>
+      </div>
+    </div>
+  );
 }
