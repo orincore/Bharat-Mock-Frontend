@@ -4,7 +4,6 @@ import "../index.css";
 import { Providers } from "./providers";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { ServiceWorkerRegistration } from "@/components/common/ServiceWorkerRegistration";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // Only load the two fonts actually used in tailwind.config.ts
 const inter = Inter({
@@ -79,7 +78,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <ScrollToTopButton />
           <ServiceWorkerRegistration />
-          <SpeedInsights />
         </Providers>
       </body>
     </html>
