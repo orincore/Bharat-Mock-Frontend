@@ -64,7 +64,7 @@ function BlockedAccountGate({ children }: { children: React.ReactNode }) {
 }
 
 function InnerProviders({ children }: { children: React.ReactNode }) {
-  const { profile, isLoading: initLoading, refresh: refreshAppData } = useAppData();
+  const { refresh: refreshAppData } = useAppData();
   const pathname = usePathname();
   const hideChrome = useMemo(() => {
     if (!pathname) return false;
@@ -72,7 +72,7 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <AuthProvider initProfile={profile} initProfileLoading={initLoading} onAuthChange={refreshAppData}>
+    <AuthProvider onAuthChange={refreshAppData}>
       <ExamProvider>
         <TooltipProvider>
           <Toaster />

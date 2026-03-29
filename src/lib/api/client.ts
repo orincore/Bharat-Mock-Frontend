@@ -97,12 +97,17 @@ class ApiClient {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
+    // Dispatch event so AuthContext can react and clear user state
+    window.dispatchEvent(new CustomEvent('auth:session-expired'));
   }
 
   private getCacheKey(url: string, options: RequestOptions): string {
     const method = options.method || 'GET';
     const body = options.body ? JSON.stringify(options.body) : '';
-    return `${method}:${url}:${body}`;
+    // Include auth state in cache key so authenticated and unauthenticated
+    // responses for the same endpoint are cached separately
+    const authSuffix = options.requiresAuth ? ':auth' : ':noauth';
+    return `${method}:${url}:${body}${authSuffix}`;
   }
 
   private getCachedResponse(cacheKey: string): unknown | null {
@@ -124,8 +129,13 @@ class ApiClient {
     // Write to both layers
     this.requestCache.set(cacheKey, entry);
     // Only persist non-auth, non-sensitive data to localStorage
-    // Skip user-specific endpoints
-    if (!cacheKey.includes('/auth') && !cacheKey.includes('/profile') && !cacheKey.includes('/results')) {
+    // Skip user-specific endpoints — /init contains profile data
+    if (
+      !cacheKey.includes('/auth') &&
+      !cacheKey.includes('/profile') &&
+      !cacheKey.includes('/results') &&
+      !cacheKey.includes('/init')
+    ) {
       lsCache.set(cacheKey, data, ttl);
     }
   }
@@ -271,7 +281,7 @@ class ApiClient {
     const method = restOptions.method || 'GET';
 
     if (method === 'GET') {
-      const cacheKey = this.getCacheKey(url, restOptions);
+      const cacheKey = this.getCacheKey(url, { ...restOptions, requiresAuth });
 
       const cachedResponse = this.getCachedResponse(cacheKey);
       if (cachedResponse) return cachedResponse as T;
@@ -341,6 +351,18 @@ class ApiClient {
   clearAuthCache(): void {
     if (typeof window === 'undefined') return;
     try {
+      // Clear in-memory cache for all user-sensitive endpoints
+      for (const key of this.requestCache.keys()) {
+        if (
+          key.includes('/init') ||
+          key.includes('/auth') ||
+          key.includes('/profile') ||
+          key.includes('/subscription')
+        ) {
+          this.requestCache.delete(key);
+        }
+      }
+      // Clear localStorage cache for the same
       const index: string[] = JSON.parse(localStorage.getItem(LS_CACHE_INDEX) || '[]');
       const toRemove = index.filter(key =>
         key.includes('/init') ||
@@ -348,10 +370,7 @@ class ApiClient {
         key.includes('/profile') ||
         key.includes('/subscription')
       );
-      toRemove.forEach(key => {
-        localStorage.removeItem(LS_CACHE_PREFIX + key);
-        this.requestCache.delete(key);
-      });
+      toRemove.forEach(key => localStorage.removeItem(LS_CACHE_PREFIX + key));
       const remaining = index.filter(k => !toRemove.includes(k));
       localStorage.setItem(LS_CACHE_INDEX, JSON.stringify(remaining));
     } catch { /* ignore */ }

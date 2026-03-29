@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Education, User } from '@/types';
 import { authService } from '@/lib/api/authService';
 import { apiClient } from '@/lib/api/client';
@@ -23,12 +23,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const getStoredUser = (): User | null => {
   if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem('auth_user');
-  if (!raw) return null;
   try {
-    return JSON.parse(raw);
-  } catch (error) {
-    console.warn('Failed to parse cached auth user:', error);
+    const raw = localStorage.getItem('auth_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
     localStorage.removeItem('auth_user');
     return null;
   }
@@ -45,155 +43,128 @@ const persistUser = (userData: User | null) => {
 
 const normalizeUser = (userData: any): User | null => {
   if (!userData) return null;
-
-  const {
-    user_education,
-    user_preferences,
-    education,
-    preferences,
-    ...rest
-  } = userData;
-
-  const normalizedEducation: Education | undefined = (() => {
-    if (education) return education as Education;
-    if (Array.isArray(user_education)) return user_education[0] as Education | undefined;
-    return user_education as Education | undefined;
-  })();
-
-  const normalizedPreferences = (() => {
-    if (preferences) return preferences;
-    if (Array.isArray(user_preferences)) return user_preferences[0];
-    return user_preferences;
-  })();
-
+  const { user_education, user_preferences, education, preferences, ...rest } = userData;
   return {
     ...rest,
-    education: normalizedEducation,
-    preferences: normalizedPreferences,
+    education: education ?? (Array.isArray(user_education) ? user_education[0] : user_education),
+    preferences: preferences ?? (Array.isArray(user_preferences) ? user_preferences[0] : user_preferences),
   } as User;
 };
 
 interface AuthProviderProps {
   children: ReactNode;
-  initProfile?: any | null;
-  initProfileLoading?: boolean;
   onAuthChange?: () => void;
 }
 
-export function AuthProvider({ children, initProfile, initProfileLoading, onAuthChange }: AuthProviderProps) {
-  const initialUser = typeof window !== 'undefined' ? getStoredUser() : null;
-  const [user, setUser] = useState<User | null>(initialUser);
-  const [isLoading, setIsLoading] = useState(!initialUser);
-  const hydratedFromInit = useRef(false);
+export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
+  // Seed from localStorage immediately to avoid flash of logged-out state
+  const [user, setUser] = useState<User | null>(() =>
+    typeof window !== 'undefined' ? getStoredUser() : null
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const initDone = useRef(false);
 
-  // Sync auth state across tabs via storage events
+  // On mount: verify token is still valid by fetching fresh profile
   useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'auth_token') {
-        if (!e.newValue) {
-          // Token removed in another tab — log out this tab
-          setUser(null);
-          persistUser(null);
-          hydratedFromInit.current = false;
-        } else if (e.newValue && !e.oldValue) {
-          // Token added in another tab — load the stored user
-          const stored = getStoredUser();
-          if (stored) {
-            setUser(stored);
-          } else {
-            // No cached user yet, fetch profile
-            authService.getProfile()
-              .then(userData => {
-                const normalized = normalizeUser(userData);
-                setUser(normalized);
-                persistUser(normalized);
-              })
-              .catch(() => {});
-          }
-        }
-      }
-      if (e.key === 'auth_user') {
-        if (!e.newValue) {
-          setUser(null);
-        } else {
-          try {
-            const parsed = JSON.parse(e.newValue);
-            setUser(parsed);
-          } catch {}
-        }
-      }
-    };
+    if (initDone.current) return;
+    initDone.current = true;
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
-  useEffect(() => {
-    if (initProfileLoading) return;
-
-    if (initProfile && !hydratedFromInit.current) {
-      hydratedFromInit.current = true;
-      const normalized = normalizeUser(initProfile);
-      setUser(normalized);
-      persistUser(normalized);
+    if (!token) {
+      // No token — ensure state is clean
+      setUser(null);
+      persistUser(null);
       setIsLoading(false);
       return;
     }
 
-    if (hydratedFromInit.current) {
-      setIsLoading(false);
-      return;
-    }
-
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-          setUser(null);
-          persistUser(null);
-          setIsLoading(false);
-          return;
-        }
-
-        setIsLoading(true);
-        const userData = await authService.getProfile();
+    // Token exists — fetch fresh profile to validate it
+    authService.getProfile()
+      .then(userData => {
         const normalized = normalizeUser(userData);
         setUser(normalized);
         persistUser(normalized);
-      } catch (error: any) {
-        console.error('Auth check failed:', error);
-        // 401/403 means token is invalid — clear everything
-        const status = error?.message || '';
-        if (status.includes('401') || status.includes('403')) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('refresh_token');
-          persistUser(null);
+      })
+      .catch((err: any) => {
+        const msg = err?.message || '';
+        if (msg.includes('401') || msg.includes('403')) {
+          // Token invalid/expired — clear everything and show logged-out state
+          authService.logout();
           apiClient.clearAuthCache();
+          setUser(null);
         }
-        setUser(null);
-      } finally {
-        setIsLoading(false);
+        // For network errors, keep the cached user so the app still works offline
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  // Force logout when apiClient clears tokens (refresh token expired)
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      persistUser(null);
+      apiClient.clearAuthCache();
+      setUser(null);
+      setIsLoading(false);
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
+  }, []);
+
+  // Cross-tab sync via storage events
+  useEffect(() => {
+    const syncFromStorage = () => {
+      const token = localStorage.getItem('auth_token');
+      const storedUser = getStoredUser();
+
+      if (!token) {
+        // No token in storage — ensure this tab is logged out
+        if (user) {
+          setUser(null);
+        }
+        return;
+      }
+
+      if (storedUser) {
+        // Token + user in storage — sync to this tab
+        setUser(storedUser);
       }
     };
 
-    checkAuth();
-  }, [initProfile, initProfileLoading]);
+    const handleStorage = (e: StorageEvent) => {
+      // Any auth-related key change — re-sync from storage
+      if (e.key === 'auth_token' || e.key === 'auth_user') {
+        syncFromStorage();
+      }
+    };
+
+    // Re-check auth whenever this tab becomes visible (user switches back)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncFromStorage();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
       const response = await authService.login(email, password);
       const normalized = normalizeUser(response.data.user);
-      persistUser(null);
-      hydratedFromInit.current = false;
+      apiClient.clearAuthCache();
       setUser(normalized);
       persistUser(normalized);
-      setIsLoading(false);
-      // Defer app-wide refresh so auth state settles first
       setTimeout(() => onAuthChange?.(), 0);
-    } catch (error) {
+    } finally {
       setIsLoading(false);
-      throw error;
     }
   };
 
@@ -204,20 +175,51 @@ export function AuthProvider({ children, initProfile, initProfileLoading, onAuth
       const normalized = normalizeUser(response.data.user);
       setUser(normalized);
       persistUser(normalized);
-      setIsLoading(false);
       setTimeout(() => onAuthChange?.(), 0);
-    } catch (error) {
+    } finally {
       setIsLoading(false);
-      throw error;
     }
   };
 
   const logout = async () => {
     authService.logout();
+    apiClient.clearAuthCache();
     persistUser(null);
-    hydratedFromInit.current = false;
     setUser(null);
     setIsLoading(false);
+  };
+
+  const refreshProfile = async () => {
+    try {
+      const profile = await authService.getProfile();
+      const normalized = normalizeUser(profile);
+      setUser(normalized);
+      persistUser(normalized);
+    } catch (err: any) {
+      const msg = err?.message || '';
+      console.error('Failed to refresh profile:', err);
+      // Token expired — force logout so user isn't stuck in a broken auth state
+      if (msg.includes('401') || msg.includes('403')) {
+        authService.logout();
+        apiClient.clearAuthCache();
+        setUser(null);
+      }
+    }
+  };
+
+  const updateProfile = async (data: Partial<User>) => {
+    setIsLoading(true);
+    try {
+      await authService.updateProfile(data);
+      await refreshProfile();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setUserContext = (userData: User | null) => {
+    setUser(userData);
+    persistUser(userData);
   };
 
   const requestPasswordReset = async (email: string) => {
@@ -228,50 +230,20 @@ export function AuthProvider({ children, initProfile, initProfileLoading, onAuth
     await authService.resetPassword(token, newPassword);
   };
 
-  const refreshProfile = async () => {
-    try {
-      const profile = await authService.getProfile();
-      const normalized = normalizeUser(profile);
-      setUser(normalized);
-      persistUser(normalized);
-    } catch (error) {
-      console.error('Failed to refresh profile:', error);
-    }
-  };
-
-  const setUserContext = (userData: User | null) => {
-    setUser(userData);
-    persistUser(userData);
-  };
-
-  const updateProfile = async (data: Partial<User>) => {
-    setIsLoading(true);
-    try {
-      await authService.updateProfile(data);
-      await refreshProfile();
-    } catch (error) {
-      setIsLoading(false);
-      throw error;
-    }
-    setIsLoading(false);
-  };
-
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        register,
-        logout,
-        requestPasswordReset,
-        completePasswordReset,
-        updateProfile,
-        refreshProfile,
-        setUserContext
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      isAuthenticated: !!user,
+      login,
+      register,
+      logout,
+      requestPasswordReset,
+      completePasswordReset,
+      updateProfile,
+      refreshProfile,
+      setUserContext,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -279,8 +251,6 @@ export function AuthProvider({ children, initProfile, initProfileLoading, onAuth
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
