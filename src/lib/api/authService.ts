@@ -83,5 +83,7 @@ export const authService = {
   logout(): void {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('auth_user');
+    apiClient.clearAuthCache();
   }
 };

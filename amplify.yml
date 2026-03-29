@@ -16,9 +16,7 @@ frontend:
         - echo "Generated .env file:"
         - cat .env
         - npm install --legacy-peer-deps
-        # Ensure sharp is available for Next.js image optimization on Amplify
         - npm install sharp
-        # Compress public assets before build
     build:
       commands:
         - npm run build

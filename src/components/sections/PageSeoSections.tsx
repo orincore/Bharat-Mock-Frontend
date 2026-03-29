@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { TestimonialsSection } from '@/components/sections/TestimonialsSection';
 
@@ -34,6 +34,7 @@ interface PageSeoSectionsProps {
   testimonialsDescription?: string;
   whyTitle?: string;
   whySubtitle?: string;
+  seoContent?: React.ReactNode;
 }
 
 export function PageSeoSections({
@@ -42,6 +43,7 @@ export function PageSeoSections({
   testimonialsDescription = "Real feedback from toppers and serious contenders—curated from app reviews and our student community.",
   whyTitle = "Why take Bharat Mock Test Series?",
   whySubtitle = "Whether you attempt a live mock or a rapid-fire quiz, the Bharat Mock ecosystem goes beyond scores. Each pillar below highlights the key advantages that help you prepare smarter.",
+  seoContent,
 }: PageSeoSectionsProps) {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
@@ -111,6 +113,9 @@ export function PageSeoSections({
 
       {/* Testimonials */}
       <TestimonialsSection className="mt-10" description={testimonialsDescription} />
+
+      {/* SEO Content — rendered just before FAQ */}
+      {seoContent && <div className="mt-10">{seoContent}</div>}
 
       {/* FAQ */}
       <section className="py-10">

@@ -336,7 +336,7 @@ export function AuthReminderDialog() {
     <div className="px-5 py-5 space-y-4">
       <div className="-mx-5 -mt-5">
         <Image
-          src="/assets/subimg.jpg"
+          src="/assets/login_banner_image.jpg"
           alt="Login reminder"
           width={800}
           height={534}

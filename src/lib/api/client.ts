@@ -328,6 +328,25 @@ class ApiClient {
     if (!response.ok) throw new Error(data.message || 'API request failed');
     return data;
   }
+
+  clearAuthCache(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const index: string[] = JSON.parse(localStorage.getItem(LS_CACHE_INDEX) || '[]');
+      const toRemove = index.filter(key =>
+        key.includes('/init') ||
+        key.includes('/auth') ||
+        key.includes('/profile') ||
+        key.includes('/subscription')
+      );
+      toRemove.forEach(key => {
+        localStorage.removeItem(LS_CACHE_PREFIX + key);
+        this.requestCache.delete(key);
+      });
+      const remaining = index.filter(k => !toRemove.includes(k));
+      localStorage.setItem(LS_CACHE_INDEX, JSON.stringify(remaining));
+    } catch { /* ignore */ }
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

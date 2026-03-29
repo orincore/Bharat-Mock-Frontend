@@ -76,9 +76,10 @@ interface AuthProviderProps {
   children: ReactNode;
   initProfile?: any | null;
   initProfileLoading?: boolean;
+  onAuthChange?: () => void;
 }
 
-export function AuthProvider({ children, initProfile, initProfileLoading }: AuthProviderProps) {
+export function AuthProvider({ children, initProfile, initProfileLoading, onAuthChange }: AuthProviderProps) {
   const initialUser = typeof window !== 'undefined' ? getStoredUser() : null;
   const [user, setUser] = useState<User | null>(initialUser);
   const [isLoading, setIsLoading] = useState(!initialUser);
@@ -137,13 +138,17 @@ export function AuthProvider({ children, initProfile, initProfileLoading }: Auth
     try {
       const response = await authService.login(email, password);
       const normalized = normalizeUser(response.data.user);
+      persistUser(null);
+      hydratedFromInit.current = false;
       setUser(normalized);
       persistUser(normalized);
+      setIsLoading(false);
+      // Defer app-wide refresh so auth state settles first
+      setTimeout(() => onAuthChange?.(), 0);
     } catch (error) {
       setIsLoading(false);
       throw error;
     }
-    setIsLoading(false);
   };
 
   const register = async (email: string, password: string, name: string) => {
@@ -153,17 +158,18 @@ export function AuthProvider({ children, initProfile, initProfileLoading }: Auth
       const normalized = normalizeUser(response.data.user);
       setUser(normalized);
       persistUser(normalized);
+      setIsLoading(false);
+      setTimeout(() => onAuthChange?.(), 0);
     } catch (error) {
       setIsLoading(false);
       throw error;
     }
-    setIsLoading(false);
   };
 
   const logout = async () => {
-    setIsLoading(true);
     authService.logout();
     persistUser(null);
+    hydratedFromInit.current = false;
     setUser(null);
     setIsLoading(false);
   };

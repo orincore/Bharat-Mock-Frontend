@@ -372,7 +372,10 @@ export function Navbar() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={logout}
+                      onClick={async () => {
+                        setLogoutConfirmOpen(false);
+                        await logout();
+                      }}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       Log out
