@@ -42,22 +42,25 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
 
   const tocItems = useMemo(() => {
     const items: { id: string; label: string; level: number }[] = [];
-    const sectionArray = Array.isArray(sections) ? sections : [];
-    sectionArray.forEach((section, si) => {
-      if (section.title) {
+    if (!Array.isArray(sections)) return items;
+    
+    sections.forEach((section, si) => {
+      if (section?.title) {
         items.push({ id: toAnchorId(`section-${si}`), label: section.title, level: 2 });
       }
-      section.blocks.forEach((block, bi) => {
-        let label: string | null = null;
-        let level = 2;
-        if (block.block_type === 'heading') {
-          label = (block.content?.text || '').replace(/<[^>]+>/g, '').trim() || null;
-          level = parseInt(block.content?.level || '2');
-        } else if (block.block_type === 'rich_text' || block.block_type === 'html') {
-          label = firstHeadingText(block.content?.html || '');
-        }
-        if (label) items.push({ id: toAnchorId(`block-${si}-${bi}`), label, level });
-      });
+      if (Array.isArray(section?.blocks)) {
+        section.blocks.forEach((block, bi) => {
+          let label: string | null = null;
+          let level = 2;
+          if (block.block_type === 'heading') {
+            label = (block.content?.text || '').replace(/<[^>]+>/g, '').trim() || null;
+            level = parseInt(block.content?.level || '2');
+          } else if (block.block_type === 'rich_text' || block.block_type === 'html') {
+            label = firstHeadingText(block.content?.html || '');
+          }
+          if (label) items.push({ id: toAnchorId(`block-${si}-${bi}`), label, level });
+        });
+      }
     });
     return items;
   }, [sections]);

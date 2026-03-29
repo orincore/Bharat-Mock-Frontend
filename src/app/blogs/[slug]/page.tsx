@@ -21,8 +21,8 @@ async function fetchBlogContent(id: string) {
     const res = await fetch(`${apiBase}/blogs/${id}/content`, { cache: 'no-store' });
     if (!res.ok) return [];
     const json = await res.json();
-    const data = json?.data || json || [];
-    return Array.isArray(data) ? data : [];
+    const sections = json?.sections || json?.data || [];
+    return Array.isArray(sections) ? sections : [];
   } catch { return []; }
 }
 
