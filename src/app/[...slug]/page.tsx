@@ -12,7 +12,7 @@ const STATIC_PREFIXES = new Set([
   'previous-year-papers', 'current-affairs', 'subscriptions', 'profile',
   'login', 'register', 'auth', 'admin', 'results', 'test-series',
   'courses', 'colleges', 'about', 'contact', 'privacy', 'privacy-policy',
-  'refund-policy', 'disclaimer', 'terms', 'onboarding', 'ssc',
+  'refund-policy', 'disclaimer', 'terms', 'onboarding',
 ]);
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');

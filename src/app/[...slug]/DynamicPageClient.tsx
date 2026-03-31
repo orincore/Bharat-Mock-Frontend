@@ -164,7 +164,7 @@ const STATIC_ROUTE_PREFIXES = new Set([
   'previous-year-papers', 'current-affairs', 'subscriptions', 'profile',
   'login', 'register', 'auth', 'admin', 'results', 'test-series',
   'courses', 'colleges', 'about', 'contact', 'privacy', 'privacy-policy',
-  'refund-policy', 'disclaimer', 'terms', 'onboarding', 'ssc',
+  'refund-policy', 'disclaimer', 'terms', 'onboarding',
 ]);
 
 export default function DynamicPageClient({ slugArray }: { slugArray: string[] }) {
