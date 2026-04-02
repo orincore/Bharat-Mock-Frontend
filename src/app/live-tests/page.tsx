@@ -36,6 +36,74 @@ const STATUS_TABS: { label: string; value: 'upcoming' | 'ongoing' | 'completed';
   { label: 'Recently Completed', value: 'completed', helper: 'Analyze previous live tests' }
 ];
 
+interface FiltersContentProps {
+  categories: { id: string; name: string }[];
+  selectedCategoryId: string;
+  setSelectedCategoryId: (id: string) => void;
+  selectedStatus: 'upcoming' | 'ongoing' | 'completed';
+  setSelectedStatus: (s: 'upcoming' | 'ongoing' | 'completed') => void;
+  setMobileFiltersOpen: (open: boolean) => void;
+  closeOnSelect?: boolean;
+}
+
+function FiltersContent({
+  categories,
+  selectedCategoryId,
+  setSelectedCategoryId,
+  selectedStatus,
+  setSelectedStatus,
+  setMobileFiltersOpen,
+  closeOnSelect = false,
+}: FiltersContentProps) {
+  return (
+    <>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm uppercase tracking-wide text-primary font-semibold mb-1 flex items-center gap-2">
+            <Filter className="h-4 w-4" /> Schedule Filters
+          </p>
+          <h2 className="font-display text-3xl font-bold text-foreground">Curate your live test calendar</h2>
+        </div>
+        <div className="flex gap-3">
+          <select
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
+            className="px-4 py-2 rounded-lg border border-border bg-background text-sm"
+          >
+            <option value="">All Categories</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <Button variant="ghost" onClick={() => setSelectedCategoryId('')} disabled={!selectedCategoryId}>
+            Reset
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => {
+              setSelectedStatus(tab.value);
+              if (closeOnSelect) setMobileFiltersOpen(false);
+            }}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              selectedStatus === tab.value
+                ? 'bg-secondary text-secondary-foreground shadow'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
 const SCHEDULE_FALLBACK = {
   full: 'Schedule TBA',
   date: 'Date TBA',
@@ -324,55 +392,6 @@ export default function LiveTestsPage() {
     setSearch(heroSearch);
   };
 
-  const FiltersContent = ({ closeOnSelect = false }: { closeOnSelect?: boolean }) => (
-    <>
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-primary font-semibold mb-1 flex items-center gap-2">
-            <Filter className="h-4 w-4" /> Schedule Filters
-          </p>
-          <h2 className="font-display text-3xl font-bold text-foreground">Curate your live test calendar</h2>
-        </div>
-        <div className="flex gap-3">
-          <select
-            value={selectedCategoryId}
-            onChange={(e) => setSelectedCategoryId(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-border bg-background text-sm"
-          >
-            <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          <Button variant="ghost" onClick={() => setSelectedCategoryId('')} disabled={!selectedCategoryId}>
-            Reset
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => {
-              setSelectedStatus(tab.value);
-              if (closeOnSelect) setMobileFiltersOpen(false);
-            }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selectedStatus === tab.value
-                ? 'bg-secondary text-secondary-foreground shadow'
-                : 'bg-muted text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Hero */}
@@ -488,7 +507,14 @@ export default function LiveTestsPage() {
 
         {/* Filters */}
         <div className="hidden md:block bg-card rounded-2xl border border-border p-6 space-y-4">
-          <FiltersContent />
+          <FiltersContent
+            categories={categories}
+            selectedCategoryId={selectedCategoryId}
+            setSelectedCategoryId={setSelectedCategoryId}
+            selectedStatus={selectedStatus}
+            setSelectedStatus={setSelectedStatus}
+            setMobileFiltersOpen={setMobileFiltersOpen}
+          />
         </div>
 
         {error && (
@@ -738,7 +764,15 @@ export default function LiveTestsPage() {
             <DialogTitle>Filter live tests</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <FiltersContent closeOnSelect />
+            <FiltersContent
+              categories={categories}
+              selectedCategoryId={selectedCategoryId}
+              setSelectedCategoryId={setSelectedCategoryId}
+              selectedStatus={selectedStatus}
+              setSelectedStatus={setSelectedStatus}
+              setMobileFiltersOpen={setMobileFiltersOpen}
+              closeOnSelect
+            />
           </div>
           <div className="mt-4 flex justify-end gap-3">
             <Button variant="ghost" onClick={() => {
