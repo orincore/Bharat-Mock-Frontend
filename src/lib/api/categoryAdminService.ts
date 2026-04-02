@@ -13,7 +13,12 @@ const authFetch = async (path: string, options: RequestInit = {}) => {
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers,
+    cache: 'no-store',
+    headers: {
+      ...headers,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache'
+    },
   });
 
   const data = await response.json();

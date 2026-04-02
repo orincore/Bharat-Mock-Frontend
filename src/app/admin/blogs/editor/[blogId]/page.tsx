@@ -83,6 +83,8 @@ export default function AdminBlogEditorPage() {
 
   const [formState, setFormState] = useState<BlogFormState>(DEFAULT_FORM_STATE);
   const [sections, setSections] = useState<BlogSection[]>([]);
+  const latestSectionsRef = useRef<BlogSection[]>([]);
+  latestSectionsRef.current = sections;
   const [loading, setLoading] = useState(true);
   const [sectionsLoading, setSectionsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -260,6 +262,10 @@ export default function AdminBlogEditorPage() {
   });
 
   const handleSave = async (nextStatus?: BlogStatus) => {
+    // Wait briefly to allow any pending onBlur events (from content-editable elements) 
+    // to propagate their state updates to the parent component before saving.
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     try {
       setSaving(true);
       if (!formState.title.trim()) {
@@ -295,7 +301,8 @@ export default function AdminBlogEditorPage() {
 
       if (targetId) {
         setSectionsSaving(true);
-        await blogAdminService.bulkSyncBlogContent(targetId, sections);
+        const sectionsToSave = latestSectionsRef.current;
+        await blogAdminService.bulkSyncBlogContent(targetId, sectionsToSave);
         toast({ title: "Content saved" });
       }
     } catch (error: any) {
@@ -352,11 +359,6 @@ export default function AdminBlogEditorPage() {
       }
     };
   }, [effectiveBlogId, toast]);
-
-  const autosaveKey = useMemo(() => {
-    if (effectiveBlogId) return `blog:${effectiveBlogId}`;
-    return "blog:draft";
-  }, [effectiveBlogId]);
 
   if (loading) {
     return (
@@ -712,7 +714,7 @@ export default function AdminBlogEditorPage() {
                 void updated;
                 handleSave(formState.status);
               }}
-              autosaveKey={autosaveKey}
+
               mediaUploadConfig={mediaUploadConfig}
               onSectionsChange={(next) => setSections(next as BlogSection[])}
             />

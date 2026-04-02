@@ -15,7 +15,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
-import { BlockEditor, clearBlockEditorAutosave } from '@/components/PageEditor/BlockEditor';
+import { BlockEditor } from '@/components/PageEditor/BlockEditor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { subcategoryAdminService } from '@/lib/api/subcategoryAdminService';
@@ -132,6 +132,8 @@ export default function AdminSubcategoryEditorPage() {
 
   const [subcategoryInfo, setSubcategoryInfo] = useState<SubcategoryInfo | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
+  const latestSectionsRef = useRef<Section[]>([]);
+  latestSectionsRef.current = sections;
   const [originalSections, setOriginalSections] = useState<Section[]>([]);
   const [seoData, setSeoData] = useState<SEOData>({});
   const [loading, setLoading] = useState(true);
@@ -381,8 +383,6 @@ export default function AdminSubcategoryEditorPage() {
     () => [...sidebarSectionsForActiveTab, ...sectionsForActiveTab],
     [sidebarSectionsForActiveTab, sectionsForActiveTab]
   );
-
-  const autosaveKey = useMemo(() => `subcategory:${subcategoryId}:${activeTabId}`, [subcategoryId, activeTabId]);
 
   const tabOptions = useMemo<TabOption[]>(() => {
     if (tabConfig.length > 0) {
@@ -674,7 +674,12 @@ export default function AdminSubcategoryEditorPage() {
     }
   };
 
-  const handleSave = async (updatedSections: Section[]) => {
+  const handleSave = async (sectionsFromClosure: Section[]) => {
+    // Wait briefly to allow any pending onBlur events (from content-editable elements) 
+    // to propagate their state updates to the parent component before saving.
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const updatedSections = latestSectionsRef.current;
+
     try {
       setSaving(true);
       const token = getAuthToken();
@@ -739,7 +744,7 @@ export default function AdminSubcategoryEditorPage() {
         description: 'Page content saved successfully'
       });
 
-      clearBlockEditorAutosave(subcategoryId);
+
 
       await loadPageContent();
       setOriginalSections(updatedSections);
@@ -1234,7 +1239,6 @@ export default function AdminSubcategoryEditorPage() {
         key={activeTabId}
         sections={editorSections}
         onSave={() => handleSave(sections)}
-        autosaveKey={autosaveKey}
         onSectionsChange={(next) => {
           // Split back into sidebar and main sections
           const nextSidebar = (next as Section[]).filter(s => s.is_sidebar);

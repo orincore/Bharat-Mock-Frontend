@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -11,7 +11,7 @@ import {
   Settings,
   Loader2
 } from 'lucide-react';
-import { BlockEditor, clearBlockEditorAutosave } from '@/components/PageEditor/BlockEditor';
+import { BlockEditor } from '@/components/PageEditor/BlockEditor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -101,6 +101,8 @@ export default function AdminCategoryEditorPage() {
 
   const [categoryInfo, setCategoryInfo] = useState<CategoryInfo | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
+  const latestSectionsRef = useRef<Section[]>([]);
+  latestSectionsRef.current = sections;
   const [originalSections, setOriginalSections] = useState<Section[]>([]);
   const [seoData, setSeoData] = useState<SEOData>({});
   const [loading, setLoading] = useState(true);
@@ -115,7 +117,15 @@ export default function AdminCategoryEditorPage() {
       const token = getAuthToken();
       const endpoint = buildApiUrl(`/category-page-content/${categoryId}/custom-tabs`);
       const res = await fetch(endpoint, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        cache: 'no-store',
+        headers: token ? { 
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        } : {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
       if (!res.ok) throw new Error('Failed to fetch custom tabs');
       const data = await res.json();
@@ -272,8 +282,6 @@ export default function AdminCategoryEditorPage() {
       .sort((a, b) => a.display_order - b.display_order)
   ), [sections, activeTabId]);
 
-  const autosaveKey = useMemo(() => `category:${categoryId}:${activeTabId}`, [categoryId, activeTabId]);
-
   const tabOptions = useMemo(() => [
     { id: 'overview', title: 'Overview' },
     ...customTabs
@@ -313,7 +321,13 @@ export default function AdminCategoryEditorPage() {
     try {
       const endpoint = buildApiUrl(`/taxonomy/category-id/${categoryId}`);
       debugLog('Fetching category info', endpoint);
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch category info');
@@ -336,7 +350,15 @@ export default function AdminCategoryEditorPage() {
       const endpoint = buildApiUrl(`/category-page-content/${categoryId}`);
       debugLog('Fetching page content', endpoint);
       const response = await fetch(endpoint, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        cache: 'no-store',
+        headers: token ? { 
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        } : {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
 
       if (!response.ok) {
@@ -357,7 +379,12 @@ export default function AdminCategoryEditorPage() {
     }
   };
 
-  const handleSave = async (updatedSections: Section[]) => {
+  const handleSave = async (sectionsFromClosure: Section[]) => {
+    // Wait briefly to allow any pending onBlur events (from content-editable elements) 
+    // to propagate their state updates to the parent component before saving.
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const updatedSections = latestSectionsRef.current;
+
     try {
       setSaving(true);
       const token = getAuthToken();
@@ -402,7 +429,7 @@ export default function AdminCategoryEditorPage() {
 
       toast({ title: 'Success', description: 'Page content saved successfully' });
 
-      clearBlockEditorAutosave(categoryId);
+
 
       await loadPageContent();
       setOriginalSections(updatedSections);
@@ -627,7 +654,6 @@ export default function AdminCategoryEditorPage() {
         key={activeTabId}
         sections={sectionsForActiveTab}
         onSave={() => handleSave(sections)}
-        autosaveKey={autosaveKey}
         onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
         tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
         mediaUploadConfig={mediaUploadConfig}

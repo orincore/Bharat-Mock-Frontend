@@ -499,23 +499,19 @@ const snapshotSections = (source: Section[]): Section[] =>
     }))
   }));
 
-const AUTOSAVE_PREFIX = 'block-editor-autosave:';
-
-const buildAutosaveStorageKey = (autosaveKey: string) => `${AUTOSAVE_PREFIX}${autosaveKey}`;
-
-export const clearBlockEditorAutosave = (autosaveKey?: string) => {
-  if (!autosaveKey || typeof window === 'undefined') return;
+export const clearBlockEditorAutosave = (_key?: string) => {
+  // Autosave removed — clear any legacy entries that may still exist
+  if (typeof window === 'undefined') return;
   try {
-    localStorage.removeItem(buildAutosaveStorageKey(autosaveKey));
-  } catch (error) {
-    console.warn('Failed to clear autosave draft', error);
-  }
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('block-editor-autosave:'))
+      .forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
 };
 
 interface BlockEditorProps {
   sections: Section[];
   onSave: (sections: Section[]) => void;
-  autosaveKey?: string;
   onSectionsChange?: (sections: Section[]) => void;
   tabLabel?: string;
   mediaUploadConfig?: BlockEditorMediaUploadConfig;
@@ -1438,7 +1434,6 @@ const INLINE_EDITABLE_BLOCKS = new Set([
 export const BlockEditor: React.FC<BlockEditorProps> = ({
   sections: initialSections,
   onSave,
-  autosaveKey,
   onSectionsChange,
   tabLabel,
   mediaUploadConfig,
@@ -1481,34 +1476,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     historyIndexRef.current = 0;
     setHistoryIndex(0);
   }, [initialSections]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !autosaveKey) return;
-    try {
-      const stored = localStorage.getItem(buildAutosaveStorageKey(autosaveKey));
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed?.sections) {
-          setSections(parsed.sections);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to load autosave draft', error);
-    }
-  }, [autosaveKey]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !autosaveKey) return;
-    try {
-      const payload = {
-        sections,
-        updatedAt: Date.now()
-      };
-      localStorage.setItem(buildAutosaveStorageKey(autosaveKey), JSON.stringify(payload));
-    } catch (error) {
-      console.warn('Failed to persist autosave draft', error);
-    }
-  }, [sections, autosaveKey]);
 
   useEffect(() => {
     setCollapsedSections((prev) => {
