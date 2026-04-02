@@ -481,8 +481,11 @@ export default function AdminSubcategoryEditorPage() {
       const endpoint = buildApiUrl(`/taxonomy/subcategory-id/${subcategoryId}`);
       debugLog('Fetching subcategory info', endpoint);
       const response = await fetch(endpoint, {
+        cache: 'no-store',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         }
       });
       
@@ -597,7 +600,15 @@ export default function AdminSubcategoryEditorPage() {
       const endpoint = buildApiUrl(`/page-content/${subcategoryId}`);
       debugLog('Fetching page content', endpoint);
       const response = await fetch(endpoint, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        cache: 'no-store',
+        headers: token ? { 
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        } : {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
       
       if (!response.ok) {

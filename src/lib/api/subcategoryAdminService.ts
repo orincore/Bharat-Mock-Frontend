@@ -23,7 +23,11 @@ const authFetch = async (path: string, options: RequestInit = {}) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+  headers['Pragma'] = 'no-cache';
+
   const response = await fetch(`${API_BASE}${path}`, {
+    cache: 'no-store',
     ...options,
     headers
   });
