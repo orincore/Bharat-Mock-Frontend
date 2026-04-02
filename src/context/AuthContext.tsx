@@ -64,6 +64,14 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const initDone = useRef(false);
 
+  // One-time cleanup: remove any legacy API cache entries from localStorage
+  useEffect(() => {
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('bm_api_'));
+      keys.forEach(k => localStorage.removeItem(k));
+    } catch { /* ignore */ }
+  }, []);
+
   // On mount: verify token is still valid by fetching fresh profile
   useEffect(() => {
     if (initDone.current) return;

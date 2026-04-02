@@ -11,7 +11,8 @@ export const metadata: Metadata = {
     'Learn about Bharat Mock refund policy for digital educational content, eligibility criteria, and how to request refunds for courses and test series.'
 };
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function getRefundPolicyData(): Promise<RefundPolicyData> {
   try {

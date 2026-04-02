@@ -3,11 +3,9 @@ import { fallbackAboutData } from '@/lib/constants/about';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
-export async function fetchAboutPageData(revalidateSeconds = 300): Promise<AboutPageData> {
+export async function fetchAboutPageData(): Promise<AboutPageData> {
   try {
-    const response = await fetch(`${API_BASE_URL}/about`, {
-      next: { revalidate: revalidateSeconds }
-    });
+    const response = await fetch(`${API_BASE_URL}/about`, { cache: 'no-store' });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch About content: ${response.status}`);

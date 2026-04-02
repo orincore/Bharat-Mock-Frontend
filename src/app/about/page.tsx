@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { aboutIconRegistry, fallbackAboutData } from '@/lib/constants/about';
 import { fetchAboutPageData } from '@/lib/data/about';
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function AboutPage() {
   const aboutData = await fetchAboutPageData();

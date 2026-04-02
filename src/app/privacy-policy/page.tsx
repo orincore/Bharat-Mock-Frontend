@@ -11,7 +11,8 @@ export const metadata: Metadata = {
     'Learn how Bharat Mock collects, uses, protects, and shares your information across mock tests, personalized insights, and exam preparation tools.'
 };
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function getPrivacyPolicyData(): Promise<PrivacyPolicyData> {
   try {

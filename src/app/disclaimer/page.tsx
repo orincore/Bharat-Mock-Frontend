@@ -11,7 +11,8 @@ export const metadata: Metadata = {
     'Review Bharat Mock’s Disclaimer covering liability limitations, accuracy of information, fair use, and professional advice boundaries.'
 };
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function getDisclaimerData(): Promise<DisclaimerData> {
   try {
