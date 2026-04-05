@@ -18,12 +18,19 @@ const authFetch = async (input: RequestInfo, init: RequestInit = {}) => {
   const token = getAuthToken();
   if (!token) throw new Error('Authentication required');
 
-  const response = await fetch(input, {
+  const urlString = typeof input === 'string' ? input : input.url;
+  const separator = urlString.includes('?') ? '&' : '?';
+  const finalUrl = `${urlString}${separator}_t=${Date.now()}`;
+
+  const response = await fetch(finalUrl, {
     ...init,
+    cache: 'no-store',
     headers: {
       ...(init.headers || {}),
       Authorization: `Bearer ${token}`,
-      ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {})
+      ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache'
     }
   });
 

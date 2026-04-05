@@ -11,7 +11,10 @@ const authFetch = async (path: string, options: RequestInit = {}) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const separator = path.includes('?') ? '&' : '?';
+  const url = `${API_BASE}${path}${separator}_t=${Date.now()}`;
+
+  const response = await fetch(url, {
     ...options,
     cache: 'no-store',
     headers: {
@@ -37,10 +40,17 @@ const authFormFetch = async (path: string, formData: FormData, method: 'POST' | 
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const separator = path.includes('?') ? '&' : '?';
+  const url = `${API_BASE}${path}${separator}_t=${Date.now()}`;
+
+  const response = await fetch(url, {
     method,
     body: formData,
-    headers,
+    headers: {
+      ...headers,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache'
+    }
   });
 
   const data = await response.json();

@@ -478,7 +478,7 @@ export default function AdminSubcategoryEditorPage() {
   const loadSubcategoryInfo = async () => {
     try {
       const token = getAuthToken();
-      const endpoint = buildApiUrl(`/taxonomy/subcategory-id/${subcategoryId}`);
+      const endpoint = buildApiUrl(`/taxonomy/subcategory-id/${subcategoryId}?_t=${Date.now()}`);
       debugLog('Fetching subcategory info', endpoint);
       const response = await fetch(endpoint, {
         cache: 'no-store',
@@ -597,7 +597,8 @@ export default function AdminSubcategoryEditorPage() {
 
     try {
       const token = getAuthToken();
-      const endpoint = buildApiUrl(`/page-content/${subcategoryId}`);
+      const separator = subcategoryId.includes('?') ? '&' : '?';
+      const endpoint = buildApiUrl(`/page-content/${subcategoryId}${separator}_t=${Date.now()}`);
       debugLog('Fetching page content', endpoint);
       const response = await fetch(endpoint, {
         cache: 'no-store',
