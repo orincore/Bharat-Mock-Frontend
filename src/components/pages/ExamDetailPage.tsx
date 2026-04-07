@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Clock, Calendar, BookOpen, Award, TrendingUp,
-  CheckCircle, AlertCircle, Play, ArrowLeft, FileText, Lock
+  CheckCircle, AlertCircle, Play, ArrowLeft, FileText, Lock,
+  Flag, CheckCircle2, ChevronLeft, ChevronRight, HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
@@ -239,11 +240,11 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
             </span>
           </div>
 
-          <div className="mt-6 grid lg:grid-cols-[1.1fr_0.9fr] gap-8">
+          <div className="mt-8 max-w-4xl">
             <div className="space-y-6">
               <div className="inline-flex flex-wrap items-center gap-3">
                 <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20">
-                  {exam.category}
+                  {exam?.category}
                 </span>
                 <span className="px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold border border-white/30">
                   {statusLabel}
@@ -264,437 +265,265 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 )}
                 <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20 flex items-center gap-2">
                   <span role="img" aria-label="language">🗣️</span>
-                  {exam.supports_hindi ? 'English + हिंदी' : 'English Only'}
+                  {exam?.supports_hindi ? 'English + हिंदी' : 'English Only'}
                 </span>
               </div>
 
               <div>
-                <p className="text-sm uppercase tracking-[0.35em] text-white/70 mb-2">
+                <p className="text-sm uppercase tracking-[0.35em] text-white/70 mb-2 font-medium">
                   {isQuiz ? 'Concept Booster Quiz' : 'Official mock examination'}
                 </p>
-                <h1 className="font-display text-3xl md:text-4xl font-bold leading-tight">
-                  {exam.title}
+                <h1 className="font-display text-3xl md:text-5xl font-extrabold leading-tight tracking-tight">
+                  {exam?.title}
                 </h1>
               </div>
 
-              <p className="text-base text-white/80 max-w-3xl">
-                {formatExamSummary(exam)}
+              <p className="text-lg text-white/80 max-w-3xl leading-relaxed">
+                {exam ? formatExamSummary(exam) : 'No summary available.'}
               </p>
 
-              <div className="flex flex-wrap gap-2.5 md:gap-3">
+              <div className="flex flex-wrap gap-4 pt-2">
                 {[
-                  { label: isQuiz ? 'Quiz Length' : 'Duration', value: `${exam.duration} Minutes`, icon: Clock },
-                  { label: 'Questions', value: `${exam.total_questions}`, icon: FileText },
-                  { label: isQuiz ? 'Avg Score Weight' : 'Total Marks', value: `${exam.total_marks}`, icon: Award }
+                  { label: isQuiz ? 'Quiz Length' : 'Duration', value: `${exam?.duration} Minutes`, icon: Clock, color: 'text-amber-300' },
+                  { label: 'Questions', value: `${exam?.total_questions}`, icon: FileText, color: 'text-blue-300' },
+                  { label: isQuiz ? 'Avg Score Weight' : 'Total Marks', value: `${exam?.total_marks}`, icon: Award, color: 'text-emerald-300' }
                 ].map((stat) => (
                   <div
                     key={stat.label}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-white shadow-[0_8px_25px_-20px_rgba(255,255,255,0.9)]"
+                    className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-white backdrop-blur-sm transition-all hover:bg-white/10"
                   >
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 border border-white/30">
-                      <stat.icon className="h-3.5 w-3.5 text-amber-200" />
-                    </span>
+                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 border border-white/20">
+                      <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                    </div>
                     <div className="leading-tight">
-                      <p className="text-[10px] uppercase tracking-[0.3em] text-white/70">{stat.label}</p>
-                      <p className="text-sm font-semibold text-white">{stat.value}</p>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold">{stat.label}</p>
+                      <p className="text-base font-bold text-white mt-0.5">{stat.value}</p>
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            <div className="bg-slate-900/70 backdrop-blur rounded-2xl border border-white/10 p-6 space-y-6">
-              {isQuiz ? (
-                <div className="space-y-3">
-                  <p className="text-xs uppercase tracking-[0.3em] text-white/60 mb-1">Quiz Insights</p>
-                  <div className="space-y-3 text-sm text-white/90">
-                    <div className="flex items-start justify-between">
-                      <span>Estimated time</span>
-                      <span className="font-semibold">{exam.duration} mins</span>
-                    </div>
-                    <div className="flex items-start justify-between">
-                      <span>Attempts Allowed</span>
-                      <span className="font-semibold">Unlimited</span>
-                    </div>
-                    <div className="flex items-start justify-between">
-                      <span>Scoring</span>
-                      <span className="font-semibold">Instant feedback</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-white/60 mb-1">Attempt Window</p>
-                  <div className="space-y-4 text-sm text-white/90">
-                    <div className="flex items-start justify-between">
-                      <span>Start Date</span>
-                      <span className="font-semibold">
-                        {isAnytime ? 'Available Anytime' : (exam.start_date ? new Date(exam.start_date).toLocaleDateString() : 'TBA')}
-                      </span>
-                    </div>
-                    <div className="flex items-start justify-between">
-                      <span>End Date</span>
-                      <span className="font-semibold">
-                        {isAnytime ? 'No Deadline' : (exam.end_date ? new Date(exam.end_date).toLocaleDateString() : 'TBA')}
-                      </span>
-                    </div>
-                    <div className="flex items-start justify-between">
-                      <span>Pass Percentage</span>
-                      <span className="font-semibold">{exam.pass_percentage}%</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {exam.supports_hindi && (
-                <div className="border border-white/10 rounded-xl p-4 bg-white/[0.04]">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-semibold">Select Attempt Language</p>
-                    <span className="text-[10px] tracking-widest uppercase bg-white/10 px-2 py-0.5 rounded-full">Required</span>
-                  </div>
-                  <p className="text-xs text-white/70 mb-3">Language cannot be changed once the attempt begins.</p>
-                  <div className="space-y-2">
-                    <label className="text-xs uppercase tracking-widest text-white/60">Preferred Language</label>
-                    <select
-                      value={selectedLanguage ?? ''}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (!value) {
-                          setSelectedLanguage(null);
-                          return;
-                        }
-                        handleLanguageSelect(value as 'en' | 'hi');
-                      }}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/70"
-                    >
-                      <option value="">
-                        Select language
-                      </option>
-                      <option value="en">English</option>
-                      <option value="hi">हिंदी (Hindi)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {requiresUnlock ? (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleUnlockExam}
-                      className="w-full relative overflow-hidden bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-900 font-semibold shadow-[0_15px_35px_-20px_rgba(245,158,11,0.9)]"
-                      size="lg"
-                    >
-                      <span className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
-                      <span className="relative flex items-center justify-center gap-2 uppercase text-sm tracking-wide">
-                        <Lock className="h-5 w-5" /> Unlock Exam
-                      </span>
-                    </Button>
-                    <p className="text-xs text-white/70 text-center">
-                      Unlock included with Bharat Mock Premium. Get instant access to all paid exams.
-                    </p>
-                  </div>
-                ) : showAttemptCta ? (
-                  <div className="space-y-3">
-                    {resumeAttempts.length > 0 && (
-                      <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 space-y-3">
-                        <div>
-                          <p className="text-[11px] uppercase tracking-[0.28em] text-sky-100/80">Paused Attempts</p>
-                          <p className="mt-1 text-sm font-semibold text-white">Choose any previous paused exam to continue</p>
-                        </div>
-
-                        <div className="space-y-3">
-                          {resumeAttempts.map((attempt, index) => {
-                            const progress = (attempt.totalQuestions || 0) > 0
-                              ? Math.round(((attempt.answeredQuestions || 0) / (attempt.totalQuestions || 1)) * 100)
-                              : 0;
-                            const attemptNumber = resumeAttempts.length - index;
-
-                            return (
-                              <div
-                                key={attempt.attemptId}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 space-y-3"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <p className="text-xs font-semibold text-white">
-                                      Attempt #{attemptNumber}
-                                    </p>
-                                    <p className="mt-1 text-[11px] text-white/65">
-                                      Started {new Date(attempt.startedAt).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <span className="rounded-full border border-sky-300/30 bg-sky-400/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-100">
-                                    {attempt.language === 'hi' ? 'Hindi' : 'English'}
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3 text-xs text-white/80">
-                                  <div>
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Answered</p>
-                                    <p className="mt-1 text-sm font-semibold text-white">
-                                      {attempt.answeredQuestions || 0}/{attempt.totalQuestions || exam.total_questions}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Progress</p>
-                                    <p className="mt-1 text-sm font-semibold text-white">{progress}%</p>
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/70">
-                                    <span>Attempt progress</span>
-                                    <span>{progress}%</span>
-                                  </div>
-                                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                                    <div
-                                      className="h-full rounded-full bg-gradient-to-r from-sky-300 via-cyan-300 to-emerald-300 transition-all duration-300"
-                                      style={{ width: `${progress}%` }}
-                                    />
-                                  </div>
-                                </div>
-
-                                <Button
-                                  onClick={() => handleResumeExam(attempt)}
-                                  className="w-full relative overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg transition-all duration-200"
-                                  size="lg"
-                                >
-                                  <span className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
-                                  <span className="relative flex items-center justify-center gap-2 font-semibold tracking-wide uppercase text-sm">
-                                    <Play className="h-5 w-5 fill-current" />
-                                    Resume
-                                  </span>
-                                </Button>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={handleStartExam}
-                      className={`w-full relative overflow-hidden text-white ${attemptButtonGradient} transition-all duration-200 disabled:from-slate-500 disabled:to-slate-600`}
-                      size="lg"
-                      disabled={exam.supports_hindi && !languageSelected}
-                    >
-                      <span className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
-                      <span className="relative flex items-center justify-center gap-2 font-semibold tracking-wide uppercase text-sm">
-                        {isLiveExam ? (
-                          <span className="relative flex h-4 w-4 items-center justify-center">
-                            <span className="absolute inline-flex h-4 w-4 rounded-full bg-white/40 animate-ping" />
-                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-                          </span>
-                        ) : (
-                          <Play className="h-5 w-5" />
-                        )}
-                        {exam.supports_hindi && !languageSelected
-                          ? 'Select language to start'
-                          : topResumeAttempt
-                            ? 'New Attempt'
-                            : isLiveExam
-                              ? 'Join Live Attempt'
-                              : isQuiz
-                                ? 'Start Quiz'
-                                : 'Attempt Now'}
-                      </span>
-                    </Button>
-                  </div>
-                ) : showUpcomingNotice ? (
-                  <Button disabled className="w-full bg-white/10 text-white" size="lg">
-                    <Calendar className="h-5 w-5 mr-2" />
-                    Registration Opens Soon
-                  </Button>
-                ) : showEndedNotice ? (
-                  <Button disabled className="w-full bg-white/10 text-white" size="lg">
-                    <Calendar className="h-5 w-5 mr-2" />
-                    Attempt Window Closed
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full bg-white/10 text-white" size="lg">
-                    Examination Closed
-                  </Button>
-                )}
-                {isUpcoming && !windowStarted && !isQuiz && (
-                  <>
-                    <Button
-                      onClick={handleAddToCalendar}
-                      disabled={!calendarWindow}
-                      className="w-full bg-amber-400 text-slate-900 hover:bg-amber-300 disabled:bg-slate-400 disabled:text-slate-700 border-none"
-                    >
-                      <Calendar className="h-5 w-5 mr-2" /> Add to Calendar
-                    </Button>
-                    {calendarWindow && googleCalendarUrl && (
-                      <Button
-                        variant="ghost"
-                        asChild
-                        className="w-full text-white/80 hover:text-white"
-                      >
-                        <a href={googleCalendarUrl} target="_blank" rel="noreferrer">
-                          Sync via Google Calendar
-                        </a>
-                      </Button>
-                    )}
-                  </>
-                )}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="container-main py-12">
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
-            <div className="bg-card rounded-xl border border-border p-6">
-              <h2 className="font-display text-2xl font-bold text-foreground mb-6">
-                {isQuiz ? 'Quiz Overview' : 'Exam Pattern'}
-              </h2>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <FileText className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Total Questions</p>
-                    <p className="text-2xl font-bold text-primary">{exam.total_questions}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
-                    <Award className="h-5 w-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Total Marks</p>
-                    <p className="text-2xl font-bold text-success">{exam.total_marks}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
-                    <Clock className="h-5 w-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Duration</p>
-                    <p className="text-2xl font-bold text-warning">{exam.duration} min</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-info/10 flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="h-5 w-5 text-info" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Difficulty</p>
-                    <p className="text-2xl font-bold text-info capitalize">{exam.difficulty}</p>
-                  </div>
-                </div>
-              </div>
-
-
-            </div>
-
-            {exam.syllabus && exam.syllabus.length > 0 && (
-              <div className="bg-card rounded-xl border border-border p-6">
+      <div className="container-main py-12 pb-32">
+        <div className="max-w-5xl mx-auto space-y-12">
+          <div className="space-y-8">
+            {exam?.syllabus && exam.syllabus.length > 0 && (
+              <div className="bg-card rounded-xl border border-border p-6 font-medium">
                 <h2 className="font-display text-2xl font-bold text-foreground mb-6">
-                  Syllabus
+                  Syllabus Highlights
                 </h2>
-                <div className="grid md:grid-cols-2 gap-3">
+                <div className="grid md:grid-cols-2 gap-4">
                   {exam.syllabus.map((topic, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-success flex-shrink-0" />
-                      <span className="text-foreground">{topic}</span>
+                    <div key={index} className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-lg border border-slate-100">
+                      <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                      <span className="text-slate-700 leading-tight">{topic}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Exam Hall Advisory</p>
-                  {/* Header removed for SEO deduplication */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="bg-slate-50 border-b border-slate-200 px-8 py-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 leading-none">General Instructions</h3>
+                  </div>
                 </div>
-                <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200">
-                  Must Read
-                </span>
               </div>
-              <div className="space-y-4 text-slate-700">
-                {[
-                  'Read every question carefully before marking your response.',
-                  'Use the navigation panel to move between sections/questions.',
-                  'Mark for review to revisit doubtful questions later.',
-                  'Submit the paper before the timer expires to preserve responses.'
-                ].map((text, index) => (
-                  <div key={text} className="flex items-start gap-3">
-                    <div className="h-7 w-7 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-semibold text-emerald-700">{index + 1}</span>
-                    </div>
-                    <p>{text}</p>
+
+              <div className="p-8 space-y-8 text-[15px] leading-relaxed text-slate-700">
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">1.</span>
+                    <p>The exam timer runs on the server — not your device. The countdown displayed in the top-right corner of your screen reflects the exact remaining time. When the timer hits zero, your exam will be submitted automatically. You do not need to click Submit manually.</p>
                   </div>
-                ))}
-                {exam.negative_marking && (
-                  <div className="flex items-start gap-3">
-                    <div className="h-7 w-7 rounded-full bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-semibold text-red-600">!</span>
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">2.</span>
+                    <div className="space-y-4">
+                      <p>The Question Palette on the right side of the screen tracks the real-time status of every question. Each question is marked with one of the following color-coded symbols:</p>
+                      
+                      <div className="grid sm:grid-cols-2 gap-3 ml-2">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded bg-white border border-slate-300 flex items-center justify-center shrink-0 shadow-sm text-xs font-bold text-slate-400">01</div>
+                          <p className="text-sm font-medium">You have not visited the question yet.</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded bg-orange-100 border border-orange-500 flex items-center justify-center shrink-0 shadow-sm text-xs font-bold text-orange-700">01</div>
+                          <p className="text-sm font-medium">You have not answered the question.</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded bg-green-100 border border-green-600 flex items-center justify-center shrink-0 shadow-sm text-xs font-bold text-green-700">01</div>
+                          <p className="text-sm font-medium">You have answered the question.</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded bg-purple-100 border border-purple-500 flex items-center justify-center shrink-0 shadow-sm">
+                            <Flag className="h-4 w-4 text-purple-600" />
+                          </div>
+                          <p className="text-sm font-medium">Marked for Review (Unanswered) — Flagged for later but no answer saved yet.</p>
+                        </div>
+                        <div className="flex items-center gap-4 sm:col-span-2">
+                          <div className="w-8 h-8 rounded bg-purple-100 border border-purple-500 flex items-center justify-center shrink-0 shadow-sm relative overflow-hidden">
+                            <Flag className="h-4 w-4 text-purple-600 z-10" />
+                            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 flex items-center justify-center">
+                              <CheckCircle2 className="h-3 w-3 text-white" />
+                            </div>
+                          </div>
+                          <p className="text-sm font-medium">You have answered the question, but marked it for review.</p>
+                        </div>
+                      </div>
+                      
+                      <p className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-blue-800 text-sm">
+                        Marking for review doesn't change your answer—it just flags it for a second look. Answered questions marked for review count toward your score unless you edit them.
+                      </p>
                     </div>
-                    <p className="text-red-700">
-                      Negative marking is applicable; refrain from random guessing.
-                    </p>
                   </div>
-                )}
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">3.</span>
+                    <div className="space-y-4">
+                      <p className="font-bold text-slate-900 uppercase text-sm tracking-wide">Navigating to a question:</p>
+                      <p>To answer a question, do the following:</p>
+                      <ul className="space-y-3 pl-2 list-disc list-outside ml-4">
+                        <li>Click on the question number in the Question Palette at the right of your screen to go to that numbered question directly. Note that using this option does NOT save your answer to the current question.</li>
+                        <li>Click on <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Save & Next</span> to save your current answer and move to the next question.</li>
+                        <li>Click on <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Mark for Review & Next</span> to mark the question for review (with or without answering) and proceed to the next question.</li>
+                      </ul>
+                      <p className="text-rose-600 font-bold p-3 bg-rose-50 rounded-lg text-sm border border-rose-100">
+                        Important Reminder: If you move to another question without clicking Save & Next or Mark for Review & Next, your current answer will NOT be saved.
+                      </p>
+                      <p>You can also click on the <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Question Paper</span> button to view all questions at once for quick navigation and overview.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">4.</span>
+                    <div className="space-y-4">
+                      <p className="font-bold text-slate-900 uppercase text-sm tracking-wide">Answering a Question:</p>
+                      <p>Steps for answering Multiple Choice Questions (MCQ):</p>
+                      <ul className="space-y-3 pl-2 list-decimal list-outside ml-4">
+                        <li>Select one correct option from the given choices (A, B, C, D) by clicking on the corresponding option.</li>
+                        <li>To remove your selected answer, click on the selected option again or use the <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Clear Response</span> button.</li>
+                        <li>To change your answer, simply click on a different option.</li>
+                        <li>After selecting your answer, click <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Save & Next</span> to confirm and proceed.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {exam.id && (
+                    <div className="flex gap-4">
+                      <span className="font-bold text-slate-900 shrink-0">5.</span>
+                      <div className="space-y-4">
+                        <p className="font-bold text-slate-900 uppercase text-sm tracking-wide">Procedure for answering a numerical answer type question :</p>
+                        <ul className="space-y-3 pl-2 list-decimal list-outside ml-4">
+                          <li>To enter a number as your answer, use the virtual numerical keypad.</li>
+                          <li>A fraction (e.g. -0.3 or -. 3) can be entered as an answer with or without "0" before the decimal point. As many as four decimal points, e.g. 12.5435 or 0.003 or -932.6711 or 12.82 can be entered.</li>
+                          <li>To clear your answer, click on the <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Clear Response</span> button</li>
+                          <li>To save your answer, you MUST click on the <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Save & Next</span></li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">6.</span>
+                    <p>To mark a question for review, click on the <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Mark for Review & Next</span> button. If an answer is selected (for MCQ/MCAQ) entered (for numerical answer type) for a question that is Marked for Review, that answer will be considered in the evaluation unless the status is modified by the candidate.</p>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">7.</span>
+                    <p>To change your answer to a question that has already been answered, first select that question for answering and then follow the procedure for answering that type of question.</p>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">8.</span>
+                    <p>Note that ONLY Questions for which answers are saved or marked for review after answering will be considered for evaluation.</p>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">9.</span>
+                    <p>Sections in this question paper are displayed on the top bar of the screen. Questions in a Section can be viewed by clicking on the name of that Section. The Section you are currently viewing will be highlighted.</p>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">10.</span>
+                    <p>After clicking the <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs">Save & Next</span> button for the last question in a Section, you will automatically be taken to the first question of the next Section in sequence.</p>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <span className="font-bold text-slate-900 shrink-0">11.</span>
+                    <p>You can move the mouse cursor over the name of a Section to view the answering status for that Section.</p>
+                  </div>
+
+                  <div className="flex gap-4 text-red-600">
+                    <span className="font-bold shrink-0">12.</span>
+                    <p className="font-medium">Do not refresh the page or press the browser's Back button during the exam — this may cause loss of your current answer.</p>
+                  </div>
+
+                  <div className="flex gap-4 text-red-600">
+                    <span className="font-bold shrink-0">13.</span>
+                    <p className="font-bold">No sharing screens, notes, or devices— violations lead to disqualification.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="space-y-6 order-1 lg:order-2">
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <div className="font-display text-lg font-bold text-slate-900 mb-4">Quick Stats</div>
-              <div className="space-y-4 text-sm text-slate-600">
-                <div className="flex items-center justify-between">
-                  <span>Category</span>
-                  <span className="font-semibold text-slate-900">{exam.category}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Type</span>
-                  <span className="font-semibold text-slate-900">{exam.is_free ? 'Free' : 'Paid'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Status</span>
-                  <span className={`font-semibold ${(isAnytime || isUpcoming) ? 'text-emerald-600' : isOngoing ? 'text-emerald-600' : 'text-slate-500'
-                    }`}>
-                    {statusLabel}
-                  </span>
-                </div>
-              </div>
+        </div>
+      </div>
+
+      {/* Sticky Bottom CTA Bar - Visible on all devices when exam is startable */}
+      {(showAttemptCta || requiresUnlock) && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 md:py-4 px-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] animate-in slide-in-from-bottom duration-300">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+            <div className="hidden md:flex flex-col">
+              <h4 className="text-sm font-bold text-slate-900 truncate max-w-[250px]">{exam.title}</h4>
+              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{statusLabel} • {exam.duration} Mins</p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <img src="/favicon.jpg" alt="Bharat Mock" width={40} height={40} className="h-10 w-10 rounded" />
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Helpdesk</p>
-                  <p className="font-semibold text-slate-900">Bharat Mock Support Cell</p>
-                </div>
-              </div>
-              <p className="text-sm text-slate-600 mb-4">
-                India’s leading platform for exam preparation and personalized learning support. Reach out for any assistance during your attempt.
-              </p>
-              <div className="space-y-2 text-sm text-slate-700">
-                <p>support@bharatmock.com</p>
-                <p>+91 1800-123-4567</p>
-                <p>Bangalore, Karnataka, India</p>
-              </div>
+            <div className="flex-1 md:flex-none flex items-center gap-3">
+              {topResumeAttempt && (
+                <Button
+                  variant="outline"
+                  onClick={() => handleResumeExam(topResumeAttempt)}
+                  className="flex-1 md:flex-none h-11 md:h-12 px-6 rounded-full border-amber-200 bg-amber-50 text-amber-700 font-bold hover:bg-amber-100 transition-all active:scale-95"
+                >
+                  <Play className="h-4 w-4 mr-2 fill-amber-600" />
+                  Resume
+                </Button>
+              )}
+
+              {requiresUnlock ? (
+                <Button
+                  onClick={handleUnlockExam}
+                  className="flex-1 md:flex-none h-11 md:h-12 px-8 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 text-slate-900 font-bold shadow-lg hover:shadow-amber-200/50 transition-all active:scale-95 border-b-2 border-amber-700/20"
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Unlock Now
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleStartExam}
+                  className={`flex-1 md:flex-none h-11 md:h-12 px-10 rounded-full font-bold text-white transition-all active:scale-95 shadow-xl ${
+                    isLiveExam 
+                      ? 'bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 shadow-red-200/50' 
+                      : 'bg-gradient-to-r from-[#00aeef] to-[#0086b8] hover:from-[#0099d4] shadow-blue-200/50'
+                  }`}
+                >
+                  {isLiveExam ? 'Enter Exam Hall' : topResumeAttempt ? 'Start Fresh' : 'Attempt Now'}
+                </Button>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

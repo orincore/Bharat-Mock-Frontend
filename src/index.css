@@ -386,16 +386,16 @@ table th, table td,
   color: #1a1a1a !important;
 }
 
-/* Larger font for exam question text */
+/* Reduced font for exam question text */
 .exam-question-text {
-  font-size: 1.25rem !important;
+  font-size: 1.05rem !important;
   word-break: break-word;
   overflow-wrap: break-word;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .exam-question-text {
-    font-size: 1.25rem !important;
+    font-size: 0.9375rem !important; /* 15px on desktop */
   }
 }
 
@@ -415,14 +415,14 @@ table th, table td,
 
 /* Compact font for exam option text */
 .exam-option-text {
-  font-size: 1.125rem !important;
+  font-size: 0.95rem !important;
   word-break: break-word;
   overflow-wrap: break-word;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .exam-option-text {
-    font-size: 0.95rem !important;
+    font-size: 0.875rem !important; /* 14px on desktop */
   }
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Clock, FileText, TrendingUp, Languages, ArrowRight, Lock, Download } from 'lucide-react';
+import { Clock, FileText, TrendingUp, Languages, ArrowRight, Lock, Download, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logoUrl } from '@/lib/utils/imageUrl';
 
@@ -32,10 +32,13 @@ interface StandardExamCardProps {
     start_date?: string | null;
     end_date?: string | null;
     allow_anytime?: boolean;
+    attempts?: number | string;
   };
   pdfMode?: boolean;
   isLocked?: boolean;
   isLive?: boolean;
+  hideAttempts?: boolean;
+  showAttemptsTop?: boolean;
   ctaLabel?: string;
   onDownloadPDF?: (id: string) => void;
   isDownloading?: boolean;
@@ -46,6 +49,8 @@ export function StandardExamCard({
   pdfMode = false,
   isLocked = false,
   isLive = false,
+  hideAttempts = false,
+  showAttemptsTop = false,
   ctaLabel,
   onDownloadPDF,
   isDownloading = false,
@@ -126,6 +131,12 @@ export function StandardExamCard({
             }`}>
               {exam.is_free ? 'Free' : 'Premium'}
             </span>
+            {showAttemptsTop && exam.attempts != null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-orange-600 border border-orange-200/70">
+                <Users className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                {exam.attempts}
+              </span>
+            )}
             {/* Live badge */}
             {derivedIsLive && (
               <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full border border-red-300/60 bg-red-500/10 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-red-600 uppercase tracking-wide">
@@ -192,6 +203,14 @@ export function StandardExamCard({
                 <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-sky-500" />
               </div>
               <span className="font-medium text-[11px] sm:text-xs">{exam.total_marks} Marks</span>
+            </div>
+          )}
+          {exam.attempts != null && !hideAttempts && !showAttemptsTop && (
+            <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
+              <div className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-lg bg-orange-50">
+                <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-orange-500" />
+              </div>
+              <span className="font-bold text-orange-600 text-[11px] sm:text-xs">{exam.attempts} Attempts</span>
             </div>
           )}
         </div>

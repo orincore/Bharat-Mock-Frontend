@@ -319,15 +319,15 @@ export default function SubscriptionLandingPage() {
   }, [autoRenew, isAuthenticated, promoCode, router, selectedPlan, selectedPlanId, toast, user]);
 
   const displayAmount = discountedAmount ?? (selectedPlan ? selectedPlan.price_cents : 0);
-  
+
   const getEffectivePrice = (plan: SubscriptionPlan) => {
     return plan.sale_price_cents ?? plan.price_cents;
   };
-  
+
   const hasDiscount = (plan: SubscriptionPlan) => {
-    return plan.sale_price_cents !== null && 
-           plan.sale_price_cents !== undefined && 
-           plan.sale_price_cents < plan.normal_price_cents;
+    return plan.sale_price_cents !== null &&
+      plan.sale_price_cents !== undefined &&
+      plan.sale_price_cents < plan.normal_price_cents;
   };
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [expandedCurriculum, setExpandedCurriculum] = useState<string | null>(null);
@@ -365,12 +365,12 @@ export default function SubscriptionLandingPage() {
   const productStructuredData = useMemo(() => {
     const offers = primaryPlan
       ? {
-          '@type': 'Offer',
-          priceCurrency: primaryPlan.currency_code || 'INR',
-          price: ((primaryPlan.sale_price_cents ?? primaryPlan.normal_price_cents) || 0) / 100,
-          availability: 'https://schema.org/InStock',
-          url: canonicalUrl,
-        }
+        '@type': 'Offer',
+        priceCurrency: primaryPlan.currency_code || 'INR',
+        price: ((primaryPlan.sale_price_cents ?? primaryPlan.normal_price_cents) || 0) / 100,
+        availability: 'https://schema.org/InStock',
+        url: canonicalUrl,
+      }
       : undefined;
 
     return JSON.stringify(
@@ -431,7 +431,7 @@ export default function SubscriptionLandingPage() {
       <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white py-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]"></div>
         <div className="w-full max-w-6xl mx-auto px-4 relative z-10">
-          <Breadcrumbs 
+          <Breadcrumbs
             items={[
               HomeBreadcrumb(),
               { label: 'Subscriptions' }
@@ -521,9 +521,9 @@ export default function SubscriptionLandingPage() {
           <section className="py-6">
             <div className="text-center mb-8">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                {categoriesSection.title || 'Exam Categories'}
+                {categoriesSection?.title || 'Exam Categories'}
               </h2>
-              {categoriesSection.subtitle && (
+              {categoriesSection?.subtitle && (
                 <p className="text-gray-600 text-lg max-w-3xl mx-auto">{categoriesSection.subtitle}</p>
               )}
             </div>
@@ -543,21 +543,23 @@ export default function SubscriptionLandingPage() {
                   <Link
                     key={category.id}
                     href={`/${category.slug}`}
-                    className="border border-gray-200/80 rounded-2xl px-4 py-3 bg-white hover:border-blue-500/60 hover:shadow-lg transition flex items-center gap-3 h-20"
+                    className="border border-gray-200/80 rounded-2xl px-2.5 sm:px-4 py-2.5 sm:py-3 bg-white hover:border-blue-500/60 hover:shadow-lg transition flex items-center gap-2 sm:gap-3 min-h-[5rem] sm:h-20"
                   >
                     {category.logo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={category.logo_url} alt={category.name} width={40} height={40} className="w-10 h-10 object-contain" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={category.logo_url} alt={category.name} className="w-full h-full object-contain" />
+                      </div>
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                        <GraduationCap className="h-5 w-5" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-gray-900 truncate">{category.name}</p>
-                      {category.description && <p className="text-xs text-gray-500 line-clamp-1">{category.description}</p>}
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 truncate sm:whitespace-normal sm:line-clamp-2">{category.name}</p>
+                      {category.description && <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-1">{category.description}</p>}
                     </div>
-                    <span className="text-blue-600 text-xs font-semibold whitespace-nowrap">Explore</span>
+                    <span className="hidden lg:block text-blue-600 text-xs font-semibold whitespace-nowrap">Explore</span>
                   </Link>
                 ))}
               </div>
@@ -601,11 +603,9 @@ export default function SubscriptionLandingPage() {
               return (
                 <Card
                   key={plan.id}
-                  className={`relative border-2 transition-all hover:shadow-xl ${
-                    isSelected ? 'border-blue-500 shadow-xl shadow-blue-500/20 scale-105' : 'border-gray-200'
-                  } ${isCurrentPlan ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${
-                    isPro ? 'ring-2 ring-blue-400 ring-offset-2' : ''
-                  }`}
+                  className={`relative border-2 transition-all hover:shadow-xl ${isSelected ? 'border-blue-500 shadow-xl shadow-blue-500/20 scale-105' : 'border-gray-200'
+                    } ${isCurrentPlan ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${isPro ? 'ring-2 ring-blue-400 ring-offset-2' : ''
+                    }`}
                   onClick={() => {
                     if (isCurrentPlan) {
                       toast({
@@ -682,11 +682,10 @@ export default function SubscriptionLandingPage() {
                   </CardContent>
                   <CardFooter className="pt-0">
                     <Button
-                      className={`w-full h-12 text-base font-semibold ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                          : ''
-                      }`}
+                      className={`w-full h-12 text-base font-semibold ${isSelected
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                        : ''
+                        }`}
                       variant={isSelected ? 'default' : 'outline'}
                       disabled={isCurrentPlan}
                       size="lg"
@@ -924,23 +923,23 @@ export default function SubscriptionLandingPage() {
                     ) : (
                       <div className="h-[240px] md:h-[320px] w-full bg-gradient-to-r from-blue-600 to-indigo-600"></div>
                     )}
-                  {(block.title || block.content || block.link_url) && (
-                    <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white">
-                      {block.title && <h4 className="text-2xl font-semibold mb-2">{block.title}</h4>}
-                      {block.content && <p className="text-sm md:text-base text-white/90 mb-3 max-w-4xl">{block.content}</p>}
-                      {block.link_url && (
-                        <a
-                          href={block.link_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-2 bg-white/90 text-gray-900 px-4 py-2 rounded-full font-semibold hover:bg-white"
-                        >
-                          {block.link_text || 'Explore more'}
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      )}
-                    </div>
-                  )}
+                    {(block.title || block.content || block.link_url) && (
+                      <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white">
+                        {block.title && <h4 className="text-2xl font-semibold mb-2">{block.title}</h4>}
+                        {block.content && <p className="text-sm md:text-base text-white/90 mb-3 max-w-4xl">{block.content}</p>}
+                        {block.link_url && (
+                          <a
+                            href={block.link_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 bg-white/90 text-gray-900 px-4 py-2 rounded-full font-semibold hover:bg-white"
+                          >
+                            {block.link_text || 'Explore more'}
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1048,8 +1047,8 @@ export default function SubscriptionLandingPage() {
 
         <TestimonialsSection
           className="py-6"
-          eyebrow="Social Proof"
-          title="Aspirants can't stop talking about Bharat Mock"
+          eyebrow="View Reviews"
+          title="Trusted by Aspirants"
           description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to show how premium subscriptions translate into real selection stories."
         />
 

@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { homepageAdminService } from '@/lib/api/homepageAdminService';
+import { adminService } from '@/lib/api/adminService';
 import { HomepageHero, HomepageHeroMediaItem, HomepageBanner } from '@/lib/api/homepageService';
+import { Exam } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +33,8 @@ import {
   Type,
   Image as ImageIcon,
   Plus,
-  X
+  X,
+  Search
 } from 'lucide-react';
 
 const generateTempId = () =>
@@ -87,6 +90,12 @@ export default function HomepageAdminPage() {
   const [bannerSaving, setBannerSaving] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
 
+  const [featuredExams, setFeaturedExams] = useState<any[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(false);
+  const [examSearch, setExamSearch] = useState('');
+  const [examSearchResults, setExamSearchResults] = useState<Exam[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const fetchHero = useCallback(async () => {
     try {
       setLoading(true);
@@ -131,10 +140,27 @@ export default function HomepageAdminPage() {
     }
   }, [toast]);
 
+  const fetchFeaturedExams = useCallback(async () => {
+    try {
+      setFeaturedLoading(true);
+      const data = await homepageAdminService.getPopularTests('homepage');
+      setFeaturedExams(data);
+    } catch (error: any) {
+      toast({
+        title: 'Failed to load featured exams',
+        description: error?.message || 'Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setFeaturedLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     fetchHero();
     fetchBanners();
-  }, [fetchHero, fetchBanners]);
+    fetchFeaturedExams();
+  }, [fetchHero, fetchBanners, fetchFeaturedExams]);
 
 
   const handleFieldChange = (key: keyof HomepageHero, value: any) => {
@@ -380,6 +406,73 @@ export default function HomepageAdminPage() {
       ...prev,
       media_items: rebuildMediaItems(buttonCards, item)
     }));
+  };
+
+  const handleSearchExams = async () => {
+    if (!examSearch.trim()) return;
+    try {
+      setIsSearching(true);
+      const results = await adminService.getExams({ search: examSearch, limit: 10 });
+      setExamSearchResults(results.data);
+    } catch (error) {
+      console.error('Failed to search exams:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddFeaturedExam = async (examId: string) => {
+    try {
+      await homepageAdminService.addPopularTest('homepage', examId);
+      toast({ title: 'Exam featured' });
+      fetchFeaturedExams();
+      setExamSearch('');
+      setExamSearchResults([]);
+    } catch (error: any) {
+      toast({
+        title: 'Failed to feature exam',
+        description: error?.message || 'Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleRemoveFeaturedExam = async (id: string) => {
+    try {
+      await homepageAdminService.removePopularTest(id);
+      toast({ title: 'Exam removed from featured' });
+      fetchFeaturedExams();
+    } catch (error: any) {
+      toast({
+        title: 'Failed to remove exam',
+        description: error?.message || 'Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleReorderFeaturedExam = async (id: string, direction: 'up' | 'down') => {
+    const index = featuredExams.findIndex(fe => fe.id === id);
+    if (index === -1) return;
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= featuredExams.length) return;
+
+    const newFeatured = [...featuredExams];
+    [newFeatured[index], newFeatured[newIndex]] = [newFeatured[newIndex], newFeatured[index]];
+
+    try {
+      setFeaturedLoading(true);
+      await homepageAdminService.reorderPopularTests('homepage', newFeatured.map(fe => fe.id));
+      setFeaturedExams(newFeatured);
+      toast({ title: 'Reordered successfully' });
+    } catch (error: any) {
+      toast({
+        title: 'Failed to reorder',
+        variant: 'destructive'
+      });
+    } finally {
+      setFeaturedLoading(false);
+    }
   };
 
   if (loading) {
@@ -883,6 +976,117 @@ export default function HomepageAdminPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Featured Exams"
+          description="Curate specific exams to be highlighted in the main Featured Exams section."
+          icon={<Sparkles className="h-5 w-5" />}
+        >
+          <div className="space-y-6">
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search exams to feature..."
+                  value={examSearch}
+                  onChange={(e) => setExamSearch(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearchExams()}
+                  className="pl-10"
+                />
+              </div>
+              <Button onClick={handleSearchExams} disabled={isSearching} variant="secondary">
+                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+              </Button>
+            </div>
+
+            {examSearchResults.length > 0 && (
+              <div className="border border-border rounded-xl overflow-hidden bg-muted/30">
+                <div className="px-4 py-2 bg-muted/50 border-b border-border flex justify-between items-center">
+                  <span className="text-xs font-semibold">Search Results</span>
+                  <Button variant="ghost" size="sm" onClick={() => setExamSearchResults([])} className="h-6 w-6 p-0 rounded-full">
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="divide-y divide-border max-h-60 overflow-y-auto">
+                  {examSearchResults.map((exam) => {
+                    const isAlreadyFeatured = featuredExams.some(fe => fe.exam?.id === exam.id);
+                    return (
+                      <div key={exam.id} className="px-4 py-3 flex items-center justify-between hover:bg-card/50">
+                        <div>
+                          <p className="text-sm font-medium">{exam.title}</p>
+                          <p className="text-xs text-muted-foreground">{exam.category} • {exam.status}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          disabled={isAlreadyFeatured}
+                          onClick={() => handleAddFeaturedExam(exam.id)}
+                        >
+                          {isAlreadyFeatured ? 'Featured' : 'Add to Featured'}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Currently Featured</h3>
+              {featuredLoading && (
+                <div className="space-y-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              )}
+              {!featuredLoading && featuredExams.length === 0 && (
+                <div className="border border-dashed border-border rounded-xl p-8 text-center bg-muted/10">
+                   <p className="text-sm text-muted-foreground">No hand-picked exams yet. The homepage will automatically show recent ongoing exams by default.</p>
+                </div>
+              )}
+              <div className="space-y-2">
+                {featuredExams.map((fe, index) => (
+                  <div key={fe.id} className="flex items-center gap-4 p-4 border border-border rounded-xl bg-card group">
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        disabled={index === 0}
+                        onClick={() => handleReorderFeaturedExam(fe.id, 'up')}
+                      >
+                        <ArrowUp className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        disabled={index === featuredExams.length - 1}
+                        onClick={() => handleReorderFeaturedExam(fe.id, 'down')}
+                      >
+                        <ArrowDown className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    {fe.exam?.thumbnail_url && (
+                      <img src={fe.exam.thumbnail_url} alt="" className="w-12 h-12 object-cover rounded-lg border border-border" />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{fe.exam?.title}</p>
+                      <p className="text-xs text-muted-foreground">{fe.exam?.category} • {fe.exam?.status}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
+                      onClick={() => handleRemoveFeaturedExam(fe.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </SectionCard>
       </div>

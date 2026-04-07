@@ -259,7 +259,9 @@ export function AuthReminderDialog() {
       </div>
 
       {/* Right — plan selector, exactly same width as left on desktop, full width on mobile */}
-      <div className="flex flex-col bg-white px-4 py-5 sm:px-6 sm:py-7 w-full sm:w-1/2 flex-shrink-0">
+      <div className="flex flex-col bg-white px-4 pt-10 pb-5 sm:px-6 sm:py-7 w-full sm:w-1/2 flex-shrink-0 relative">
+        {/* On mobile, we need extra top padding (pt-10) because the Close (X) button 
+            is absolutely positioned in the top-right of the DialogContent. */}
 
         <div className="mb-3 sm:mb-4">
           {/* mobile-only badge since image is hidden */}
@@ -333,8 +335,8 @@ export function AuthReminderDialog() {
   );
 
   const renderGuestContent = () => (
-    <div className="px-5 py-5 space-y-4">
-      <div className="-mx-5 -mt-5">
+    <div className="px-5 pt-10 pb-5 space-y-4">
+      <div className="-mx-5 -mt-10">
         <Image
           src="/assets/login_banner_image.jpg"
           alt="Login reminder"
@@ -381,7 +383,7 @@ export function AuthReminderDialog() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={`w-full ${dialogMaxWidth} overflow-hidden border-0 p-0 ${dialogThemeClasses}`}>
+      <DialogContent className={`w-full ${dialogMaxWidth} max-h-[92vh] overflow-y-auto border-0 p-0 ${dialogThemeClasses}`}>
         <DialogTitle className="sr-only">
           {variant === 'upsell' ? 'Unlock the full Bharat Mock experience' : 'Login or signup to Bharat Mock'}
         </DialogTitle>

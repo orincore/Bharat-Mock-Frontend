@@ -654,36 +654,31 @@ export default function NewCategoryPage({
                         Select any exam below to jump into its dedicated page with syllabus, mock tests, previous year papers, and more.
                       </p>
                     </div>
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4">
                       {subcategories.map((sub) => {
                         const logoUrl = sub.logo_url || category?.logo_url || null;
                         return (
                           <Link
                             key={sub.id}
                             href={`/${sub.slug}`}
-                            className="border border-border rounded-2xl px-4 py-3 bg-card hover:border-blue-200 hover:shadow-md transition flex items-center gap-4 min-h-[84px]"
+                            className="group flex flex-col items-center justify-center p-3 md:p-5 bg-white border border-slate-200 rounded-xl md:rounded-2xl hover:border-blue-300 hover:shadow-md transition-all duration-200 text-center min-h-[100px] md:min-h-[140px]"
                           >
-                            <div className="w-10 h-10 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center overflow-hidden text-orange-600 flex-shrink-0">
+                            <div className="w-12 h-12 md:w-20 md:h-20 flex items-center justify-center overflow-hidden mb-2 md:mb-3 group-hover:scale-110 transition-transform">
                               {logoUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={logoUrl}
                                   alt={sub.name}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-contain"
                                 />
                               ) : (
-                                <BookOpen className="h-5 w-5" />
+                                <BookOpen className="h-8 w-8 text-blue-600" />
                               )}
                             </div>
-                            <div className="flex-1 leading-tight">
-                              <p className="text-sm font-semibold text-gray-900 whitespace-pre-line">
+                            <div className="flex-1 w-full">
+                              <p className="text-[10px] md:text-sm font-bold text-slate-800 leading-[1.3] line-clamp-2 md:line-clamp-none">
                                 {sub.name}
                               </p>
-                              {sub.description && (
-                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                  {sub.description}
-                                </p>
-                              )}
                             </div>
                           </Link>
                         );
@@ -717,26 +712,7 @@ export default function NewCategoryPage({
                         color: section.text_color || "inherit",
                       }}
                     >
-                      {(() => {
-                        if (shouldSkipSectionHeading(section)) return null;
-
-                        const SectionHeadingTag = resolveHeadingTag(section.settings?.headingTag, 'h2');
-
-                        return (
-                          <div className="p-6 border-b border-gray-200 bg-gray-50">
-                            <SectionHeadingTag
-                              className="text-2xl font-bold text-gray-900"
-                              style={{ color: section.text_color || undefined }}
-                              dangerouslySetInnerHTML={{ __html: section.title }}
-                            />
-                            {section.subtitle && (
-                              <p className="mt-2 text-gray-600">
-                                {section.subtitle}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      {/* Section titles hidden to match subcategory page design */}
                       <div className="p-6">
                         {section.blocks.map((block) => (
                           <div key={block.id} className="mb-4">
@@ -787,26 +763,7 @@ export default function NewCategoryPage({
                       color: section.text_color || "inherit",
                     }}
                   >
-                    <div className="p-4 border-b border-gray-200 bg-gray-50">
-                        {(() => {
-                          if (shouldSkipSectionHeading(section)) return null;
-
-                          const SidebarHeadingTag = resolveHeadingTag(section.settings?.headingTag, 'h3');
-
-                          return (
-                            <SidebarHeadingTag
-                              className="text-lg font-semibold text-gray-900"
-                              style={{ color: section.text_color || undefined }}
-                              dangerouslySetInnerHTML={{ __html: section.title }}
-                            />
-                          );
-                        })()}
-                      {section.subtitle && (
-                        <p className="mt-1 text-sm text-gray-600">
-                          {section.subtitle}
-                        </p>
-                      )}
-                    </div>
+                    {/* Sidebar section titles hidden to match subcategory page design */}
                     <div className="p-4 space-y-4">
                       {section.blocks.map((block) => (
                         <div key={block.id}>

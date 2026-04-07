@@ -346,11 +346,12 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
     if (hasInitialData) return;
     const fetchData = async () => {
       try {
-        const [examsData, blogsResponse, categoriesData] = await Promise.all([
-          examService.getFeaturedExams(),
+        const [curatedExams, blogsResponse, categoriesData] = await Promise.all([
+          examService.getCuratedFeaturedExams(),
           blogService.getBlogs({ limit: 10 }),
           taxonomyService.getCategories()
         ]);
+        const examsData = curatedExams.length > 0 ? curatedExams : await examService.getFeaturedExams();
         setExams(examsData);
         setArticles(blogsResponse.data || []);
         const visibleCategories = categoriesData
@@ -380,12 +381,11 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
       try {
         const response = await examService.getExams({
           limit: 8,
-          status: 'ongoing'
+          sortBy: 'attempts',
+          sortOrder: 'desc',
+          exam_type: 'mock_test'
         });
-        const sorted = (response.data || [])
-          .slice()
-          .sort((a, b) => (b.attempts ?? 0) - (a.attempts ?? 0))
-          .slice(0, 4);
+        const sorted = (response.data || []).slice(0, 4);
         setMostAttemptedExams(sorted);
       } catch (error) {
         console.error('Failed to fetch most attempted exams:', error);
@@ -915,13 +915,17 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Button size="lg" className="gap-2 rounded-full px-8 shadow-lg">
-                    Explore BharatMock Pass
-                    <ArrowRight className="h-5 w-5" />
-                  </Button>
-                  <Button variant="ghost" size="lg" className="rounded-full text-slate-500 hover:text-slate-900">
-                    View plan comparison
-                  </Button>
+                  <Link href="/subscriptions">
+                    <Button size="lg" className="gap-2 rounded-full px-8 shadow-lg">
+                      Explore BharatMock Pass
+                      <ArrowRight className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link href="/subscriptions">
+                    <Button variant="ghost" size="lg" className="rounded-full text-slate-500 hover:text-slate-900">
+                      View plan comparison
+                    </Button>
+                  </Link>
                 </div>
                 <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Unlimited attempts • Instant activation • Cancel anytime</p>
               </div>

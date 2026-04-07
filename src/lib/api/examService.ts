@@ -83,6 +83,8 @@ export const examService = {
     if (options?.year) params.append('year', options.year);
     if (options?.paper_section_id) params.append('paper_section_id', options.paper_section_id);
     if (options?.paper_topic_id) params.append('paper_topic_id', options.paper_topic_id);
+    if (options?.sortBy) params.append('sortBy', options.sortBy);
+    if (options?.sortOrder) params.append('sortOrder', options.sortOrder);
 
     const response = await apiClient.get<ExamResponse>(
       `/exams?${params.toString()}`
@@ -162,6 +164,18 @@ export const examService = {
     return response.data;
   },
 
+  async getCuratedFeaturedExams(): Promise<Exam[]> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: any[]; total: number }>('/page-popular-tests/homepage');
+      if (response.data && response.data.length > 0) {
+        return response.data.map((item: any) => item.exams).filter(Boolean);
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
   async getExamsByStatus(status: Exam['status']): Promise<Exam[]> {
     const response = await apiClient.get<ExamResponse>(`/exams?status=${status}`);
     return response.data;
@@ -176,7 +190,7 @@ export const examService = {
     return response.data;
   },
 
-  async getExamQuestions(examId: string, attemptId: string): Promise<{
+  async getExamQuestions(examId: string, attemptId: string, lang?: string): Promise<{
     sections: Array<{
       id: string;
       name: string;
@@ -188,8 +202,9 @@ export const examService = {
     }>;
     questions: Question[];
   }> {
+    const query = lang ? `?lang=${lang}` : '';
     const response = await apiClient.get<QuestionsResponse>(
-      `/exams/${examId}/attempts/${attemptId}/questions`,
+      `/exams/${examId}/attempts/${attemptId}/questions${query}`,
       true
     );
     return response.data;
@@ -213,5 +228,23 @@ export const examService = {
 
   async submitExam(attemptId: string): Promise<void> {
     await apiClient.post(`/exams/${attemptId}/submit`, {}, true);
+  },
+
+  async getResumeAttempts(examId: string): Promise<any[]> {
+    try {
+      const response = await apiClient.get<any>(`/exams/${examId}/attempts/resume`, true);
+      return response.data || [];
+    } catch (error) {
+      return [];
+    }
+  },
+
+  async startExamAttempt(examId: string, language: string = 'en'): Promise<{ id: string }> {
+    const response = await apiClient.post<any>(
+      `/exams/${examId}/attempts/start`,
+      { language },
+      true
+    );
+    return response.data;
   }
 };

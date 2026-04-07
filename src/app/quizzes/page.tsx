@@ -392,7 +392,11 @@ export default function QuizzesPage() {
             ) : (
               <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {exams.map((exam) => (
-                  <StandardExamCard key={exam.id} exam={{ ...exam, category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }} />
+                  <StandardExamCard 
+                    key={exam.id} 
+                    exam={{ ...exam, category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }} 
+                    hideAttempts={true}
+                  />
                 ))}
               </div>
             )}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Index from "@/pages/Index";
+import Index from "@/views/Index";
 import { HomepageHero, HomepageData } from "@/lib/api/homepageService";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
@@ -8,18 +8,29 @@ const DEFAULT_DESCRIPTION =
   "Practice adaptive mock tests, explore govt exam resources, and stay ahead with Bharat Mock.";
 
 async function fetchHomepageData(): Promise<HomepageData | null> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
   try {
     const response = await fetch(`${API_BASE_URL}/homepage/data`, {
       cache: 'no-store',
-      next: { revalidate: 0 }
+      next: { revalidate: 0 },
+      signal: controller.signal
     });
+    clearTimeout(id);
+    
     if (!response.ok) {
       throw new Error(`Failed to load homepage data: ${response.status}`);
     }
     const payload = await response.json();
     return payload?.data ?? null;
-  } catch (error) {
-    console.error("Failed to fetch homepage data", error);
+  } catch (error: any) {
+    clearTimeout(id);
+    if (error.name === 'AbortError') {
+      console.warn("Homepage data fetch timed out - API might be slow or down");
+    } else {
+      console.error("Failed to fetch homepage data", error);
+    }
     return null;
   }
 }

@@ -26,9 +26,9 @@ const DEFAULT_STATUS = 'anytime';
 
 function ExamsPageContent() {
   const searchParams = useSearchParams();
-  const urlCategory = searchParams.get('category') || '';
-  const urlSubcategory = searchParams.get('subcategory') || '';
-  const urlSearch = searchParams.get('search') || '';
+  const urlCategory = searchParams?.get('category') || '';
+  const urlSubcategory = searchParams?.get('subcategory') || '';
+  const urlSearch = searchParams?.get('search') || '';
   const { user, isAuthenticated } = useAuth();
   const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
   const [popularTests, setPopularTests] = useState<PopularTest[]>([]);
@@ -535,14 +535,18 @@ function ExamsPageContent() {
                 >
                   <ChevronLeft className="h-5 w-5 text-slate-700" />
                 </button>
-                <div ref={popularTestsScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
+                <div ref={popularTestsScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
                   {popularTests.filter(pt => pt?.exam).map((popularTest) => (
-                    <div key={popularTest.id} className="flex-shrink-0 snap-start w-72 sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
-                      <StandardExamCard exam={{
-                        ...popularTest.exam,
-                        category_logo_url: popularTest.exam?.exam_categories?.logo_url,
-                        category_icon: popularTest.exam?.exam_categories?.icon,
-                      }} ctaLabel="Attempt Now" />
+                    <div key={popularTest.id} className="flex-shrink-0 snap-start w-[17rem] sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
+                      <StandardExamCard 
+                        exam={{
+                          ...popularTest.exam,
+                          category_logo_url: popularTest.exam?.exam_categories?.logo_url,
+                          category_icon: popularTest.exam?.exam_categories?.icon,
+                        }} 
+                        ctaLabel="Attempt Now" 
+                        showAttemptsTop={true}
+                      />
                     </div>
                   ))}
                 </div>
@@ -863,73 +867,69 @@ function ExamsPageContent() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {/* Card 1 - Latest Exam Patterns */}
-              <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-2xl p-8 border border-blue-100 dark:border-blue-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-6 right-6">
-                  <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                    <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+              <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-2xl p-6 sm:p-8 border border-blue-100 dark:border-blue-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="relative shrink-0">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="absolute -top-1 -left-1 sm:-top-1.5 sm:-left-1.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-lg">
+                        NEW
+                      </span>
+                    </div>
                   </div>
-                  <div className="absolute -top-2 -right-2">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-lg">
-                      NEW
-                    </span>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
+                      Latest Exam Patterns
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                      Prepare for the level expected in upcoming exams with updated question sets.
+                    </p>
                   </div>
                 </div>
-
-                <div className="mt-20">
-                  <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                    Latest Exam Patterns
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                    Prepare for the level expected in the upcoming exams with our updated question patterns.
-                  </p>
-                </div>
-
                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
 
               {/* Card 2 - Save Tests & Questions */}
-              <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-2xl p-8 border border-purple-100 dark:border-purple-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-6 right-6">
-                  <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                    <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-2xl p-6 sm:p-8 border border-purple-100 dark:border-purple-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                     </svg>
                   </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
+                      Save Tests & Questions
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                      Save important items to revise or reattempt them later at your convenience.
+                    </p>
+                  </div>
                 </div>
-
-                <div className="mt-20">
-                  <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                    Save Tests & Questions
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                    Save important Tests & Questions to revise or reattempt them later at your convenience.
-                  </p>
-                </div>
-
                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
 
               {/* Card 3 - Performance Analysis */}
-              <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-2xl p-8 border border-amber-100 dark:border-amber-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-6 right-6">
-                  <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                    <svg className="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-2xl p-6 sm:p-8 border border-amber-100 dark:border-amber-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
+                      In-depth Analysis
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                      Get AI-powered insights on your AIR & Comparison with the Toppers.
+                    </p>
+                  </div>
                 </div>
-
-                <div className="mt-20">
-                  <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                    In-depth Performance Analysis
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                    Get insights on your Strengths & Weaknesses, All India Rank & Performance Comparison with the Topper.
-                  </p>
-                </div>
-
                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
             </div>
@@ -969,14 +969,17 @@ function ExamsPageContent() {
               >
                 <ChevronLeft className="h-5 w-5 text-slate-700" />
               </button>
-              <div ref={newTestSeriesScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
+              <div ref={newTestSeriesScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
                 {newTestSeries.filter(t => t?.exam).map((test) => (
-                  <div key={test.id} className="flex-shrink-0 snap-start w-72 sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
-                    <StandardExamCard exam={{
-                      ...test.exam,
-                      category_logo_url: test.exam?.exam_categories?.logo_url,
-                      category_icon: test.exam?.exam_categories?.icon,
-                    }} ctaLabel="Attempt Now" />
+                  <div key={test.id} className="flex-shrink-0 snap-start w-[17rem] sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
+                    <StandardExamCard 
+                      exam={{
+                        ...test.exam,
+                        category_logo_url: test.exam?.exam_categories?.logo_url,
+                        category_icon: test.exam?.exam_categories?.icon,
+                      }} 
+                      ctaLabel="Attempt Now" 
+                    />
                   </div>
                 ))}
               </div>
@@ -1005,10 +1008,10 @@ function ExamsPageContent() {
               <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-4">
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
-                    Social Proof
+                    View Reviews
                   </div>
-                  <h2 className="font-display text-4xl font-semibold text-slate-900">
-                    Aspirants can't stop talking about Bharat Mock
+                  <h2 className="font-display text-4xl font-semibold text-slate-900 whitespace-nowrap">
+                    Trusted by Aspirants
                   </h2>
 
                   <div className="flex flex-wrap gap-6 text-sm text-slate-600">
@@ -1044,10 +1047,10 @@ function ExamsPageContent() {
                     </button>
                     <div
                       ref={testimonialsScrollRef}
-                      className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth"
+                      className="flex gap-6 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 snap-x snap-mandatory hide-scrollbar scroll-smooth"
                     >
                       {testimonials.map((item) => (
-                        <div key={item.id} className="flex-shrink-0 w-[22rem] snap-start">
+                        <div key={item.id} className="flex-shrink-0 w-[17rem] sm:w-[22rem] max-w-[85vw] snap-start">
                           <div className="relative h-full rounded-3xl bg-gradient-to-br from-white via-white to-white/80 p-[1px] shadow-lg">
                             <div className="h-full rounded-[calc(1.5rem-1px)] bg-white/95 p-6 space-y-4">
                               <div className="flex items-center gap-3">

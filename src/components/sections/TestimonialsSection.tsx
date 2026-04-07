@@ -29,8 +29,8 @@ const scrollByOffset = (ref: React.RefObject<HTMLDivElement>, offset: number) =>
 };
 
 export function TestimonialsSection({
-  eyebrow = "Social Proof",
-  title = "Aspirants can't stop talking about Bharat Mock",
+  eyebrow = "View Reviews",
+  title = "Trusted by Aspirants",
   description = "Real feedback from toppers and serious contenders—curated from app reviews and our student community—to remind you that consistent practice here translates into real selection stories.",
   limit = 12,
   className
@@ -89,10 +89,10 @@ export function TestimonialsSection({
         </button>
         <div
           ref={scrollRef}
-          className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth"
+          className="flex gap-4 sm:gap-6 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 snap-x snap-mandatory hide-scrollbar scroll-smooth"
         >
           {testimonials.map((item) => (
-            <div key={item.id} className="flex-shrink-0 w-[22rem] snap-start">
+            <div key={item.id} className="flex-shrink-0 w-[17rem] sm:w-[22rem] max-w-[85vw] snap-start">
               <div className="relative h-full rounded-3xl bg-gradient-to-br from-white via-white to-white/80 p-[1px] shadow-lg">
                 <div className="h-full rounded-[calc(1.5rem-1px)] bg-white/95 p-6 space-y-4">
                   <div className="flex items-center gap-3">
@@ -145,7 +145,7 @@ export function TestimonialsSection({
   return (
     <section
       className={cn(
-        "relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] border border-border/40 p-8 md:p-12",
+        "relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] border border-border/40 p-5 sm:p-8 md:p-12",
         className
       )}
     >
@@ -160,7 +160,9 @@ export function TestimonialsSection({
             <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
               {eyebrow}
             </div>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold text-slate-900">{title}</h2>
+            <h2 className="font-display text-2xl md:text-4xl font-semibold text-slate-900 leading-tight whitespace-nowrap">
+              {title}
+            </h2>
             <p className="text-sm text-slate-600">{description}</p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { lazy, Suspense } from 'react';
+import React from 'react';
 import { removeStandaloneHeadingMarkers, stripLineBreakTags } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { AutoExamCardsBlock } from './AutoExamCardsBlock';
@@ -60,7 +60,7 @@ const sanitizeHeadingInnerHtml = (value?: string | null) =>
 
 const renderDynamicHeading = (
   value: string,
-  tagName: string | undefined,
+  tagName: string | null | undefined,
   fallback: HeadingTag,
   className: string
 ) => {
@@ -82,15 +82,11 @@ interface Block {
 interface BlockRendererProps {
   block: Block;
   isEditing?: boolean;
-  onEdit?: (blockId: string) => void;
-  onDelete?: (blockId: string) => void;
 }
 
 export const BlockRenderer: React.FC<BlockRendererProps> = ({ 
   block, 
-  isEditing = false,
-  onEdit,
-  onDelete 
+  isEditing = false
 }) => {
   const renderBlockContent = () => {
     const { block_type, content, settings } = block;
@@ -216,7 +212,7 @@ const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content })
   );
 };
 
-const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { type = 'unordered', items = [] } = content;
   const ListTag = type === 'ordered' ? 'ol' : 'ul';
   
@@ -229,7 +225,7 @@ const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
   );
 };
 
-const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { 
     headers = [], 
     rows = [], 
@@ -297,7 +293,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
   );
 };
 
-const ImageBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const ImageBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { url, alt = '', caption, width = '100%', alignment = 'center' } = content;
   const safeUrl = typeof url === 'string' ? url.trim() : '';
 
@@ -329,10 +325,10 @@ const ChartBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     ? data.datasets
     : [{ label: data.datasetLabel || 'Value', values: data.values || data.yAxis || [] }];
 
-  const datasetKeys = datasets.map((dataset, index) => dataset.key || dataset.label || `Series ${index + 1}`);
+  const datasetKeys = (datasets as any[]).map((dataset: any, index: number) => dataset.key || dataset.label || `Series ${index + 1}`);
   const chartData = labels.map((label: string, labelIndex: number) => {
     const row: Record<string, any> = { label };
-    datasets.forEach((dataset, datasetIndex) => {
+    (datasets as any[]).forEach((dataset: any, datasetIndex: number) => {
       const key = datasetKeys[datasetIndex];
       const values = dataset.values || [];
       row[key] = Number(values[labelIndex] ?? 0);
@@ -393,7 +389,7 @@ const ChartBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
           <Tooltip />
           <Legend />
           <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={100} paddingAngle={3}>
-            {pieData.map((entry, index) => (
+            {pieData.map((entry: any, index: number) => (
               <Cell key={`cell-${entry.name}`} fill={palette[index % palette.length]} />
             ))}
           </Pie>
@@ -438,7 +434,7 @@ const QuoteBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   );
 };
 
-const CodeBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const CodeBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { code, language = 'javascript' } = content;
   
   return (
@@ -452,7 +448,7 @@ const DividerBlock: React.FC<{ settings?: any }> = ({ settings }) => {
   return <hr className="my-8 border-t-2 border-gray-300" />;
 };
 
-const ButtonBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const ButtonBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { text, url, variant = 'primary', size = 'medium' } = content;
   
   const variantClasses = {
@@ -479,7 +475,7 @@ const ButtonBlock: React.FC<{ content: any; settings?: any }> = ({ content, sett
   );
 };
 
-const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { items = [] } = content;
   const [openIndex, setOpenIndex] = React.useState<number | null>(0);
 
@@ -578,7 +574,7 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, s
   );
 };
 
-const TabsBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const TabsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { tabs = [] } = content;
   const [activeTab, setActiveTab] = React.useState(0);
   
@@ -608,7 +604,7 @@ const TabsBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
   );
 };
 
-const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { title, description, image, link } = content;
   
   return (
@@ -636,7 +632,7 @@ const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
   );
 };
 
-const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { text, type = 'info' } = content;
   const cleanedText = removeStandaloneHeadingMarkers(text || '');
   
@@ -657,7 +653,7 @@ const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
   );
 };
 
-const VideoBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const VideoBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { url, caption } = content;
   
   return (
@@ -675,7 +671,7 @@ const VideoBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
   );
 };
 
-const EmbedBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const EmbedBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { embedCode } = content;
   
   return (
@@ -683,7 +679,7 @@ const EmbedBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
   );
 };
 
-const HtmlBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const HtmlBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { html } = content;
   const cleanedHtml = removeStandaloneHeadingMarkers(html || '');
   
@@ -692,7 +688,7 @@ const HtmlBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
   );
 };
 
-const ColumnsBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
+const ColumnsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { columns = [] } = content;
   
   return (
@@ -798,7 +794,7 @@ const ExamCardsBlock: React.FC<{ content: any; settings?: any }> = ({ content })
       });
       setLoading(false);
     });
-  }, [examIds.join(',')]);
+  }, [examIds, examDetails]);
 
   const colClass = columns === 1 ? 'grid-cols-1' : columns === 3 ? 'grid-cols-1 md:grid-cols-3' : columns === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2';
 

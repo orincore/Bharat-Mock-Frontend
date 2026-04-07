@@ -34,8 +34,7 @@
     ],
     "forceConsistentCasingInFileNames": true,
     "noUnusedParameters": false,
-    "noUnusedLocals": false,
-    "ignoreDeprecations": "6.0"
+    "noUnusedLocals": false
   },
   "include": [
     "next-env.d.ts",

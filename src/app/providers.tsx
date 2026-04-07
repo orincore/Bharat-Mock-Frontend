@@ -68,8 +68,16 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hideChrome = useMemo(() => {
     if (!pathname) return false;
+    // Exactly like dedicated exam attempt views
     return pathname.startsWith("/exams/") && pathname.includes("/attempt/");
   }, [pathname]);
+
+  const hideFooterOnly = useMemo(() => {
+    if (!pathname || hideChrome) return false;
+    // Hide footer on exam detail/instruction pages which usually follow /[category-slug]/[exam-slug]
+    const segments = pathname.split("/").filter(Boolean);
+    return segments.length === 2 && !segments[0].startsWith("admin") && !segments[0].startsWith("auth");
+  }, [pathname, hideChrome]);
 
   return (
     <AuthProvider onAuthChange={refreshAppData}>
@@ -89,7 +97,7 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
               <main className={`flex-grow ${hideChrome ? "min-h-screen bg-background" : ""}`}>
                 {children}
               </main>
-              {!hideChrome && <Footer />}
+              {!hideChrome && !hideFooterOnly && <Footer />}
             </div>
             <AuthReminderDialog />
           </BlockedAccountGate>

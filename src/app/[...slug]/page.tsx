@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import DynamicPageWrapper from './DynamicPageWrapper';
 
 export const dynamic = 'force-dynamic';
@@ -25,18 +26,29 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<{
   canonical_url?: string;
   tab_seo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }>;
 } | null> {
-  try {
-    const [first] = slugArray;
-    if (!first) return null;
+  const [first] = slugArray;
+  if (!first) return null;
 
-    const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`), { cache: 'no-store' });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`), { 
+      cache: 'no-store',
+      signal: controller.signal
+    });
     if (subRes.ok) {
       const subData = await subRes.json();
       const subcategoryId = subData?.data?.id;
       if (subcategoryId) {
-        const contentRes = await fetch(buildApiUrl(`/page-content/${subcategoryId}`), { cache: 'no-store' });
+        // Shared controller is fine for sequential calls in the same try/catch
+        const contentRes = await fetch(buildApiUrl(`/page-content/${subcategoryId}`), { 
+          cache: 'no-store',
+          signal: controller.signal
+        });
         if (contentRes.ok) {
           const content = await contentRes.json();
+          clearTimeout(timeoutId);
           return {
             meta_title: content.seo?.meta_title,
             meta_description: content.seo?.meta_description,
@@ -48,14 +60,21 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<{
       }
     }
 
-    const catRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`), { cache: 'no-store' });
+    const catRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`), { 
+      cache: 'no-store',
+      signal: controller.signal
+    });
     if (catRes.ok) {
       const catData = await catRes.json();
       const categoryId = catData?.data?.id;
       if (categoryId) {
-        const contentRes = await fetch(buildApiUrl(`/category-page-content/${categoryId}`), { cache: 'no-store' });
+        const contentRes = await fetch(buildApiUrl(`/category-page-content/${categoryId}`), { 
+          cache: 'no-store',
+          signal: controller.signal
+        });
         if (contentRes.ok) {
           const content = await contentRes.json();
+          clearTimeout(timeoutId);
           return {
             meta_title: content.seo?.meta_title,
             meta_description: content.seo?.meta_description,
@@ -66,7 +85,13 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<{
         }
       }
     }
-  } catch { /* ignore */ }
+  } catch (error: any) { 
+    if (error.name === 'AbortError') {
+      console.warn(`SEO fetch for slug ${first} timed out.`);
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
   return null;
 }
 
@@ -111,13 +136,19 @@ export default async function DynamicPage(
   const slugArray = Array.isArray(slug) ? slug : [slug];
 
   // Prevent catch-all from handling system paths
-  if (slugArray.length > 0 && slugArray[0].startsWith('_')) {
-    return null;
+  if (slugArray.length > 0 && (slugArray[0].startsWith('_') || slugArray[0].startsWith('.'))) {
+    notFound();
   }
 
-  // If this is a known static route prefix, it shouldn't be here — render nothing
+  // If this is a known static route prefix, it shouldn't be here — show notFound
   if (slugArray.length > 0 && STATIC_PREFIXES.has(slugArray[0].toLowerCase())) {
-    return null;
+    notFound();
+  }
+
+  // Verify if the slug exists to prevent showing "Category not found" on random URLs
+  const seo = await fetchSeoForSlug(slugArray);
+  if (!seo) {
+    notFound();
   }
 
   return (

@@ -17,6 +17,7 @@ export const TestSeriesCard: React.FC<TestSeriesCardProps> = ({ testSeries }) =>
   const seriesUrl = testSeries.slug ? `/test-series/${testSeries.slug}` : `/test-series/${testSeries.id}`;
   const totalTests = testSeries.total_tests ?? testSeries.exams?.length ?? 0;
   const freeTests = testSeries.free_tests ?? testSeries.exams?.filter(exam => exam.is_free)?.length ?? 0;
+  const premiumTests = Math.max(0, totalTests - freeTests);
 
   const languagesLabel = testSeries.languages_text
     || (testSeries.languages && testSeries.languages.length > 0 ? testSeries.languages.join(', ') : null)
@@ -57,9 +58,11 @@ export const TestSeriesCard: React.FC<TestSeriesCardProps> = ({ testSeries }) =>
                 <span className="text-[10px] sm:text-xs font-bold text-slate-600">{initials}</span>
               )}
             </div>
-            <span className="px-2 sm:px-2.5 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 text-[11px] sm:text-xs font-semibold shadow-sm">
-              {freeTests > 0 ? `${freeTests} Free` : 'Premium'}
-            </span>
+            <div className="flex flex-wrap gap-1">
+              <span className="px-2 sm:px-2.5 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 text-[11px] sm:text-xs font-semibold shadow-sm">
+                {totalTests} Tests
+              </span>
+            </div>
           </div>
           {userCount > 0 && (
             <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200/60 text-[11px] sm:text-xs font-semibold text-amber-700 shadow-sm">
@@ -88,9 +91,26 @@ export const TestSeriesCard: React.FC<TestSeriesCardProps> = ({ testSeries }) =>
             </div>
             <span className="font-medium">{totalTests} Tests</span>
           </div>
+
+          {freeTests > 0 && (
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <span className="px-2 sm:px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px] sm:text-[11px] font-bold shadow-sm">
+                {freeTests} Free
+              </span>
+            </div>
+          )}
+
+          {premiumTests > 0 && (
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <span className="px-2 sm:px-2.5 py-0.5 rounded-md bg-violet-50 text-violet-700 border-violet-200/60 text-[10px] sm:text-[11px] font-bold shadow-sm">
+                {premiumTests} Premium
+              </span>
+            </div>
+          )}
+
           {testSeries.difficulty && (
             <div className="flex items-center gap-1 sm:gap-1.5">
-              <span className="px-2 sm:px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 text-[10px] sm:text-xs font-semibold shadow-sm">
+              <span className="px-2 sm:px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border-amber-200/60 text-[10px] sm:text-xs font-semibold shadow-sm">
                 {testSeries.difficulty.name}
               </span>
             </div>

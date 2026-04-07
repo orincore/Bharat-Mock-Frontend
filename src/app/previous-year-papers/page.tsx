@@ -79,7 +79,7 @@ export default function PrevPapersPage() {
     totalPages: 0,
   });
 
-  const scroll = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
+  const scroll = (ref: React.RefObject<HTMLDivElement | null>, dir: 'left' | 'right') => {
     ref.current?.scrollBy({ left: dir === 'left' ? -240 : 240, behavior: 'smooth' });
   };
 
@@ -721,7 +721,7 @@ export default function PrevPapersPage() {
                     </button>
                     <div
                       ref={sectionsScrollRef}
-                      className="flex items-center gap-4 overflow-x-auto pb-3 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
+                      className="flex items-center gap-4 overflow-x-auto pb-3 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth -mx-5 px-5"
                     >
                       <button
                         onClick={() => handleSectionChange('')}
@@ -769,7 +769,7 @@ export default function PrevPapersPage() {
                     </button>
                     <div
                       ref={topicsScrollRef}
-                      className="flex items-center gap-3 overflow-x-auto pb-1 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
+                      className="flex items-center gap-3 overflow-x-auto pb-1 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth -mx-5 px-5"
                     >
                       {currentSectionTopics.map(topic => (
                         <button

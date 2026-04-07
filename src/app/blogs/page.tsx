@@ -324,7 +324,7 @@ export default function BlogsPage() {
 
           <div
             ref={tabBarRef}
-            className="flex items-center gap-0.5 overflow-x-auto hide-scrollbar py-0 sm:px-8"
+            className="flex items-center gap-0.5 overflow-x-auto hide-scrollbar py-0 sm:px-8 -mx-4 px-4 sm:mx-0"
           >
             {allCategories.map(cat => (
               <button

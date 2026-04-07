@@ -590,7 +590,7 @@ export default function LiveTestsPage() {
                         </div>
                         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                           {mockExams.map((exam) => (
-                            <StandardExamCard key={exam.id} exam={exam} isLive={
+                            <StandardExamCard key={exam.id} exam={exam} hideAttempts={true} isLive={
                               (exam.status || '').toLowerCase().includes('live') ||
                               (exam.status || '').toLowerCase() === 'ongoing'
                             } />
@@ -613,7 +613,7 @@ export default function LiveTestsPage() {
                         </div>
                         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                           {quizExams.map((exam) => (
-                            <StandardExamCard key={exam.id} exam={exam} isLive={
+                            <StandardExamCard key={exam.id} exam={exam} hideAttempts={true} isLive={
                               (exam.status || '').toLowerCase().includes('live') ||
                               (exam.status || '').toLowerCase() === 'ongoing'
                             } />
@@ -634,58 +634,63 @@ export default function LiveTestsPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                      <div className="absolute top-6 right-6">
-                        <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
+                    {/* Card 1 - Latest Exam Patterns */}
+                    <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 sm:p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                      <div className="flex items-start gap-4 lg:gap-6">
+                        <div className="relative shrink-0">
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <div className="absolute -top-1 -left-1 sm:-top-1.5 sm:-left-1.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-lg">
+                              NEW
+                            </span>
+                          </div>
                         </div>
-                        <div className="absolute -top-2 -right-2">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-lg">
-                            NEW
-                          </span>
+                        <div className="flex-1">
+                          <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Latest Exam Patterns</h3>
+                          <p className="text-muted-foreground text-sm leading-relaxed">
+                            Live mocks and quizzes replicate the freshest shifts in exam blueprints for familiar difficulty.
+                          </p>
                         </div>
-                      </div>
-                      <div className="mt-20 space-y-3">
-                        <h3 className="font-display text-xl font-bold">Latest Exam Patterns</h3>
-                        <p className="text-muted-foreground text-sm leading-relaxed">
-                          Live mocks and quizzes replicate the freshest shifts in exam blueprints so that the difficulty you face on test day feels familiar.
-                        </p>
                       </div>
                       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
 
-                    <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                      <div className="absolute top-6 right-6">
-                        <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                          <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {/* Card 2 - Save Tests & Questions */}
+                    <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 sm:p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                      <div className="flex items-start gap-4 lg:gap-6">
+                        <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                           </svg>
                         </div>
-                      </div>
-                      <div className="mt-20 space-y-3">
-                        <h3 className="font-display text-xl font-bold">Save Tests & Questions</h3>
-                        <p className="text-muted-foreground text-sm leading-relaxed">
-                          Bookmark clutch attempts, tricky questions, or entire live fixtures to retake them when revision week arrives.
-                        </p>
+                        <div className="flex-1">
+                          <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Save Tests & Questions</h3>
+                          <p className="text-muted-foreground text-sm leading-relaxed">
+                            Bookmark attempts, tricky questions, or entire live fixtures for easy revision later.
+                          </p>
+                        </div>
                       </div>
                       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
 
-                    <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                      <div className="absolute top-6 right-6">
-                        <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                          <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {/* Card 3 - Performance Analysis */}
+                    <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                      <div className="flex items-start gap-4 lg:gap-6">
+                        <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
                         </div>
-                      </div>
-                      <div className="mt-20 space-y-3">
-                        <h3 className="font-display text-xl font-bold">In-depth Performance Analysis</h3>
-                        <p className="text-muted-foreground text-sm leading-relaxed">
-                          Access strength vs. weakness reports, percentile charts, and topper comparisons immediately after every live window.
-                        </p>
+                        <div className="flex-1">
+                          <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Performance Analysis</h3>
+                          <p className="text-muted-foreground text-sm leading-relaxed">
+                            Access strength vs. weakness reports and topper comparisons after every live session.
+                          </p>
+                        </div>
                       </div>
                       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>

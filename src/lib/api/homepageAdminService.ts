@@ -16,7 +16,7 @@ const authFetch = async (path: string, options: RequestInit = {}) => {
     ...(options.headers || {})
   };
 
-  headers['Authorization'] = `Bearer ${token}`;
+  (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -127,5 +127,31 @@ export const homepageAdminService = {
       size: number;
       original_name: string;
     };
+  },
+
+  async getPopularTests(pageIdentifier: string): Promise<any[]> {
+    const data = await authFetch(`/page-popular-tests/admin/${pageIdentifier}`);
+    return data.data || [];
+  },
+
+  async addPopularTest(pageIdentifier: string, examId: string): Promise<any> {
+    const data = await authFetch(`/page-popular-tests`, {
+      method: 'POST',
+      body: JSON.stringify({ pageIdentifier, examId })
+    });
+    return data.data;
+  },
+
+  async removePopularTest(id: string): Promise<void> {
+    await authFetch(`/page-popular-tests/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async reorderPopularTests(pageIdentifier: string, orderedIds: string[]): Promise<void> {
+    await authFetch(`/page-popular-tests/${pageIdentifier}/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ orderedIds })
+    });
   }
 };
