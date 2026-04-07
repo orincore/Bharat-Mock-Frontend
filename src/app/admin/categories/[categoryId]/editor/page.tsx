@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { 
   ArrowLeft, 
   Save, 
@@ -83,7 +82,7 @@ export default function AdminCategoryEditorPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const categoryId = params.categoryId as string;
+  const categoryId = params?.categoryId ?? '';
   const envApi = process.env.NEXT_PUBLIC_API_URL
     ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
     : '';
@@ -93,7 +92,7 @@ export default function AdminCategoryEditorPage() {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('token') || localStorage.getItem('auth_token');
   };
-  const debugLog = (...args: unknown[]) => {
+  const debugLog = (..._args: unknown[]) => {
     if (process.env.NODE_ENV !== 'production') {
       // console.log('[AdminCategoryEditor]', ...args);
     }
@@ -103,7 +102,7 @@ export default function AdminCategoryEditorPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const latestSectionsRef = useRef<Section[]>([]);
   latestSectionsRef.current = sections;
-  const [originalSections, setOriginalSections] = useState<Section[]>([]);
+  
   const [seoData, setSeoData] = useState<SEOData>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -369,7 +368,6 @@ export default function AdminCategoryEditorPage() {
       const nextSections = data.sections || [];
       const nextTabs = data.customTabs || [];
       setSections(nextSections);
-      setOriginalSections(nextSections);
       setSeoData(data.seo || {});
       setCustomTabs(nextTabs);
       setActiveTabId((prev) => (prev === 'overview' || nextTabs.some((tab: CustomTab) => tab.id === prev) ? prev : 'overview'));
@@ -379,7 +377,7 @@ export default function AdminCategoryEditorPage() {
     }
   };
 
-  const handleSave = async (sectionsFromClosure: Section[]) => {
+  const handleSave = async () => {
     // Wait briefly to allow any pending onBlur events (from content-editable elements) 
     // to propagate their state updates to the parent component before saving.
     await new Promise(resolve => setTimeout(resolve, 200));
@@ -432,7 +430,6 @@ export default function AdminCategoryEditorPage() {
 
 
       await loadPageContent();
-      setOriginalSections(updatedSections);
     } catch (error) {
       console.error('Error saving page content:', error);
       toast({
@@ -592,7 +589,7 @@ export default function AdminCategoryEditorPage() {
               </Button>
               <Button
                 size="sm"
-                onClick={() => handleSave(sections)}
+                onClick={() => handleSave()}
                 disabled={saving}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
@@ -653,7 +650,7 @@ export default function AdminCategoryEditorPage() {
       <BlockEditor
         key={activeTabId}
         sections={sectionsForActiveTab}
-        onSave={() => handleSave(sections)}
+        onSave={() => handleSave()}
         onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
         tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
         mediaUploadConfig={mediaUploadConfig}

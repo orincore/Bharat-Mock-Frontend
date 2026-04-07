@@ -13,6 +13,10 @@ export default async function AboutPage() {
   const stats = aboutData.stats?.length ? aboutData.stats : fallbackAboutData.stats;
   const offerings = aboutData.offerings?.length ? aboutData.offerings : fallbackAboutData.offerings;
 
+  if (!content) {
+    return null;
+  }
+
   const renderIcon = (iconKey?: string) => {
     const Icon = aboutIconRegistry[iconKey ?? ''] ?? aboutIconRegistry.star;
     return <Icon className="h-8 w-8" />;
@@ -37,18 +41,18 @@ export default async function AboutPage() {
           </div>
 
           <div className="max-w-4xl mx-auto text-center space-y-6">
-            {content.hero_badge && (
+            {content && content.hero_badge && (
               <span className="inline-flex items-center justify-center px-4 py-1 rounded-full border border-white/20 text-xs uppercase tracking-[0.35em] text-white/70">
                 {content.hero_badge}
               </span>
             )}
             <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight">
-              {content.hero_heading}
+              {content?.hero_heading}
             </h1>
-            {content.hero_subheading && (
+            {content?.hero_subheading && (
               <p className="text-lg text-white/80 max-w-3xl mx-auto">{content.hero_subheading}</p>
             )}
-            {content.hero_description && (
+            {content?.hero_description && (
               <p className="text-base text-white/70 max-w-3xl mx-auto">{content.hero_description}</p>
             )}
 

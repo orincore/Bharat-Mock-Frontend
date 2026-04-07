@@ -33,7 +33,7 @@ const iconOptions = Object.keys(aboutIconRegistry).sort();
 
 export default function AboutAdminPage() {
   const { toast } = useToast();
-  const [content, setContent] = useState<AboutPageContent>(fallbackAboutData.content);
+  const [content, setContent] = useState<AboutPageContent>(fallbackAboutData.content as AboutPageContent);
   const [values, setValues] = useState<EditableValue[]>(
     fallbackAboutData.values.map((value) => ({ ...value, localId: generateLocalId() }))
   );
@@ -67,7 +67,7 @@ export default function AboutAdminPage() {
   };
 
   const hydrateState = (data: AboutPageData) => {
-    setContent(data.content || fallbackAboutData.content);
+    setContent((data.content || fallbackAboutData.content) as AboutPageContent);
     setValues((data.values?.length ? data.values : fallbackAboutData.values).map((value) => ({
       ...value,
       localId: generateLocalId()

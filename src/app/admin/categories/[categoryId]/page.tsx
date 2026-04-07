@@ -101,7 +101,7 @@ export default function AdminCategoryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const categoryId = params.categoryId as string;
+  const categoryId = Array.isArray(params?.categoryId) ? params?.categoryId[0] : (params?.categoryId ?? '');
 
   const [category, setCategory] = useState<Category | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -514,7 +514,7 @@ export default function AdminCategoryDetailPage() {
         ) : (
           <div className="space-y-3">
             {subcategories.map((sub, index) => {
-              const status = getSubcategoryStatus(sub.is_active);
+              getSubcategoryStatus(sub.is_active);
               const isDragging = dragIndex === index;
               const isDragOver = dragOverIndex === index && dragIndex !== index;
               return (

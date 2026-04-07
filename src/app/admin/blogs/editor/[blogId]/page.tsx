@@ -78,7 +78,7 @@ export default function AdminBlogEditorPage() {
   const { toast } = useToast();
   const router = useRouter();
   const params = useParams<{ blogId: string }>();
-  const blogId = params.blogId;
+  const blogId = params?.blogId ?? '';
   const isNew = blogId === "new";
 
   const [formState, setFormState] = useState<BlogFormState>(DEFAULT_FORM_STATE);
@@ -86,7 +86,7 @@ export default function AdminBlogEditorPage() {
   const latestSectionsRef = useRef<BlogSection[]>([]);
   latestSectionsRef.current = sections;
   const [loading, setLoading] = useState(true);
-  const [sectionsLoading, setSectionsLoading] = useState(false);
+  const [sectionsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sectionsSaving, setSectionsSaving] = useState(false);
   const [uploadingFeaturedImage, setUploadingFeaturedImage] = useState(false);

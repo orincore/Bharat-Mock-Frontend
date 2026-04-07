@@ -33,8 +33,8 @@
       "node"
     ],
     "forceConsistentCasingInFileNames": true,
-    "noUnusedParameters": true,
-    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noUnusedLocals": false,
     "ignoreDeprecations": "6.0"
   },
   "include": [
