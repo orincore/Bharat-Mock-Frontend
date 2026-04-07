@@ -382,41 +382,79 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
                 <p className="text-muted-foreground">Add exam categories in the admin panel to showcase them here.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {subcategories.map((sub) => (
-                  <Link
-                    key={sub.id}
-                    href={`/${sub.slug}`}
-                    className="group bg-white border border-slate-200 rounded-3xl p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 flex flex-col gap-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-xs uppercase tracking-wide text-muted-foreground">Exam Category</span>
-                        <h3 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
-                          {sub.name}
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {category.logo_url && (
-                          <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden">
-                            <img src={category.logo_url} alt={`${category.name} logo`} width={40} height={40} className="w-full h-full object-cover" />
+              <>
+                {/* Mobile View: High-fidelity cards (Current UI kept intact) */}
+                <div className="grid grid-cols-1 gap-6 md:hidden">
+                  {subcategories.map((sub) => (
+                    <Link
+                      key={sub.id}
+                      href={`/${sub.slug}`}
+                      className="group bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs uppercase tracking-wide text-muted-foreground">Exam Category</span>
+                          <h3 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                            {sub.name}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {category.logo_url && (
+                            <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden">
+                              <img src={category.logo_url} alt={`${category.name} logo`} width={40} height={40} className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <ChevronRight className="h-6 w-6" />
                           </div>
-                        )}
-                        <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                          <ChevronRight className="h-6 w-6" />
                         </div>
                       </div>
-                    </div>
-                    {sub.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-3">{sub.description}</p>
-                    )}
-                    <div className="flex items-center justify-between text-sm text-primary font-medium">
-                      <span>Open detailed page</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                      {sub.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-3">{sub.description}</p>
+                      )}
+                      <div className="flex items-center justify-between text-sm text-primary font-medium">
+                        <span>Open detailed page</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Desktop View: Pills format same as home page */}
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {subcategories.map((sub: any) => (
+                    <Link
+                      key={sub.id}
+                      href={`/${sub.slug}`}
+                      className="group border border-border rounded-2xl px-4 py-3 bg-white hover:border-primary/60 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-3 h-20"
+                    >
+                      {sub.logo_url || category.logo_url ? (
+                        <div className="w-11 h-11 flex-shrink-0 bg-slate-50 rounded-xl border border-slate-100 p-1 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+                          <img
+                            src={sub.logo_url || category.logo_url || ''}
+                            alt=""
+                            width={44}
+                            height={44}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-11 h-11 flex-shrink-0 bg-blue-50 rounded-xl flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+                          <BookOpen className="h-6 w-6" />
+                        </div>
+                      )}
+                      <div className="flex flex-col flex-1 min-w-0 overflow-visible">
+                        <span className="font-bold text-sm text-slate-900 leading-tight group-hover:text-primary transition-colors">
+                          {sub.name}
+                        </span>
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 group-hover:text-primary/70 transition-colors">
+                          View Mocks
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}

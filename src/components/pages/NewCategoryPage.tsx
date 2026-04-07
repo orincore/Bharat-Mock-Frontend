@@ -169,34 +169,94 @@ const blobToDataUrl = (blob: Blob) =>
   });
 
 const inlineImagesForPdf = async (root: HTMLElement | null) => {
-  if (!root) {
-    return () => {};
-  }
+  if (!root) return () => {};
 
   const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
-  const replacements: { img: HTMLImageElement; originalSrc: string }[] = [];
+  const replacements: { img: HTMLImageElement; originalSrc: string, originalSrcset: string | null }[] = [];
+
+  const getImageUrl = (src: string): Promise<string | null> => {
+    return new Promise(async (resolve) => {
+      // Strategy 1: Fetch (Safest for CORS if supported)
+      try {
+        const response = await fetch(src, { mode: "cors", cache: 'no-cache' });
+        if (response.ok) {
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+          return;
+        }
+      } catch (e) {
+        // Fall through to canvas
+      }
+
+      // Strategy 2: Canvas with anonymous crossOrigin
+      const imgElement = new Image();
+      imgElement.crossOrigin = "anonymous";
+      imgElement.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = imgElement.naturalWidth || imgElement.width;
+          canvas.height = imgElement.naturalHeight || imgElement.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(null);
+            return;
+          }
+          ctx.drawImage(imgElement, 0, 0);
+          resolve(canvas.toDataURL("image/png")); // PNG is safer for transparency in logos
+        } catch (e) {
+          resolve(null);
+        }
+      };
+      imgElement.onerror = () => resolve(null);
+      imgElement.src = src;
+    });
+  };
 
   await Promise.all(
     images.map(async (img) => {
-      const src = img.getAttribute("src");
+      const src = img.getAttribute("src") || img.src;
       if (!src || src.startsWith("data:")) return;
 
       try {
-        const response = await fetch(src, { mode: "cors" });
-        if (!response.ok) throw new Error("Failed to fetch image");
-        const blob = await response.blob();
-        const dataUrl = await blobToDataUrl(blob);
-        replacements.push({ img, originalSrc: src });
-        img.src = dataUrl;
+        const dataUrl = await getImageUrl(src);
+        if (dataUrl) {
+          replacements.push({ 
+            img, 
+            originalSrc: src,
+            originalSrcset: img.getAttribute("srcset")
+          });
+          
+          // Clear srcset as it can override the src we're inlining
+          img.removeAttribute("srcset");
+          img.src = dataUrl;
+
+          // Crucial: Wait for the browser to register the new data URL
+          await new Promise((r) => {
+            if (img.complete) r(null);
+            else {
+              img.onload = () => r(null);
+              img.onerror = () => r(null);
+            }
+          });
+        }
       } catch (error) {
-        console.warn("[NewCategoryPage] Failed to inline image for PDF", error);
+        console.warn("[NewCategoryPage] Skip image inlining:", src, error);
       }
     })
   );
 
+  // Give the browser one last tick to render
+  await new Promise(r => setTimeout(r, 100));
+
   return () => {
-    replacements.forEach(({ img, originalSrc }) => {
+    replacements.forEach(({ img, originalSrc, originalSrcset }) => {
       img.src = originalSrc;
+      if (originalSrcset) {
+        img.setAttribute("srcset", originalSrcset);
+      }
     });
   };
 };
@@ -654,16 +714,17 @@ export default function NewCategoryPage({
                         Select any exam below to jump into its dedicated page with syllabus, mock tests, previous year papers, and more.
                       </p>
                     </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4">
+                    {/* Mobile View: Original squares maintained */}
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 md:hidden">
                       {subcategories.map((sub) => {
                         const logoUrl = sub.logo_url || category?.logo_url || null;
                         return (
                           <Link
                             key={sub.id}
                             href={`/${sub.slug}`}
-                            className="group flex flex-col items-center justify-center p-3 md:p-5 bg-white border border-slate-200 rounded-xl md:rounded-2xl hover:border-blue-300 hover:shadow-md transition-all duration-200 text-center min-h-[100px] md:min-h-[140px]"
+                            className="group flex flex-col items-center justify-center p-3 sm:p-5 bg-white border border-slate-200 rounded-xl sm:rounded-2xl hover:border-blue-300 hover:shadow-md transition-all duration-200 text-center min-h-[100px] sm:min-h-[140px]"
                           >
-                            <div className="w-12 h-12 md:w-20 md:h-20 flex items-center justify-center overflow-hidden mb-2 md:mb-3 group-hover:scale-110 transition-transform">
+                            <div className="w-12 h-12 sm:w-20 sm:h-20 flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
                               {logoUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
@@ -676,9 +737,47 @@ export default function NewCategoryPage({
                               )}
                             </div>
                             <div className="flex-1 w-full">
-                              <p className="text-[10px] md:text-sm font-bold text-slate-800 leading-[1.3] line-clamp-2 md:line-clamp-none">
+                              <p className="text-[10px] sm:text-sm font-bold text-slate-800 leading-[1.3] line-clamp-2 sm:line-clamp-none">
                                 {sub.name}
                               </p>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop View: Pill format matching home page */}
+                    <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {subcategories.map((sub) => {
+                        const logoUrl = sub.logo_url || category?.logo_url || null;
+                        return (
+                          <Link
+                            key={sub.id}
+                            href={`/${sub.slug}`}
+                            className="group border border-border rounded-2xl px-4 py-3 bg-white hover:border-primary/60 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-3 h-20"
+                          >
+                            {logoUrl ? (
+                              <div className="w-11 h-11 flex-shrink-0 bg-slate-50 rounded-xl border border-slate-100 p-1 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+                                <img
+                                  src={logoUrl}
+                                  alt=""
+                                  width={44}
+                                  height={44}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-11 h-11 flex-shrink-0 bg-blue-50 rounded-xl flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+                                <BookOpen className="h-6 w-6" />
+                              </div>
+                            )}
+                            <div className="flex flex-col flex-1 min-w-0 overflow-visible">
+                              <span className="font-bold text-sm text-slate-900 leading-tight group-hover:text-primary transition-colors">
+                                {sub.name}
+                              </span>
+                              <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 group-hover:text-primary/70 transition-colors">
+                                View Mocks
+                              </span>
                             </div>
                           </Link>
                         );

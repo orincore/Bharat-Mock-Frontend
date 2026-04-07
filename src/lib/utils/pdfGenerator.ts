@@ -410,25 +410,9 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
   }
 
   const loadImage = async (url: string): Promise<LoadedImage> => {
-    // Strategy 1: fetch → blob → FileReader (no canvas, no CORS taint)
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const blob = await response.blob();
-      const mime = blob.type || '';
-      const format: LoadedImage['format'] =
-        mime.includes('png') ? 'PNG' :
-        mime.includes('webp') ? 'WEBP' :
-        'JPEG';
-      const dataUrl = await convertBlobToDataUrl(blob);
-      const dims = await new Promise<{ w: number; h: number }>((res, rej) => {
-        const img = new Image();
-        img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight });
-        img.onerror = rej;
-        img.src = dataUrl;
-      });
-      return { dataUrl, format, naturalWidth: dims.w, naturalHeight: dims.h };
-    } catch (fetchErr) {
+    // Strategy: Try fetching first (best for CORS), then fallback to Image object.
+    // Always convert to JPEG/PNG as jsPDF support for WebP is unreliable.
+    const convertToSupportedFormat = async (blobOrImg: Blob | HTMLImageElement): Promise<LoadedImage> => {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
@@ -439,17 +423,57 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
             const ctx = canvas.getContext('2d');
             if (!ctx) { reject(new Error('No canvas context')); return; }
             ctx.drawImage(img, 0, 0);
-            const ext = url.split('?')[0].split('.').pop()?.toLowerCase();
-            const format: LoadedImage['format'] = ext === 'png' ? 'PNG' : ext === 'webp' ? 'WEBP' : 'JPEG';
+            
+            // Check original extension/mime to decide format
+            const isPng = url.toLowerCase().includes('.png') || (blobOrImg instanceof Blob && blobOrImg.type.includes('png'));
+            const outputFormat = isPng ? 'PNG' : 'JPEG';
+            
             resolve({
-              dataUrl: canvas.toDataURL(format === 'PNG' ? 'image/png' : 'image/jpeg'),
-              format,
+              dataUrl: canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.92),
+              format: outputFormat,
               naturalWidth: canvas.width,
               naturalHeight: canvas.height,
             });
           } catch (e) { reject(e); }
         };
         img.onerror = reject;
+        if (blobOrImg instanceof Blob) {
+          img.src = URL.createObjectURL(blobOrImg);
+        } else {
+          img.src = blobOrImg.src;
+        }
+      });
+    };
+
+    try {
+      // Try fetch first — if it works, it's the safest way to avoid canvas taints
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      return await convertToSupportedFormat(blob);
+    } catch (fetchErr) {
+      // Fallback: Direct image loading
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous'; // Important for CORS
+        img.onload = async () => {
+          try {
+            const result = await convertToSupportedFormat(img);
+            resolve(result);
+          } catch (e) { reject(e); }
+        };
+        img.onerror = () => {
+          // If anonymous fails, try without it (might be a local/same-origin asset)
+          const img2 = new Image();
+          img2.onload = async () => {
+            try {
+              const result = await convertToSupportedFormat(img2);
+              resolve(result);
+            } catch (e) { reject(e); }
+          };
+          img2.onerror = reject;
+          img2.src = url;
+        };
         img.src = url;
       });
     }
