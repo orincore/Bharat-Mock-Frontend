@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Filter, BookOpen, Crown, FileText, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,7 +74,7 @@ export default function PrevPapersPage() {
 
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 100,
+    limit: 30,
     total: 0,
     totalPages: 0,
   });
@@ -600,7 +600,7 @@ export default function PrevPapersPage() {
   );
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 overflow-x-hidden">
       <section className="relative overflow-hidden bg-gradient-to-br from-[#0a1833] via-[#0f2347] to-[#1a3a6b] text-white py-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,153,51,0.12),_transparent_55%)]" />
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
@@ -644,15 +644,15 @@ export default function PrevPapersPage() {
             </div>
           </aside>
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="mb-6">
               <div className="flex border-b border-border">
                 <button
                   type="button"
                   onClick={() => handleTabChange('all')}
                   className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'all'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                     }`}
                 >
                   <FileText className="h-4 w-4" />
@@ -662,8 +662,8 @@ export default function PrevPapersPage() {
                   type="button"
                   onClick={() => handleTabChange('premium')}
                   className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'premium'
-                      ? 'border-amber-500 text-amber-600'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                    ? 'border-amber-500 text-amber-600'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                     }`}
                 >
                   <Crown className="h-4 w-4" />
@@ -854,27 +854,72 @@ export default function PrevPapersPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-between mt-12">
-              <span className="text-sm text-muted-foreground">
-                Page {pagination.page} of {Math.max(pagination.totalPages, 1)}
-              </span>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  disabled={pagination.page === 1 || isLoading}
-                  onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(prev.page - 1, 1) }))}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={pagination.page >= pagination.totalPages || isLoading}
-                  onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
-                >
-                  Next
-                </Button>
+            {pagination.totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-12 pt-8 border-t border-border">
+                <span className="text-sm text-muted-foreground order-2 sm:order-1">
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} papers
+                </span>
+                <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pagination.page === 1 || isLoading}
+                    onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(prev.page - 1, 1) }))}
+                    className="h-9 w-9 p-0"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  <div className="hidden sm:flex items-center gap-1">
+                    {(() => {
+                      const pages: (number | string)[] = [];
+                      const total = pagination.totalPages;
+                      const current = pagination.page;
+                      const size = total > 7 ? 1 : 2;
+
+                      for (let i = 1; i <= total; i++) {
+                        if (i === 1 || i === total || (i >= current - size && i <= current + size)) {
+                          pages.push(i);
+                        } else if (pages[pages.length - 1] !== '...') {
+                          pages.push('...');
+                        }
+                      }
+
+                      return pages.map((page, idx) => (
+                        <React.Fragment key={idx}>
+                          {page === '...' ? (
+                            <span className="px-2 text-muted-foreground">...</span>
+                          ) : (
+                            <Button
+                              variant={pagination.page === page ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => typeof page === 'number' && setPagination(p => ({ ...p, page }))}
+                              className={`h-9 w-9 p-0 ${pagination.page === page ? 'shadow-md' : 'hover:bg-muted'}`}
+                            >
+                              {page}
+                            </Button>
+                          )}
+                        </React.Fragment>
+                      ));
+                    })()}
+                  </div>
+
+                  <div className="sm:hidden flex items-center px-4 text-sm font-medium">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pagination.page >= pagination.totalPages || isLoading}
+                    onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
+                    className="h-9 w-9 p-0"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -936,7 +981,7 @@ export default function PrevPapersPage() {
         <PageSeoSections
           whyTitle="Why practice with Bharat Mock Previous Year Papers?"
           whySubtitle="Solving real past papers is the single most effective way to understand exam patterns, manage time, and build the confidence to clear cutoffs."
-          faqTitle="Previous Year Papers FAQ"
+          faqTitle="FAQ's"
           faqSubtitle="Everything you need to know about accessing, attempting, and learning from previous year question papers on Bharat Mock."
           testimonialsDescription="Real feedback from aspirants who cracked govt exams by consistently practising previous year papers on Bharat Mock."
           seoContent={

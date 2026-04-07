@@ -160,7 +160,7 @@ export function TestimonialsSection({
             <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
               {eyebrow}
             </div>
-            <h2 className="font-display text-2xl md:text-4xl font-semibold text-slate-900 leading-tight whitespace-nowrap">
+            <h2 className="font-display text-2xl md:text-4xl font-semibold text-slate-900 leading-tight">
               {title}
             </h2>
             <p className="text-sm text-slate-600">{description}</p>

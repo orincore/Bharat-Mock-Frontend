@@ -79,26 +79,44 @@ export function Footer() {
               India's leading platform for exam preparation and personalized learning support. Join millions of students on their journey to success.
             </p>
 
-            {/* contact details — hidden on mobile */}
-            <div className="hidden sm:block space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-background/70">
+            {/* contact details — visible on all devices */}
+            <div className="space-y-2.5 text-sm sm:text-xs lg:text-sm">
+              <a 
+                href={`mailto:${info.support_email}`}
+                className="flex items-center gap-2 text-background/70 hover:text-primary transition-colors"
+                title="Email Support"
+              >
                 <Mail className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>{info.support_email}</span>
-              </div>
-              <div className="flex items-center gap-2 text-background/70">
+              </a>
+              <a 
+                href={`tel:${(info.support_phone || '').replace(/\s+/g, '')}`}
+                className="flex items-center gap-2 text-background/70 hover:text-primary transition-colors"
+                title="Call Helpline"
+              >
                 <Phone className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>{info.support_phone}</span>
-              </div>
-              <div className="flex items-center gap-2 text-background/70">
-                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>
+              </a>
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  [info.address_line1, info.address_line2, info.city, info.state, info.postal_code, info.country]
+                    .filter(Boolean)
+                    .join(', ')
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-2 text-background/70 hover:text-primary transition-colors"
+                title="Open in Maps"
+              >
+                <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                <span className="leading-snug">
                   {[info.address_line1, info.address_line2, info.city, info.state, info.postal_code, info.country]
                     .filter(Boolean)
                     .join(', ')}
                 </span>
-              </div>
+              </a>
               {contactError && !linkLoading && (
-                <p className="text-xs text-background/60">Showing fallback contact details.</p>
+                <p className="text-[10px] text-background/60 pt-1">Showing default contact details.</p>
               )}
             </div>
 

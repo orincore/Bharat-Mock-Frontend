@@ -1133,7 +1133,7 @@ export default function ExamAttemptPage() {
               <div className="max-w-4xl h-full flex flex-col">
                 {/* Section Table - High-Density Precision Centered Grid */}
                 <div className="w-full mb-3 overflow-x-auto bg-white shrink-0 border border-[#e8e8e8] rounded-lg">
-                  <table className="w-full text-[10px] md:text-xs text-left border-collapse table-fixed">
+                  <table className="w-full text-[10px] md:text-xs text-left border-collapse min-w-[450px] md:min-w-full">
                     <thead>
                       {/* Desktop header (light blue) */}
                       <tr className="hidden md:table-row bg-[#dbeafe] text-slate-700 font-semibold border-b border-slate-300">
@@ -1215,7 +1215,6 @@ export default function ExamAttemptPage() {
                           setLanguageSelectionMade(true);
                         }}
                       >
-                        <option value="">{selectedLanguage === 'en' ? 'English' : selectedLanguage === 'hi' ? 'Hindi' : 'Choose a Language'}</option>
                         <option value="en">English</option>
                         {supportsHindi && <option value="hi">Hindi</option>}
                       </select>

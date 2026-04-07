@@ -435,7 +435,7 @@ export default function LiveTestsPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Hero */}
-      <section className="relative gradient-hero py-10">
+      <section className="relative gradient-hero py-6 md:py-10">
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="container-main">
           {/* Skeleton hero — shown until banner image loads */}
@@ -471,11 +471,10 @@ export default function LiveTestsPage() {
                 variant="dark"
                 className="mb-6"
               />
-              <p className="uppercase text-sm tracking-[0.4em] text-background/70 mb-3">Weekly Live Fixtures</p>
-              <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
+              <h1 className="font-display text-2xl md:text-5xl font-bold text-background mb-3">
                 Join the <span className="text-secondary">scheduled</span> live tests curated by Bharat Mock
               </h1>
-              <p className="text-lg text-background/80 mb-6">
+              <p className="text-sm md:text-lg text-background/80 mb-5">
                 Reserve your slot, compete with thousands of aspirants in real time, and receive instant analytics after every live test.
               </p>
               <form onSubmit={handleHeroSearch} className="flex flex-col sm:flex-row gap-3">
@@ -497,7 +496,7 @@ export default function LiveTestsPage() {
 
             <div>
               <div className="bg-background rounded-3xl shadow-2xl border border-border/40 overflow-hidden">
-                <div className="relative min-h-[200px] bg-slate-100" suppressHydrationWarning>
+                <div className="relative bg-slate-100" suppressHydrationWarning>
                   {heroBanner ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -623,184 +622,170 @@ export default function LiveTestsPage() {
                     )}
                   </TabsContent>
                 </Tabs>
-
-                <section className="bg-background border border-border/60 rounded-3xl shadow-sm p-8 md:p-12 space-y-8">
-                  <div className="text-center space-y-3">
-                    <p className="text-sm uppercase tracking-[0.3em] text-secondary font-semibold">Reasons to trust Bharat Mock</p>
-                    <h2 className="font-display text-3xl font-bold text-foreground">Why take Bharat Mock Test Series?</h2>
-                    <p className="text-muted-foreground max-w-3xl mx-auto">
-                      Whether you attempt a live mock or a rapid-fire quiz, the Bharat Mock ecosystem goes beyond scores. Each pillar below mirrors what you might have seen on the Mock Test Series page, now embedded here so Live Tests aspirants can act on the same advantages without jumping across tabs.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {/* Card 1 - Latest Exam Patterns */}
-                    <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 sm:p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                      <div className="flex items-start gap-4 lg:gap-6">
-                        <div className="relative shrink-0">
-                          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
-                            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <div className="absolute -top-1 -left-1 sm:-top-1.5 sm:-left-1.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-lg">
-                              NEW
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Latest Exam Patterns</h3>
-                          <p className="text-muted-foreground text-sm leading-relaxed">
-                            Live mocks and quizzes replicate the freshest shifts in exam blueprints for familiar difficulty.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-
-                    {/* Card 2 - Save Tests & Questions */}
-                    <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 sm:p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                      <div className="flex items-start gap-4 lg:gap-6">
-                        <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
-                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Save Tests & Questions</h3>
-                          <p className="text-muted-foreground text-sm leading-relaxed">
-                            Bookmark attempts, tricky questions, or entire live fixtures for easy revision later.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-
-                    {/* Card 3 - Performance Analysis */}
-                    <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                      <div className="flex items-start gap-4 lg:gap-6">
-                        <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
-                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Performance Analysis</h3>
-                          <p className="text-muted-foreground text-sm leading-relaxed">
-                            Access strength vs. weakness reports and topper comparisons after every live session.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-                  </div>
-                </section>
-
-                <TestimonialsSection
-                  className="mt-16"
-                  description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to remind you that live fixtures here translate into real selection stories."
-                />
-
-                <section className="mt-16 bg-card border border-border rounded-3xl p-8 space-y-6">
-                  <header className="space-y-2">
-                    <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
-                    <h2 className="font-display text-3xl font-bold">Why the Live Tests calendar is your competitive advantage</h2>
-                    <p className="text-base" style={{ color: '#1a1a1a' }}>
-                      Settle in for a detailed narrative that connects the UI you are scrolling through with the discipline, analytics, and accountability needed to ace nationwide exams.
-                    </p>
-                  </header>
-                  <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
-                    <p>
-                      Bharat Mock live fixtures are built to replicate the electric tension of center-based exams while still giving you the convenience of attempting from wherever you are. Every timer tick, leaderboard update, and proctored checkpoint is meticulously choreographed so that your muscle memory for actual exam day is forged weeks in advance. Instead of passively reading notes, you are inserted into a vibrant arena where lakhs of aspirants jostle for the same selection and every mark reclaimed from negative marking counts toward a life-changing cutoff. The Live Tests page acts as a central pit lane where you configure your car, refuel, and preview the circuit before another blistering lap of competition.
-                    </p>
-                    <p>
-                      To make those preparations tangible, each live test listing includes micro-details such as sectional timing, average accuracy benchmarks from the last cohort, and suggested buffer slots for revision. When you scroll through the Live Tests page after dinner or between coaching lectures, you are effectively building a personalized tournament bracket. Maybe you begin with a 30 minute reasoning duel on Tuesday, stack a bilingual GS sprint on Thursday, and close the week with a mega mock on Sunday morning. The platform stores these commitments so that reminder notifications and calendar nudges keep you honest even when fatigue tempts you to skip a session. Discipline, once scheduled, becomes simpler to execute.
-                    </p>
-                    <p>
-                      Live quizzes deserve special mention because they weaponize the power of short, intense bursts of cognition. Ten to fifteen carefully balanced questions delivered in a ten minute window create the same adrenaline spike as the rapid-fire sections of SSC, banking, and state PSC prelims. On the quizzes tab you can filter by category, difficulty, or language preference and immediately see how many aspirants are queued for the next slot. The streak tracker sitting beside each card is more than a vanity metric; it is a behavioral nudge reminding you that consistency beats sporadic genius. Miss one day and the streak resets, but keep the chain alive for a month and your subconscious begins expecting victory.
-                    </p>
-                    <p>
-                      Behind the interface sits an orchestration engine that quietly reconciles thousands of constraints pulled from the backend schedule service. When the admin team marks a new exam as live, the cache invalidates, the status propagates to the tabs, and your feed refreshes without needing a hard reload. If you belong to multiple categories—say BPSC and CTET—the recommendation logic alternates fixtures so you never go two weeks without facing pedagogy or reasoning. This dynamic feed is the opposite of a static PDF calendar; it reacts to your filters, search phrases, and completion history, serving up opportunities that match both your ambition and available bandwidth.
-                    </p>
-                    <p>
-                      Preparation is not a solitary pursuit, and the long-form narrative attached to this page serves as a mentor whispering strategies in your ear. Imagine scanning the hero banner and noticing a note about limited seats—that is a cue to assemble your study circle, pick roles, and run a pre-test huddle. One friend might own vocabulary recaps, another could audit the formula sheet, while you simulate the online interface for the group. The moment the live window opens, you are not just answering questions; you are representing a team that will dissect the analytics afterward, celebrate percentile jumps, and draft counterplans for any topics that exposed gaps.
-                    </p>
-                    <p>
-                      Speaking of analytics, Bharat Mock's post-test breakdowns dive deeper than generic scorecards. Once you finish a live mock or quiz, the dashboard overlays your timeline with the national average, highlights segments where hesitation taxes were paid, and points to remedial video lessons curated by faculty. Over time, these insights become a narrative arc: perhaps your accuracy in data interpretation rose from 52% to 71% after three weekend sprints, or your Hindi comprehension climbed once you toggled the bilingual view. The Live Tests page is essentially chapter zero of that arc, reminding you what the next experiment is and why the metrics will matter when the SSC, UPSC, or state board finally presses the bell.
-                    </p>
-                    <p>
-                      Mental resilience is forged not in comfort but in controlled adversity. That is why many fixtures carry tags like High Pressure Window or Adaptive Difficulty. They intentionally stack above-average difficulty questions or shrink buffer times, forcing you to practice composure. When you enter such sessions straight from the Live Tests listing, you are consenting to a laboratory of stress, and that is a good thing. Your heart rate stabilizes faster with each exposure, your breathing returns to rhythm, and you learn to detach from a bad question within seconds instead of spiraling. The paragraph you are reading is a gentle reminder that mindset is as trainable as mathematics.
-                    </p>
-                    <p>
-                      Another dimension worth appreciating is the orchestration between hero search, filters, and notifications. You can search for CHSL mega slot, narrow results to upcoming, and lock the filters so both desktop and mobile interfaces mirror each other. Once that configuration is saved, the backend understands your intent and surfaces similar fixtures near the top of the feed. Pair that with Google Calendar exports or ICS downloads and you suddenly possess a cross-device command center. A quick glance at your phone while commuting lets you know whether tonight's quiz is still scheduled, whether the attempt window shifted, and when to switch from passive note review to active recall drills.
-                    </p>
-                    <p>
-                      The Live Tests ecosystem also integrates with teaching resources scattered across the platform. Each card can link to strategy articles, FAQ snippets, or even masterclass replays so that last-minute doubt clearing sits a single click away. Suppose you are anxious about the new descriptive writing segment; the Live Tests page may recommend a warm-up practice set published under the Teaching tab, ensuring you never face an unfamiliar question format cold. By centralizing knowledge and action, Bharat Mock shortens the lag between thinking you should revise a topic and testing yourself under live conditions right away.
-                    </p>
-                    <p>
-                      In the end, this entire thousand-plus-word section exists to nudge you from passive intent to decisive action. Bookmark the page, build a ritual around reviewing the schedule every Sunday night, and treat each entry as a contract with your future self. Whether you are chasing AIR-1 or simply fighting to clear a stubborn cutoff, the Live Tests page is the arena where habits crystallize, weaknesses surface, and progress becomes visible. Step into the next slot with courage, respect the timer, and remember that every live attempt is simultaneously a rehearsal and a revelation. The nation's toughest exams await; let the Bharat Mock calendar be the drumbeat that keeps you marching.
-                    </p>
-                  </div>
-                </section>
-
-                <section className="mt-16">
-                  <div>
-                    <div className="text-center space-y-3 mb-8">
-                      <p className="text-sm uppercase tracking-[0.35em] text-primary font-semibold">Answers on demand</p>
-                      <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">Live Tests FAQ</h2>
-                      <p className="text-muted-foreground max-w-2xl mx-auto">
-                        Everything you need to know about schedules, analytics, and access—compiled from the questions aspirants ask our support mentors most often.
-                      </p>
-                    </div>
-
-                    {/* FAQ Tabs */}
-                    <div className="flex gap-2 mb-8 border-b border-border">
-                      {(['All', 'Payments'] as const).map((tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => { setExpandedFaq(null); setActiveFaqTab(tab); }}
-                          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${activeFaqTab === tab
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-muted-foreground hover:text-foreground'
-                            }`}
-                        >
-                          {tab === 'All' ? 'All FAQ' : 'Payment FAQ'}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="space-y-4">
-                      {(activeFaqTab === 'All' ? faqItems : paymentFaqItems).map((item, index) => (
-                        <div key={item.q} className="bg-card border border-border rounded-xl overflow-hidden">
-                          <button
-                            onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
-                          >
-                            <h3 className="font-medium text-foreground text-base">
-                              {index + 1}. {item.q}
-                            </h3>
-                            {expandedFaq === index ? (
-                              <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                            )}
-                          </button>
-                          {expandedFaq === index && (
-                            <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                              <p className="text-sm text-slate-700 leading-relaxed">{item.a}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </section>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {!isLoading && (
+        <div className="container-main pb-20 space-y-20 overflow-hidden">
+          <section className="bg-background border border-border/60 rounded-3xl shadow-sm p-6 sm:p-8 lg:p-10 space-y-8">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-6 text-center">
+              Why take Bharat Mock Test Series?
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Card 1 - Latest Exam Patterns */}
+              <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 sm:p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="relative shrink-0">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="absolute -top-1 -left-1 sm:-top-1.5 sm:-left-1.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-lg">
+                        NEW
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1 text-gray-900">
+                    <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Latest Exam Patterns</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      Live mocks and quizzes replicate the freshest shifts in exam blueprints for familiar difficulty.
+                    </p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+
+              {/* Card 2 - Save Tests & Questions */}
+              <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 sm:p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 text-gray-900">
+                    <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Save Tests & Questions</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      Bookmark attempts, tricky questions, or entire live fixtures for easy revision later.
+                    </p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+
+              {/* Card 3 - Performance Analysis */}
+              <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 text-gray-900">
+                    <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2 text-gray-900">Performance Analysis</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      Access strength vs. weakness reports and topper comparisons after every live session.
+                    </p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+            </div>
+          </section>
+
+          <TestimonialsSection
+            description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to remind you that live fixtures here translate into real selection stories."
+          />
+
+          <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
+            <header className="space-y-4 text-center mb-6">
+
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">Why the Live Tests calendar is your competitive advantage</h2>
+              <p className="text-muted-foreground max-w-4xl mx-auto text-lg leading-relaxed">
+                Settle in for a detailed narrative that connects the UI you are scrolling through with the discipline, analytics, and accountability needed to ace nationwide exams.
+              </p>
+            </header>
+            <div className="grid md:grid-cols-2 gap-8 md:gap-12 leading-relaxed text-gray-800">
+              <div className="space-y-6">
+                <p>
+                  Bharat Mock live fixtures are built to replicate the electric tension of center-based exams while still giving you the convenience of attempting from wherever you are. Every timer tick, leaderboard update, and proctored checkpoint is meticulously choreographed so that your muscle memory for actual exam day is forged weeks in advance. Instead of passively reading notes, you are inserted into a vibrant arena where lakhs of aspirants jostle for the same selection and every mark reclaimed from negative marking counts toward a life-changing cutoff.
+                </p>
+                <p>
+                  To make those preparations tangible, each live test listing includes micro-details such as sectional timing, average accuracy benchmarks from the last cohort, and suggested buffer slots for revision. When you scroll through the Live Tests page after dinner or between coaching lectures, you are effectively building a personalized tournament bracket. Maybe you begin with a 30 minute reasoning duel on Tuesday, stack a bilingual GS sprint on Thursday, and close the week with a mega mock on Sunday morning.
+                </p>
+                <p>
+                  Live quizzes deserve special mention because they weaponize the power of short, intense bursts of cognition. Ten to fifteen carefully balanced questions delivered in a ten minute window create the same adrenaline spike as the rapid-fire sections of SSC, banking, and state PSC prelims. The streak tracker sitting beside each card is more than a vanity metric; it is a behavioral nudge reminding you that consistency beats sporadic genius.
+                </p>
+              </div>
+              <div className="space-y-6 text-gray-800">
+                <p>
+                  Behind the interface sits an orchestration engine that quietly reconciles thousands of constraints pulled from the backend schedule service. When the admin team marks a new exam as live, the cache invalidates, the status propagates to the tabs, and your feed refreshes without needing a hard reload. If you belong to multiple categories—say BPSC and CTET—the recommendation logic alternates fixtures so you never go two weeks without facing pedagogy or reasoning.
+                </p>
+                <p>
+                  Speaking of analytics, Bharat Mock's post-test breakdowns dive deeper than generic scorecards. Once you finish a live mock or quiz, the dashboard overlays your timeline with the national average, highlights segments where hesitation taxes were paid, and points to remedial video lessons curated by faculty. Every live attempt is simultaneously a rehearsal and a revelation. The nation's toughest exams await; let the Bharat Mock calendar be the drumbeat that keeps you marching.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="text-center space-y-3 mb-8">
+
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">FAQ's</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Everything you need to know about schedules, analytics, and access—compiled from the questions aspirants ask our support mentors most often.
+              </p>
+            </div>
+
+            {/* FAQ Tabs */}
+            <div className="flex gap-2 mb-8 border-b border-border">
+              {(['All', 'Payments'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => { setExpandedFaq(null); setActiveFaqTab(tab); }}
+                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${activeFaqTab === tab
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                >
+                  {tab === 'All' ? 'All FAQ' : 'Payment FAQ'}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-4">
+              {(activeFaqTab === 'All' ? faqItems : paymentFaqItems).map((item, index) => (
+                <div key={item.q} className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                  <button
+                    onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
+                  >
+                    <h3 className="font-medium text-foreground text-base">
+                      {index + 1}. {item.q}
+                    </h3>
+                    {expandedFaq === index ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    )}
+                  </button>
+                  {expandedFaq === index && (
+                    <div className="px-6 py-4 bg-muted/30 border-t border-border">
+                      <p className="text-sm text-slate-700 leading-relaxed">{item.a}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
 
       {mobileFiltersOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-background">

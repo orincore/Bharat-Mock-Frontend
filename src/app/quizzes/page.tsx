@@ -392,9 +392,9 @@ export default function QuizzesPage() {
             ) : (
               <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {exams.map((exam) => (
-                  <StandardExamCard 
-                    key={exam.id} 
-                    exam={{ ...exam, category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }} 
+                  <StandardExamCard
+                    key={exam.id}
+                    exam={{ ...exam, category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }}
                     hideAttempts={true}
                   />
                 ))}
@@ -482,13 +482,12 @@ export default function QuizzesPage() {
         <PageSeoSections
           whyTitle="Why take Bharat Mock Quizzes?"
           whySubtitle="Short, sharp, and exam-focused—Bharat Mock quizzes are engineered to sharpen your speed and accuracy across every topic that matters."
-          faqTitle="Quizzes FAQ"
+          faqTitle="FAQ's"
           faqSubtitle="Everything you need to know about our quiz format, scoring, and how to get the most out of every session."
           testimonialsDescription="Real feedback from toppers and serious contenders who used Bharat Mock quizzes to sharpen their preparation."
           seoContent={
             <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
               <header className="space-y-2">
-                <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
                 <h2 className="font-display text-3xl font-bold">Why Bharat Mock Quizzes are the sharpest tool in your exam prep arsenal</h2>
                 <p className="text-base" style={{ color: '#1a1a1a' }}>
                   A deep dive into how short, focused quizzes build the speed, accuracy, and mental stamina that separate toppers from the rest in every competitive exam.

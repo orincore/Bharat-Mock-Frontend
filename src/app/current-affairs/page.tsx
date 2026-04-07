@@ -152,11 +152,10 @@ export default function CurrentAffairsPage() {
             <button
               key={filter.value}
               onClick={() => setActiveFilter(filter.value)}
-              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition border ${
-                activeFilter === filter.value
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-muted text-muted-foreground border-border'
-              }`}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition border ${activeFilter === filter.value
+                ? 'bg-primary text-white border-primary'
+                : 'bg-muted text-muted-foreground border-border'
+                }`}
             >
               {filter.label}
             </button>
@@ -165,130 +164,130 @@ export default function CurrentAffairsPage() {
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-16">
-        <section className="space-y-6">
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Quizzes</p>
-              <h2 className="font-display text-3xl font-bold">Current Affairs Quick Challenges</h2>
-              <p className="text-muted-foreground">Attach the capsule to your practice session. Each quiz is linked with live leaderboard and analytics.</p>
-            </div>
-            <Link href="/live-tests">
-              <Button variant="outline" className="gap-2">
-                View all live tests
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </header>
-
-          {filteredQuizzes.length === 0 ? (
-            <div className="p-8 rounded-3xl border border-border text-center text-muted-foreground">
-              No quizzes found for this filter.
-            </div>
-          ) : (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {filteredQuizzes.map((quiz) => {
-                if (!quiz.exam) return null;
-                const exam = quiz.exam as Exam;
-                return (
-                  <ExamCard key={quiz.id} exam={exam} size="default" hideCategory />
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="space-y-6">
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Notes</p>
-              <h2 className="font-display text-3xl font-bold">Editor curated notes</h2>
-              <p className="text-muted-foreground">These are powered by the blogs block editor. Mark any article as a current affairs note to publish it here.</p>
-            </div>
-            <Link href="/current-affairs#notes">
-              <Button variant="ghost" className="gap-2">
-                See all notes
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </header>
-          {featuredNotes.length === 0 ? (
-            <div className="p-8 rounded-3xl border border-border text-center text-muted-foreground">No notes published yet.</div>
-          ) : (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {featuredNotes.map((note) => (
-                <Link key={note.id} href={`/current-affairs/${note.slug}`} className="group rounded-3xl border border-border bg-card flex flex-col overflow-hidden">
-                  {note.featuredImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={note.featuredImageUrl} alt={note.title} className="w-full object-contain max-h-52 bg-black" />
-                  ) : (
-                    <div className="h-44 w-full bg-muted flex items-center justify-center text-muted-foreground text-sm">Illustration pending</div>
-                  )}
-                  <div className="p-5 space-y-3 flex-1">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <BookOpen className="w-4 h-4" />
-                      {note.tag || 'General Awareness'}
-                    </div>
-                    <h3 className="font-semibold text-lg group-hover:text-primary line-clamp-2">{note.title}</h3>
-                    {note.excerpt && <p className="text-sm text-muted-foreground line-clamp-3">{note.excerpt}</p>}
-                    <p className="text-xs text-muted-foreground">Updated {note.publishedAt ? new Date(note.publishedAt).toLocaleDateString() : 'recently'}</p>
-                  </div>
+            <section className="space-y-6">
+              <header className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Quizzes</p>
+                  <h2 className="font-display text-3xl font-bold">Current Affairs Quick Challenges</h2>
+                  <p className="text-muted-foreground">Attach the capsule to your practice session. Each quiz is linked with live leaderboard and analytics.</p>
+                </div>
+                <Link href="/live-tests">
+                  <Button variant="outline" className="gap-2">
+                    View all live tests
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
                 </Link>
-              ))}
-            </div>
-          )}
-        </section>
+              </header>
 
-        <section className="space-y-6">
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Videos</p>
-              <h2 className="font-display text-3xl font-bold">Explainer videos</h2>
-              <p className="text-muted-foreground">Short capsules to revise budget pointers, government schemes, appointments, and science & tech.</p>
-            </div>
-          </header>
-          {filteredVideos.length === 0 ? (
-            <div className="p-8 rounded-3xl border border-border text-center text-muted-foreground">No videos for this filter yet.</div>
-          ) : (
-            <div className="grid gap-5 lg:grid-cols-3 md:grid-cols-2">
-              {filteredVideos.map((video) => (
-                <a
-                  key={video.id}
-                  href={video.videoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group rounded-3xl border border-border bg-card overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
-                >
-                  <div className="relative bg-black">
-                    {video.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={video.thumbnailUrl}
-                        alt={video.title}
-                        className="w-full object-contain max-h-56"
-                      />
-                    ) : (
-                      <div className="h-48 w-full bg-muted flex items-center justify-center text-muted-foreground">Thumbnail pending</div>
-                    )}
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 flex items-center justify-center transition-colors">
-                      <div className="w-14 h-14 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-colors">
-                        <Play className="w-6 h-6 text-gray-900 ml-0.5" />
+              {filteredQuizzes.length === 0 ? (
+                <div className="p-8 rounded-3xl border border-border text-center text-muted-foreground">
+                  No quizzes found for this filter.
+                </div>
+              ) : (
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {filteredQuizzes.map((quiz) => {
+                    if (!quiz.exam) return null;
+                    const exam = quiz.exam as Exam;
+                    return (
+                      <ExamCard key={quiz.id} exam={exam} size="default" hideCategory />
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-6">
+              <header className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Notes</p>
+                  <h2 className="font-display text-3xl font-bold">Editor curated notes</h2>
+                  <p className="text-muted-foreground">These are powered by the blogs block editor. Mark any article as a current affairs note to publish it here.</p>
+                </div>
+                <Link href="/current-affairs#notes">
+                  <Button variant="ghost" className="gap-2">
+                    See all notes
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </header>
+              {featuredNotes.length === 0 ? (
+                <div className="p-8 rounded-3xl border border-border text-center text-muted-foreground">No notes published yet.</div>
+              ) : (
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {featuredNotes.map((note) => (
+                    <Link key={note.id} href={`/current-affairs/${note.slug}`} className="group rounded-3xl border border-border bg-card flex flex-col overflow-hidden">
+                      {note.featuredImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={note.featuredImageUrl} alt={note.title} className="w-full object-contain max-h-52 bg-black" />
+                      ) : (
+                        <div className="h-44 w-full bg-muted flex items-center justify-center text-muted-foreground text-sm">Illustration pending</div>
+                      )}
+                      <div className="p-5 space-y-3 flex-1">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <BookOpen className="w-4 h-4" />
+                          {note.tag || 'General Awareness'}
+                        </div>
+                        <h3 className="font-semibold text-lg group-hover:text-primary line-clamp-2">{note.title}</h3>
+                        {note.excerpt && <p className="text-sm text-muted-foreground line-clamp-3">{note.excerpt}</p>}
+                        <p className="text-xs text-muted-foreground">Updated {note.publishedAt ? new Date(note.publishedAt).toLocaleDateString() : 'recently'}</p>
                       </div>
-                    </div>
-                  </div>
-                  <div className="p-5 space-y-2 flex-1">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Video className="w-4 h-4" />
-                      {video.tag || 'Daily'}
-                    </div>
-                    <h3 className="font-semibold text-base line-clamp-2 group-hover:text-primary transition-colors">{video.title}</h3>
-                    {video.description && <p className="text-sm text-muted-foreground line-clamp-2">{video.description}</p>}
-                    <p className="text-xs text-muted-foreground">{video.durationSeconds ? `${Math.round(video.durationSeconds / 60)} min` : 'Short capsule'}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          )}
-        </section>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-6">
+              <header className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Videos</p>
+                  <h2 className="font-display text-3xl font-bold">Explainer videos</h2>
+                  <p className="text-muted-foreground">Short capsules to revise budget pointers, government schemes, appointments, and science & tech.</p>
+                </div>
+              </header>
+              {filteredVideos.length === 0 ? (
+                <div className="p-8 rounded-3xl border border-border text-center text-muted-foreground">No videos for this filter yet.</div>
+              ) : (
+                <div className="grid gap-5 lg:grid-cols-3 md:grid-cols-2">
+                  {filteredVideos.map((video) => (
+                    <a
+                      key={video.id}
+                      href={video.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group rounded-3xl border border-border bg-card overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
+                    >
+                      <div className="relative bg-black">
+                        {video.thumbnailUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={video.thumbnailUrl}
+                            alt={video.title}
+                            className="w-full object-contain max-h-56"
+                          />
+                        ) : (
+                          <div className="h-48 w-full bg-muted flex items-center justify-center text-muted-foreground">Thumbnail pending</div>
+                        )}
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 flex items-center justify-center transition-colors">
+                          <div className="w-14 h-14 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-colors">
+                            <Play className="w-6 h-6 text-gray-900 ml-0.5" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-5 space-y-2 flex-1">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Video className="w-4 h-4" />
+                          {video.tag || 'Daily'}
+                        </div>
+                        <h3 className="font-semibold text-base line-clamp-2 group-hover:text-primary transition-colors">{video.title}</h3>
+                        {video.description && <p className="text-sm text-muted-foreground line-clamp-2">{video.description}</p>}
+                        <p className="text-xs text-muted-foreground">{video.durationSeconds ? `${Math.round(video.durationSeconds / 60)} min` : 'Short capsule'}</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </section>
 
           </div>
 
@@ -319,11 +318,10 @@ export default function CurrentAffairsPage() {
                     <button
                       key={filter.value}
                       onClick={() => setActiveFilter(filter.value)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition border ${
-                        activeFilter === filter.value
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-muted text-muted-foreground border-border hover:border-primary hover:text-primary'
-                      }`}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition border ${activeFilter === filter.value
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-muted text-muted-foreground border-border hover:border-primary hover:text-primary'
+                        }`}
                     >
                       {filter.label}
                     </button>
@@ -350,13 +348,12 @@ export default function CurrentAffairsPage() {
         <PageSeoSections
           whyTitle="Why use Bharat Mock for Current Affairs?"
           whySubtitle="Daily capsules, bilingual support, and quiz-based recall—Bharat Mock's current affairs ecosystem is built to convert news into exam marks."
-          faqTitle="Current Affairs FAQ"
+          faqTitle="FAQ's"
           faqSubtitle="Everything you need to know about our daily GK updates, quiz integration, and how to stay consistent with your preparation."
           testimonialsDescription="Real feedback from aspirants who made current affairs a daily habit with Bharat Mock and saw it reflect in their scores."
           seoContent={
             <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
               <header className="space-y-2">
-                <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Long-form playbook</p>
                 <h2 className="font-display text-3xl font-bold">Why Daily Current Affairs is your competitive edge in every govt exam</h2>
               </header>
               <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>

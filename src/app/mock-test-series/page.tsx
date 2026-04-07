@@ -472,23 +472,22 @@ function ExamsPageContent() {
   return (
     <div className={`min-h-screen bg-muted/30 transition-opacity duration-300 ${pageReady ? 'opacity-100' : 'opacity-0'}`}>
 
-      <section className="relative gradient-hero py-10">
+      <section className="relative gradient-hero py-4 md:py-10">
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="container-main">
-          <div className="space-y-4">
+          <div className="space-y-2 md:space-y-4">
             <Breadcrumbs
               items={[
                 HomeBreadcrumb(),
                 { label: 'Mock Test Series' }
               ]}
               variant="dark"
-              className="mb-6"
+              className="mb-2 md:mb-6"
             />
-            <p className="text-xs uppercase tracking-wide text-background/70 font-semibold">Bharat Mock Exams</p>
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-background">Practice with thousands of mock tests</h1>
-            <p className="text-lg text-background/80 max-w-3xl">Filter by category, difficulty, and status to find the perfect exam for your preparation.</p>
+            <h1 className="font-display text-2xl md:text-5xl font-bold text-background">Practice with thousands of mock tests</h1>
+            <p className="text-sm md:text-lg text-background/80 max-w-3xl">Filter by category, difficulty, and status to find the perfect exam for your preparation.</p>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); setPagination(prev => ({ ...prev, page: 1 })); }} className="flex flex-col sm:flex-row gap-3 mt-6 max-w-2xl">
+          <form onSubmit={(e) => { e.preventDefault(); setPagination(prev => ({ ...prev, page: 1 })); }} className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-6 max-w-2xl">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
@@ -538,13 +537,13 @@ function ExamsPageContent() {
                 <div ref={popularTestsScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
                   {popularTests.filter(pt => pt?.exam).map((popularTest) => (
                     <div key={popularTest.id} className="flex-shrink-0 snap-start w-[17rem] sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
-                      <StandardExamCard 
+                      <StandardExamCard
                         exam={{
                           ...popularTest.exam,
                           category_logo_url: popularTest.exam?.exam_categories?.logo_url,
                           category_icon: popularTest.exam?.exam_categories?.icon,
-                        }} 
-                        ctaLabel="Attempt Now" 
+                        }}
+                        ctaLabel="Attempt Now"
                         showAttemptsTop={true}
                       />
                     </div>
@@ -570,7 +569,7 @@ function ExamsPageContent() {
             <div className="flex flex-col gap-2">
 
               <div className="flex flex-wrap items-center gap-3 justify-center text-center">
-                <h2 className="text-2xl font-bold">Government exams by categories</h2>
+                <h2 className="text-m md:text-xl font-bold">Government exams by categories</h2>
 
               </div>
 
@@ -590,12 +589,12 @@ function ExamsPageContent() {
               <div className="relative group">
                 <button
                   onClick={() => scrollLeft(categoriesScrollRef)}
-                  className="absolute left-0 inset-y-0 my-auto z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                  className="absolute left-0 inset-y-0 my-auto z-10 h-11 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
                   aria-label="Scroll left"
                 >
                   <ChevronLeft className="h-5 w-5 text-slate-700" />
                 </button>
-                <div ref={categoriesScrollRef} className="flex gap-5 overflow-x-auto hide-scrollbar pb-3 justify-center">
+                <div ref={categoriesScrollRef} className="flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar pb-4 justify-start md:justify-center px-4 pr-12 md:pr-0">
                   {categories.map((category, index) => {
                     const isSelected = selectedCategoryId === category.id;
                     const badgeBackgrounds = [
@@ -613,10 +612,10 @@ function ExamsPageContent() {
                       <Link
                         key={category.id}
                         href={categoryHref}
-                        className="flex-shrink-0 w-32 text-center group"
+                        className="flex-shrink-0 w-16 md:w-32 text-center group"
                       >
                         <div
-                          className={`w-24 h-24 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform duration-200 ${isSelected ? 'ring-2 ring-white scale-105' : 'group-hover:scale-105'
+                          className={`w-14 h-14 md:w-20 md:h-20 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform duration-200 ${isSelected ? 'ring-2 ring-white scale-105' : 'group-hover:scale-95'
                             }`}
                         >
                           {category.logo_url ? (
@@ -628,13 +627,13 @@ function ExamsPageContent() {
                               loading="lazy"
                             />
                           ) : (
-                            <span className="text-lg font-semibold text-slate-700">
+                            <span className="text-[10px] md:text-lg font-semibold text-slate-700">
                               {category.name.slice(0, 3).toUpperCase()}
                             </span>
                           )}
                         </div>
                         <span
-                          className={`mt-3 block text-sm font-medium ${isSelected ? 'text-white' : 'text-white/80'
+                          className={`mt-1 md:mt-3 block text-[9px] md:text-sm font-medium leading-tight ${isSelected ? 'text-white' : 'text-white/80'
                             }`}
                         >
                           {category.name}
@@ -972,13 +971,13 @@ function ExamsPageContent() {
               <div ref={newTestSeriesScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
                 {newTestSeries.filter(t => t?.exam).map((test) => (
                   <div key={test.id} className="flex-shrink-0 snap-start w-[17rem] sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
-                    <StandardExamCard 
+                    <StandardExamCard
                       exam={{
                         ...test.exam,
                         category_logo_url: test.exam?.exam_categories?.logo_url,
                         category_icon: test.exam?.exam_categories?.icon,
-                      }} 
-                      ctaLabel="Attempt Now" 
+                      }}
+                      ctaLabel="Attempt Now"
                     />
                   </div>
                 ))}

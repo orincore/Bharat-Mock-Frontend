@@ -230,78 +230,29 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
       <section className={`relative overflow-hidden ${isQuiz ? 'bg-[#0b1a2b]' : 'bg-[#0a1833]'} text-white`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.1),_transparent_55%)]" />
         <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
-        <div className="relative container-main py-10">
+        <div className="relative container-main py-3 md:py-10">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs uppercase tracking-[0.25em] text-white/70">
             <Link href={isQuiz ? '/quizzes' : '/exams'} className="inline-flex items-center gap-2 text-white/70 hover:text-white transition">
               <ArrowLeft className="h-4 w-4" /> Back to {isQuiz ? 'Quizzes' : 'Exams'}
             </Link>
-            <span className="inline-flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" /> Bharat Mock Public Examination Cell
-            </span>
+
           </div>
 
-          <div className="mt-8 max-w-4xl">
-            <div className="space-y-6">
-              <div className="inline-flex flex-wrap items-center gap-3">
-                <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20">
-                  {exam?.category}
-                </span>
-                <span className="px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold border border-white/30">
-                  {statusLabel}
-                </span>
-                {isLiveExam && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/15 text-red-50 border border-red-400/40 font-semibold text-xs uppercase tracking-wide">
-                    <span className="relative flex h-3.5 w-3.5 items-center justify-center">
-                      <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-red-400/70 animate-ping" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-300" />
-                    </span>
-                    Live
-                  </span>
-                )}
-                {isQuiz && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/15 text-pink-100 border border-pink-400/30 font-semibold text-xs uppercase tracking-wide">
-                    Quiz Mode
-                  </span>
-                )}
-                <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20 flex items-center gap-2">
-                  <span role="img" aria-label="language">🗣️</span>
-                  {exam?.supports_hindi ? 'English + हिंदी' : 'English Only'}
-                </span>
-              </div>
+          <div className="mt-3 md:mt-8 max-w-4xl">
+            <div className="space-y-3 md:space-y-6">
 
               <div>
-                <p className="text-sm uppercase tracking-[0.35em] text-white/70 mb-2 font-medium">
-                  {isQuiz ? 'Concept Booster Quiz' : 'Official mock examination'}
-                </p>
-                <h1 className="font-display text-3xl md:text-5xl font-extrabold leading-tight tracking-tight">
+
+                <h1 className="font-display text-lg md:text-4xl font-extrabold leading-tight tracking-tight">
                   {exam?.title}
                 </h1>
               </div>
 
-              <p className="text-lg text-white/80 max-w-3xl leading-relaxed">
+              <p className="text-[13px] md:text-base text-white/80 max-w-3xl leading-relaxed">
                 {exam ? formatExamSummary(exam) : 'No summary available.'}
               </p>
 
-              <div className="flex flex-wrap gap-4 pt-2">
-                {[
-                  { label: isQuiz ? 'Quiz Length' : 'Duration', value: `${exam?.duration} Minutes`, icon: Clock, color: 'text-amber-300' },
-                  { label: 'Questions', value: `${exam?.total_questions}`, icon: FileText, color: 'text-blue-300' },
-                  { label: isQuiz ? 'Avg Score Weight' : 'Total Marks', value: `${exam?.total_marks}`, icon: Award, color: 'text-emerald-300' }
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-white backdrop-blur-sm transition-all hover:bg-white/10"
-                  >
-                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 border border-white/20">
-                      <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                    </div>
-                    <div className="leading-tight">
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold">{stat.label}</p>
-                      <p className="text-base font-bold text-white mt-0.5">{stat.value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+
             </div>
           </div>
         </div>
@@ -349,7 +300,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                     <span className="font-bold text-slate-900 shrink-0">2.</span>
                     <div className="space-y-4">
                       <p>The Question Palette on the right side of the screen tracks the real-time status of every question. Each question is marked with one of the following color-coded symbols:</p>
-                      
+
                       <div className="grid sm:grid-cols-2 gap-3 ml-2">
                         <div className="flex items-center gap-4">
                           <div className="w-8 h-8 rounded bg-white border border-slate-300 flex items-center justify-center shrink-0 shadow-sm text-xs font-bold text-slate-400">01</div>
@@ -379,7 +330,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                           <p className="text-sm font-medium">You have answered the question, but marked it for review.</p>
                         </div>
                       </div>
-                      
+
                       <p className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-blue-800 text-sm">
                         Marking for review doesn't change your answer—it just flags it for a second look. Answered questions marked for review count toward your score unless you edit them.
                       </p>
@@ -511,11 +462,10 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
               ) : (
                 <Button
                   onClick={handleStartExam}
-                  className={`flex-1 md:flex-none h-11 md:h-12 px-10 rounded-full font-bold text-white transition-all active:scale-95 shadow-xl ${
-                    isLiveExam 
-                      ? 'bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 shadow-red-200/50' 
-                      : 'bg-gradient-to-r from-[#00aeef] to-[#0086b8] hover:from-[#0099d4] shadow-blue-200/50'
-                  }`}
+                  className={`flex-1 md:flex-none h-11 md:h-12 px-10 rounded-full font-bold text-white transition-all active:scale-95 shadow-xl ${isLiveExam
+                    ? 'bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 shadow-red-200/50'
+                    : 'bg-gradient-to-r from-[#00aeef] to-[#0086b8] hover:from-[#0099d4] shadow-blue-200/50'
+                    }`}
                 >
                   {isLiveExam ? 'Enter Exam Hall' : topResumeAttempt ? 'Start Fresh' : 'Attempt Now'}
                 </Button>

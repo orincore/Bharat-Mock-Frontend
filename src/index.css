@@ -511,8 +511,8 @@ msub > *:last-child { vertical-align: sub; }
 .rich-text-editor ol,
 .rich-text-content ul,
 .rich-text-content ol {
-  margin: 0.5rem 0 0.75rem 1.5rem;
-  padding-left: 0;
+  margin: 0.5rem 0 0.75rem 0.5rem !important;
+  padding-left: 0.8rem !important;
 }
 
 .rich-text-editor ul,
@@ -525,9 +525,26 @@ msub > *:last-child { vertical-align: sub; }
   list-style-type: decimal;
 }
 
+@media (min-width: 768px) {
+  .rich-text-editor ul,
+  .rich-text-editor ol,
+  .rich-text-content ul,
+  .rich-text-content ol {
+    margin-left: 0.75rem !important;
+    padding-left: 1rem !important;
+  }
+}
+
 .rich-text-editor li,
 .rich-text-content li {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.2rem;
+}
+
+@media (min-width: 768px) {
+  .rich-text-editor li,
+  .rich-text-content li {
+    margin-bottom: 0.35rem;
+  }
 }
 
 .rich-text-editor code,

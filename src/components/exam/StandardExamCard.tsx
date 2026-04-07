@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Clock, FileText, TrendingUp, Languages, ArrowRight, Lock, Download, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -55,10 +56,13 @@ export function StandardExamCard({
   onDownloadPDF,
   isDownloading = false,
 }: StandardExamCardProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const showStatusPill = exam.status && exam.status !== 'ongoing' && exam.status !== 'anytime';
 
   // Derive live state if not explicitly passed
-  const nowTs = Date.now();
+  const nowTs = mounted ? Date.now() : 0;
   const startDate = exam.start_date ? new Date(exam.start_date) : null;
   const endDate = exam.end_date ? new Date(exam.end_date) : null;
   const windowStarted = Boolean(startDate && !Number.isNaN(startDate.getTime()) && startDate.getTime() <= nowTs);
@@ -67,8 +71,8 @@ export function StandardExamCard({
   const derivedIsLive = isLive ||
     normalizedStatus === 'ongoing' ||
     normalizedStatus.includes('live') ||
-    (windowStarted && !windowEnded && !exam.allow_anytime);
-  const isEndedWindow = windowEnded && !normalizedStatus.includes('live');
+    (mounted && windowStarted && !windowEnded && !exam.allow_anytime);
+  const isEndedWindow = mounted && windowEnded && !normalizedStatus.includes('live');
   const difficultyLabel = exam.difficulty
     ? exam.difficulty.charAt(0).toUpperCase() + exam.difficulty.slice(1)
     : 'Medium';

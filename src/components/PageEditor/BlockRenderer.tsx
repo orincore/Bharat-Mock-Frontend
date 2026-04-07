@@ -217,7 +217,7 @@ const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const ListTag = type === 'ordered' ? 'ol' : 'ul';
   
   return (
-    <ListTag className={`mb-4 ml-6 ${type === 'ordered' ? 'list-decimal' : 'list-disc'} space-y-2`}>
+    <ListTag className={`mb-4 ml-2 md:ml-3 pl-3 md:pl-4 ${type === 'ordered' ? 'list-decimal' : 'list-disc'} space-y-1 md:space-y-2`}>
       {items.map((item: string, index: number) => (
         <li key={index} className="text-gray-700 rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(item) }} />
       ))}
