@@ -69,7 +69,14 @@ class ApiClient {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
+      const separator = url.includes('?') ? '&' : '?';
+      const bustUrl = `${url}${separator}_t=${Date.now()}`;
+      
+      const response = await fetch(bustUrl, { 
+        ...options, 
+        cache: 'no-store',
+        signal: controller.signal 
+      });
       clearTimeout(id);
       return response;
     } catch (err) {

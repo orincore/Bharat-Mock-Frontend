@@ -3,15 +3,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  Clock, Calendar, BookOpen, Award, TrendingUp, 
-  CheckCircle, AlertCircle, Play, ArrowLeft, FileText, Lock 
+import {
+  Clock, Calendar, BookOpen, Award, TrendingUp,
+  CheckCircle, AlertCircle, Play, ArrowLeft, FileText, Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { examService } from '@/lib/api/examService';
 import { useAuth } from '@/context/AuthContext';
-import { Exam } from '@/types';
+import { Exam, ExamHistoryEntry } from '@/types';
 import { formatExamSummary } from '@/lib/utils/examSummary';
 
 interface ExamDetailPageProps {
@@ -27,10 +27,11 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
   const [error, setError] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi' | null>(null);
   const [languageSelected, setLanguageSelected] = useState(false);
+  const [resumeAttempts, setResumeAttempts] = useState<ExamHistoryEntry[]>([]);
 
   useEffect(() => {
     fetchExamDetails();
-  }, [urlPath]);
+  }, [urlPath, isAuthenticated]);
 
   const fetchExamDetails = async () => {
     setIsLoading(true);
@@ -48,6 +49,29 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
       } else {
         setSelectedLanguage('en');
         setLanguageSelected(true);
+      }
+
+      // If authenticated, check for existing in-progress attempt to offer Resume
+      if (isAuthenticated && data.id) {
+        try {
+          const history = await examService.getExamHistory({ status: 'in-progress' });
+          const matchingAttempts = history.entries
+            .filter(entry => entry.examId === data.id && entry.resumeAllowed !== false)
+            .sort((a, b) => {
+              const answeredDiff = (b.answeredQuestions || 0) - (a.answeredQuestions || 0);
+              if (answeredDiff !== 0) return answeredDiff;
+
+              const updatedA = new Date(a.updatedAt || a.startedAt || 0).getTime();
+              const updatedB = new Date(b.updatedAt || b.startedAt || 0).getTime();
+              return updatedB - updatedA;
+            });
+
+          setResumeAttempts(matchingAttempts);
+        } catch (err) {
+          console.error('Failed to fetch attempt history:', err);
+        }
+      } else {
+        setResumeAttempts([]);
       }
     } catch (err: any) {
       setExam(null);
@@ -133,6 +157,12 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
     }
   };
 
+  const handleResumeExam = (attempt: ExamHistoryEntry) => {
+    if (!exam) return;
+    const langParam = attempt.language || selectedLanguage || 'en';
+    router.push(`/exams/${exam.id}/attempt/${attempt.attemptId}?lang=${langParam}`);
+  };
+
   if (isLoading) {
     return <LoadingPage message="Loading exam details..." />;
   }
@@ -187,9 +217,12 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
   const showAttemptCta = canStartExam && !requiresUnlock;
   const showUpcomingNotice = isUpcoming && !windowStarted;
   const showEndedNotice = windowEnded && !isLiveExam;
+  const topResumeAttempt = resumeAttempts[0] || null;
   const attemptButtonGradient = isLiveExam
     ? 'bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:to-red-800 shadow-[0_15px_35px_-20px_rgba(239,68,68,0.95)]'
-    : 'bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 shadow-[0_15px_35px_-20px_rgba(16,185,129,0.9)]';
+    : topResumeAttempt
+      ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-[0_15px_35px_-20px_rgba(245,158,11,0.9)]'
+      : 'bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 shadow-[0_15px_35px_-20px_rgba(16,185,129,0.9)]';
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -362,31 +395,114 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                     </p>
                   </div>
                 ) : showAttemptCta ? (
-                  <Button 
-                    onClick={handleStartExam}
-                    className={`w-full relative overflow-hidden text-white ${attemptButtonGradient} transition-all duration-200 disabled:from-slate-500 disabled:to-slate-600`}
-                    size="lg"
-                    disabled={exam.supports_hindi && !languageSelected}
-                  >
-                    <span className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
-                    <span className="relative flex items-center justify-center gap-2 font-semibold tracking-wide uppercase text-sm">
-                      {isLiveExam ? (
-                        <span className="relative flex h-4 w-4 items-center justify-center">
-                          <span className="absolute inline-flex h-4 w-4 rounded-full bg-white/40 animate-ping" />
-                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-                        </span>
-                      ) : (
-                        <Play className="h-5 w-5" />
-                      )}
-                      {exam.supports_hindi && !languageSelected
-                        ? 'Select language to start'
-                        : isLiveExam
-                          ? 'Join Live Attempt'
-                          : isQuiz
-                            ? 'Start Quiz'
-                            : 'Begin Attempt'}
-                    </span>
-                  </Button>
+                  <div className="space-y-3">
+                    {resumeAttempts.length > 0 && (
+                      <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 space-y-3">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.28em] text-sky-100/80">Paused Attempts</p>
+                          <p className="mt-1 text-sm font-semibold text-white">Choose any previous paused exam to continue</p>
+                        </div>
+
+                        <div className="space-y-3">
+                          {resumeAttempts.map((attempt, index) => {
+                            const progress = (attempt.totalQuestions || 0) > 0
+                              ? Math.round(((attempt.answeredQuestions || 0) / (attempt.totalQuestions || 1)) * 100)
+                              : 0;
+                            const attemptNumber = resumeAttempts.length - index;
+
+                            return (
+                              <div
+                                key={attempt.attemptId}
+                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 space-y-3"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-xs font-semibold text-white">
+                                      Attempt #{attemptNumber}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-white/65">
+                                      Started {new Date(attempt.startedAt).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <span className="rounded-full border border-sky-300/30 bg-sky-400/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-100">
+                                    {attempt.language === 'hi' ? 'Hindi' : 'English'}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 text-xs text-white/80">
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Answered</p>
+                                    <p className="mt-1 text-sm font-semibold text-white">
+                                      {attempt.answeredQuestions || 0}/{attempt.totalQuestions || exam.total_questions}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Progress</p>
+                                    <p className="mt-1 text-sm font-semibold text-white">{progress}%</p>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/70">
+                                    <span>Attempt progress</span>
+                                    <span>{progress}%</span>
+                                  </div>
+                                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-gradient-to-r from-sky-300 via-cyan-300 to-emerald-300 transition-all duration-300"
+                                      style={{ width: `${progress}%` }}
+                                    />
+                                  </div>
+                                </div>
+
+                                <Button
+                                  onClick={() => handleResumeExam(attempt)}
+                                  className="w-full relative overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg transition-all duration-200"
+                                  size="lg"
+                                >
+                                  <span className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
+                                  <span className="relative flex items-center justify-center gap-2 font-semibold tracking-wide uppercase text-sm">
+                                    <Play className="h-5 w-5 fill-current" />
+                                    Resume
+                                  </span>
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={handleStartExam}
+                      className={`w-full relative overflow-hidden text-white ${attemptButtonGradient} transition-all duration-200 disabled:from-slate-500 disabled:to-slate-600`}
+                      size="lg"
+                      disabled={exam.supports_hindi && !languageSelected}
+                    >
+                      <span className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_white,_transparent_45%)]" />
+                      <span className="relative flex items-center justify-center gap-2 font-semibold tracking-wide uppercase text-sm">
+                        {isLiveExam ? (
+                          <span className="relative flex h-4 w-4 items-center justify-center">
+                            <span className="absolute inline-flex h-4 w-4 rounded-full bg-white/40 animate-ping" />
+                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                          </span>
+                        ) : (
+                          <Play className="h-5 w-5" />
+                        )}
+                        {exam.supports_hindi && !languageSelected
+                          ? 'Select language to start'
+                          : topResumeAttempt
+                            ? 'New Attempt'
+                            : isLiveExam
+                              ? 'Join Live Attempt'
+                              : isQuiz
+                                ? 'Start Quiz'
+                                : 'Attempt Now'}
+                      </span>
+                    </Button>
+                  </div>
                 ) : showUpcomingNotice ? (
                   <Button disabled className="w-full bg-white/10 text-white" size="lg">
                     <Calendar className="h-5 w-5 mr-2" />
@@ -402,7 +518,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                     Examination Closed
                   </Button>
                 )}
-                {!isQuiz && (
+                {isUpcoming && !windowStarted && !isQuiz && (
                   <>
                     <Button
                       onClick={handleAddToCalendar}
@@ -437,7 +553,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
               <h2 className="font-display text-2xl font-bold text-foreground mb-6">
                 {isQuiz ? 'Quiz Overview' : 'Exam Pattern'}
               </h2>
-              
+
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="flex items-start gap-3">
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -480,7 +596,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 </div>
               </div>
 
-              
+
             </div>
 
             {exam.syllabus && exam.syllabus.length > 0 && (
@@ -503,7 +619,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
               <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Exam Hall Advisory</p>
-                  <h2 className="font-display text-2xl font-bold text-slate-900">General Instructions</h2>
+                  {/* Header removed for SEO deduplication */}
                 </div>
                 <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200">
                   Must Read
@@ -539,7 +655,7 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
 
           <div className="space-y-6 order-1 lg:order-2">
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <h3 className="font-display text-lg font-bold text-slate-900 mb-4">Quick Stats</h3>
+              <div className="font-display text-lg font-bold text-slate-900 mb-4">Quick Stats</div>
               <div className="space-y-4 text-sm text-slate-600">
                 <div className="flex items-center justify-between">
                   <span>Category</span>
@@ -551,9 +667,8 @@ export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Status</span>
-                  <span className={`font-semibold ${
-                    (isAnytime || isUpcoming) ? 'text-emerald-600' : isOngoing ? 'text-emerald-600' : 'text-slate-500'
-                  }`}>
+                  <span className={`font-semibold ${(isAnytime || isUpcoming) ? 'text-emerald-600' : isOngoing ? 'text-emerald-600' : 'text-slate-500'
+                    }`}>
                     {statusLabel}
                   </span>
                 </div>

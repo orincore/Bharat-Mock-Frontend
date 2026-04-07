@@ -292,10 +292,76 @@ body.translated-rtl {
 .rich-text-editor,
 .rich-text-content {
   line-height: 1.6;
-  font-size: 0.95rem;
+  font-size: 1.125rem;
   color: #1a1a1a;
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+/* Fix for tables to prevent undesirable wrapping on mobile */
+table, .rich-text-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th, table td, 
+.rich-text-content table th, 
+.rich-text-content table td {
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  font-size: 1.125rem;
+}
+
+/* Remove leading/trailing white space from pasted/rendered content */
+.rich-text-editor > *:first-child,
+.rich-text-content > *:first-child {
+  margin-top: 0 !important;
+}
+
+.rich-text-editor > *:last-child,
+.rich-text-content > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+.rich-text-editor p,
+.rich-text-editor div,
+.rich-text-content p,
+.rich-text-content div {
+  margin-top: 0 !important;
+  margin-bottom: 0.9em !important;
+}
+
+.rich-text-editor h1,
+.rich-text-editor h2,
+.rich-text-editor h3,
+.rich-text-editor h4,
+.rich-text-editor h5,
+.rich-text-editor h6,
+.rich-text-editor p,
+.rich-text-editor div,
+.rich-text-editor blockquote {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.rich-text-editor p + p,
+.rich-text-editor div + div,
+.rich-text-editor p + div,
+.rich-text-editor div + p,
+.rich-text-editor h1 + p,
+.rich-text-editor h2 + p,
+.rich-text-editor h3 + p,
+.rich-text-editor h4 + p,
+.rich-text-editor h5 + p,
+.rich-text-editor h6 + p,
+.rich-text-editor p + h1,
+.rich-text-editor p + h2,
+.rich-text-editor p + h3,
+.rich-text-editor p + h4,
+.rich-text-editor p + h5,
+.rich-text-editor p + h6 {
+  margin-top: 0.9em !important;
 }
 
 /* Force all child elements in rich text to use black color */
@@ -322,14 +388,14 @@ body.translated-rtl {
 
 /* Larger font for exam question text */
 .exam-question-text {
-  font-size: 1rem !important;
+  font-size: 1.25rem !important;
   word-break: break-word;
   overflow-wrap: break-word;
 }
 
 @media (min-width: 640px) {
   .exam-question-text {
-    font-size: 1.125rem !important;
+    font-size: 1.25rem !important;
   }
 }
 
@@ -349,7 +415,7 @@ body.translated-rtl {
 
 /* Compact font for exam option text */
 .exam-option-text {
-  font-size: 0.9rem !important;
+  font-size: 1.125rem !important;
   word-break: break-word;
   overflow-wrap: break-word;
 }

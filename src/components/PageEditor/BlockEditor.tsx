@@ -111,7 +111,16 @@ interface Section {
   sidebar_tab_id?: string | null;
   text_color?: string;
   background_color?: string;
+  settings?: Record<string, any>;
 }
+
+const HEADING_TAG_OPTIONS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
+type HeadingTagOption = (typeof HEADING_TAG_OPTIONS)[number];
+
+const normalizeHeadingTag = (value?: string | null, fallback: HeadingTagOption = 'h2'): HeadingTagOption =>
+  HEADING_TAG_OPTIONS.includes((value || '').toLowerCase() as HeadingTagOption)
+    ? ((value || '').toLowerCase() as HeadingTagOption)
+    : fallback;
 
 const TEXT_COLOR_OPTIONS = [
   { label: 'Default', value: '#111827' },
@@ -212,6 +221,18 @@ export interface BlockEditorMediaUploadConfig {
 const AdBannerContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
   return (
     <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Headline Tag</label>
+        <select
+          value={normalizeHeadingTag(content.headingTag, 'h3')}
+          onChange={(e) => onChange({ ...content, headingTag: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        >
+          {HEADING_TAG_OPTIONS.map((tag) => (
+            <option key={tag} value={tag}>{tag.toUpperCase()}</option>
+          ))}
+        </select>
+      </div>
       <div>
         <label className="block text-sm font-medium mb-2">Image URL</label>
         <input
@@ -377,6 +398,18 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
           placeholder="Related Exams"
         />
       </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Title Tag</label>
+        <select
+          value={normalizeHeadingTag(content.headingTag, 'h3')}
+          onChange={(e) => onChange({ ...content, headingTag: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        >
+          {HEADING_TAG_OPTIONS.map((tag) => (
+            <option key={tag} value={tag}>{tag.toUpperCase()}</option>
+          ))}
+        </select>
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-2">Layout</label>
@@ -487,7 +520,8 @@ const normalizeSections = (source: Section[]): Section[] =>
   source.map((section) => ({
     ...section,
     blocks: section.blocks || [],
-    is_sidebar: section.is_sidebar ?? false
+    is_sidebar: section.is_sidebar ?? false,
+    settings: section.settings || {}
   }));
 
 const snapshotSections = (source: Section[]): Section[] =>
@@ -537,6 +571,126 @@ interface InlineRichTextEditorProps {
   onImagePaste?: (file: File) => void | Promise<void>;
 }
 
+const EDITOR_MATHML_NAMESPACE = 'http://www.w3.org/1998/Math/MathML';
+
+const isMeaningfulRichTextElement = (el: Element) =>
+  Boolean(el.querySelector('img, table, iframe, hr, math, canvas, video, svg, audio'));
+
+const isEmptyRichTextElement = (el: Element) => {
+  const text = el.textContent?.replace(/\u00A0/g, ' ').replace(/\u200B/g, '').trim() || '';
+  if (text.length > 0) return false;
+  return !isMeaningfulRichTextElement(el);
+};
+
+const trimRichTextBoundaryNodes = (parent: HTMLElement) => {
+  while (parent.firstChild) {
+    const first = parent.firstChild;
+    if (first.nodeType === Node.TEXT_NODE) {
+      const text = first.textContent?.replace(/[\s\u00A0\u200B]+/g, ' ') || '';
+      if (!text.trim()) {
+        parent.removeChild(first);
+        continue;
+      }
+    } else if (first.nodeType === Node.ELEMENT_NODE && isEmptyRichTextElement(first as Element)) {
+      parent.removeChild(first);
+      continue;
+    }
+    break;
+  }
+
+  while (parent.lastChild) {
+    const last = parent.lastChild;
+    if (last.nodeType === Node.TEXT_NODE) {
+      const text = last.textContent?.replace(/[\s\u00A0\u200B]+/g, ' ') || '';
+      if (!text.trim()) {
+        parent.removeChild(last);
+        continue;
+      }
+    } else if (last.nodeType === Node.ELEMENT_NODE && isEmptyRichTextElement(last as Element)) {
+      parent.removeChild(last);
+      continue;
+    }
+    break;
+  }
+};
+
+const normalizeRichTextHtml = (html?: string | null) => {
+  if (!html || typeof document === 'undefined') return (html || '').trim();
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  tmp.querySelectorAll('meta, link, style, script, xml').forEach((node) => node.remove());
+
+  tmp.querySelectorAll('*').forEach((element) => {
+    const el = element as HTMLElement;
+    if (el.namespaceURI === EDITOR_MATHML_NAMESPACE) return;
+
+    const tagName = el.tagName.toLowerCase();
+    const style = el.style;
+
+    if (style) {
+      [
+        'margin',
+        'margin-top',
+        'margin-bottom',
+        'padding-top',
+        'padding-bottom',
+        'text-indent',
+        'line-height',
+      ].forEach((property) => style.removeProperty(property));
+
+      if (!style.cssText.trim()) {
+        el.removeAttribute('style');
+      }
+    }
+
+    ['class', 'id', 'dir', 'data-start', 'data-end', 'data-offset-key'].forEach((attr) => {
+      if (el.hasAttribute(attr)) el.removeAttribute(attr);
+    });
+
+    if (tagName === 'a' && el.getAttribute('href')) {
+      el.setAttribute('target', '_blank');
+      el.setAttribute('rel', 'noopener noreferrer');
+    }
+
+    if ((tagName === 'p' || tagName === 'div') && isEmptyRichTextElement(el)) {
+      el.remove();
+      return;
+    }
+
+    if (tagName === 'span') {
+      const hasUsefulAttributes = Array.from(el.attributes).some((attr) =>
+        ['href', 'target', 'rel', 'src', 'alt', 'rowspan', 'colspan'].includes(attr.name)
+      );
+      if (!hasUsefulAttributes && !el.getAttribute('style')) {
+        el.replaceWith(...Array.from(el.childNodes));
+      }
+    }
+  });
+
+  trimRichTextBoundaryNodes(tmp);
+
+  let normalized = tmp.innerHTML
+    .replace(/^(?:\s|&nbsp;|<br\s*\/?>|<p>(?:&nbsp;|\s|<br\s*\/?>)*<\/p>|<div>(?:&nbsp;|\s|<br\s*\/?>)*<\/div>)+/gi, '')
+    .replace(/(?:\s|&nbsp;|<br\s*\/?>|<p>(?:&nbsp;|\s|<br\s*\/?>)*<\/p>|<div>(?:&nbsp;|\s|<br\s*\/?>)*<\/div>)+$/gi, '')
+    .replace(/<p>(?:&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '')
+    .replace(/<div>(?:&nbsp;|\s|<br\s*\/?>)*<\/div>/gi, '')
+    .replace(/\u200B/g, '')
+    .trim();
+
+  if (normalized === '<br>' || normalized === '<br/>' || normalized === '<br />') {
+    normalized = '';
+  }
+
+  return normalized;
+};
+
+const sanitizeHeadingEditorValue = (value?: string | null) =>
+  (value || '')
+    .replace(/<\/?h[1-6][^>]*>/gi, '')
+    .trim();
+
 export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   value,
   onChange,
@@ -569,7 +723,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
 
   useEffect(() => {
     if (editorRef.current) {
-      const sanitized = value || '';
+      const sanitized = normalizeRichTextHtml(value || '');
       if (editorRef.current.innerHTML !== sanitized) {
         editorRef.current.innerHTML = sanitized;
       }
@@ -578,8 +732,11 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
 
   const handleInput = () => {
     if (!editorRef.current) return;
-    const nextValue = editorRef.current.innerHTML.replace(/\u200B/g, '');
-    onChange(nextValue);
+    const nextValue = normalizeRichTextHtml(editorRef.current.innerHTML);
+    if (editorRef.current.innerHTML !== nextValue) {
+      editorRef.current.innerHTML = nextValue;
+    }
+    onChange(nextValue || '');
     updateActiveFormats();
   };
 
@@ -849,12 +1006,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
         el.removeAttribute('face');
       });
 
-      // Unwrap attribute-less spans (leftover wrappers from source)
-      tmp.querySelectorAll('span').forEach(el => {
-        if (!el.hasAttributes()) el.replaceWith(...Array.from(el.childNodes));
-      });
-
-      document.execCommand('insertHTML', false, tmp.innerHTML);
+      const normalizedHtml = normalizeRichTextHtml(tmp.innerHTML);
+      document.execCommand('insertHTML', false, normalizedHtml);
       handleInput();
       return;
     }
@@ -863,7 +1016,9 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     const text = event.clipboardData?.getData('text/plain');
     if (text) {
       event.preventDefault();
-      document.execCommand('insertText', false, text);
+      // Trim empty lines/whitespace from start and end
+      const trimmedText = text.replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, '');
+      document.execCommand('insertText', false, trimmedText);
       handleInput();
     }
   };
@@ -927,7 +1082,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     { label: 'Clear', title: 'Remove formatting', action: () => exec('removeFormat'), key: undefined }
   ];
 
-  const minHeight = Math.max(48, rows * 24);
+  const minHeight = Math.max(36, rows * 22);
 
   return (
     <div className="w-full space-y-2">
@@ -1126,7 +1281,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
           )}
           <div
             ref={editorRef}
-            className={`px-3 py-3 focus:outline-none text-sm rich-text-editor ${className}`}
+            className={`px-3 py-2.5 focus:outline-none text-sm rich-text-editor ${className}`}
             style={{ minHeight, color: '#1a1a1a' }}
             contentEditable
             suppressContentEditableWarning
@@ -1160,12 +1315,12 @@ const InlineTextBlockEditor: React.FC<InlineTextBlockEditorProps> = ({ block, on
   if (block.block_type === 'heading') {
     const level = content.level || 2;
     const headingSizes: Record<number, string> = {
-      1: 'text-4xl',
-      2: 'text-3xl',
-      3: 'text-2xl',
-      4: 'text-xl',
-      5: 'text-lg',
-      6: 'text-base'
+      1: 'text-3xl',
+      2: 'text-2xl',
+      3: 'text-xl',
+      4: 'text-lg',
+      5: 'text-base',
+      6: 'text-sm'
     };
 
     return (
@@ -1186,9 +1341,9 @@ const InlineTextBlockEditor: React.FC<InlineTextBlockEditorProps> = ({ block, on
         </div>
         <InlineRichTextEditor
           value={content.text || ''}
-          onChange={(value) => onContentChange({ ...content, text: value })}
+          onChange={(value) => onContentChange({ ...content, text: sanitizeHeadingEditorValue(value) })}
           placeholder="Heading text"
-          rows={level <= 3 ? 2 : 3}
+          rows={1}
           className={`${headingSizes[level] || 'text-2xl'} font-semibold text-gray-900 leading-tight`}
         />
       </div>
@@ -1341,10 +1496,20 @@ const InlineTextBlockEditor: React.FC<InlineTextBlockEditorProps> = ({ block, on
   }
 
   if (block.block_type === 'card') {
+    const cardHeadingTag = normalizeHeadingTag(content.headingTag, 'h3');
     return (
       <div className="border border-emerald-100 bg-white rounded-xl p-4 shadow-sm">
         <span className="text-xs font-semibold uppercase text-emerald-600">Card</span>
         <div className="mt-3 space-y-3">
+          <select
+            value={cardHeadingTag}
+            onChange={(e) => onContentChange({ ...content, headingTag: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-200 rounded"
+          >
+            {HEADING_TAG_OPTIONS.map((tag) => (
+              <option key={tag} value={tag}>{tag.toUpperCase()}</option>
+            ))}
+          </select>
           <input
             type="text"
             value={content.title || ''}
@@ -1601,7 +1766,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       title: 'New Section',
       display_order: sections.length,
       blocks: [],
-      is_sidebar: false
+      is_sidebar: false,
+      settings: { headingTag: 'h2' }
     };
     setSections([...sections, newSection]);
   };
@@ -1952,6 +2118,21 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                               </div>
                             </div>
                           </div>
+                          <select
+                            value={normalizeHeadingTag(section.settings?.headingTag, section.is_sidebar ? 'h3' : 'h2')}
+                            onChange={(e) => updateSection(section.id, {
+                              settings: {
+                                ...(section.settings || {}),
+                                headingTag: e.target.value
+                              }
+                            })}
+                            className="px-2 py-1 text-xs font-semibold border border-gray-200 rounded bg-white text-gray-700"
+                            title="Section heading tag"
+                          >
+                            {HEADING_TAG_OPTIONS.map((tag) => (
+                              <option key={tag} value={tag}>{tag.toUpperCase()}</option>
+                            ))}
+                          </select>
                           <span
                             className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ${
                               section.is_sidebar ? 'border-amber-400 text-amber-600 bg-amber-50' : 'border-blue-300 text-blue-600 bg-blue-50'
@@ -2269,7 +2450,7 @@ const BlockContentEditor: React.FC<{
           <RichTextField
             label="Text"
             value={content.text || ''}
-            onChange={(value) => onChange({ ...content, text: value })}
+            onChange={(value) => onChange({ ...content, text: sanitizeHeadingEditorValue(value) })}
             rows={2}
             helper="Supports inline HTML like <strong>, <em>, <u>, and links"
           />
@@ -2723,6 +2904,18 @@ const AutoExamCardsContentEditor = ({ content, onChange }: { content: any; onCha
           placeholder={variant === 'quizzes' ? 'Quizzes' : variant === 'live' ? 'Live Exams' : variant === 'subcategory' ? 'Subcategory Exams' : 'Category Exams'}
         />
       </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Title Tag</label>
+        <select
+          value={normalizeHeadingTag(content.headingTag, 'h3')}
+          onChange={(e) => onChange({ ...content, headingTag: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        >
+          {HEADING_TAG_OPTIONS.map((tag) => (
+            <option key={tag} value={tag}>{tag.toUpperCase()}</option>
+          ))}
+        </select>
+      </div>
       {variant === 'category' && (
         <div>
           <label className="block text-sm font-medium mb-2">Category ID (optional — leave blank for all)</label>
@@ -2914,6 +3107,18 @@ const AccordionContentEditor = ({ content, onChange }: { content: any; onChange:
 
   return (
     <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Item Title Tag</label>
+        <select
+          value={normalizeHeadingTag(content.headingTag, 'h3')}
+          onChange={(e) => onChange({ ...content, headingTag: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+        >
+          {HEADING_TAG_OPTIONS.map((tag) => (
+            <option key={tag} value={tag}>{tag.toUpperCase()}</option>
+          ))}
+        </select>
+      </div>
       <button type="button" onClick={addItem} className="text-blue-600 text-sm font-semibold">
         + Add Accordion Item
       </button>
@@ -3922,6 +4127,18 @@ const VideoContentEditor = ({
 const CardContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => (
   <div className="space-y-4">
     <div>
+      <label className="block text-sm font-medium mb-2">Title Tag</label>
+      <select
+        value={normalizeHeadingTag(content.headingTag, 'h3')}
+        onChange={(e) => onChange({ ...content, headingTag: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded"
+      >
+        {HEADING_TAG_OPTIONS.map((tag) => (
+          <option key={tag} value={tag}>{tag.toUpperCase()}</option>
+        ))}
+      </select>
+    </div>
+    <div>
       <label className="block text-sm font-medium mb-2">Title</label>
       <input
         type="text"
@@ -4082,9 +4299,12 @@ const getDefaultBlockContent = (blockType: string): any => {
     },
     quote: { text: 'Enter quote text...', author: '' },
     button: { text: 'Click Here', url: '#', variant: 'primary', size: 'medium' },
-    accordion: { items: [{ title: 'Question 1', content: 'Answer 1' }] },
+    accordion: { headingTag: 'h3', items: [{ title: 'Question 1', content: 'Answer 1' }] },
     alert: { text: 'This is an alert message', type: 'info' },
-    examCards: { examIds: [], title: 'Related Exams', layout: 'grid', columns: 2 }
+    examCards: { examIds: [], title: 'Related Exams', headingTag: 'h3', layout: 'grid', columns: 2 },
+    autoExamCards: { variant: 'category', title: 'Category Exams', headingTag: 'h3', limit: 10 },
+    card: { title: 'Card Title', headingTag: 'h3', description: 'Add supporting content here...' },
+    adBanner: { headline: 'Banner headline', headingTag: 'h3', description: 'Banner copy goes here.' }
   };
   
   return defaults[blockType] || {};

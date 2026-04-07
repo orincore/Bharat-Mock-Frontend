@@ -378,7 +378,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
             ) : subcategories.length === 0 ? (
               <div className="bg-card rounded-xl border border-border p-12 text-center">
                 <Layers className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-semibold mb-2">No exam categories configured</h3>
+                <div className="text-xl font-bold mb-2">No exam categories configured</div>
                 <p className="text-muted-foreground">Add exam categories in the admin panel to showcase them here.</p>
               </div>
             ) : (
@@ -461,7 +461,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
             ) : exams.length === 0 ? (
               <div className="bg-card rounded-xl border border-border p-12 text-center">
                 <BookOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-semibold mb-2">No exams found</h3>
+                <div className="text-xl font-bold mb-2">No exams found</div>
                 <p className="text-muted-foreground">Try adjusting your filters or check back later.</p>
               </div>
             ) : (
@@ -513,7 +513,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">Latest Notifications</h2>
+            {/* Header removed for SEO deduplication */}
             {contentLoading && notifications.length === 0 ? (
               <div className="flex justify-center py-12">
                 <LoadingSpinner />
@@ -566,7 +566,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
         {/* Syllabus Tab */}
         {activeTab === 'syllabus' && (
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">Exam Syllabus</h2>
+            {/* Header removed for SEO deduplication */}
             <div className="grid gap-6">
               {contentLoading && syllabus.length === 0 ? (
                 <div className="flex justify-center py-12">
@@ -600,14 +600,14 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
         {/* Cutoffs Tab */}
         {activeTab === 'cutoffs' && (
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">Previous Year Cutoffs</h2>
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
+            {/* Header removed for SEO deduplication */}
+            <div className="bg-card border border-border rounded-lg overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="text-left p-4 font-semibold">Year</th>
-                    <th className="text-left p-4 font-semibold">Category</th>
-                    <th className="text-left p-4 font-semibold">Cutoff Marks</th>
+                    <th className="text-left p-4 font-semibold whitespace-nowrap">Year</th>
+                    <th className="text-left p-4 font-semibold whitespace-nowrap">Category</th>
+                    <th className="text-left p-4 font-semibold whitespace-nowrap">Cutoff Marks</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -626,9 +626,15 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
                   ) : (
                     cutoffs.map((cutoff) => (
                       <tr key={cutoff.id} className="border-t border-border hover:bg-muted/50">
-                        <td className="p-4">{cutoff.year}</td>
-                        <td className="p-4">{cutoff.cutoff_category}</td>
-                        <td className="p-4 font-semibold text-primary">{cutoff.marks}</td>
+                        <td className="p-4 whitespace-nowrap">
+                          <span dangerouslySetInnerHTML={{ __html: cutoff.year }} />
+                        </td>
+                        <td className="p-4 whitespace-nowrap">
+                          <span dangerouslySetInnerHTML={{ __html: cutoff.cutoff_category }} />
+                        </td>
+                        <td className="p-4 font-semibold text-primary whitespace-nowrap">
+                          <span dangerouslySetInnerHTML={{ __html: cutoff.marks }} />
+                        </td>
                       </tr>
                     ))
                   )}
@@ -641,7 +647,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
         {/* Important Dates Tab */}
         {activeTab === 'dates' && (
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">Important Dates</h2>
+            {/* Header removed for SEO deduplication */}
             <div className="space-y-4">
               {contentLoading && formattedDates.length === 0 ? (
                 <div className="flex justify-center py-12">
@@ -674,7 +680,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
         {/* Preparation Tips Tab */}
         {activeTab === 'tips' && (
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">Preparation Tips & Strategy</h2>
+            {/* Header removed for SEO deduplication */}
             <div className="grid md:grid-cols-2 gap-6">
               {contentLoading && preparationTips.length === 0 ? (
                 <div className="flex justify-center py-12">

@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
+import { getCleanContentLabel } from "@/lib/utils";
 import { toast } from "sonner";
 import { Download, Lock, Filter, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
 import { useAuth } from "@/context/AuthContext";
@@ -79,6 +80,25 @@ interface ModernSubcategoryPageProps {
   combinedSlug?: string;
   initialTabSlug?: string;
 }
+
+const getSectionTocLabel = (section: Section): string => {
+  const directTitle = getCleanContentLabel(section.title);
+  if (directTitle) {
+    return directTitle;
+  }
+
+  for (const block of section.blocks || []) {
+    const candidate = getCleanContentLabel(block?.content?.text);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return (section.section_key || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")
@@ -962,25 +982,13 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     if (!isContentTab) return [];
     return visibleSections
       .map((section) => {
-        const rawLabel = section.title || 'Untitled Section';
-        // Strip HTML tags and decode HTML entities so TOC shows plain text
-        const stripped = rawLabel.replace(/<[^>]*>/g, '');
-        const decoded = stripped
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/&[a-z]+;/gi, ' ')
-          .replace(/&#\d+;/g, (m) => String.fromCharCode(parseInt(m.slice(2, -1), 10)))
-          .trim() || 'Untitled Section';
+        const decoded = getSectionTocLabel(section);
         return {
           id: buildSectionAnchor(section),
           label: decoded,
         };
       })
-      .filter((entry) => Boolean(entry.id));
+      .filter((entry) => Boolean(entry.id) && Boolean(entry.label));
   }, [visibleSections, isContentTab, buildSectionAnchor]);
 
   if (isLoading) {
@@ -1033,12 +1041,12 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               </div>
             )}
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-3 leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-3">
                 {(currentTabDescriptor && pageContent?.tabHeadings?.[currentTabDescriptor.id])
                   ? pageContent.tabHeadings[currentTabDescriptor.id]
                   : heroTitle}
               </h1>
-              {heroSubtitle && <p className="text-xl md:text-2xl text-blue-100 mb-4 max-w-3xl">{heroSubtitle}</p>}
+              {heroSubtitle && <p className="text-lg md:text-xl text-blue-100 mb-4 max-w-3xl">{heroSubtitle}</p>}
               {(pageContent?.seo?.author_name || pageContent?.seo?.updated_at) && (
                 <div className="flex flex-wrap items-center gap-3 mb-3 text-sm text-blue-100/80">
                   {pageContent.seo.author_name && (
@@ -1181,7 +1189,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                       const renderTocAfter = tableOfContents.length > 0 && tocPos > 0 && sectionIndex === tocPos - 1;
                       const reservedContent = activeTab === 'mock-tests' ? (
                         <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-                          <h2 className="text-xl font-semibold mb-4">Mock Tests</h2>
+                          {/* Header removed for SEO deduplication */}
                           {mockTestsLoading ? (
                             <p className="text-sm text-gray-500">Loading mock tests...</p>
                           ) : filteredMockTests.length === 0 ? (
@@ -1242,7 +1250,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                         </div>
                       ) : (
                         <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-                          <h2 className="text-xl font-semibold mb-4">Previous Year Question Papers</h2>
+                          {/* Header removed for SEO deduplication */}
                           {questionPapersLoading || pastPaperLoading ? (
                             <p className="text-sm text-gray-500">Loading question papers...</p>
                           ) : filteredPreviousPapers.length === 0 ? (
@@ -1353,7 +1361,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                     {isSpecialTab && reservedPosition === visibleSections.length && (
                       activeTab === 'mock-tests' ? (
                         <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-                          <h2 className="text-xl font-semibold mb-4">Mock Tests</h2>
+                          {/* Header removed for SEO deduplication */}
                           {mockTestsLoading ? (
                             <p className="text-sm text-gray-500">Loading mock tests...</p>
                           ) : filteredMockTests.length === 0 ? (
@@ -1414,7 +1422,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                         </div>
                       ) : (
                         <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-                          <h2 className="text-xl font-semibold mb-4">Previous Year Question Papers</h2>
+                          {/* Header removed for SEO deduplication */}
                           {questionPapersLoading || pastPaperLoading ? (
                             <p className="text-sm text-gray-500">Loading question papers...</p>
                           ) : filteredPreviousPapers.length === 0 ? (
@@ -1492,7 +1500,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
             {!isContentTab && activeTab === 'previous-papers' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-                <h2 className="text-xl font-semibold mb-4">Previous Year Question Papers</h2>
+                <div className="text-xl font-bold mb-4">Previous Year Question Papers</div>
                 {questionPapersLoading || pastPaperLoading ? (
                   <p className="text-sm text-gray-500">Loading question papers...</p>
                 ) : combinedQuestionPapers.length === 0 ? (
@@ -1572,7 +1580,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                 {tableOfContents.length > 0 && (
                   <section className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200 bg-gray-50">
-                      <h3 className="text-lg font-semibold text-gray-900">Table of Contents</h3>
+                      <div className="text-lg font-bold text-gray-900">Table of Contents</div>
                       <p className="mt-1 text-sm text-gray-600">
                         Jump to any section on this tab.
                       </p>
@@ -1622,7 +1630,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden">
           <div className="absolute inset-0 bg-white text-gray-900 flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b">
-              <h2 className="text-lg font-semibold">All Sections</h2>
+              <div className="text-lg font-bold text-gray-900 mb-4 px-2">All Sections</div>
               <button
                 type="button"
                 className="text-sm font-medium text-blue-600"
@@ -1664,7 +1672,7 @@ const DefaultModernPage = ({ title, subtitle }: { title: string; subtitle: strin
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">{title}</h1>
-          <p className="text-xl md:text-2xl text-blue-100 mb-6">{subtitle}</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 leading-tight mb-4">{subtitle}</h1>
           <p className="text-blue-100">Content is being configured. Please check back soon.</p>
         </div>
       </div>

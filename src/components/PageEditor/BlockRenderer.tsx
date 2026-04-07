@@ -1,7 +1,7 @@
 'use client';
 
 import React, { lazy, Suspense } from 'react';
-import { stripLineBreakTags } from '@/lib/utils';
+import { removeStandaloneHeadingMarkers, stripLineBreakTags } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { AutoExamCardsBlock } from './AutoExamCardsBlock';
 
@@ -43,6 +43,33 @@ import {
   Megaphone,
   GraduationCap
 } from 'lucide-react';
+
+const HEADING_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
+type HeadingTag = (typeof HEADING_TAGS)[number];
+
+const resolveHeadingTag = (value?: string | null, fallback: HeadingTag = 'h3'): HeadingTag =>
+  HEADING_TAGS.includes((value || '').toLowerCase() as HeadingTag)
+    ? ((value || '').toLowerCase() as HeadingTag)
+    : fallback;
+
+const sanitizeHeadingInnerHtml = (value?: string | null) =>
+  removeStandaloneHeadingMarkers(value || '')
+    .replace(/<\/?h[1-6][^>]*>/gi, '')
+    .replace(/^(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+|(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+$/gi, '')
+    .trim();
+
+const renderDynamicHeading = (
+  value: string,
+  tagName: string | undefined,
+  fallback: HeadingTag,
+  className: string
+) => {
+  const Tag = resolveHeadingTag(tagName, fallback) as keyof React.JSX.IntrinsicElements;
+  return React.createElement(Tag, {
+    className,
+    dangerouslySetInnerHTML: { __html: sanitizeHeadingInnerHtml(value || '') }
+  });
+};
 
 interface Block {
   id: string;
@@ -128,15 +155,21 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
 const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { text = '', level = 2, alignment = 'left', color } = content;
   const Tag = `h${level}` as keyof React.JSX.IntrinsicElements;
+  
+  // Aggressively trim leading/trailing white space from head/tail of the HTML content
+  const cleanedText = sanitizeHeadingInnerHtml(text);
+
+  // If text is empty after cleaning, don't render anything
+  if (!cleanedText && !text.includes('img') && !text.includes('math')) return null;
 
   const baseClasses = [
-    level === 1 ? 'text-4xl font-bold' : '',
-    level === 2 ? 'text-3xl font-bold' : '',
-    level === 3 ? 'text-2xl font-semibold' : '',
-    level === 4 ? 'text-xl font-semibold' : '',
-    level === 5 ? 'text-lg font-medium' : '',
-    level === 6 ? 'text-base font-medium' : '',
-    'mb-4'
+    level === 1 ? 'text-3xl sm:text-4xl font-bold tracking-tight' : '',
+    level === 2 ? 'text-2xl font-semibold tracking-tight' : '',
+    level === 3 ? 'text-xl font-semibold' : '',
+    level === 4 ? 'text-lg font-semibold' : '',
+    level === 5 ? 'text-base font-semibold' : '',
+    level === 6 ? 'text-sm font-semibold' : '',
+    'mb-4 mt-6'
   ]
     .filter(Boolean)
     .join(' ');
@@ -145,19 +178,38 @@ const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =
     <Tag
       className={baseClasses}
       style={{ color: color || undefined, textAlign: alignment as any }}
-      dangerouslySetInnerHTML={{ __html: text }}
+      dangerouslySetInnerHTML={{ __html: cleanedText }}
     />
   );
 };
 
+const DynamicBlockHeading: React.FC<{
+  text: string;
+  tagName?: string | null;
+  fallback?: HeadingTag;
+  className: string;
+}> = ({ text, tagName, fallback = 'h3', className }) => (
+  renderDynamicHeading(text, tagName, fallback, className)
+);
+
 const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
-  const { text, alignment = 'left', fontSize = '16px' } = content;
-  // Don't strip line break tags - preserve them for proper rendering
-  const processedText = text || '';
+  const { 
+    text = '', 
+    alignment = 'left',
+    fontSize 
+  } = content;
+  
+  // Clean text by trimming and removing empty leading/trailing tags
+  const processedText = stripLineBreakTags(text)
+    .replace(/^(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+|(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+$/g, '')
+    .trim();
+
+  // Change to <div> instead of <p> if it contains block-level elements from rich text editor
+  const Tag = (processedText.includes('<p>') || processedText.includes('<div') || processedText.includes('<ul')) ? 'div' : 'p';
 
   return (
-    <p
-      className={`text-${alignment} mb-4 text-gray-700 leading-relaxed rich-text-content`}
+    <Tag
+      className={`text-${alignment} mb-4 text-gray-800 font-normal leading-relaxed rich-text-content`}
       style={{ fontSize }}
       dangerouslySetInnerHTML={{ __html: processedText }}
     />
@@ -171,7 +223,7 @@ const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
   return (
     <ListTag className={`mb-4 ml-6 ${type === 'ordered' ? 'list-decimal' : 'list-disc'} space-y-2`}>
       {items.map((item: string, index: number) => (
-        <li key={index} className="text-gray-700 rich-text-content" dangerouslySetInnerHTML={{ __html: item }} />
+        <li key={index} className="text-gray-700 rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(item) }} />
       ))}
     </ListTag>
   );
@@ -199,8 +251,8 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
           <thead style={{ backgroundColor: headerBgColor, color: headerTextColor }}>
             <tr>
               {headers.map((header: string, index: number) => (
-                <th key={index} className="px-4 py-3 text-left font-semibold" style={borderStyle}>
-                  {header}
+                <th key={index} className="px-4 py-3 text-left font-semibold whitespace-nowrap !whitespace-nowrap" style={borderStyle}>
+                  <span dangerouslySetInnerHTML={{ __html: header }} />
                 </th>
               ))}
             </tr>
@@ -222,7 +274,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
                 };
                 
                 return (
-                  <td key={cellIndex} className="px-4 py-3 text-gray-700 rich-text-content" style={cellStyle}>
+                  <td key={cellIndex} className="px-4 py-3 text-gray-700 !whitespace-nowrap" style={cellStyle}>
                     {cellLink ? (
                       <a 
                         href={cellLink} 
@@ -366,14 +418,23 @@ const ChartBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   );
 };
 
-const QuoteBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
-  const { text, author } = content;
+const QuoteBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
+  const { text = '', attribution = '', alignment = 'left' } = content;
   
+  // Clean text/attribution
+  const processedText = text.replace(/^(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+|(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+$/g, '').trim();
+  const processedAttribution = attribution.replace(/^(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+|(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+$/g, '').trim();
+
   return (
-    <blockquote className="mb-6 pl-6 border-l-4 border-blue-600 italic text-gray-700">
-      <p className="text-lg mb-2">{text}</p>
-      {author && <cite className="text-sm text-gray-600 not-italic">— {author}</cite>}
-    </blockquote>
+    <div className={`border-l-4 border-blue-500 pl-4 py-1 mb-4 italic text-${alignment}`}>
+      <div 
+        className="text-gray-700 leading-relaxed rich-text-content"
+        dangerouslySetInnerHTML={{ __html: processedText }}
+      />
+      {processedAttribution && (
+        <p className="text-gray-500 text-sm mt-2 font-not-italic" dangerouslySetInnerHTML={{ __html: processedAttribution }} />
+      )}
+    </div>
   );
 };
 
@@ -394,16 +455,16 @@ const DividerBlock: React.FC<{ settings?: any }> = ({ settings }) => {
 const ButtonBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
   const { text, url, variant = 'primary', size = 'medium' } = content;
   
-  const sizeClasses = {
-    small: 'px-4 py-2 text-sm',
-    medium: 'px-6 py-3 text-base',
-    large: 'px-8 py-4 text-lg'
-  };
-  
   const variantClasses = {
     primary: 'bg-blue-600 hover:bg-blue-700 text-white',
     secondary: 'bg-gray-600 hover:bg-gray-700 text-white',
     outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50'
+  };
+  
+  const sizeClasses = {
+    small: 'px-4 py-2 text-sm',
+    medium: 'px-6 py-3 text-base',
+    large: 'px-8 py-4 text-lg'
   };
   
   return (
@@ -498,7 +559,12 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content, s
             onClick={() => setOpenIndex(openIndex === index ? null : index)}
             className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex justify-between items-center text-left font-semibold"
           >
-            <h3 className="text-base font-semibold m-0">{item.title}</h3>
+            <DynamicBlockHeading
+              text={item.title}
+              tagName={content?.headingTag}
+              fallback="h3"
+              className="text-base font-semibold m-0"
+            />
             <ChevronDown className={`w-5 h-5 transition-transform ${openIndex === index ? 'rotate-180' : ''}`} />
           </button>
           {openIndex === index && (
@@ -535,7 +601,7 @@ const TabsBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
       </div>
       <div className="p-4 bg-white">
         {tabs[activeTab] && (
-          <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: tabs[activeTab].content }} />
+          <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(tabs[activeTab].content || '') }} />
         )}
       </div>
     </div>
@@ -551,7 +617,14 @@ const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
         <img src={image} alt={title} width={800} height={192} className="w-full h-48 object-cover" />
       )}
       <div className="p-4">
-        {title && <h3 className="text-xl font-semibold mb-2">{title}</h3>}
+        {title && (
+          <DynamicBlockHeading
+            text={title}
+            tagName={content?.headingTag}
+            fallback="h3"
+            className="text-xl font-semibold mb-2"
+          />
+        )}
         {description && <p className="text-gray-700 mb-4">{description}</p>}
         {link && (
           <a href={link.url} className="text-blue-600 hover:underline font-semibold">
@@ -565,6 +638,7 @@ const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content, settin
 
 const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
   const { text, type = 'info' } = content;
+  const cleanedText = removeStandaloneHeadingMarkers(text || '');
   
   const typeClasses = {
     info: 'bg-blue-50 border-blue-500 text-blue-900',
@@ -577,7 +651,7 @@ const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
     <div className={`mb-6 p-4 border-l-4 rounded ${typeClasses[type as keyof typeof typeClasses]}`}>
       <div className="flex items-start">
         <AlertCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
-        <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: text }} />
+        <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedText }} />
       </div>
     </div>
   );
@@ -611,9 +685,10 @@ const EmbedBlock: React.FC<{ content: any; settings?: any }> = ({ content, setti
 
 const HtmlBlock: React.FC<{ content: any; settings?: any }> = ({ content, settings }) => {
   const { html } = content;
+  const cleanedHtml = removeStandaloneHeadingMarkers(html || '');
   
   return (
-    <div className="mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: html }} />
+    <div className="mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedHtml }} />
   );
 };
 
@@ -623,7 +698,7 @@ const ColumnsBlock: React.FC<{ content: any; settings?: any }> = ({ content, set
   return (
     <div className={`mb-6 grid grid-cols-${columns.length} gap-6`}>
       {columns.map((column: any, index: number) => (
-        <div key={index} className="rich-text-content" dangerouslySetInnerHTML={{ __html: column.content }} />
+        <div key={index} className="rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(column.content || '') }} />
       ))}
     </div>
   );
@@ -667,7 +742,14 @@ const AdBannerBlock: React.FC<{ content: any; settings?: any }> = ({ content }) 
         </div>
       )}
       <div className="p-4 space-y-3">
-        {headline && <h3 className="text-xl font-bold leading-tight">{headline}</h3>}
+        {headline && (
+          <DynamicBlockHeading
+            text={headline}
+            tagName={content?.headingTag}
+            fallback="h3"
+            className="text-xl font-bold leading-tight"
+          />
+        )}
         {description && <p className="text-sm text-white/80">{description}</p>}
         {(ctaUrl || linkUrl) && (
           <a
@@ -722,7 +804,14 @@ const ExamCardsBlock: React.FC<{ content: any; settings?: any }> = ({ content })
 
   return (
     <div className="mb-6" data-block-type="examCards" data-exam-ids={JSON.stringify(examIds)} data-layout={layout} data-columns={columns}>
-      {title && <h3 className="text-xl font-bold mb-4">{title}</h3>}
+      {title && (
+        <DynamicBlockHeading
+          text={title}
+          tagName={content?.headingTag}
+          fallback="h3"
+          className="text-xl font-bold mb-4"
+        />
+      )}
       {examIds.length === 0 ? (
         <div className="p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
           <GraduationCap className="w-8 h-8 mx-auto mb-2 text-gray-400" />

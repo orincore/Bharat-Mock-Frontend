@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
+import { getCleanContentLabel } from "@/lib/utils";
 import { Download, ChevronRight, ChevronLeft, ArrowRight, BookOpen, List, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,8 +30,55 @@ interface Section {
   is_sidebar?: boolean;
   custom_tab_id?: string | null;
   category_custom_tab_id?: string | null;
+  settings?: Record<string, any>;
   blocks: Block[];
 }
+
+const HEADING_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
+type HeadingTag = (typeof HEADING_TAGS)[number];
+
+const resolveHeadingTag = (value?: string | null, fallback: HeadingTag = 'h2'): HeadingTag =>
+  HEADING_TAGS.includes((value || '').toLowerCase() as HeadingTag)
+    ? ((value || '').toLowerCase() as HeadingTag)
+    : fallback;
+
+const shouldSkipSectionHeading = (section: Section) => {
+  const sectionTitleText = getCleanContentLabel(section.title).toLowerCase();
+  if (!sectionTitleText || sectionTitleText === 'untitled section') return true;
+
+  return (section.blocks || []).some((block) => {
+    if (!block?.content) return false;
+
+    if (block.block_type === 'heading') {
+      return getCleanContentLabel(block.content?.text).toLowerCase() === sectionTitleText;
+    }
+
+    if (block.block_type === 'paragraph') {
+      return getCleanContentLabel(block.content?.text).toLowerCase().includes(sectionTitleText);
+    }
+
+    return false;
+  });
+};
+
+const getSectionTocLabel = (section: Section): string => {
+  const directTitle = getCleanContentLabel(section.title);
+  if (directTitle) {
+    return directTitle;
+  }
+
+  for (const block of section.blocks || []) {
+    const candidate = getCleanContentLabel(block?.content?.text);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return (section.section_key || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 interface CustomTab {
   id: string;
@@ -429,21 +477,10 @@ export default function NewCategoryPage({
     return visibleSections
       .filter(s => !s.is_sidebar)
       .map(section => {
-        const rawLabel = section.title || 'Untitled Section';
-        const stripped = rawLabel.replace(/<[^>]*>/g, '');
-        const decoded = stripped
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/&[a-z]+;/gi, ' ')
-          .replace(/&#\d+;/g, (m) => String.fromCharCode(parseInt(m.slice(2, -1), 10)))
-          .trim() || 'Untitled Section';
+        const decoded = getSectionTocLabel(section);
         return { id: section.section_key, label: decoded };
       })
-      .filter(e => Boolean(e.id));
+      .filter(e => Boolean(e.id) && Boolean(e.label));
   }, [visibleSections]);
 
   if (isLoading) {
@@ -609,9 +646,9 @@ export default function NewCategoryPage({
                         <p className="text-xs uppercase tracking-wide text-gray-500">
                           Exam Categories
                         </p>
-                        <h2 className="text-2xl font-semibold text-gray-900">
-                          Pick your exact exam
-                        </h2>
+                        <div className="text-2xl font-bold text-gray-900">
+                          Pick your exact exam category
+                        </div>
                       </div>
                       <p className="text-sm text-gray-500 max-w-xl">
                         Select any exam below to jump into its dedicated page with syllabus, mock tests, previous year papers, and more.
@@ -680,18 +717,26 @@ export default function NewCategoryPage({
                         color: section.text_color || "inherit",
                       }}
                     >
-                      <div className="p-6 border-b border-gray-200 bg-gray-50">
-                        <h2
-                          className="text-2xl font-bold text-gray-900"
-                          style={{ color: section.text_color || undefined }}
-                          dangerouslySetInnerHTML={{ __html: section.title }}
-                        />
-                        {section.subtitle && (
-                          <p className="mt-2 text-gray-600">
-                            {section.subtitle}
-                          </p>
-                        )}
-                      </div>
+                      {(() => {
+                        if (shouldSkipSectionHeading(section)) return null;
+
+                        const SectionHeadingTag = resolveHeadingTag(section.settings?.headingTag, 'h2');
+
+                        return (
+                          <div className="p-6 border-b border-gray-200 bg-gray-50">
+                            <SectionHeadingTag
+                              className="text-2xl font-bold text-gray-900"
+                              style={{ color: section.text_color || undefined }}
+                              dangerouslySetInnerHTML={{ __html: section.title }}
+                            />
+                            {section.subtitle && (
+                              <p className="mt-2 text-gray-600">
+                                {section.subtitle}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div className="p-6">
                         {section.blocks.map((block) => (
                           <div key={block.id} className="mb-4">
@@ -715,7 +760,7 @@ export default function NewCategoryPage({
                 {tableOfContents.length > 0 && (
                   <section className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200 bg-gray-50">
-                      <h3 className="text-lg font-semibold text-gray-900">Table of Contents</h3>
+                      <div className="text-lg font-bold text-gray-900">Table of Contents</div>
                       <p className="mt-1 text-sm text-gray-600">Jump to any section on this tab.</p>
                     </div>
                     <div className="divide-y">
@@ -743,11 +788,19 @@ export default function NewCategoryPage({
                     }}
                   >
                     <div className="p-4 border-b border-gray-200 bg-gray-50">
-                      <h3
-                        className="text-lg font-semibold text-gray-900"
-                        style={{ color: section.text_color || undefined }}
-                        dangerouslySetInnerHTML={{ __html: section.title }}
-                      />
+                        {(() => {
+                          if (shouldSkipSectionHeading(section)) return null;
+
+                          const SidebarHeadingTag = resolveHeadingTag(section.settings?.headingTag, 'h3');
+
+                          return (
+                            <SidebarHeadingTag
+                              className="text-lg font-semibold text-gray-900"
+                              style={{ color: section.text_color || undefined }}
+                              dangerouslySetInnerHTML={{ __html: section.title }}
+                            />
+                          );
+                        })()}
                       {section.subtitle && (
                         <p className="mt-1 text-sm text-gray-600">
                           {section.subtitle}
@@ -818,7 +871,7 @@ export default function NewCategoryPage({
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden">
           <div className="absolute inset-0 bg-white text-gray-900 flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b">
-              <h2 className="text-lg font-semibold">All Sections</h2>
+              <div className="text-lg font-bold text-gray-900 mb-4 px-2">All Sections</div>
               <button
                 type="button"
                 className="text-sm font-medium text-blue-600"

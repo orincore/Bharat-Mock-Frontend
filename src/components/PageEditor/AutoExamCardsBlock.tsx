@@ -14,12 +14,21 @@ interface AutoExamCardsBlockProps {
   content: {
     variant: AutoExamCardVariant;
     title?: string;
+    headingTag?: string;
     categoryId?: string;
     subcategoryId?: string;
     limit?: number;
     viewMoreUrl?: string;
   };
 }
+
+const HEADING_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
+type HeadingTag = (typeof HEADING_TAGS)[number];
+
+const resolveHeadingTag = (value?: string | null, fallback: HeadingTag = 'h3'): HeadingTag =>
+  HEADING_TAGS.includes((value || '').toLowerCase() as HeadingTag)
+    ? ((value || '').toLowerCase() as HeadingTag)
+    : fallback;
 
 async function fetchExams(
   variant: AutoExamCardVariant,
@@ -61,7 +70,7 @@ const VARIANT_LABELS: Record<AutoExamCardVariant, string> = {
 const CARDS_PER_PAGE = 2;
 
 export const AutoExamCardsBlock: React.FC<AutoExamCardsBlockProps> = ({ content }) => {
-  const { variant, title, categoryId, subcategoryId, limit = 10, viewMoreUrl } = content;
+  const { variant, title, headingTag, categoryId, subcategoryId, limit = 10, viewMoreUrl } = content;
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -113,12 +122,13 @@ export const AutoExamCardsBlock: React.FC<AutoExamCardsBlockProps> = ({ content 
 
   const visibleExams = exams.slice(page * CARDS_PER_PAGE, page * CARDS_PER_PAGE + CARDS_PER_PAGE);
   const displayTitle = title || VARIANT_LABELS[variant];
+  const HeadingTagName = resolveHeadingTag(headingTag, 'h3');
 
   return (
     <div className="mb-6 w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-base font-bold text-gray-900 truncate pr-2">{displayTitle}</h3>
+        <HeadingTagName className="text-base font-bold text-gray-900 truncate pr-2">{displayTitle}</HeadingTagName>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={() => goTo(page - 1)}

@@ -316,6 +316,10 @@ export interface ExamHistoryEntry {
   status: 'in-progress' | 'completed' | 'upcoming';
   startedAt: string;
   updatedAt: string;
+  language?: 'en' | 'hi' | string;
+  answeredQuestions?: number;
+  totalQuestions?: number;
+  duration?: number;
   score?: number;
   totalMarks?: number;
   percentage?: number;

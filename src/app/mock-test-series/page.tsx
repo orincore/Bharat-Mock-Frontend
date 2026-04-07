@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Filter, BookOpen, Clock, Award, ChevronRight, Flame, Star, StarOff, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,10 +24,13 @@ import { cn } from '@/lib/utils';
 
 const DEFAULT_STATUS = 'anytime';
 
-export default function ExamsPage() {
+function ExamsPageContent() {
+  const searchParams = useSearchParams();
+  const urlCategory = searchParams.get('category') || '';
+  const urlSubcategory = searchParams.get('subcategory') || '';
+  const urlSearch = searchParams.get('search') || '';
   const { user, isAuthenticated } = useAuth();
   const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
-  const [testSeriesLoading, setTestSeriesLoading] = useState(true);
   const [popularTests, setPopularTests] = useState<PopularTest[]>([]);
   const [popularTestsLoading, setPopularTestsLoading] = useState(true);
   const [newTestSeries, setNewTestSeries] = useState<PopularTest[]>([]);
@@ -51,16 +55,30 @@ export default function ExamsPage() {
   const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [pageReady, setPageReady] = useState(false);
-  
+
   const [filters, setFilters] = useState({
-    search: '',
-    category: '',
-    subcategory: '',
+    search: urlSearch,
+    category: urlCategory,
+    subcategory: urlSubcategory,
     status: DEFAULT_STATUS
   });
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
   const activeRequestRef = useRef(0);
-  
+
+  useEffect(() => {
+    if (categories.length > 0 && filters.category) {
+      const match = categories.find(c => c.slug === filters.category || c.name === filters.category);
+      if (match && selectedCategoryId !== match.id) setSelectedCategoryId(match.id);
+    }
+  }, [categories, filters.category]);
+
+  useEffect(() => {
+    if (subcategories.length > 0 && filters.subcategory) {
+      const match = subcategories.find(c => c.slug === filters.subcategory || c.name === filters.subcategory);
+      if (match && selectedSubcategoryId !== match.id) setSelectedSubcategoryId(match.id);
+    }
+  }, [subcategories, filters.subcategory]);
+
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -75,7 +93,6 @@ export default function ExamsPage() {
     fetchNewTestSeries();
     fetchBanners();
     fetchTestimonials();
-    fetchTestSeriesData();
   }, []);
 
   const fetchPopularTests = async () => {
@@ -127,22 +144,6 @@ export default function ExamsPage() {
     }
   };
 
-  const fetchTestSeriesData = async () => {
-    setTestSeriesLoading(true);
-    try {
-      const response = await testSeriesService.getTestSeries({
-        is_published: true,
-        limit: 12,
-        page: 1
-      });
-      setTestSeries(response.data);
-    } catch (err) {
-      console.error('Failed to fetch test series:', err);
-    } finally {
-      setTestSeriesLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchFilteredSeries();
   }, [filters.category, filters.subcategory, filters.status, pagination.page, debouncedSearch]);
@@ -153,6 +154,17 @@ export default function ExamsPage() {
     }, 400);
     return () => clearTimeout(handle);
   }, [filters.search]);
+
+  useEffect(() => {
+    if (!mobileFiltersOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileFiltersOpen]);
 
   const fetchCategories = async () => {
     setCategoriesLoading(true);
@@ -289,7 +301,7 @@ export default function ExamsPage() {
           {/* Category */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Category</label>
-            <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="radio" name="ts-category" className="h-4 w-4 accent-primary"
                   checked={selectedCategoryId === ''} onChange={() => handleCategoryChange('')} />
@@ -309,7 +321,7 @@ export default function ExamsPage() {
           {/* Sub-category */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Sub-category</label>
-            <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="radio" name="ts-subcategory" className="h-4 w-4 accent-primary"
                   checked={selectedSubcategoryId === ''}
@@ -459,12 +471,12 @@ export default function ExamsPage() {
 
   return (
     <div className={`min-h-screen bg-muted/30 transition-opacity duration-300 ${pageReady ? 'opacity-100' : 'opacity-0'}`}>
-      
+
       <section className="relative gradient-hero py-10">
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="container-main">
           <div className="space-y-4">
-            <Breadcrumbs 
+            <Breadcrumbs
               items={[
                 HomeBreadcrumb(),
                 { label: 'Mock Test Series' }
@@ -505,7 +517,7 @@ export default function ExamsPage() {
               </div>
               <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" />
             </div>
-            
+
             {popularTestsLoading ? (
               <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 hide-scrollbar">
                 {Array.from({ length: 4 }).map((_, index) => (
@@ -549,111 +561,98 @@ export default function ExamsPage() {
 
       {/* Government exams by categories - Hide when searching */}
       {!debouncedSearch && (
-      <section className="bg-slate-900 text-white border-b border-slate-800">
-        <div className="container-main py-6 space-y-3">
-          <div className="flex flex-col gap-2">
-            
-            <div className="flex flex-wrap items-center gap-3 justify-center text-center">
-              <h2 className="text-2xl font-bold">Government exams by categories</h2>
-              
-            </div>
-            
-          </div>
+        <section className="bg-slate-900 text-white border-b border-slate-800">
+          <div className="container-main py-6 space-y-3">
+            <div className="flex flex-col gap-2">
 
-          {categoriesLoading ? (
-            <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="flex-shrink-0 w-28">
-                  <div className="w-24 h-24 rounded-2xl bg-white/10 animate-pulse" />
-                </div>
-              ))}
-            </div>
-          ) : categories.length === 0 ? (
-            <p className="text-white/60 text-sm">No categories available right now. Please check back later.</p>
-          ) : (
-            <div className="relative group">
-              <button
-                onClick={() => scrollLeft(categoriesScrollRef)}
-                className="absolute left-0 inset-y-0 my-auto z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="h-5 w-5 text-slate-700" />
-              </button>
-              <div ref={categoriesScrollRef} className="flex gap-5 overflow-x-auto hide-scrollbar pb-3 justify-center">
-                {categories.map((category, index) => {
-                const isSelected = selectedCategoryId === category.id;
-                const badgeBackgrounds = [
-                  'from-[#E6FBFF] to-[#F8FFFF]',
-                  'from-[#FFF5E1] to-[#FFFDF3]',
-                  'from-[#F3E5F5] to-[#FEF6FF]',
-                  'from-[#E8F5E9] to-[#F9FFFB]',
-                  'from-[#FDEDED] to-[#FFF9F9]',
-                  'from-[#E3F2FD] to-[#F5FBFF]'
-                ];
-                const cardBg = badgeBackgrounds[index % badgeBackgrounds.length];
-                const categoryHref = category.slug ? `/${category.slug}` : `/category/${category.id}`;
+              <div className="flex flex-wrap items-center gap-3 justify-center text-center">
+                <h2 className="text-2xl font-bold">Government exams by categories</h2>
 
-                return (
-                  <Link
-                    key={category.id}
-                    href={categoryHref}
-                    className="flex-shrink-0 w-32 text-center group"
-                  >
-                    <div
-                      className={`w-24 h-24 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform duration-200 ${
-                        isSelected ? 'ring-2 ring-white scale-105' : 'group-hover:scale-105'
-                      }`}
-                    >
-                      {category.logo_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={category.logo_url}
-                          alt={category.name}
-                          className="h-full w-full object-cover rounded-2xl p-2"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <span className="text-lg font-semibold text-slate-700">
-                          {category.name.slice(0, 3).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <span
-                      className={`mt-3 block text-sm font-medium ${
-                        isSelected ? 'text-white' : 'text-white/80'
-                      }`}
-                    >
-                      {category.name}
-                    </span>
-                  </Link>
-                );
-                })}
               </div>
-              <button
-                onClick={() => scrollRight(categoriesScrollRef)}
-                className="absolute right-0 inset-y-0 my-auto z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="h-5 w-5 text-slate-700" />
-              </button>
+
             </div>
-          )}
-        </div>
-      </section>
+
+            {categoriesLoading ? (
+              <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="flex-shrink-0 w-28">
+                    <div className="w-24 h-24 rounded-2xl bg-white/10 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : categories.length === 0 ? (
+              <p className="text-white/60 text-sm">No categories available right now. Please check back later.</p>
+            ) : (
+              <div className="relative group">
+                <button
+                  onClick={() => scrollLeft(categoriesScrollRef)}
+                  className="absolute left-0 inset-y-0 my-auto z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft className="h-5 w-5 text-slate-700" />
+                </button>
+                <div ref={categoriesScrollRef} className="flex gap-5 overflow-x-auto hide-scrollbar pb-3 justify-center">
+                  {categories.map((category, index) => {
+                    const isSelected = selectedCategoryId === category.id;
+                    const badgeBackgrounds = [
+                      'from-[#E6FBFF] to-[#F8FFFF]',
+                      'from-[#FFF5E1] to-[#FFFDF3]',
+                      'from-[#F3E5F5] to-[#FEF6FF]',
+                      'from-[#E8F5E9] to-[#F9FFFB]',
+                      'from-[#FDEDED] to-[#FFF9F9]',
+                      'from-[#E3F2FD] to-[#F5FBFF]'
+                    ];
+                    const cardBg = badgeBackgrounds[index % badgeBackgrounds.length];
+                    const categoryHref = category.slug ? `/${category.slug}` : `/category/${category.id}`;
+
+                    return (
+                      <Link
+                        key={category.id}
+                        href={categoryHref}
+                        className="flex-shrink-0 w-32 text-center group"
+                      >
+                        <div
+                          className={`w-24 h-24 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform duration-200 ${isSelected ? 'ring-2 ring-white scale-105' : 'group-hover:scale-105'
+                            }`}
+                        >
+                          {category.logo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={category.logo_url}
+                              alt={category.name}
+                              className="h-full w-full object-cover rounded-2xl p-2"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="text-lg font-semibold text-slate-700">
+                              {category.name.slice(0, 3).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`mt-3 block text-sm font-medium ${isSelected ? 'text-white' : 'text-white/80'
+                            }`}
+                        >
+                          {category.name}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => scrollRight(categoriesScrollRef)}
+                  className="absolute right-0 inset-y-0 my-auto z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight className="h-5 w-5 text-slate-700" />
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       <div className="container-main py-8">
-        <div className="lg:hidden mb-6">
-          <button
-            type="button"
-            onClick={() => setMobileFiltersOpen((prev) => !prev)}
-            className="inline-flex items-center justify-center gap-2 w-full rounded-full border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600"
-          >
-            <Filter className="h-4 w-4" />
-            {mobileFiltersOpen ? 'Hide Filters' : 'Show Filters'}
-          </button>
-          {mobileFiltersOpen && <div className="mt-4">{filtersPanelContent}</div>}
-        </div>
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
           <aside className="hidden lg:block lg:w-60 xl:w-64 flex-shrink-0">
@@ -669,15 +668,15 @@ export default function ExamsPage() {
                   {debouncedSearch ? `Search Results for "${debouncedSearch}"` : 'Test Series'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {debouncedSearch 
+                  {debouncedSearch
                     ? `Found ${testSeries.length} test series matching your search`
                     : `Showing ${testSeries.length} test series`
                   }
                 </p>
               </div>
               {debouncedSearch && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setFilters(prev => ({ ...prev, search: '' }));
                     setDebouncedSearch('');
@@ -691,7 +690,7 @@ export default function ExamsPage() {
             </div>
 
             {/* Initial skeleton load — only shown before pageReady, kept here as fallback */}
-            {testSeriesLoading && !pageReady && (
+            {!pageReady && (
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite" aria-busy="true">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <div key={index} className="card-interactive overflow-hidden h-full flex flex-col border border-border rounded-xl">
@@ -715,7 +714,7 @@ export default function ExamsPage() {
             {error && !isLoading && (
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
                 <p className="text-destructive">{error}</p>
-                <Button onClick={fetchTestSeriesData} variant="outline" className="mt-4">
+                <Button onClick={fetchFilteredSeries} variant="outline" className="mt-4">
                   Try Again
                 </Button>
               </div>
@@ -770,6 +769,61 @@ export default function ExamsPage() {
         </div>
       </div>
 
+      {mobileFiltersOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-background">
+          <div className="flex h-full flex-col">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-4">
+              <div>
+                <p className="font-display text-xl font-bold text-foreground">Filters</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                onClick={() => setMobileFiltersOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="rounded-none border-0 bg-transparent p-0">
+                {filtersPanelContent}
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 border-t border-border bg-background px-4 py-4">
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
+                  onClick={() => {
+                    clearFilters();
+                    setMobileFiltersOpen(false);
+                  }}
+                >
+                  Clear All
+                </Button>
+                <Button className="flex-1" onClick={() => setMobileFiltersOpen(false)}>
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!mobileFiltersOpen && (
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen(true)}
+          className="lg:hidden fixed bottom-5 left-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg text-sm font-semibold"
+        >
+          <Filter className="h-4 w-4" />
+          Filters
+        </button>
+      )}
+
       {/* Dynamic Banner Section - Hide when searching */}
       {!debouncedSearch && !bannersLoading && banners.length > 0 && (
         <div className="container-main mt-8">
@@ -801,353 +855,353 @@ export default function ExamsPage() {
 
       {/* Why Take Test Series Section - Hide when searching */}
       {!debouncedSearch && (
-      <div className="container-main mt-12 mb-8">
-            <div className="rounded-3xl border border-border/60 bg-white shadow-sm p-6 sm:p-8 lg:p-10">
-              <h2 className="font-display text-3xl font-bold text-foreground mb-6 text-center">
-                Why take Bharat Mock Test Series?
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* Card 1 - Latest Exam Patterns */}
-                <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-2xl p-8 border border-blue-100 dark:border-blue-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                  <div className="absolute top-6 right-6">
-                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                      <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="absolute -top-2 -right-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-lg">
-                        NEW
-                      </span>
-                    </div>
+        <div className="container-main mt-12 mb-8">
+          <div className="rounded-3xl border border-border/60 bg-white shadow-sm p-6 sm:p-8 lg:p-10">
+            <h2 className="font-display text-3xl font-bold text-foreground mb-6 text-center">
+              Why take Bharat Mock Test Series?
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Card 1 - Latest Exam Patterns */}
+              <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-2xl p-8 border border-blue-100 dark:border-blue-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-6 right-6">
+                  <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                   </div>
-                  
-                  <div className="mt-20">
-                    <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                      Latest Exam Patterns
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                      Prepare for the level expected in the upcoming exams with our updated question patterns.
-                    </p>
+                  <div className="absolute -top-2 -right-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-lg">
+                      NEW
+                    </span>
                   </div>
-                  
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
 
-                {/* Card 2 - Save Tests & Questions */}
-                <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-2xl p-8 border border-purple-100 dark:border-purple-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                  <div className="absolute top-6 right-6">
-                    <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                      <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-20">
-                    <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                      Save Tests & Questions
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                      Save important Tests & Questions to revise or reattempt them later at your convenience.
-                    </p>
-                  </div>
-                  
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="mt-20">
+                  <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+                    Latest Exam Patterns
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                    Prepare for the level expected in the upcoming exams with our updated question patterns.
+                  </p>
                 </div>
 
-                {/* Card 3 - Performance Analysis */}
-                <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-2xl p-8 border border-amber-100 dark:border-amber-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                  <div className="absolute top-6 right-6">
-                    <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
-                      <svg className="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+
+              {/* Card 2 - Save Tests & Questions */}
+              <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-2xl p-8 border border-purple-100 dark:border-purple-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-6 right-6">
+                  <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
                   </div>
-                  
-                  <div className="mt-20">
-                    <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                      In-depth Performance Analysis
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                      Get insights on your Strengths & Weaknesses, All India Rank & Performance Comparison with the Topper.
-                    </p>
-                  </div>
-                  
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
+
+                <div className="mt-20">
+                  <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+                    Save Tests & Questions
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                    Save important Tests & Questions to revise or reattempt them later at your convenience.
+                  </p>
+                </div>
+
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+
+              {/* Card 3 - Performance Analysis */}
+              <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-2xl p-8 border border-amber-100 dark:border-amber-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-6 right-6">
+                  <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="mt-20">
+                  <h3 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+                    In-depth Performance Analysis
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                    Get insights on your Strengths & Weaknesses, All India Rank & Performance Comparison with the Topper.
+                  </p>
+                </div>
+
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
             </div>
-      </div>
+          </div>
+        </div>
       )}
 
       {/* New Test Series For You Section - Hide when searching */}
       {!debouncedSearch && newTestSeries.length > 0 && (
         <div className="container-main mt-8 sm:mt-12 mb-6 sm:mb-8">
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-xs sm:text-sm text-orange-600 dark:text-orange-300 mb-2">
-                      <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
-                      New
-                    </div>
-                    <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">New Test Series For You</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Fresh test series tailored for your preparation</p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-xs sm:text-sm text-orange-600 dark:text-orange-300 mb-2">
+                <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
+                New
+              </div>
+              <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">New Test Series For You</h2>
+              <p className="text-sm text-muted-foreground mt-1">Fresh test series tailored for your preparation</p>
+            </div>
+            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+          </div>
+
+          {newTestSeriesLoading ? (
+            <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 hide-scrollbar">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex-shrink-0 w-72 sm:w-80">
+                  <Skeleton className="h-64 w-full rounded-xl" />
                 </div>
-                
-                {newTestSeriesLoading ? (
-                  <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 hide-scrollbar">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <div key={index} className="flex-shrink-0 w-72 sm:w-80">
-                        <Skeleton className="h-64 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="relative group">
+              <button
+                onClick={() => scrollLeft(newTestSeriesScrollRef)}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 hidden sm:flex"
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="h-5 w-5 text-slate-700" />
+              </button>
+              <div ref={newTestSeriesScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
+                {newTestSeries.filter(t => t?.exam).map((test) => (
+                  <div key={test.id} className="flex-shrink-0 snap-start w-72 sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
+                    <StandardExamCard exam={{
+                      ...test.exam,
+                      category_logo_url: test.exam?.exam_categories?.logo_url,
+                      category_icon: test.exam?.exam_categories?.icon,
+                    }} ctaLabel="Attempt Now" />
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => scrollRight(newTestSeriesScrollRef)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 hidden sm:flex"
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="h-5 w-5 text-slate-700" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Testimonials Section - Hide when searching */}
+      {!debouncedSearch && (
+        <section className="container-main mt-16">
+          <div className="relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] p-8 md:p-10">
+            <div className="pointer-events-none absolute inset-0 opacity-70">
+              <div className="absolute -top-16 -right-24 h-64 w-64 rounded-full bg-orange-200 blur-3xl" />
+              <div className="absolute bottom-0 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-pink-200 blur-3xl" />
+            </div>
+
+            <div className="relative z-10 space-y-10">
+              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
+                    Social Proof
+                  </div>
+                  <h2 className="font-display text-4xl font-semibold text-slate-900">
+                    Aspirants can't stop talking about Bharat Mock
+                  </h2>
+
+                  <div className="flex flex-wrap gap-6 text-sm text-slate-600">
+
+                  </div>
+                </div>
+
+
+              </div>
+
+              <div className="relative">
+                {testimonialsLoading ? (
+                  <div className="flex gap-4 overflow-x-auto hide-scrollbar">
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <div key={idx} className="flex-shrink-0 w-80">
+                        <Skeleton className="h-56 w-full rounded-2xl bg-white/60" />
                       </div>
                     ))}
+                  </div>
+                ) : testimonials.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-white/70 bg-white/70 p-10 text-center">
+                    <h3 className="font-display text-2xl font-semibold text-slate-900 mb-2">No stories yet</h3>
+                    <p className="text-slate-600">New testimonials will appear here as admins publish them.</p>
                   </div>
                 ) : (
                   <div className="relative group">
                     <button
-                      onClick={() => scrollLeft(newTestSeriesScrollRef)}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 hidden sm:flex"
+                      onClick={() => scrollLeft(testimonialsScrollRef)}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                       aria-label="Scroll left"
                     >
                       <ChevronLeft className="h-5 w-5 text-slate-700" />
                     </button>
-                    <div ref={newTestSeriesScrollRef} className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth mobile-scroll-snap mobile-scroll-container">
-                      {newTestSeries.filter(t => t?.exam).map((test) => (
-                        <div key={test.id} className="flex-shrink-0 snap-start w-72 sm:w-80 md:w-[calc(50%-12px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)]">
-                          <StandardExamCard exam={{
-                            ...test.exam,
-                            category_logo_url: test.exam?.exam_categories?.logo_url,
-                            category_icon: test.exam?.exam_categories?.icon,
-                          }} ctaLabel="Attempt Now" />
+                    <div
+                      ref={testimonialsScrollRef}
+                      className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth"
+                    >
+                      {testimonials.map((item) => (
+                        <div key={item.id} className="flex-shrink-0 w-[22rem] snap-start">
+                          <div className="relative h-full rounded-3xl bg-gradient-to-br from-white via-white to-white/80 p-[1px] shadow-lg">
+                            <div className="h-full rounded-[calc(1.5rem-1px)] bg-white/95 p-6 space-y-4">
+                              <div className="flex items-center gap-3">
+                                {item.profilePhotoUrl ? (
+                                  <img
+                                    src={item.profilePhotoUrl}
+                                    alt={item.name}
+                                    className="h-12 w-12 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-base font-semibold text-orange-600">
+                                    {item.name?.slice(0, 1) || 'A'}
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="text-base font-semibold text-slate-900">{item.name}</p>
+                                  {item.exam && (
+                                    <p className="text-xs font-medium uppercase tracking-wide text-orange-500">{item.exam}</p>
+                                  )}
+                                </div>
+                                {item.highlight && (
+                                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-600">
+                                    Featured
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-line">
+                                “{formatTestimonialContent(item.review || '')}”
+                              </p>
+                              <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
                     <button
-                      onClick={() => scrollRight(newTestSeriesScrollRef)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white border border-slate-200 shadow-lg items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50 hidden sm:flex"
+                      onClick={() => scrollRight(testimonialsScrollRef)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                       aria-label="Scroll right"
                     >
                       <ChevronRight className="h-5 w-5 text-slate-700" />
                     </button>
                   </div>
                 )}
-        </div>
-      )}
-
-      {/* Testimonials Section - Hide when searching */}
-      {!debouncedSearch && (
-      <section className="container-main mt-16">
-        <div className="relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] p-8 md:p-10">
-          <div className="pointer-events-none absolute inset-0 opacity-70">
-            <div className="absolute -top-16 -right-24 h-64 w-64 rounded-full bg-orange-200 blur-3xl" />
-            <div className="absolute bottom-0 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-pink-200 blur-3xl" />
-          </div>
-
-          <div className="relative z-10 space-y-10">
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
-                  Social Proof
-                </div>
-                <h2 className="font-display text-4xl font-semibold text-slate-900">
-                  Aspirants can't stop talking about Bharat Mock
-                </h2>
-                
-                <div className="flex flex-wrap gap-6 text-sm text-slate-600">
-                  
-                </div>
               </div>
-
-              
-            </div>
-
-            <div className="relative">
-              {testimonialsLoading ? (
-                <div className="flex gap-4 overflow-x-auto hide-scrollbar">
-                  {Array.from({ length: 3 }).map((_, idx) => (
-                    <div key={idx} className="flex-shrink-0 w-80">
-                      <Skeleton className="h-56 w-full rounded-2xl bg-white/60" />
-                    </div>
-                  ))}
-                </div>
-              ) : testimonials.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/70 bg-white/70 p-10 text-center">
-                  <h3 className="font-display text-2xl font-semibold text-slate-900 mb-2">No stories yet</h3>
-                  <p className="text-slate-600">New testimonials will appear here as admins publish them.</p>
-                </div>
-              ) : (
-                <div className="relative group">
-                  <button
-                    onClick={() => scrollLeft(testimonialsScrollRef)}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    aria-label="Scroll left"
-                  >
-                    <ChevronLeft className="h-5 w-5 text-slate-700" />
-                  </button>
-                  <div
-                    ref={testimonialsScrollRef}
-                    className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth"
-                  >
-                    {testimonials.map((item) => (
-                      <div key={item.id} className="flex-shrink-0 w-[22rem] snap-start">
-                        <div className="relative h-full rounded-3xl bg-gradient-to-br from-white via-white to-white/80 p-[1px] shadow-lg">
-                          <div className="h-full rounded-[calc(1.5rem-1px)] bg-white/95 p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                              {item.profilePhotoUrl ? (
-                                <img
-                                  src={item.profilePhotoUrl}
-                                  alt={item.name}
-                                  className="h-12 w-12 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-base font-semibold text-orange-600">
-                                  {item.name?.slice(0, 1) || 'A'}
-                                </div>
-                              )}
-                              <div>
-                                <p className="text-base font-semibold text-slate-900">{item.name}</p>
-                                {item.exam && (
-                                  <p className="text-xs font-medium uppercase tracking-wide text-orange-500">{item.exam}</p>
-                                )}
-                              </div>
-                              {item.highlight && (
-                                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-600">
-                                  Featured
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-line">
-                              “{formatTestimonialContent(item.review || '')}”
-                            </p>
-                            <div className="flex items-center justify-between text-xs text-slate-500">
-                              <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                              
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => scrollRight(testimonialsScrollRef)}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    aria-label="Scroll right"
-                  >
-                    <ChevronRight className="h-5 w-5 text-slate-700" />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
       )}
 
       {/* Access Steps Section - Hide when searching */}
       {!debouncedSearch && (
-      <div className="container-main mt-16 mb-12">
-              <div className="text-center mb-10">
-                <p className="text-sm uppercase tracking-[0.35em] text-blue-500 font-semibold">Get Started Fast</p>
-                <h2 className="font-display text-3xl font-bold text-foreground mt-2">
-                  How to access free mock tests in 6 easy steps
-                </h2>
-                <p className="text-muted-foreground mt-1 max-w-3xl mx-auto">
-                  Follow this quick flow to start practicing today. Every step is optimized for speed and clarity so you can focus on learning.
+        <div className="container-main mt-16 mb-12">
+          <div className="text-center mb-10">
+            <p className="text-sm uppercase tracking-[0.35em] text-blue-500 font-semibold">Get Started Fast</p>
+            <h2 className="font-display text-3xl font-bold text-foreground mt-2">
+              How to access free mock tests in 6 easy steps
+            </h2>
+            <p className="text-muted-foreground mt-1 max-w-3xl mx-auto">
+              Follow this quick flow to start practicing today. Every step is optimized for speed and clarity so you can focus on learning.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {[
+              {
+                step: 1,
+                title: 'Create or log in',
+                description: 'Use your email/mobile to register in seconds. Existing aspirants can sign in directly.'
+              },
+              {
+                step: 2,
+                title: 'Navigate to mock tests',
+                description: 'Head to the Exams page and open our curated mock test collections.'
+              },
+              {
+                step: 3,
+                title: 'Select exam category',
+                description: 'Pick your target like SSC, Banking, Defense, or State exams to filter relevant tests.'
+              },
+              {
+                step: 4,
+                title: 'Choose your test',
+                description: 'Browse curated series, anytime exams, or popular tests and tap the one you want to attempt.'
+              },
+              {
+                step: 5,
+                title: 'Start attempting',
+                description: 'Read the instructions, configure attempt settings, and begin the live mock interface.'
+              },
+              {
+                step: 6,
+                title: 'Review smart analytics',
+                description: 'Get AI-powered insights, accuracy metrics, and AIR comparisons to refine your prep.'
+              }
+            ].map((item) => (
+              <div
+                key={item.step}
+                className="relative bg-white border border-border rounded-2xl p-6 shadow-[0_10px_30px_-15px_rgba(15,23,42,0.3)] hover:-translate-y-1 transition-transform"
+              >
+                <div className="absolute -top-4 left-6 inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-semibold shadow-lg">
+                  {item.step}
+                </div>
+                <h3 className="mt-4 font-display text-xl font-semibold text-foreground">{item.title}</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {item.description}
                 </p>
               </div>
-
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {[
-                  {
-                    step: 1,
-                    title: 'Create or log in',
-                    description: 'Use your email/mobile to register in seconds. Existing aspirants can sign in directly.'
-                  },
-                  {
-                    step: 2,
-                    title: 'Navigate to mock tests',
-                    description: 'Head to the Exams page and open our curated mock test collections.'
-                  },
-                  {
-                    step: 3,
-                    title: 'Select exam category',
-                    description: 'Pick your target like SSC, Banking, Defense, or State exams to filter relevant tests.'
-                  },
-                  {
-                    step: 4,
-                    title: 'Choose your test',
-                    description: 'Browse curated series, anytime exams, or popular tests and tap the one you want to attempt.'
-                  },
-                  {
-                    step: 5,
-                    title: 'Start attempting',
-                    description: 'Read the instructions, configure attempt settings, and begin the live mock interface.'
-                  },
-                  {
-                    step: 6,
-                    title: 'Review smart analytics',
-                    description: 'Get AI-powered insights, accuracy metrics, and AIR comparisons to refine your prep.'
-                  }
-                ].map((item) => (
-                  <div
-                    key={item.step}
-                    className="relative bg-white border border-border rounded-2xl p-6 shadow-[0_10px_30px_-15px_rgba(15,23,42,0.3)] hover:-translate-y-1 transition-transform"
-                  >
-                    <div className="absolute -top-4 left-6 inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-semibold shadow-lg">
-                      {item.step}
-                    </div>
-                    <h3 className="mt-4 font-display text-xl font-semibold text-foreground">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {item.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-      </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* SEO Content Block - Hide when searching */}
       {!debouncedSearch && (
-      <div className="container-main">
-        <section className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
-              <div className="max-w-5xl mx-auto space-y-4">
-                <p className="text-xs uppercase tracking-[0.4em] text-blue-300">Master your exams</p>
-                <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
-                  Conquer 2026 exams with Bharat Mock’s free mock test universe
-                </h2>
-                <p className="text-slate-100 text-base leading-relaxed">
-                  Each year more than five million aspirants compete for coveted roles across SSC, Banking, Railways, Defence, and State services. The ones who succeed build a habit of attempting calibrated <strong className="text-blue-200">mock tests that mirror the exact exam interface</strong>. Bharat Mock curates 100% free test sets mapped to RBI Grade B, IBPS PO, SBI Clerk, SEBI Grade A, SSC CGL, NTPC, and 70+ other competitive tracks so you stay exam-ready without guesswork.
-                </p>
-                <p className="text-slate-100 text-base leading-relaxed">
-                  Our experts reverse-engineer the latest TCS/NTA blueprints, replicate adaptive difficulty, and plug in AI-driven performance analytics. That means you master time management, accuracy, and question selection before the real paper. Whether you’re looking for weekly Anytime Exams, deep-dive sectional quizzes, or full-length practice sets, Bharat Mock’s free test series ensures you’re always preparing on the most recent <em className="text-blue-200">exam pattern for 2026</em>.
-                </p>
-                <div className="grid sm:grid-cols-3 gap-4 text-sm text-slate-200">
-                  <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
-                    <p className="text-3xl font-bold text-blue-200">80+</p>
-                    <p className="mt-1">exam categories with detailed mock coverage</p>
-                  </div>
-                  <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
-                    <p className="text-3xl font-bold text-blue-200">2M+</p>
-                    <p className="mt-1">attempts analyzed using smart ranking algorithms</p>
-                  </div>
-                  <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
-                    <p className="text-3xl font-bold text-blue-200">99.7%</p>
-                    <p className="mt-1">accuracy with TCS/NTA CBT interface simulation</p>
-                  </div>
+        <div className="container-main">
+          <section className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
+            <div className="max-w-5xl mx-auto space-y-4">
+              <p className="text-xs uppercase tracking-[0.4em] text-blue-300">Master your exams</p>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
+                Conquer 2026 exams with Bharat Mock’s free mock test universe
+              </h2>
+              <p className="text-slate-100 text-base leading-relaxed">
+                Each year more than five million aspirants compete for coveted roles across SSC, Banking, Railways, Defence, and State services. The ones who succeed build a habit of attempting calibrated <strong className="text-blue-200">mock tests that mirror the exact exam interface</strong>. Bharat Mock curates 100% free test sets mapped to RBI Grade B, IBPS PO, SBI Clerk, SEBI Grade A, SSC CGL, NTPC, and 70+ other competitive tracks so you stay exam-ready without guesswork.
+              </p>
+              <p className="text-slate-100 text-base leading-relaxed">
+                Our experts reverse-engineer the latest TCS/NTA blueprints, replicate adaptive difficulty, and plug in AI-driven performance analytics. That means you master time management, accuracy, and question selection before the real paper. Whether you’re looking for weekly Anytime Exams, deep-dive sectional quizzes, or full-length practice sets, Bharat Mock’s free test series ensures you’re always preparing on the most recent <em className="text-blue-200">exam pattern for 2026</em>.
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4 text-sm text-slate-200">
+                <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
+                  <p className="text-3xl font-bold text-blue-200">80+</p>
+                  <p className="mt-1">exam categories with detailed mock coverage</p>
+                </div>
+                <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
+                  <p className="text-3xl font-bold text-blue-200">2M+</p>
+                  <p className="mt-1">attempts analyzed using smart ranking algorithms</p>
+                </div>
+                <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
+                  <p className="text-3xl font-bold text-blue-200">99.7%</p>
+                  <p className="mt-1">accuracy with TCS/NTA CBT interface simulation</p>
                 </div>
               </div>
-        </section>
-      </div>
+            </div>
+          </section>
+        </div>
       )}
 
       {/* FAQ Section - Hide when searching */}
       {!debouncedSearch && (
-      <section className="container-main mt-16 mb-12">
-        <div>
+        <section className="container-main mt-16 mb-12">
+          <div>
             <h2 className="font-display text-4xl font-bold text-foreground mb-8 text-center">
               FAQ's
             </h2>
@@ -1158,11 +1212,10 @@ export default function ExamsPage() {
                 <button
                   key={tab}
                   onClick={() => { setExpandedFaq(null); setActiveFaqTab(tab); }}
-                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
-                    activeFaqTab === tab
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${activeFaqTab === tab
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   {tab === 'All' ? 'All FAQ' : 'Payment FAQ'}
                 </button>
@@ -1197,8 +1250,16 @@ export default function ExamsPage() {
               ))}
             </div>
           </div>
-      </section>
+        </section>
       )}
     </div>
+  );
+}
+
+export default function ExamsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-muted/30 animate-pulse" />}>
+      <ExamsPageContent />
+    </Suspense>
   );
 }

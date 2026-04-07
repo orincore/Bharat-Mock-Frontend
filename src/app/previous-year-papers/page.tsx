@@ -112,6 +112,17 @@ export default function PrevPapersPage() {
     return () => clearTimeout(handle);
   }, [filters.search]);
 
+  useEffect(() => {
+    if (!mobileFiltersOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileFiltersOpen]);
+
   const fetchPaperSections = async () => {
     setSectionsLoading(true);
     try {
@@ -395,7 +406,7 @@ export default function PrevPapersPage() {
   );
 
   const FiltersPanel = () => (
-    <div className="bg-card rounded-xl border border-border p-6 max-h-[calc(100vh-6rem)] overflow-y-auto">
+    <div className="bg-card rounded-xl border border-border p-6 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <p className="font-display text-lg font-bold text-foreground flex items-center gap-2">
           <Filter className="h-5 w-5 text-primary" />
@@ -423,7 +434,7 @@ export default function PrevPapersPage() {
             <label className="block text-sm font-medium text-foreground mb-2">
               Category
             </label>
-            <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -456,7 +467,7 @@ export default function PrevPapersPage() {
             {subcategoriesLoading ? (
               <Skeleton className="h-10 w-full rounded-lg" />
             ) : (
-              <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+              <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
                 <label className="flex items-center gap-2 text-sm text-foreground">
                   <input
                     type="radio"
@@ -488,7 +499,7 @@ export default function PrevPapersPage() {
             <label className="block text-sm font-medium text-foreground mb-2">
               Difficulty
             </label>
-            <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -518,7 +529,7 @@ export default function PrevPapersPage() {
             <label className="block text-sm font-medium text-foreground mb-2">
               Year
             </label>
-            <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -626,21 +637,6 @@ export default function PrevPapersPage() {
       </section>
 
       <div className="container-main py-12">
-        <div className="lg:hidden mb-6">
-          <button
-            type="button"
-            onClick={() => setMobileFiltersOpen((prev) => !prev)}
-            className="inline-flex items-center justify-center gap-2 w-full rounded-full border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600"
-          >
-            <Filter className="h-4 w-4" />
-            {mobileFiltersOpen ? 'Hide Filters' : 'Show Filters'}
-          </button>
-          {mobileFiltersOpen && (
-            <div className="mt-4">
-              <FiltersPanel />
-            </div>
-          )}
-        </div>
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0">
             <div className="sticky top-20">
@@ -654,11 +650,10 @@ export default function PrevPapersPage() {
                 <button
                   type="button"
                   onClick={() => handleTabChange('all')}
-                  className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
-                    activeTab === 'all'
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'all'
                       ? 'border-primary text-primary'
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                  }`}
+                    }`}
                 >
                   <FileText className="h-4 w-4" />
                   All Previous Papers
@@ -666,11 +661,10 @@ export default function PrevPapersPage() {
                 <button
                   type="button"
                   onClick={() => handleTabChange('premium')}
-                  className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
-                    activeTab === 'premium'
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'premium'
                       ? 'border-amber-500 text-amber-600'
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                  }`}
+                    }`}
                 >
                   <Crown className="h-4 w-4" />
                   Bharat Mock Premium
@@ -731,9 +725,8 @@ export default function PrevPapersPage() {
                     >
                       <button
                         onClick={() => handleSectionChange('')}
-                        className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
-                          activeSectionId === '' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
-                        }`}
+                        className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${activeSectionId === '' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+                          }`}
                       >
                         All Papers ({allPapersTotal})
                         {activeSectionId === '' && (
@@ -744,9 +737,8 @@ export default function PrevPapersPage() {
                         <button
                           key={section.id}
                           onClick={() => handleSectionChange(section.id)}
-                          className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
-                            activeSectionId === section.id ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
-                          }`}
+                          className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${activeSectionId === section.id ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+                            }`}
                         >
                           {section.name} ({sectionCounts[section.id] || 0})
                           {activeSectionId === section.id && (
@@ -783,9 +775,8 @@ export default function PrevPapersPage() {
                         <button
                           key={topic.id}
                           onClick={() => handleTopicChange(topic.id)}
-                          className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                            selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
+                          className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
                         >
                           {topic.name} ({topicCounts[topic.id] ?? 0})
                         </button>
@@ -810,9 +801,9 @@ export default function PrevPapersPage() {
                   <div>
                     <p className="text-destructive font-medium">Error loading papers</p>
                     <p className="text-destructive/80 text-sm mt-1">{error}</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         setError('');
                         fetchExams();
@@ -840,7 +831,7 @@ export default function PrevPapersPage() {
                   <p className="text-muted-foreground mb-6">
                     {activeTab === 'premium'
                       ? 'Premium previous papers will appear here once added.'
-                      : hasCustomFilters 
+                      : hasCustomFilters
                         ? 'No papers match your current filters. Try adjusting your search criteria.'
                         : 'Previous year papers are being added. Please check back later.'}
                   </p>
@@ -887,6 +878,60 @@ export default function PrevPapersPage() {
           </div>
         </div>
       </div>
+      {mobileFiltersOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-background">
+          <div className="flex h-full flex-col">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-4">
+              <div>
+                <p className="font-display text-xl font-bold text-foreground">Filters</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                onClick={() => setMobileFiltersOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="rounded-none border-0 bg-transparent p-0">
+                <FiltersPanel />
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 border-t border-border bg-background px-4 py-4">
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
+                  onClick={() => {
+                    clearFilters();
+                    setMobileFiltersOpen(false);
+                  }}
+                >
+                  Clear All
+                </Button>
+                <Button className="flex-1" onClick={() => setMobileFiltersOpen(false)}>
+                  View Results
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!mobileFiltersOpen && (
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen(true)}
+          className="lg:hidden fixed bottom-5 left-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg text-sm font-semibold"
+        >
+          <Filter className="h-4 w-4" />
+          Filters
+        </button>
+      )}
       <div className="container-main">
         <PageSeoSections
           whyTitle="Why practice with Bharat Mock Previous Year Papers?"
@@ -896,7 +941,7 @@ export default function PrevPapersPage() {
           testimonialsDescription="Real feedback from aspirants who cracked govt exams by consistently practising previous year papers on Bharat Mock."
           seoContent={
             <>
-             
+
               <section className="mt-10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
                 <div className="max-w-5xl mx-auto space-y-4">
                   <p className="text-xs uppercase tracking-[0.4em] text-blue-300">Master your exams</p>

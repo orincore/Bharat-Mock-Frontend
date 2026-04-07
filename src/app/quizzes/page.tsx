@@ -67,6 +67,17 @@ export default function QuizzesPage() {
     return () => clearTimeout(handle);
   }, [filters.search]);
 
+  useEffect(() => {
+    if (!mobileFiltersOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileFiltersOpen]);
+
   const fetchCategories = async () => {
     setCategoriesLoading(true);
     try {
@@ -208,7 +219,7 @@ export default function QuizzesPage() {
   const hasCustomFilters = Boolean(filters.search || selectedCategoryId || selectedSubcategoryId || selectedDifficultyId || filters.is_premium);
 
   const FiltersPanel = () => (
-    <div className="bg-card rounded-xl border border-border p-6 max-h-[calc(100vh-6rem)] overflow-y-auto">
+    <div className="bg-card rounded-xl border border-border p-6 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <p className="font-display text-lg font-bold text-foreground flex items-center gap-2">
           <Filter className="h-5 w-5 text-primary" />
@@ -233,7 +244,7 @@ export default function QuizzesPage() {
           {/* Category */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Category</label>
-            <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="radio" name="quiz-category" className="h-4 w-4 accent-primary"
                   checked={selectedCategoryId === ''} onChange={() => handleCategoryChange('')} />
@@ -253,7 +264,7 @@ export default function QuizzesPage() {
           {/* Sub-category */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Sub-category</label>
-            <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="radio" name="quiz-subcategory" className="h-4 w-4 accent-primary"
                   checked={selectedSubcategoryId === ''}
@@ -275,7 +286,7 @@ export default function QuizzesPage() {
           {/* Difficulty */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Difficulty</label>
-            <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="radio" name="quiz-difficulty" className="h-4 w-4 accent-primary"
                   checked={selectedDifficultyId === ''} onChange={() => handleDifficultyChange('')} />
@@ -323,31 +334,21 @@ export default function QuizzesPage() {
               Bite-sized Q&A quizzes to strengthen your concepts in minutes.
             </p>
             <form onSubmit={(e) => { e.preventDefault(); setPagination((p) => ({ ...p, page: 1 })); }}
-              className="flex flex-col sm:flex-row gap-3 sm:items-stretch">
+              className="flex flex-col sm:flex-row gap-3 sm:items-stretch" suppressHydrationWarning>
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" suppressHydrationWarning />
                 <Input type="text" placeholder="Search quizzes by name or category..."
                   value={filters.search}
                   onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                  className="pl-10 bg-background" />
+                  className="pl-10 bg-background" suppressHydrationWarning />
               </div>
-              <Button type="submit" className="h-10 px-6 text-base font-semibold">Search</Button>
+              <Button type="submit" className="h-10 px-6 text-base font-semibold" suppressHydrationWarning>Search</Button>
             </form>
           </div>
         </div>
       </section>
 
       <div className="container-main py-12">
-        {/* Mobile filter toggle */}
-        <div className="lg:hidden mb-6">
-          <button type="button" onClick={() => setMobileFiltersOpen((p) => !p)}
-            className="inline-flex items-center justify-center gap-2 w-full rounded-full border border-primary px-4 py-2 text-sm font-semibold text-primary">
-            <Filter className="h-4 w-4" />
-            {mobileFiltersOpen ? 'Hide Filters' : 'Show Filters'}
-          </button>
-          {mobileFiltersOpen && <div className="mt-4"><FiltersPanel /></div>}
-        </div>
-
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0">
             <div className="sticky top-20"><FiltersPanel /></div>
@@ -362,7 +363,7 @@ export default function QuizzesPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="sm" onClick={clearFilters}>Reset filters</Button>
+                <Button variant="outline" size="sm" onClick={clearFilters} suppressHydrationWarning>Reset filters</Button>
                 <div className="flex items-center gap-2 text-muted-foreground text-sm">
                   <BookOpen className="h-4 w-4" />
                   <span>{pagination.total} quizzes</span>
@@ -403,12 +404,12 @@ export default function QuizzesPage() {
               <div className="flex gap-3">
                 <Button variant="outline"
                   disabled={pagination.page === 1 || isLoading}
-                  onClick={() => setPagination((p) => ({ ...p, page: Math.max(p.page - 1, 1) }))}>
+                  onClick={() => setPagination((p) => ({ ...p, page: Math.max(p.page - 1, 1) }))} suppressHydrationWarning>
                   Previous
                 </Button>
                 <Button variant="outline"
                   disabled={pagination.page >= pagination.totalPages || isLoading}
-                  onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}>
+                  onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))} suppressHydrationWarning>
                   Next
                 </Button>
               </div>
@@ -416,6 +417,63 @@ export default function QuizzesPage() {
           </div>
         </div>
       </div>
+
+      {mobileFiltersOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-background">
+          <div className="flex h-full flex-col">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-4">
+              <div>
+                <p className="font-display text-xl font-bold text-foreground">Filters</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                onClick={() => setMobileFiltersOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="rounded-none border-0 bg-transparent p-0">
+                <FiltersPanel />
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 border-t border-border bg-background px-4 py-4">
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
+                  onClick={() => {
+                    clearFilters();
+                    setMobileFiltersOpen(false);
+                  }}
+                >
+                  Clear All
+                </Button>
+                <Button className="flex-1" onClick={() => setMobileFiltersOpen(false)}>
+                  View Results
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!mobileFiltersOpen && (
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen(true)}
+          className="lg:hidden fixed bottom-5 left-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg text-sm font-semibold"
+          suppressHydrationWarning
+        >
+          <Filter className="h-4 w-4" suppressHydrationWarning />
+          Filters
+        </button>
+      )}
+
       <div className="container-main">
         <PageSeoSections
           whyTitle="Why take Bharat Mock Quizzes?"

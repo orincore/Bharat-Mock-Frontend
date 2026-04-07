@@ -14,7 +14,7 @@ const buildApiUrl = (path: string) => {
   return apiBase ? `${apiBase}${p}` : `/api/v1${p}`;
 };
 
-type ResolvedType = 'subcategory' | 'category' | null;
+type ResolvedType = 'subcategory' | 'combined-subcategory' | 'category' | null;
 
 function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
   const [resolved, setResolved] = useState<ResolvedType>(null);
@@ -32,6 +32,18 @@ function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
           }
         }
       } catch { /* not a subcategory */ }
+
+      try {
+        const combinedRes = await fetch(buildApiUrl(`/taxonomy/resolve/${slug.toLowerCase()}`));
+        if (combinedRes.ok) {
+          const data = await combinedRes.json();
+          if (data?.data?.id) {
+            if (!cancelled) setResolved('combined-subcategory');
+            return;
+          }
+        }
+      } catch { /* not a combined subcategory slug */ }
+
       if (!cancelled) setResolved('category');
     };
     resolve();
@@ -53,6 +65,10 @@ function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
     return <ModernSubcategoryPage subcategorySlug={slug} initialTabSlug={tabSlug} />;
   }
 
+  if (resolved === 'combined-subcategory') {
+    return <ModernSubcategoryPage combinedSlug={slug} initialTabSlug={tabSlug} />;
+  }
+
   return <NewCategoryPage categorySlug={slug} initialTabSlug={tabSlug} />;
 }
 
@@ -63,7 +79,7 @@ const KNOWN_TAB_SLUGS = new Set([
   'question-papers'
 ]);
 
-type TwoSegmentResolved = 'exam' | 'subcategory-tab' | 'category-tab' | null;
+type TwoSegmentResolved = 'exam' | 'subcategory' | 'subcategory-tab' | 'combined-subcategory-tab' | 'category-tab' | null;
 
 function TwoSegmentResolver({ first, second }: { first: string; second: string }) {
   const [resolved, setResolved] = useState<TwoSegmentResolved>(null);
@@ -84,6 +100,17 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
           }
         }
       } catch { /* not an exam */ }
+
+      try {
+        const catSubRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}/subcategory/${second.toLowerCase()}`));
+        if (catSubRes.ok) {
+          const data = await catSubRes.json();
+          if (data?.data?.id) {
+            if (!cancelled) setResolved('subcategory');
+            return;
+          }
+        }
+      } catch { /* not a category/subcategory pair */ }
 
       try {
         const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`));
@@ -120,6 +147,17 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
       } catch { /* not a subcategory */ }
 
       try {
+        const combinedRes = await fetch(buildApiUrl(`/taxonomy/resolve/${first.toLowerCase()}`));
+        if (combinedRes.ok) {
+          const data = await combinedRes.json();
+          if (data?.data?.id) {
+            if (!cancelled) setResolved('combined-subcategory-tab');
+            return;
+          }
+        }
+      } catch { /* not a combined subcategory slug */ }
+
+      try {
         const catRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`));
         if (catRes.ok) {
           const catData = await catRes.json();
@@ -149,6 +187,14 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
 
   if (resolved === 'subcategory-tab') {
     return <ModernSubcategoryPage subcategorySlug={first} initialTabSlug={second} />;
+  }
+
+  if (resolved === 'subcategory') {
+    return <ModernSubcategoryPage categorySlug={first} subcategorySlug={second} />;
+  }
+
+  if (resolved === 'combined-subcategory-tab') {
+    return <ModernSubcategoryPage combinedSlug={first} initialTabSlug={second} />;
   }
 
   if (resolved === 'category-tab') {

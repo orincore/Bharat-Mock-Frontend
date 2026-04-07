@@ -22,6 +22,7 @@ import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { toast } from 'sonner';
 import { subcategoryService, type Subcategory, type SubcategoryOverview, type SubcategoryUpdate, type SubcategoryHighlight, type SubcategoryExamStat, type SubcategorySection, type SubcategoryTable, type SubcategoryQuestionPaper, type SubcategoryFAQ, type SubcategoryResource } from '@/lib/api/subcategoryService';
 import { getExamUrl } from '@/lib/utils/examUrl';
+import { getCleanContentLabel } from '@/lib/utils';
 
 interface SubcategoryPageProps {
   categorySlug: string;
@@ -96,6 +97,19 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
 
   const heroSubtitle = overview?.hero_subtitle || subcategory?.description || '';
   const heroDescription = overview?.hero_description || subcategory?.description || '';
+
+  const stripHtml = (html: string) => {
+    if (!html) return '';
+    return html
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  };
 
   useEffect(() => {
     fetchSubcategoryData();
@@ -217,7 +231,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
             </h1>
             <div className="grid lg:grid-cols-2 gap-4">
               {heroSubtitle && (
-                <p className="text-base text-white/85 max-w-2xl mx-auto lg:mx-0">
+                <p className="text-xl text-white/85 max-w-2xl mx-auto lg:mx-0">
                   {heroSubtitle}
                 </p>
               )}
@@ -289,7 +303,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
 
             {heroDescription && (
               <div className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
-                <h2 className="text-2xl font-bold mb-4">About the Exam</h2>
+                {/* Removed hardcoded header for SEO deduplication */}
                 <div
                   className="text-gray-600 leading-relaxed prose max-w-none"
                   dangerouslySetInnerHTML={{ __html: heroDescription }}
@@ -335,7 +349,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
 
             {highlights.length > 0 && (
               <div className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
-                <h2 className="text-2xl font-bold mb-6">Key Highlights</h2>
+                <div className="text-2xl font-bold mb-6">Key Highlights</div>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {highlights.map((highlight) => (
                     <div key={highlight.id} className="flex items-start space-x-4">
@@ -354,9 +368,14 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
               </div>
             )}
 
-            {sections.map((section) => (
-              <div key={section.id} className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
-                <h2 className="text-2xl font-bold mb-4">{section.title}</h2>
+            {sections.map((section) => {
+              const sectionTitleText = getCleanContentLabel(section.title).toLowerCase();
+              const contentText = getCleanContentLabel(section.content || '').toLowerCase();
+              const skipTitle = !sectionTitleText || sectionTitleText === 'untitled section' || contentText.includes(sectionTitleText);
+              
+              return (
+                <div key={section.id} className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
+                  {!skipTitle && <h2 className="text-2xl font-bold mb-4">{section.title}</h2>}
                 {section.subtitle && (
                   <p className="text-lg text-gray-600 mb-4">{section.subtitle}</p>
                 )}
@@ -376,7 +395,8 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                   </Link>
                 )}
               </div>
-            ))}
+              );
+            })}
 
             {tables.map((table) => (
               <div key={table.id} className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
@@ -394,7 +414,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                               key={idx}
                               className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                             >
-                              {header}
+                              <span dangerouslySetInnerHTML={{ __html: header }} />
                             </th>
                           ))}
                         </tr>
@@ -406,7 +426,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
                           {Array.isArray(row.row_data) ? (
                             row.row_data.map((cell: any, idx: number) => (
                               <td key={idx} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {cell}
+                                <span dangerouslySetInnerHTML={{ __html: cell }} />
                               </td>
                             ))
                           ) : (
@@ -424,7 +444,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
 
         {activeTab === 'exams' && (
           <div className="rounded-[28px] bg-white shadow-[0_40px_100px_-55px_rgba(15,23,42,0.85)] ring-1 ring-black/5 p-5">
-            <h2 className="text-xl font-semibold mb-4">Available Mock Tests</h2>
+            {/* Removed hardcoded header for SEO deduplication */}
             {exams.length === 0 ? (
               <p className="text-sm text-gray-600">No mock tests available at the moment.</p>
             ) : (
@@ -446,7 +466,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
 
         {activeTab === 'updates' && (
           <div className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
-            <h2 className="text-2xl font-bold mb-6">Latest Updates</h2>
+            {/* Removed hardcoded header for SEO deduplication */}
             {updates.length === 0 ? (
               <p className="text-gray-600">No updates available.</p>
             ) : (
@@ -487,7 +507,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
 
         {activeTab === 'papers' && (
           <div className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
-            <h2 className="text-2xl font-bold mb-6">Previous Year Question Papers</h2>
+            {/* Header removed for SEO deduplication */}
             {questionPapers.length === 0 ? (
               <p className="text-gray-600">No question papers available.</p>
             ) : (
@@ -535,7 +555,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
           <div className="space-y-6">
             {resources.length > 0 && (
               <div className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
-                <h2 className="text-2xl font-bold mb-6">Study Resources</h2>
+                {/* Header removed for SEO deduplication */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {resources.map((resource) => (
                   <div key={resource.id} className="rounded-2xl ring-1 ring-black/5 bg-slate-50 p-4 shadow-[0_25px_60px_-45px_rgba(15,23,42,0.8)]">
@@ -569,7 +589,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
 
         {activeTab === 'faqs' && (
           <div className="rounded-[32px] bg-white shadow-[0_45px_120px_-55px_rgba(15,23,42,0.8)] ring-1 ring-black/5 p-6">
-            <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+            {/* Header removed for SEO deduplication */}
             {faqs.length === 0 ? (
               <p className="text-gray-600">No FAQs available.</p>
             ) : (
