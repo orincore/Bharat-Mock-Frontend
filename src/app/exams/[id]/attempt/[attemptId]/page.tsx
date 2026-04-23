@@ -1674,7 +1674,6 @@ export default function ExamAttemptPage() {
                           <span>Time {formatSmallTime(questionTimer)}</span>
                         </div>
                       </div>
-                      <p className="text-[12px] font-semibold text-slate-700 mb-2 hidden md:block">Direction: <span className="font-normal text-slate-600">Study the question carefully.</span></p>
                       <MathRenderer
                         html={getLocalizedQuestionText(currentQuestion)}
                         className={`rich-text-content exam-question-text leading-relaxed text-[14px] md:text-[15px] font-normal text-slate-800 ${currentSection?.name?.toLowerCase().includes('english') ? 'notranslate' : ''}`}
@@ -1685,7 +1684,7 @@ export default function ExamAttemptPage() {
                         <img
                           src={resolveQuestionImage(currentQuestion)}
                           alt="Question"
-                          className="max-w-3xl w-full h-auto object-contain transition-transform hover:scale-[1.01] duration-300"
+                          className="max-w-3xl w-full max-h-[500px] h-auto object-contain transition-transform hover:scale-[1.01] duration-300"
                         />
                       </div>
                     )}

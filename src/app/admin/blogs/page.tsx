@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -339,7 +339,7 @@ export default function AdminBlogsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-w-0">
       <header className="bg-white border border-border rounded-3xl px-6 py-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -479,7 +479,7 @@ export default function AdminBlogsPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Categories</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell w-40">
                     Tags
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
@@ -504,8 +504,8 @@ export default function AdminBlogsPage() {
                     const status = getBlogStatus(blog);
                     const isQuickEditing = quickEditId === blog.id;
                     return (
-                      <>
-                        <tr key={blog.id} className={`hover:bg-muted/30 ${isQuickEditing ? 'bg-muted/20' : ''}`}>
+                      <React.Fragment key={blog.id}>
+                        <tr className={`hover:bg-muted/30 ${isQuickEditing ? 'bg-muted/20' : ''}`}>
                           <td className="px-6 py-4 align-top">
                             <div className="flex items-start gap-3">
                               <input
@@ -561,8 +561,17 @@ export default function AdminBlogsPage() {
                           <td className="px-6 py-4 align-top text-sm text-muted-foreground">
                             {blog.category || "Uncategorized"}
                           </td>
-                          <td className="px-6 py-4 align-top text-sm text-muted-foreground hidden lg:table-cell">
-                            {blog.tags && blog.tags.length > 0 ? blog.tags.join(", ") : "—"}
+                          <td className="px-4 py-4 align-top hidden lg:table-cell w-40">
+                            {blog.tags && blog.tags.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {blog.tags.slice(0, 2).map((tag: string) => (
+                                  <span key={tag} className="inline-block px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs truncate max-w-[80px]">{tag}</span>
+                                ))}
+                                {blog.tags.length > 2 && (
+                                  <span className="inline-block px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">+{blog.tags.length - 2}</span>
+                                )}
+                              </div>
+                            ) : <span className="text-muted-foreground text-sm">—</span>}
                           </td>
                           <td className="px-6 py-4 align-top text-sm text-muted-foreground whitespace-nowrap">
                             <div className="flex items-center gap-2">
@@ -615,7 +624,7 @@ export default function AdminBlogsPage() {
                         </tr>
                         {/* Quick Edit inline row */}
                         {isQuickEditing && (
-                          <tr key={`qe-${blog.id}`} className="bg-blue-50/60 border-l-4 border-primary">
+                          <tr className="bg-blue-50/60 border-l-4 border-primary">
                             <td colSpan={6} className="px-6 py-4">
                               <div className="flex flex-wrap items-end gap-4">
                                 <div className="flex-1 min-w-[200px] space-y-1">
@@ -657,7 +666,7 @@ export default function AdminBlogsPage() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </React.Fragment>
                     );
                   })
                 )}

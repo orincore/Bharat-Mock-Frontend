@@ -79,8 +79,6 @@ export function SubscriptionPromoBanner() {
 
   const highlightedPlan = useMemo(() => {
     if (!plans || plans.length === 0) return null;
-    const yearly = plans.find((plan) => plan.duration_days >= 360);
-    if (yearly) return yearly;
     const sorted = [...plans].sort((a, b) => {
       const priceA = getEffectivePriceCents(a) ?? Number.MAX_SAFE_INTEGER;
       const priceB = getEffectivePriceCents(b) ?? Number.MAX_SAFE_INTEGER;

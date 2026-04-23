@@ -235,7 +235,8 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     headerTextColor = '#ffffff',
     borderColor = '#d1d5db',
     cellLinks = {},
-    cellColors = {}
+    cellColors = {},
+    headerColors = {}
   } = content;
   
   const borderStyle = { borderColor };
@@ -244,13 +245,21 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     <div className="overflow-x-auto mb-6">
       <table className="min-w-full border-collapse" style={{ border: `1px solid ${borderColor}` }}>
         {hasHeader && headers.length > 0 && (
-          <thead style={{ backgroundColor: headerBgColor, color: headerTextColor }}>
+          <thead>
             <tr>
-              {headers.map((header: string, index: number) => (
-                <th key={index} className="px-4 py-3 text-left font-semibold whitespace-nowrap !whitespace-nowrap" style={borderStyle}>
-                  <span dangerouslySetInnerHTML={{ __html: header }} />
+              {headers.map((header: string, index: number) => {
+                const hColor = (headerColors as Record<string, { bg?: string; text?: string }>)[String(index)] || {};
+                const thStyle = {
+                  ...borderStyle,
+                  backgroundColor: hColor.bg || headerBgColor,
+                  color: hColor.text || headerTextColor,
+                };
+                return (
+                <th key={index} className="px-4 py-3 text-left font-semibold whitespace-nowrap !whitespace-nowrap text-base" style={thStyle}>
+                  <span className="text-base" dangerouslySetInnerHTML={{ __html: header }} />
                 </th>
-              ))}
+                );
+              })}
             </tr>
           </thead>
         )}
@@ -270,17 +279,17 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                 };
                 
                 return (
-                  <td key={cellIndex} className="px-4 py-3 text-gray-700 !whitespace-nowrap" style={cellStyle}>
+                  <td key={cellIndex} className="px-4 py-3 text-gray-700 !whitespace-nowrap text-base" style={cellStyle}>
                     {cellLink ? (
                       <a 
                         href={cellLink} 
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-600 hover:underline text-base"
                         target={cellLinkTarget}
                         rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
                         dangerouslySetInnerHTML={{ __html: cell }}
                       />
                     ) : (
-                      <span dangerouslySetInnerHTML={{ __html: cell }} />
+                      <span className="text-base" dangerouslySetInnerHTML={{ __html: cell }} />
                     )}
                   </td>
                 );

@@ -221,7 +221,7 @@ export default function AdminExamsPage() {
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="flex items-center justify-between mb-8">
         <div>
           <Breadcrumbs 
@@ -484,18 +484,16 @@ export default function AdminExamsPage() {
         </div>
       ) : (
         <>
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <table className="w-full">
+          <div className="bg-card rounded-xl border border-border overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Title</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Category</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Exam Type</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Questions</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Duration</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Published</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Title</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Category</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Status</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Exam Type</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Published</th>
+                  <th className="px-4 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -509,7 +507,7 @@ export default function AdminExamsPage() {
                         isDeleting ? 'bg-primary/5 opacity-70 blur-[0.5px] shadow-inner' : ''
                       } ${isVanishing ? 'opacity-0 scale-95 -translate-x-4 pointer-events-none' : 'hover:bg-muted/50'}`}
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="space-y-1">
                           <p className="font-medium text-foreground">{exam.title}</p>
                           {exam.exam_uid && (
@@ -543,12 +541,12 @@ export default function AdminExamsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded capitalize">
                           {exam.category}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <span className={`px-2 py-1 text-xs font-medium rounded capitalize ${
                           exam.status === 'ongoing' ? 'bg-success/10 text-success' :
                           exam.status === 'upcoming' ? 'bg-warning/10 text-warning' :
@@ -557,18 +555,12 @@ export default function AdminExamsPage() {
                           {exam.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <span className="px-2 py-1 bg-foreground/5 text-foreground text-xs font-medium rounded capitalize">
                           {exam.exam_type?.replace('_', ' ') || '—'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {exam.total_questions}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {exam.duration} min
-                      </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         {exam.is_published ? (
                           <div className="flex items-center gap-2">
                             <Eye className="h-4 w-4 text-success" />
@@ -581,7 +573,7 @@ export default function AdminExamsPage() {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
                           <Link href={`/admin/exams/${exam.id}`}>
                             <Button variant="outline" size="sm" className="gap-1">

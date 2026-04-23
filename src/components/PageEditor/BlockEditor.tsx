@@ -718,7 +718,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     highlight: '',
     font: FONT_OPTIONS[0].value,
     bulletList: false,
-    numberedList: false
+    numberedList: false,
+    alignment: 'left' as string
   });
 
   useEffect(() => {
@@ -772,7 +773,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
         highlight: '',
         font: FONT_OPTIONS[0].value,
         bulletList: false,
-        numberedList: false
+        numberedList: false,
+        alignment: 'left'
       });
       return;
     }
@@ -796,6 +798,10 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
       ? backgroundColor
       : '';
 
+    const alignment = document.queryCommandState('justifyCenter') ? 'center'
+      : document.queryCommandState('justifyRight') ? 'right'
+      : document.queryCommandState('justifyFull') ? 'justify'
+      : 'left';
     setActiveFormats({
       bold,
       italic,
@@ -806,7 +812,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
       highlight,
       font: computedStyle?.fontFamily || FONT_OPTIONS[0].value,
       bulletList,
-      numberedList
+      numberedList,
+      alignment
     });
   }, []);
 
@@ -1214,6 +1221,27 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
               )}
             </div>
           </div>
+          {/* Alignment buttons */}
+          <div className="flex gap-0.5 items-center border-l border-gray-200 pl-2 ml-1">
+            {(['left', 'center', 'right', 'justify'] as const).map((align) => {
+              const cmds = { left: 'justifyLeft', center: 'justifyCenter', right: 'justifyRight', justify: 'justifyFull' } as const;
+              const icons = { left: '⬅', center: '↔', right: '➡', justify: '≡' };
+              const titles = { left: 'Align Left', center: 'Align Center', right: 'Align Right', justify: 'Justify' };
+              return (
+                <button
+                  key={align}
+                  type="button"
+                  title={titles[align]}
+                  onMouseDown={(e) => { e.preventDefault(); exec(cmds[align]); }}
+                  className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${
+                    activeFormats.alignment === align ? 'bg-gray-200 text-blue-600' : ''
+                  }`}
+                >
+                  {icons[align]}
+                </button>
+              );
+            })}
+          </div>
           {variant === 'full' && (
             <div className="flex items-center gap-2 ml-auto">
               <label className="flex items-center gap-1 text-xs text-gray-500">
@@ -1611,7 +1639,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   useEditorFonts();
 
   const [sections, setSections] = useState<Section[]>(() => normalizeSections(initialSections));
-  const parentSectionsSignatureRef = useRef<string | null>(JSON.stringify(initialSections));
+  const parentSectionsSignatureRef = useRef<string | null>(JSON.stringify(normalizeSections(initialSections)));
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [reservedPosition, setReservedPosition] = useState<number>(reservedTabInfo?.position ?? 0);
   const isPreview = false;
@@ -1628,14 +1656,14 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
 
   useEffect(() => {
-    const sig = JSON.stringify(initialSections);
+    const normalized = normalizeSections(initialSections);
+    const sig = JSON.stringify(normalized);
     if (parentSectionsSignatureRef.current === sig) {
       return;
     }
     parentSectionsSignatureRef.current = sig;
     syncingFromParentRef.current = true;
     suppressHistoryRef.current = true;
-    const normalized = normalizeSections(initialSections);
     setSections(normalized);
     historyRef.current = [snapshotSections(normalized)];
     historyIndexRef.current = 0;
@@ -2704,6 +2732,26 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
     </button>
   );
 
+  // Normalize pasted content to remove font-size and other styling irregularities
+  const handleCellPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    const html = event.clipboardData?.getData('text/html');
+    if (html) {
+      event.preventDefault();
+      const tmp = document.createElement('div');
+      tmp.innerHTML = DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        ADD_TAGS: ['b', 'strong', 'i', 'em', 'u', 'sub', 'sup', 'code'],
+        FORBID_ATTR: ['style', 'class', 'color', 'face', 'size'],
+      });
+      // Remove any remaining style attributes
+      tmp.querySelectorAll('*').forEach(el => {
+        el.removeAttribute('style');
+        el.removeAttribute('class');
+      });
+      document.execCommand('insertHTML', false, tmp.innerHTML);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Color Options */}
@@ -2779,6 +2827,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   dangerouslySetInnerHTML={{ __html: header }}
                   onBlur={(e) => handleHeaderChange(index, e.currentTarget.innerHTML)}
+                  onPaste={handleCellPaste}
                   onKeyDown={(e) => {
                     if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
                       e.preventDefault();
@@ -2840,6 +2889,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[56px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                         dangerouslySetInnerHTML={{ __html: row[colIndex] || '' }}
                         onBlur={(e) => handleCellChange(rowIndex, colIndex, e.currentTarget.innerHTML)}
+                        onPaste={handleCellPaste}
                         onKeyDown={(e) => {
                           if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
                             e.preventDefault();
@@ -3063,8 +3113,20 @@ const CodeContentEditor = ({ content, onChange }: { content: any; onChange: (con
   </div>
 );
 
+interface AccordionItem {
+  title: string;
+  content?: string;
+  contentType?: 'text' | 'table';
+  table?: {
+    headers: string[];
+    rows: string[][];
+    hasHeader?: boolean;
+    striped?: boolean;
+  };
+}
+
 const AccordionContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
-  const items = Array.isArray(content.items) && content.items.length ? content.items : [{ title: 'Accordion Title', content: '', contentType: 'text' }];
+  const items: AccordionItem[] = Array.isArray(content.items) && content.items.length ? content.items : [{ title: 'Accordion Title', content: '', contentType: 'text' }];
 
   const updateItems = (next: any[]) => onChange({ ...content, items: next });
 
@@ -3122,7 +3184,7 @@ const AccordionContentEditor = ({ content, onChange }: { content: any; onChange:
       <button type="button" onClick={addItem} className="text-blue-600 text-sm font-semibold">
         + Add Accordion Item
       </button>
-      {items.map((item, index) => {
+      {items.map((item: AccordionItem, index) => {
         const contentType = item.contentType || 'text';
         const table = item.table || { headers: ['Column 1', 'Column 2', 'Column 3'], rows: [['', '', '']], hasHeader: true, striped: true };
         return (
@@ -3288,8 +3350,13 @@ const AccordionTableEditor = ({ table, onChange }: { table: any; onChange: (t: a
   );
 };
 
+interface Tab {
+  title: string;
+  content: string;
+}
+
 const TabsContentEditor = ({ content, onChange }: { content: any; onChange: (content: any) => void }) => {
-  const tabs = Array.isArray(content.tabs) && content.tabs.length ? content.tabs : [{ title: 'Tab 1', content: '' }];
+  const tabs: Tab[] = Array.isArray(content.tabs) && content.tabs.length ? content.tabs : [{ title: 'Tab 1', content: '' }];
 
   const updateTabs = (next: any[]) => onChange({ ...content, tabs: next });
 
@@ -3310,7 +3377,7 @@ const TabsContentEditor = ({ content, onChange }: { content: any; onChange: (con
       <button type="button" onClick={addTab} className="text-blue-600 text-sm font-semibold">
         + Add Tab
       </button>
-      {tabs.map((tab, index) => (
+      {tabs.map((tab: Tab, index: number) => (
         <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">Tab {index + 1}</p>
@@ -3391,6 +3458,7 @@ const InlineTableEditor = ({
   const borderColor = content.borderColor || '#d1d5db';
   const cellLinks = content.cellLinks || {}; // Format: { "rowIndex-colIndex": "url" }
   const cellColors = content.cellColors || {}; // Format: { "rowIndex-colIndex": { bg: "#fff", text: "#000" } }
+  const headerColors = content.headerColors || {}; // Format: { "colIndex": { bg: "", text: "" } }
 
   const update = (next: Partial<any>) => onChange({ ...content, ...next });
 
@@ -3436,7 +3504,18 @@ const InlineTableEditor = ({
       }
     });
     
-    update({ headers: nextHeaders, rows: nextRows, cellLinks: nextLinks, cellColors: nextColors });
+    // Clean up headerColors for deleted/shifted columns
+    const nextHeaderColors = { ...content.headerColors || {} };
+    Object.keys(nextHeaderColors).forEach(key => {
+      const colIdx = Number(key);
+      if (colIdx === index) {
+        delete nextHeaderColors[key];
+      } else if (colIdx > index) {
+        nextHeaderColors[String(colIdx - 1)] = nextHeaderColors[key];
+        delete nextHeaderColors[key];
+      }
+    });
+    update({ headers: nextHeaders, rows: nextRows, cellLinks: nextLinks, cellColors: nextColors, headerColors: nextHeaderColors });
   };
 
   const addRow = () => {
@@ -3497,6 +3576,15 @@ const InlineTableEditor = ({
     update({ rows: nextRows });
   };
 
+  const handleHeaderColorChange = (colIndex: number, colorType: 'bg' | 'text', color: string) => {
+    const key = String(colIndex);
+    const nextHeaderColors = { ...headerColors };
+    if (!nextHeaderColors[key]) nextHeaderColors[key] = { bg: '', text: '' };
+    nextHeaderColors[key][colorType] = color;
+    if (!nextHeaderColors[key].bg && !nextHeaderColors[key].text) delete nextHeaderColors[key];
+    update({ headerColors: nextHeaderColors });
+  };
+
   const handleCellLinkChange = (rowIndex: number, colIndex: number, url: string) => {
     const key = `${rowIndex}-${colIndex}`;
     const nextLinks = { ...cellLinks };
@@ -3551,20 +3639,35 @@ const InlineTableEditor = ({
     return null;
   }
 
-  // Bold toolbar button for a contentEditable cell
-  const BoldButton = () => (
-    <button
-      type="button"
-      title="Bold (Ctrl+B)"
-      onMouseDown={(e) => {
-        e.preventDefault();
-        document.execCommand('bold');
-      }}
-      className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded hover:bg-gray-100 bg-white leading-none"
-    >
-      B
-    </button>
-  );
+  // Mini formatting toolbar for contentEditable cells
+  const CellToolbar = () => {
+    const btn = (cmd: string, label: string, title: string, extraClass = '') => (
+      <button
+        key={cmd}
+        type="button"
+        title={title}
+        onMouseDown={(e) => { e.preventDefault(); document.execCommand(cmd); }}
+        className={`px-1.5 py-0.5 text-[11px] border border-gray-200 rounded hover:bg-blue-50 hover:border-blue-300 bg-white leading-none transition-colors ${extraClass}`}
+      >
+        {label}
+      </button>
+    );
+    return (
+      <div className="flex flex-wrap gap-0.5 mb-1">
+        {btn('bold', 'B', 'Bold (Ctrl+B)', 'font-bold')}
+        {btn('italic', 'I', 'Italic (Ctrl+I)', 'italic')}
+        {btn('underline', 'U', 'Underline (Ctrl+U)', 'underline')}
+        {btn('strikeThrough', 'S̶', 'Strikethrough')}
+        <span className="inline-block w-px bg-gray-200 mx-0.5 self-stretch" />
+        {btn('justifyLeft', '⬅', 'Align Left')}
+        {btn('justifyCenter', '⇔', 'Align Center')}
+        {btn('justifyRight', '➡', 'Align Right')}
+        {btn('justifyFull', '≡', 'Justify')}
+        <span className="inline-block w-px bg-gray-200 mx-0.5 self-stretch" />
+        {btn('removeFormat', '✕', 'Clear formatting')}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -3635,7 +3738,7 @@ const InlineTableEditor = ({
           <input type="checkbox" checked={striped} onChange={(e) => update({ striped: e.target.checked })} />
           Striped Rows
         </label>
-        <span className="text-xs text-gray-400 ml-auto">Select text → <kbd className="px-1 py-0.5 border rounded text-xs">Ctrl+B</kbd> or use <strong>B</strong> button to bold</span>
+        <span className="text-xs text-gray-400 ml-auto">Use toolbar in each cell for formatting · <kbd className="px-1 py-0.5 border rounded text-xs">Ctrl+B/I/U</kbd></span>
       </div>
 
       <div className="overflow-x-auto border border-gray-200 rounded-lg">
@@ -3643,26 +3746,71 @@ const InlineTableEditor = ({
           {hasHeader && (
             <thead className="bg-gray-100">
               <tr>
-                {headers.map((header, index) => (
-                  <th key={index} className="border border-gray-200 p-2 align-top min-w-[120px]">
+                {headers.map((header, index) => {
+                  const hColor = headerColors[String(index)] || { bg: '', text: '' };
+                  const hText = hColor.text || headerTextColor || '#ffffff';
+                  const hBg = hColor.bg || headerBgColor;
+                  const headerEditorBg = (() => {
+                    const hex = hText.replace('#', '');
+                    if (hex.length === 6) {
+                      const r = parseInt(hex.slice(0, 2), 16);
+                      const g = parseInt(hex.slice(2, 4), 16);
+                      const b = parseInt(hex.slice(4, 6), 16);
+                      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                      if (lum > 0.85) return '#1f2937';
+                      if (lum < 0.15) return '#f9fafb';
+                    }
+                    return '#ffffff';
+                  })();
+                  return (
+                  <th key={index} className="border border-gray-200 p-2 align-top min-w-[120px] text-left">
                     <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1 mb-1">
-                        <BoldButton />
-                        <span className="text-xs text-gray-400">header</span>
-                      </div>
+                      <CellToolbar />
                       <div
                         contentEditable
                         suppressContentEditableWarning
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[32px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[32px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style={{ color: hText, backgroundColor: headerEditorBg }}
                         dangerouslySetInnerHTML={{ __html: header }}
                         onBlur={(e) => handleHeaderChange(index, e.currentTarget.innerHTML)}
-                        onKeyDown={(e) => {
-                          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                        onPaste={(e) => {
+                          const html = e.clipboardData?.getData('text/html');
+                          if (html) {
                             e.preventDefault();
-                            document.execCommand('bold');
+                            const tmp = document.createElement('div');
+                            tmp.innerHTML = DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ADD_TAGS: ['b', 'strong', 'i', 'em', 'u', 'sub', 'sup'], FORBID_ATTR: ['style', 'class', 'color', 'face', 'size'] });
+                            tmp.querySelectorAll('*').forEach(el => { el.removeAttribute('style'); el.removeAttribute('class'); });
+                            document.execCommand('insertHTML', false, tmp.innerHTML);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.ctrlKey || e.metaKey) {
+                            if (e.key === 'b') { e.preventDefault(); document.execCommand('bold'); }
+                            if (e.key === 'i') { e.preventDefault(); document.execCommand('italic'); }
+                            if (e.key === 'u') { e.preventDefault(); document.execCommand('underline'); }
                           }
                         }}
                       />
+                      <div className="flex gap-1 mt-1">
+                        <div className="flex-1">
+                          <label className="block text-[10px] text-gray-500 mb-0.5">BG</label>
+                          <input
+                            type="color"
+                            value={hBg}
+                            onChange={(e) => handleHeaderColorChange(index, 'bg', e.target.value)}
+                            className="w-full h-5 rounded border border-gray-300 cursor-pointer"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-[10px] text-gray-500 mb-0.5">Text</label>
+                          <input
+                            type="color"
+                            value={hText}
+                            onChange={(e) => handleHeaderColorChange(index, 'text', e.target.value)}
+                            className="w-full h-5 rounded border border-gray-300 cursor-pointer"
+                          />
+                        </div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeColumn(index)}
@@ -3673,7 +3821,8 @@ const InlineTableEditor = ({
                       </button>
                     </div>
                   </th>
-                ))}
+                  );
+                })}
                 <th className="p-2 w-20" />
               </tr>
             </thead>
@@ -3687,26 +3836,52 @@ const InlineTableEditor = ({
                   const cellLink = typeof cellLinkData === 'object' ? cellLinkData.url : cellLinkData || '';
                   const cellLinkTarget = typeof cellLinkData === 'object' ? cellLinkData.target : '_blank';
                   const cellColor = cellColors[cellKey] || { bg: '', text: '' };
+                  const cellEditorBg = (() => {
+                    if (cellColor.bg) return cellColor.bg;
+                    if (!cellColor.text) return '#ffffff';
+                    const hex = cellColor.text.replace('#', '');
+                    if (hex.length === 6) {
+                      const r = parseInt(hex.slice(0, 2), 16);
+                      const g = parseInt(hex.slice(2, 4), 16);
+                      const b = parseInt(hex.slice(4, 6), 16);
+                      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                      if (lum > 0.85) return '#1f2937';
+                      if (lum < 0.15) return '#f9fafb';
+                    }
+                    return '#ffffff';
+                  })();
                   
                   return (
                     <td key={cellIndex} className="border border-gray-200 p-2 align-top min-w-[120px]">
                       <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1 mb-1">
-                          <BoldButton />
+                        <div className="flex flex-col gap-0.5">
+                          <CellToolbar />
                           {cellLink && (
-                            <span className="text-xs text-blue-600 font-medium">🔗</span>
+                            <span className="text-[10px] text-blue-600 font-medium">🔗 Has link</span>
                           )}
                         </div>
                         <div
                           contentEditable
                           suppressContentEditableWarning
-                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[48px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[48px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          style={{ color: cellColor.text || undefined, backgroundColor: cellEditorBg }}
                           dangerouslySetInnerHTML={{ __html: cell }}
                           onBlur={(e) => handleCellChange(rowIndex, cellIndex, e.currentTarget.innerHTML)}
-                          onKeyDown={(e) => {
-                            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                          onPaste={(e) => {
+                            const html = e.clipboardData?.getData('text/html');
+                            if (html) {
                               e.preventDefault();
-                              document.execCommand('bold');
+                              const tmp = document.createElement('div');
+                              tmp.innerHTML = DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ADD_TAGS: ['b', 'strong', 'i', 'em', 'u', 'sub', 'sup'], FORBID_ATTR: ['style', 'class', 'color', 'face', 'size'] });
+                              tmp.querySelectorAll('*').forEach(el => { el.removeAttribute('style'); el.removeAttribute('class'); });
+                              document.execCommand('insertHTML', false, tmp.innerHTML);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.ctrlKey || e.metaKey) {
+                              if (e.key === 'b') { e.preventDefault(); document.execCommand('bold'); }
+                              if (e.key === 'i') { e.preventDefault(); document.execCommand('italic'); }
+                              if (e.key === 'u') { e.preventDefault(); document.execCommand('underline'); }
                             }
                           }}
                         />

@@ -122,7 +122,7 @@ export const AutoExamCardsBlock: React.FC<AutoExamCardsBlockProps> = ({ content 
 
   const visibleExams = exams.slice(page * CARDS_PER_PAGE, page * CARDS_PER_PAGE + CARDS_PER_PAGE);
   const displayTitle = title || VARIANT_LABELS[variant];
-  const HeadingTagName = resolveHeadingTag(headingTag, 'h3');
+  const HeadingTagName = resolveHeadingTag(headingTag, 'h4');
 
   return (
     <div className="mb-6 w-full">

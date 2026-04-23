@@ -1,7 +1,25 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { aboutIconRegistry, fallbackAboutData } from '@/lib/constants/about';
 import { fetchAboutPageData } from '@/lib/data/about';
+
+export const metadata: Metadata = {
+  title: 'About Us – BharatMock | Mock Tests & Previous Year Papers',
+  description: 'BharatMock is a trusted platform for government exam preparation with mock tests, previous year papers, and tools to improve your performance and results.',
+  alternates: { canonical: 'https://bharatmock.com/about' },
+  openGraph: {
+    title: 'About Us – BharatMock | Mock Tests & Previous Year Papers',
+    description: 'BharatMock is a trusted platform for government exam preparation with mock tests, previous year papers, and tools to improve your performance and results.',
+    url: 'https://bharatmock.com/about',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About Us – BharatMock | Mock Tests & Previous Year Papers',
+    description: 'BharatMock is a trusted platform for government exam preparation with mock tests, previous year papers, and tools to improve your performance and results.',
+  },
+};
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

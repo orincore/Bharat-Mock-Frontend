@@ -160,9 +160,9 @@ export function StandardExamCard({
         </div>
 
         {/* Title */}
-        <h3 className="font-semibold text-sm sm:text-[15px] leading-snug text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors mb-2 sm:mb-3 min-h-[2.2rem] sm:min-h-[2.5rem]">
+        <h5 className="font-semibold text-sm sm:text-[15px] leading-snug text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors mb-2 sm:mb-3 min-h-[2.2rem] sm:min-h-[2.5rem]">
           {exam.title}
-        </h3>
+        </h5>
 
         {/* Difficulty + Status + Language pills */}
         <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">

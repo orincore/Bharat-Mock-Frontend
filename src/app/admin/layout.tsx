@@ -88,7 +88,7 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="flex">
+      <div className="flex min-h-screen">
         {/* Sidebar */}
         <aside
           className={`${navCollapsed ? 'w-20' : 'w-64'} bg-card border-r border-border min-h-screen sticky top-0 transition-all duration-200 relative`}
@@ -149,7 +149,7 @@ export default function AdminLayout({
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1">
+        <main className="flex-1 min-w-0 overflow-x-auto">
           <div className="p-8">
             {children}
           </div>

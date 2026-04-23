@@ -68,6 +68,8 @@ export interface BlogPayload {
   og_description?: string;
   og_image_url?: string;
   canonical_url?: string;
+  robots_meta?: string;
+  structured_data?: string;
   is_current_affairs_note?: boolean;
   current_affairs_tag?: string | null;
   author_id?: string | null;

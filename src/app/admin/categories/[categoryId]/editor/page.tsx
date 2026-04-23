@@ -346,7 +346,8 @@ export default function AdminCategoryEditorPage() {
   const loadPageContent = async () => {
     try {
       const token = getAuthToken();
-      const endpoint = buildApiUrl(`/category-page-content/${categoryId}`);
+      const separator = (categoryId || '').includes('?') ? '&' : '?';
+      const endpoint = buildApiUrl(`/category-page-content/${categoryId}${separator}_t=${Date.now()}`);
       debugLog('Fetching page content', endpoint);
       const response = await fetch(endpoint, {
         cache: 'no-store',
@@ -414,6 +415,8 @@ export default function AdminCategoryEditorPage() {
         throw new Error('Bulk sync failed');
       }
 
+      const saveResult = await response.json();
+
       // Create revision asynchronously (don't wait for it)
       const revisionEndpoint = buildApiUrl(`/category-page-content/${categoryId}/revisions`);
       fetch(revisionEndpoint, {
@@ -427,9 +430,12 @@ export default function AdminCategoryEditorPage() {
 
       toast({ title: 'Success', description: 'Page content saved successfully' });
 
-
-
-      await loadPageContent();
+      // Use the fresh sections returned directly by bulk-sync instead of re-fetching
+      if (Array.isArray(saveResult?.sections)) {
+        setSections(saveResult.sections);
+      } else {
+        await loadPageContent();
+      }
     } catch (error) {
       console.error('Error saving page content:', error);
       toast({
@@ -676,40 +682,28 @@ export default function AdminCategoryEditorPage() {
             <div className="p-6 space-y-8">
               <section className="space-y-4">
                 <div>
-                  <label className="flex items-center justify-between text-sm font-medium text-gray-700">
-                    <span>Meta Title</span>
-                    <span className={`text-xs ${seoData.meta_title && seoData.meta_title.length > 60 ? 'text-red-500' : 'text-gray-500'}`}>
-                      {seoData.meta_title?.length || 0}/60
-                    </span>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Meta Title
                   </label>
                   <input
                     type="text"
                     value={seoData.meta_title || ''}
                     onChange={(e) => handleSeoChange('meta_title', e.target.value)}
-                    className={`mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      seoData.meta_title && seoData.meta_title.length > 60 ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter a compelling title (50-60 characters)"
-                    maxLength={70}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter a compelling meta title"
                   />
                 </div>
 
                 <div>
-                  <label className="flex items-center justify-between text-sm font-medium text-gray-700">
-                    <span>Meta Description</span>
-                    <span className={`text-xs ${seoData.meta_description && seoData.meta_description.length > 160 ? 'text-red-500' : 'text-gray-500'}`}>
-                      {seoData.meta_description?.length || 0}/160
-                    </span>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Meta Description
                   </label>
                   <textarea
                     value={seoData.meta_description || ''}
                     onChange={(e) => handleSeoChange('meta_description', e.target.value)}
                     rows={3}
-                    className={`mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      seoData.meta_description && seoData.meta_description.length > 160 ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Explain the page in 150-160 characters"
-                    maxLength={200}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Explain the page content"
                   />
                 </div>
 

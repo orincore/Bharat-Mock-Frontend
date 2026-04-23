@@ -3,9 +3,9 @@ import Index from "@/views/Index";
 import { HomepageHero, HomepageData } from "@/lib/api/homepageService";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
-const DEFAULT_TITLE = "Bharat Mock — India's Smart Exam Companion";
+const DEFAULT_TITLE = "BharatMock All Govt exams  |  Mock Test & Previous Year Papers";
 const DEFAULT_DESCRIPTION =
-  "Practice adaptive mock tests, explore govt exam resources, and stay ahead with Bharat Mock.";
+  "Get free mock tests and previous year papers for all sarkari exams on BharatMock. Practice smarter and boost your exam preparation and results.";
 
 async function fetchHomepageData(): Promise<HomepageData | null> {
   const controller = new AbortController();
@@ -50,21 +50,22 @@ export async function generateMetadata(): Promise<Metadata> {
   const robots = parseRobots(hero?.robots_meta);
 
   return {
-    title: hero?.meta_title || hero?.title || DEFAULT_TITLE,
-    description: hero?.meta_description || hero?.description || DEFAULT_DESCRIPTION,
-    alternates: hero?.canonical_url ? { canonical: hero.canonical_url } : undefined,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    keywords: "All sarkari exam, online exam test, all government exams, govt exam preparation, online exam for govt jobs, online competitive exams, government exams india",
+    alternates: { canonical: hero?.canonical_url || "https://bharatmock.com" },
     robots,
     openGraph: {
-      title: hero?.og_title || hero?.meta_title || hero?.title || DEFAULT_TITLE,
-      description: hero?.og_description || hero?.meta_description || hero?.description || DEFAULT_DESCRIPTION,
+      title: DEFAULT_TITLE,
+      description: DEFAULT_DESCRIPTION,
       url: hero?.canonical_url || "https://bharatmock.com",
       type: "website",
       images: hero?.og_image_url ? [hero.og_image_url] : undefined
     },
     twitter: {
       card: "summary_large_image",
-      title: hero?.og_title || hero?.meta_title || hero?.title || DEFAULT_TITLE,
-      description: hero?.og_description || hero?.meta_description || hero?.description || DEFAULT_DESCRIPTION,
+      title: DEFAULT_TITLE,
+      description: DEFAULT_DESCRIPTION,
       images: hero?.og_image_url ? [hero.og_image_url] : undefined
     }
   };

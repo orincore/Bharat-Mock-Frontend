@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useMemo } from 'react';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
 import { FaEnvelope } from 'react-icons/fa';
 import { useAppData } from '@/context/AppDataContext';
 import { fallbackContactInfo, socialIconMap } from '@/lib/constants/contact';
@@ -96,24 +96,6 @@ export function Footer() {
               >
                 <Phone className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>{info.support_phone}</span>
-              </a>
-              <a 
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                  [info.address_line1, info.address_line2, info.city, info.state, info.postal_code, info.country]
-                    .filter(Boolean)
-                    .join(', ')
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-start gap-2 text-background/70 hover:text-primary transition-colors"
-                title="Open in Maps"
-              >
-                <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                <span className="leading-snug">
-                  {[info.address_line1, info.address_line2, info.city, info.state, info.postal_code, info.country]
-                    .filter(Boolean)
-                    .join(', ')}
-                </span>
               </a>
               {contactError && !linkLoading && (
                 <p className="text-[10px] text-background/60 pt-1">Showing default contact details.</p>

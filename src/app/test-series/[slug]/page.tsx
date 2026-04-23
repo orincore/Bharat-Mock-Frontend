@@ -659,7 +659,7 @@ export default function TestSeriesDetailPage() {
                           {series.total_tests || 0} tests · {series.category?.name || 'General'}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-blue-500" />
+                      <ArrowRight className="h-4 w-4 shrink-0 text-blue-500" />
                     </Link>
                   ))
                 ) : (

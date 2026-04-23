@@ -143,7 +143,7 @@ export default function AdminSubcategoryEditorPage() {
   const [tocOrder, setTocOrder] = useState<Record<string, number | ''>>({});
   const [tabHeadings, setTabHeadings] = useState<Record<string, string>>({});
   const [showTabHeadingsPanel, setShowTabHeadingsPanel] = useState(false);
-  const [tabSeo, setTabSeo] = useState<Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }>>({});
+  const [tabSeo, setTabSeo] = useState<Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string; canonical_url?: string; robots_meta?: string; structured_data?: string }>>({}); 
   const [showTabSeoPanel, setShowTabSeoPanel] = useState(false);
   const [tabSeoActiveTab, setTabSeoActiveTab] = useState<string>('overview');
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -172,7 +172,7 @@ export default function AdminSubcategoryEditorPage() {
     try {
       const tabs = await subcategoryAdminService.getCustomTabs(subcategoryId);
       setCustomTabs(tabs);
-      setActiveTabId((prev) => (prev === 'overview' || tabs.some((tab) => tab.id === prev) ? prev : 'overview'));
+      setActiveTabId((prev) => (prev === 'overview' || tabs.some((tab: CustomTab) => tab.id === prev) ? prev : 'overview'));
     } catch (error) {
       console.error('Failed to load custom tabs:', error);
     }
@@ -940,16 +940,22 @@ export default function AdminSubcategoryEditorPage() {
         toast({ title: 'Authentication Error', description: 'Please log in', variant: 'destructive' });
         return;
       }
-      const cleanTabSeo: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }> = {};
+      const cleanTabSeo: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string; canonical_url?: string; robots_meta?: string; structured_data?: string }> = {};
       Object.entries(tabSeo).forEach(([tab, vals]) => {
         const t = vals.meta_title?.trim();
         const d = vals.meta_description?.trim();
         const k = vals.meta_keywords?.trim();
-        if (t || d || k) {
+        const c = vals.canonical_url?.trim();
+        const r = vals.robots_meta?.trim();
+        const s = vals.structured_data?.trim();
+        if (t || d || k || c || r || s) {
           cleanTabSeo[tab] = {};
           if (t) cleanTabSeo[tab].meta_title = t;
           if (d) cleanTabSeo[tab].meta_description = d;
           if (k) cleanTabSeo[tab].meta_keywords = k;
+          if (c) cleanTabSeo[tab].canonical_url = c;
+          if (r) cleanTabSeo[tab].robots_meta = r;
+          if (s) cleanTabSeo[tab].structured_data = s;
         }
       });
       const existingStructured = typeof seoData.structured_data === 'string'
@@ -1380,7 +1386,7 @@ export default function AdminSubcategoryEditorPage() {
               {/* Tab selector */}
               <div className="px-6 pt-4 flex flex-wrap gap-2 flex-shrink-0">
                 {allTabs.map((tab) => {
-                  const hasSeo = tabSeo[tab.id]?.meta_title || tabSeo[tab.id]?.meta_description;
+                  const hasSeo = tabSeo[tab.id]?.meta_title || tabSeo[tab.id]?.meta_description || tabSeo[tab.id]?.canonical_url || tabSeo[tab.id]?.robots_meta;
                   return (
                     <button
                       key={tab.id}
@@ -1400,12 +1406,7 @@ export default function AdminSubcategoryEditorPage() {
 
               <div className="p-6 space-y-4 overflow-y-auto flex-1">
                 <div>
-                  <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
-                    <span>Meta Title</span>
-                    <span className={`text-xs ${(activeTabSeo.meta_title?.length || 0) > 60 ? 'text-red-500' : 'text-gray-400'}`}>
-                      {activeTabSeo.meta_title?.length || 0}/60
-                    </span>
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Meta Title</label>
                   <input
                     type="text"
                     value={activeTabSeo.meta_title || ''}
@@ -1415,18 +1416,12 @@ export default function AdminSubcategoryEditorPage() {
                     }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     placeholder="e.g. SSC CGL Mock Tests 2025 | Bharat Mock"
-                    maxLength={70}
                   />
                   <p className="mt-1 text-xs text-gray-400">Leave blank to use the global meta title.</p>
                 </div>
 
                 <div>
-                  <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
-                    <span>Meta Description</span>
-                    <span className={`text-xs ${(activeTabSeo.meta_description?.length || 0) > 160 ? 'text-red-500' : 'text-gray-400'}`}>
-                      {activeTabSeo.meta_description?.length || 0}/160
-                    </span>
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description</label>
                   <textarea
                     value={activeTabSeo.meta_description || ''}
                     onChange={(e) => setTabSeo((prev) => ({
@@ -1436,7 +1431,6 @@ export default function AdminSubcategoryEditorPage() {
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     placeholder="e.g. Attempt free SSC CGL mock tests with detailed analytics..."
-                    maxLength={200}
                   />
                   <p className="mt-1 text-xs text-gray-400">Leave blank to use the global meta description.</p>
                 </div>
@@ -1453,6 +1447,53 @@ export default function AdminSubcategoryEditorPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     placeholder="keyword1, keyword2, keyword3"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Canonical URL</label>
+                  <input
+                    type="url"
+                    value={activeTabSeo.canonical_url || ''}
+                    onChange={(e) => setTabSeo((prev) => ({
+                      ...prev,
+                      [tabSeoActiveTab]: { ...prev[tabSeoActiveTab], canonical_url: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    placeholder="https://bharatmock.com/..."
+                  />
+                  <p className="mt-1 text-xs text-gray-400">Leave blank to use the global canonical URL.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Robots Meta Tag</label>
+                    <select
+                      value={activeTabSeo.robots_meta || 'index,follow'}
+                      onChange={(e) => setTabSeo((prev) => ({
+                        ...prev,
+                        [tabSeoActiveTab]: { ...prev[tabSeoActiveTab], robots_meta: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    >
+                      <option value="index,follow">Index, Follow</option>
+                      <option value="noindex,follow">No Index, Follow</option>
+                      <option value="index,nofollow">Index, No Follow</option>
+                      <option value="noindex,nofollow">No Index, No Follow</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Schema / Structured Data Notes</label>
+                    <textarea
+                      rows={2}
+                      value={activeTabSeo.structured_data || ''}
+                      onChange={(e) => setTabSeo((prev) => ({
+                        ...prev,
+                        [tabSeoActiveTab]: { ...prev[tabSeoActiveTab], structured_data: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      placeholder='e.g. {"@type": "WebPage"} or schema notes'
+                    />
+                  </div>
                 </div>
 
                 {/* Preview */}

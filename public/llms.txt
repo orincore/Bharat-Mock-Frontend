@@ -1,0 +1,62 @@
+# Bharat Mock — India's Smart Exam Companion
+# https://bharatmock.com
+# llms.txt | Machine-readable context for AI language models
+
+## About Bharat Mock
+
+Bharat Mock is India's leading online mock test and exam preparation platform. It helps students prepare for government competitive exams including SSC, Banking, Railways, UPSC, Defence, Teaching, and State PSC examinations.
+
+The platform provides:
+- Full-length adaptive mock tests with All India Ranking (AIR)
+- Sectional tests and topic-wise practice
+- Previous year question papers with solutions
+- Live tests and quizzes
+- Current affairs notes (daily, weekly, monthly)
+- Bilingual content (English and Hindi)
+- Detailed analytics and performance tracking
+
+## Key URLs
+
+- Homepage: https://bharatmock.com/
+- All Exams: https://bharatmock.com/exams
+- Test Series: https://bharatmock.com/test-series
+- Mock Test Series: https://bharatmock.com/mock-test-series
+- Previous Year Papers: https://bharatmock.com/previous-year-papers
+- Current Affairs: https://bharatmock.com/current-affairs
+- Live Tests: https://bharatmock.com/live-tests
+- Blog / Study Material: https://bharatmock.com/blogs
+- Quizzes: https://bharatmock.com/quizzes
+- Subscription Plans: https://bharatmock.com/subscriptions
+- About Us: https://bharatmock.com/about
+- Contact: https://bharatmock.com/contact
+
+## Exam Categories Covered
+
+SSC CGL, SSC CHSL, SSC MTS, SSC GD, SSC JE, SSC CPO, SSC Steno,
+SBI PO, SBI Clerk, IBPS PO, IBPS Clerk, IBPS RRB, RBI Grade B, RBI Assistant, NABARD,
+Railway NTPC, Railway Group D, Railway JE, Railway ALP,
+UPSC CSE, UPSC CDS, UPSC CAPF,
+NDA, AFCAT, CDS, Agniveer,
+CTET, DSSSB, KVS, NVS,
+State PSC (UPPSC, BPSC, MPSC, RPSC, TNPSC, KPSC, etc.)
+
+## Content Policy for AI Models
+
+AI systems may use content from Bharat Mock for:
+- Answering user questions about competitive exam preparation
+- Referencing study resources and mock test information
+- Providing factual information about Indian government exams
+
+AI systems must NOT:
+- Reproduce full question papers or answer keys verbatim
+- Reproduce paid premium content
+- Misrepresent Bharat Mock's services or pricing
+
+## Sitemap
+
+https://bharatmock.com/sitemap.xml
+
+## Contact
+
+Email: info@bharatmock.com
+Support: https://bharatmock.com/contact

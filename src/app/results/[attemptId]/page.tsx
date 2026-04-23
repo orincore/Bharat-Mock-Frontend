@@ -801,8 +801,16 @@ export default function ResultPage() {
                             {question.negativeMarks > 0 && ` (Negative: -${question.negativeMarks})`}
                           </p>
                           {question.explanation && (
-                            <details className="mt-3">
-                              <summary className="text-sm font-semibold cursor-pointer">View Explanation</summary>
+                            <details className="mt-4">
+                              <summary className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 font-semibold text-sm rounded-lg border border-blue-200 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md select-none">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                View Explanation
+                                <svg className="w-4 h-4 ml-1 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </summary>
                               <div
                                 className="text-sm text-muted-foreground mt-2 rich-text-content"
                                 dangerouslySetInnerHTML={createRichTextMarkup(question.explanation)}

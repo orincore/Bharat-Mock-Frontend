@@ -44,6 +44,8 @@ interface BlogFormState {
   og_title: string;
   og_description: string;
   og_image_url: string;
+  robots_meta: string;
+  structured_data: string;
   status: BlogStatus;
   isCurrentAffairsNote: boolean;
   currentAffairsTag: string;
@@ -67,6 +69,8 @@ const DEFAULT_FORM_STATE: BlogFormState = {
   og_title: "",
   og_description: "",
   og_image_url: "",
+  robots_meta: "index,follow",
+  structured_data: "",
   status: "draft",
   isCurrentAffairsNote: false,
   currentAffairsTag: "",
@@ -183,6 +187,8 @@ export default function AdminBlogEditorPage() {
           og_title: blog.og_title || "",
           og_description: blog.og_description || "",
           og_image_url: blog.og_image_url || "",
+          robots_meta: (blog as any).robots_meta || "index,follow",
+          structured_data: (blog as any).structured_data || "",
           status: (blog.status as BlogStatus) || (blog.is_published ? "published" : "draft"),
           isCurrentAffairsNote: Boolean(blog.is_current_affairs_note),
           currentAffairsTag: blog.current_affairs_tag || "",
@@ -256,6 +262,8 @@ export default function AdminBlogEditorPage() {
     og_title: formState.og_title,
     og_description: formState.og_description,
     og_image_url: formState.og_image_url,
+    robots_meta: formState.robots_meta,
+    structured_data: formState.structured_data || undefined,
     is_current_affairs_note: formState.isCurrentAffairsNote,
     current_affairs_tag: formState.currentAffairsTag?.trim() || null,
     author_id: formState.author_id || null
@@ -689,6 +697,43 @@ export default function AdminBlogEditorPage() {
                 {formState.meta_description || formState.excerpt || "Meta description preview"}
               </p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Canonical URL</label>
+              <Input
+                type="url"
+                placeholder="https://bharatmock.com/blogs/..."
+                value={formState.canonical_url}
+                onChange={(e) => handleFormChange("canonical_url", e.target.value)}
+              />
+              <p className="mt-1 text-xs text-gray-500">Helps avoid duplicate-content penalties.</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Robots Meta Tag</label>
+              <select
+                value={formState.robots_meta}
+                onChange={(e) => handleFormChange("robots_meta", e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                <option value="index,follow">Index, Follow</option>
+                <option value="noindex,follow">No Index, Follow</option>
+                <option value="index,nofollow">Index, No Follow</option>
+                <option value="noindex,nofollow">No Index, No Follow</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Structured Data / Schema (JSON-LD notes)</label>
+            <Textarea
+              rows={3}
+              placeholder='e.g. {"@type": "Article", "headline": "..."} or notes for schema markup'
+              value={formState.structured_data}
+              onChange={(e) => handleFormChange("structured_data", e.target.value)}
+            />
+            <p className="mt-1 text-xs text-gray-500">Optional JSON-LD schema or notes for structured data markup.</p>
           </div>
         </div>
 
