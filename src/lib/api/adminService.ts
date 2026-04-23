@@ -68,8 +68,29 @@ export interface AdminUserStats {
   totalMarksPossible: number;
 }
 
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  duration_days: number;
+  normal_price_cents: number;
+  sale_price_cents: number | null;
+  currency_code: string;
+  is_active: boolean;
+}
+
 export interface AdminUserDetails {
-  user: User;
+  user: User & {
+    bio?: string;
+    is_premium?: boolean;
+    subscription_plan_id?: string | null;
+    subscription_expires_at?: string | null;
+    subscription_auto_renew?: boolean;
+    auth_provider?: string;
+    is_onboarded?: boolean;
+    date_of_birth?: string | null;
+    deleted_at?: string | null;
+  };
   stats: AdminUserStats;
   recentResults: Array<{
     id: string;
@@ -472,6 +493,41 @@ export const adminService = {
   async getUserDetails(userId: string): Promise<AdminUserDetails> {
     const response = await apiClient.get<{ success: boolean; data: AdminUserDetails }>(`/admin/users/${userId}`, true);
     return response.data;
+  },
+
+  async updateUser(userId: string, payload: {
+    name?: string;
+    phone?: string;
+    bio?: string;
+    is_verified?: boolean;
+    is_blocked?: boolean;
+    block_reason?: string;
+  }): Promise<User> {
+    const response = await apiClient.put<{ success: boolean; data: User }>(`/admin/users/${userId}`, payload, true);
+    return response.data;
+  },
+
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    const response = await apiClient.get<{ success: boolean; data: SubscriptionPlan[] }>('/subscriptions/admin/plans', true);
+    return response.data;
+  },
+
+  async deleteUser(userId: string): Promise<void> {
+    await apiClient.delete(`/admin/users/${userId}`, true);
+  },
+
+  async restoreUser(userId: string): Promise<void> {
+    await apiClient.put(`/admin/users/${userId}/restore`, {}, true);
+  },
+
+  async adminUpdateUserSubscription(userId: string, payload: {
+    plan_id?: string | null;
+    expires_at?: string | null;
+    is_premium?: boolean;
+    auto_renew?: boolean;
+    send_notification?: boolean;
+  }): Promise<void> {
+    await apiClient.put<{ success: boolean }>(`/admin/users/${userId}/subscription`, payload, true);
   },
 
   async getNavigationLinksAdmin(): Promise<NavigationLink[]> {

@@ -113,14 +113,24 @@ class ApiClient {
               if (retryResponse.status === 401 || retryResponse.status === 403) {
                 this.clearTokens();
               }
-              throw new Error(`HTTP ${retryResponse.status}: ${retryResponse.statusText}`);
+              let retryBody: any = {};
+              try { retryBody = await retryResponse.json(); } catch { /* ignore */ }
+              const retryErr = new Error(retryBody.message || `HTTP ${retryResponse.status}: ${retryResponse.statusText}`) as any;
+              if (retryBody.code) retryErr.code = retryBody.code;
+              throw retryErr;
             }
             return retryResponse.json() as Promise<T>;
           }
         }
         this.clearTokens();
       }
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      let errorBody: any = {};
+      try { errorBody = await response.json(); } catch { /* ignore */ }
+      const err = new Error(errorBody.message || `HTTP ${response.status}: ${response.statusText}`) as any;
+      err.code = errorBody.code;
+      err.status = response.status;
+      if (errorBody.block_reason !== undefined) err.block_reason = errorBody.block_reason;
+      throw err;
     }
 
     return response.json() as Promise<T>;

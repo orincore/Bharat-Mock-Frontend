@@ -84,7 +84,7 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-8">
         <Breadcrumbs 
           items={[
@@ -149,23 +149,23 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         <>
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <table className="w-full">
+          <div className="bg-card rounded-xl border border-border overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-[700px]">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">User</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Email</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Phone</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Role</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Joined</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">User</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Email</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Phone</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Role</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Status</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Joined</th>
+                  <th className="px-4 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {users.map((user) => (
                   <tr key={user.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
                           {user.avatar_url ? (
@@ -186,13 +186,13 @@ export default function AdminUsersPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                    <td className="px-4 py-4 text-sm text-muted-foreground">
                       {user.email}
                     </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                    <td className="px-4 py-4 text-sm text-muted-foreground">
                       {user.phone || '-'}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <select
                         value={user.role}
                         onChange={(e) => handleRoleChange(user.id, e.target.value as RoleValue)}
@@ -211,7 +211,7 @@ export default function AdminUsersPage() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span className={`px-2 py-1 text-xs font-medium rounded ${
                         user.is_blocked 
                           ? 'bg-destructive/10 text-destructive' 
@@ -223,10 +223,10 @@ export default function AdminUsersPage() {
                         <p className="mt-1 text-xs text-destructive">Reason: {user.block_reason}</p>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                    <td className="px-4 py-4 text-sm text-muted-foreground">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="ghost"

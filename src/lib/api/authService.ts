@@ -80,6 +80,10 @@ export const authService = {
     await apiClient.post('/auth/onboarding', data, true);
   },
 
+  async deleteAccount(): Promise<void> {
+    await apiClient.delete('/auth/account', true);
+  },
+
   logout(): void {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');

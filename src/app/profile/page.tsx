@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X, Crown, FileText } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X, Crown, FileText, Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -15,7 +15,12 @@ import { Badge } from '@/components/ui/badge';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading, updateProfile, refreshProfile } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, updateProfile, refreshProfile, deleteAccount } = useAuth();
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -160,6 +165,18 @@ export default function ProfilePage() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmInput !== 'DELETE') return;
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteAccount();
+    } catch (err: any) {
+      setDeleteError(err?.message || 'Failed to delete account. Please try again.');
+      setIsDeleting(false);
+    }
+  };
+
   const handleCancel = () => {
     if (user) {
       setFormData({
@@ -195,6 +212,43 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-muted/30 py-12">
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-background border border-border rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">Delete your account?</h2>
+                <p className="text-xs text-muted-foreground">This will permanently delete your account. You cannot undo this.</p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm text-muted-foreground">Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm</p>
+              <Input
+                value={deleteConfirmInput}
+                onChange={e => setDeleteConfirmInput(e.target.value)}
+                placeholder="DELETE"
+                autoFocus
+              />
+            </div>
+            {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || deleteConfirmInput !== 'DELETE'}
+                className="gap-1"
+              >
+                {isDeleting ? <LoadingSpinner /> : <Trash2 className="h-4 w-4" />}
+                Delete Account
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="container-main">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -496,6 +550,28 @@ export default function ProfilePage() {
                   </div>
                 )}
               </form>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="mt-8 bg-card rounded-xl border border-destructive/30 shadow-sm overflow-hidden">
+            <div className="p-6 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                  Delete Account
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Permanently delete your account. This action cannot be undone.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => { setDeleteConfirmInput(''); setDeleteError(''); setShowDeleteModal(true); }}
+              >
+                Delete Account
+              </Button>
             </div>
           </div>
 

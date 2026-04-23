@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isDeleted: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -17,6 +18,7 @@ interface AuthContextType {
   updateProfile: (data: Partial<User>) => Promise<void>;
   refreshProfile: () => Promise<void>;
   setUserContext: (user: User | null) => void;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,6 +64,7 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
     typeof window !== 'undefined' ? getStoredUser() : null
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleted, setIsDeleted] = useState(false);
   const initDone = useRef(false);
 
   // One-time cleanup: remove any legacy API cache entries from localStorage
@@ -96,7 +99,13 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
       })
       .catch((err: any) => {
         const msg = err?.message || '';
-        if (msg.includes('401') || msg.includes('403')) {
+        if (msg.includes('410')) {
+          // Account soft-deleted — clear session and show deleted screen
+          authService.logout();
+          apiClient.clearAuthCache();
+          setUser(null);
+          setIsDeleted(true);
+        } else if (msg.includes('401') || msg.includes('403')) {
           // Token invalid/expired — clear everything and show logged-out state
           authService.logout();
           apiClient.clearAuthCache();
@@ -171,6 +180,20 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
       setUser(normalized);
       persistUser(normalized);
       setTimeout(() => onAuthChange?.(), 0);
+    } catch (err: any) {
+      if (err?.code === 'ACCOUNT_DELETED') {
+        setIsDeleted(true);
+        setUser(null);
+        return;
+      }
+      if (err?.code === 'ACCOUNT_BLOCKED') {
+        // Inject a minimal user with is_blocked so BlockedAccountGate fires
+        const blockedUser = { is_blocked: true, block_reason: err?.block_reason ?? null } as any;
+        setUser(blockedUser);
+        persistUser(blockedUser);
+        return;
+      }
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -206,13 +229,26 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
     } catch (err: any) {
       const msg = err?.message || '';
       console.error('Failed to refresh profile:', err);
-      // Token expired — force logout so user isn't stuck in a broken auth state
-      if (msg.includes('401') || msg.includes('403')) {
+      if (msg.includes('410')) {
+        authService.logout();
+        apiClient.clearAuthCache();
+        setUser(null);
+        setIsDeleted(true);
+      } else if (msg.includes('401') || msg.includes('403')) {
         authService.logout();
         apiClient.clearAuthCache();
         setUser(null);
       }
     }
+  };
+
+  const deleteAccount = async () => {
+    await authService.deleteAccount();
+    authService.logout();
+    apiClient.clearAuthCache();
+    persistUser(null);
+    setUser(null);
+    setIsDeleted(true);
   };
 
   const updateProfile = async (data: Partial<User>) => {
@@ -243,6 +279,7 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
       user,
       isLoading,
       isAuthenticated: !!user,
+      isDeleted,
       login,
       register,
       logout,
@@ -251,6 +288,7 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
       updateProfile,
       refreshProfile,
       setUserContext,
+      deleteAccount,
     }}>
       {children}
     </AuthContext.Provider>

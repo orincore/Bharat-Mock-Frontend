@@ -10,13 +10,13 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading, isDeleted, user } = useAuth();
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    if (!authLoading && isAuthenticated && !isDeleted && !user?.is_blocked) {
       router.replace('/');
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, isDeleted, user, router]);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -42,7 +42,10 @@ export default function LoginPage() {
 
     try {
       await login(formData.email, formData.password);
-      router.push('/');
+      // Gates (blocked/deleted) handle rendering — only push if truly authenticated
+      if (!isDeleted && !user?.is_blocked) {
+        router.push('/');
+      }
     } catch (err: any) {
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {

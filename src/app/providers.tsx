@@ -13,7 +13,7 @@ import { GoogleTranslate } from "@/components/common/GoogleTranslate";
 import { apolloClient } from "@/lib/graphql/client";
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Ban } from "lucide-react";
+import { Ban, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // Lazy-load below-fold / non-critical components — keeps initial JS bundle small
@@ -29,6 +29,33 @@ const SubscriptionPromoBanner = dynamic(
   () => import("@/components/common/SubscriptionPromoBanner").then((m) => ({ default: m.SubscriptionPromoBanner })),
   { ssr: false }
 );
+
+function DeletedAccountGate({ children }: { children: React.ReactNode }) {
+  const { isDeleted } = useAuth();
+
+  if (isDeleted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
+        <div className="max-w-lg w-full bg-white border border-border rounded-2xl shadow-lg p-8 text-center space-y-4">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
+            <Trash2 className="h-8 w-8" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-foreground">Account Deleted</h1>
+            <p className="text-muted-foreground">
+              This account has been permanently deleted and is no longer accessible.
+            </p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            If you believe this is a mistake, please contact our support team for assistance.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 function BlockedAccountGate({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -86,6 +113,7 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
           <Toaster />
           <Sonner />
           <GoogleTranslate />
+          <DeletedAccountGate>
           <BlockedAccountGate>
             <div className="flex flex-col min-h-screen">
               {!hideChrome && (
@@ -101,6 +129,7 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
             </div>
             <AuthReminderDialog />
           </BlockedAccountGate>
+          </DeletedAccountGate>
         </TooltipProvider>
       </ExamProvider>
     </AuthProvider>
