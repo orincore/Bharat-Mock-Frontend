@@ -800,8 +800,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
 
     const alignment = document.queryCommandState('justifyCenter') ? 'center'
       : document.queryCommandState('justifyRight') ? 'right'
-      : document.queryCommandState('justifyFull') ? 'justify'
-      : 'left';
+        : document.queryCommandState('justifyFull') ? 'justify'
+          : 'left';
     setActiveFormats({
       bold,
       italic,
@@ -993,24 +993,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
           'xmlns', 'display', 'mathvariant', 'mathsize', 'stretchy', 'fence', 'separator',
           'lspace', 'rspace', 'linethickness', 'numalign', 'denomalign', 'bevelled',
           'columnalign', 'rowalign', 'columnspacing', 'rowspacing', 'displaystyle',
-          'scriptlevel', 'notation', 'encoding',
-        ],
-        FORBID_ATTR: ['color', 'face'],
-      });
-
-      // Strip color/font-size from all non-MathML elements
-      tmp.querySelectorAll('*').forEach(el => {
-        if (el.namespaceURI === 'http://www.w3.org/1998/Math/MathML') return;
-        const s = (el as HTMLElement).style;
-        if (s) {
-          s.removeProperty('color');
-          s.removeProperty('background-color');
-          s.removeProperty('font-size');
-          s.removeProperty('font-family');
-          if (!s.cssText.trim()) (el as HTMLElement).removeAttribute('style');
-        }
-        el.removeAttribute('color');
-        el.removeAttribute('face');
+          'scriptlevel', 'notation', 'encoding', 'color', 'face', 'size'
+        ]
       });
 
       const normalizedHtml = normalizeRichTextHtml(tmp.innerHTML);
@@ -1105,9 +1089,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={button.action}
-                  className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${
-                    isActive ? 'bg-gray-200 text-blue-600' : ''
-                  }`}
+                  className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${isActive ? 'bg-gray-200 text-blue-600' : ''
+                    }`}
                   title={button.title}
                 >
                   {button.label}
@@ -1233,9 +1216,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
                   type="button"
                   title={titles[align]}
                   onMouseDown={(e) => { e.preventDefault(); exec(cmds[align]); }}
-                  className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${
-                    activeFormats.alignment === align ? 'bg-gray-200 text-blue-600' : ''
-                  }`}
+                  className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-100 ${activeFormats.alignment === align ? 'bg-gray-200 text-blue-600' : ''
+                    }`}
                 >
                   {icons[align]}
                 </button>
@@ -1823,7 +1805,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   };
 
   const updateSection = (sectionId: string, updates: Partial<Section>) => {
-    setSections(sections.map(section => 
+    setSections(sections.map(section =>
       section.id === sectionId ? { ...section, ...updates } : section
     ));
   };
@@ -1845,8 +1827,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       section_id: sectionId
     };
 
-    setSections(sections.map(s => 
-      s.id === sectionId 
+    setSections(sections.map(s =>
+      s.id === sectionId
         ? { ...s, blocks: [...s.blocks, newBlock] }
         : s
     ));
@@ -1855,14 +1837,14 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   };
 
   const updateBlock = (sectionId: string, blockId: string, updates: Partial<Block>) => {
-    setSections(sections.map(section => 
+    setSections(sections.map(section =>
       section.id === sectionId
         ? {
-            ...section,
-            blocks: section.blocks.map(block =>
-              block.id === blockId ? { ...block, ...updates } : block
-            )
-          }
+          ...section,
+          blocks: section.blocks.map(block =>
+            block.id === blockId ? { ...block, ...updates } : block
+          )
+        }
         : section
     ));
   };
@@ -1871,9 +1853,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     setSections(sections.map(section =>
       section.id === sectionId
         ? {
-            ...section,
-            blocks: section.blocks.filter(block => block.id !== blockId)
-          }
+          ...section,
+          blocks: section.blocks.filter(block => block.id !== blockId)
+        }
         : section
     ));
   };
@@ -2057,359 +2039,353 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                         </div>
                       )}
                       <div
-                  className={`mb-8 bg-white rounded-lg shadow-sm border border-gray-200 transition-colors`}
-                >
-                  {/* Section Header */}
-                  {!isPreview && (
-                    <div className="p-4 border-b border-gray-200 bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => toggleSectionCollapse(section.id)}
-                            className="p-2 rounded-full hover:bg-white border border-gray-200"
-                            aria-label={collapsedSections.has(section.id) ? 'Expand section' : 'Collapse section'}
-                          >
-                            <ChevronDown
-                              className={`w-4 h-4 transition-transform ${collapsedSections.has(section.id) ? '' : 'rotate-180'}`}
-                            />
-                          </button>
-                          <div className="flex items-center gap-1">
-                            <div
-                              contentEditable
-                              suppressContentEditableWarning
-                              dangerouslySetInnerHTML={{ __html: section.title || '' }}
-                              onBlur={(e) => updateSection(section.id, { title: e.currentTarget.innerHTML })}
-                              className="text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 min-w-[120px] max-w-[400px] outline-none"
-                              data-placeholder="Section Title"
-                              style={{ minHeight: '1.5em', color: section.text_color || undefined }}
-                            />
-                            <div className="flex items-center gap-0.5 ml-1 border border-gray-200 rounded-md bg-white px-1 py-0.5">
-                              <button
-                                type="button"
-                                onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold'); }}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-                                title="Bold"
-                              >
-                                <Bold className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic'); }}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-                                title="Italic"
-                              >
-                                <Italic className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline'); }}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-                                title="Underline"
-                              >
-                                <Underline className="w-3.5 h-3.5" />
-                              </button>
-                              <div className="w-px h-4 bg-gray-200 mx-0.5" />
-                              <div className="relative group/color">
+                        className={`mb-8 bg-white rounded-lg shadow-sm border border-gray-200 transition-colors`}
+                      >
+                        {/* Section Header */}
+                        {!isPreview && (
+                          <div className="p-4 border-b border-gray-200 bg-gray-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
                                 <button
                                   type="button"
-                                  className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-                                  title="Title Color"
+                                  onClick={() => toggleSectionCollapse(section.id)}
+                                  className="p-2 rounded-full hover:bg-white border border-gray-200"
+                                  aria-label={collapsedSections.has(section.id) ? 'Expand section' : 'Collapse section'}
                                 >
-                                  <Palette className="w-3.5 h-3.5" />
+                                  <ChevronDown
+                                    className={`w-4 h-4 transition-transform ${collapsedSections.has(section.id) ? '' : 'rotate-180'}`}
+                                  />
                                 </button>
-                                <div className="absolute top-full left-0 mt-1 hidden group-hover/color:flex flex-wrap gap-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 w-[160px]">
-                                  {[
-                                    { label: 'Default', value: '' },
-                                    { label: 'Gray', value: '#111827' },
-                                    { label: 'Blue', value: '#1d4ed8' },
-                                    { label: 'Green', value: '#15803d' },
-                                    { label: 'Orange', value: '#d97706' },
-                                    { label: 'Red', value: '#b91c1c' },
-                                    { label: 'Purple', value: '#7c3aed' },
-                                    { label: 'Teal', value: '#0d9488' },
-                                    { label: 'Pink', value: '#db2777' },
-                                    { label: 'Indigo', value: '#4338ca' }
-                                  ].map((opt) => (
+                                <div className="flex items-center gap-1">
+                                  <div
+                                    contentEditable
+                                    suppressContentEditableWarning
+                                    dangerouslySetInnerHTML={{ __html: section.title || '' }}
+                                    onBlur={(e) => updateSection(section.id, { title: e.currentTarget.innerHTML })}
+                                    className="text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 min-w-[120px] max-w-[400px] outline-none"
+                                    data-placeholder="Section Title"
+                                    style={{ minHeight: '1.5em', color: section.text_color || undefined }}
+                                  />
+                                  <div className="flex items-center gap-0.5 ml-1 border border-gray-200 rounded-md bg-white px-1 py-0.5">
                                     <button
-                                      key={opt.value}
                                       type="button"
-                                      onClick={() => updateSection(section.id, { text_color: opt.value || undefined })}
-                                      className={`w-6 h-6 rounded-full border-2 flex-shrink-0 ${
-                                        (section.text_color || '') === opt.value ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'
-                                      }`}
-                                      style={{ backgroundColor: opt.value || '#f3f4f6' }}
-                                      title={opt.label}
-                                    />
-                                  ))}
+                                      onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold'); }}
+                                      className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                      title="Bold"
+                                    >
+                                      <Bold className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic'); }}
+                                      className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                      title="Italic"
+                                    >
+                                      <Italic className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline'); }}
+                                      className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                      title="Underline"
+                                    >
+                                      <Underline className="w-3.5 h-3.5" />
+                                    </button>
+                                    <div className="w-px h-4 bg-gray-200 mx-0.5" />
+                                    <div className="relative group/color">
+                                      <button
+                                        type="button"
+                                        className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                        title="Title Color"
+                                      >
+                                        <Palette className="w-3.5 h-3.5" />
+                                      </button>
+                                      <div className="absolute top-full left-0 mt-1 hidden group-hover/color:flex flex-wrap gap-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 w-[160px]">
+                                        {[
+                                          { label: 'Default', value: '' },
+                                          { label: 'Gray', value: '#111827' },
+                                          { label: 'Blue', value: '#1d4ed8' },
+                                          { label: 'Green', value: '#15803d' },
+                                          { label: 'Orange', value: '#d97706' },
+                                          { label: 'Red', value: '#b91c1c' },
+                                          { label: 'Purple', value: '#7c3aed' },
+                                          { label: 'Teal', value: '#0d9488' },
+                                          { label: 'Pink', value: '#db2777' },
+                                          { label: 'Indigo', value: '#4338ca' }
+                                        ].map((opt) => (
+                                          <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => updateSection(section.id, { text_color: opt.value || undefined })}
+                                            className={`w-6 h-6 rounded-full border-2 flex-shrink-0 ${(section.text_color || '') === opt.value ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'
+                                              }`}
+                                            style={{ backgroundColor: opt.value || '#f3f4f6' }}
+                                            title={opt.label}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
+                                <select
+                                  value={normalizeHeadingTag(section.settings?.headingTag, section.is_sidebar ? 'h3' : 'h2')}
+                                  onChange={(e) => updateSection(section.id, {
+                                    settings: {
+                                      ...(section.settings || {}),
+                                      headingTag: e.target.value
+                                    }
+                                  })}
+                                  className="px-2 py-1 text-xs font-semibold border border-gray-200 rounded bg-white text-gray-700"
+                                  title="Section heading tag"
+                                >
+                                  {HEADING_TAG_OPTIONS.map((tag) => (
+                                    <option key={tag} value={tag}>{tag.toUpperCase()}</option>
+                                  ))}
+                                </select>
+                                <span
+                                  className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ${section.is_sidebar ? 'border-amber-400 text-amber-600 bg-amber-50' : 'border-blue-300 text-blue-600 bg-blue-50'
+                                    }`}
+                                >
+                                  {section.is_sidebar ? 'Sidebar' : 'Main content'}
+                                </span>
                               </div>
-                            </div>
-                          </div>
-                          <select
-                            value={normalizeHeadingTag(section.settings?.headingTag, section.is_sidebar ? 'h3' : 'h2')}
-                            onChange={(e) => updateSection(section.id, {
-                              settings: {
-                                ...(section.settings || {}),
-                                headingTag: e.target.value
-                              }
-                            })}
-                            className="px-2 py-1 text-xs font-semibold border border-gray-200 rounded bg-white text-gray-700"
-                            title="Section heading tag"
-                          >
-                            {HEADING_TAG_OPTIONS.map((tag) => (
-                              <option key={tag} value={tag}>{tag.toUpperCase()}</option>
-                            ))}
-                          </select>
-                          <span
-                            className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ${
-                              section.is_sidebar ? 'border-amber-400 text-amber-600 bg-amber-50' : 'border-blue-300 text-blue-600 bg-blue-50'
-                            }`}
-                          >
-                            {section.is_sidebar ? 'Sidebar' : 'Main content'}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => moveSection(section.id, 'up')}
-                              disabled={sectionIndex === 0}
-                              className="p-1 rounded border border-gray-200 hover:bg-white disabled:opacity-30"
-                              title="Move section up"
-                            >
-                              <ArrowUp className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => moveSection(section.id, 'down')}
-                              disabled={sectionIndex === sections.length - 1}
-                              className="p-1 rounded border border-gray-200 hover:bg-white disabled:opacity-30"
-                              title="Move section down"
-                            >
-                              <ArrowDown className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => toggleSectionSidebar(section.id)}
-                              className={`px-3 py-1 rounded text-sm border ${
-                                section.is_sidebar
-                                  ? 'border-amber-500 text-amber-600 bg-amber-50'
-                                  : 'border-gray-200 text-gray-700'
-                              }`}
-                            >
-                              {section.is_sidebar ? 'Use as main' : 'Use as sidebar'}
-                            </button>
-                            {section.is_sidebar && availableTabs && availableTabs.length > 0 && (
-                              <select
-                                value={section.sidebar_tab_id || ''}
-                                onChange={(e) => updateSidebarTab(section.id, e.target.value || null)}
-                                className="px-2 py-1 text-sm border border-gray-300 rounded bg-white"
-                                title="Assign sidebar to specific tab"
-                              >
-                                <option value="">All tabs (shared)</option>
-                                {availableTabs.map((tab) => (
-                                  <option key={tab.id} value={tab.id}>
-                                    {tab.label} only
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => setShowBlockPicker(showBlockPicker === section.id ? null : section.id)}
-                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                          >
-                            <Plus className="w-4 h-4 inline mr-1" />
-                            Add Block
-                          </button>
-                          <button
-                            onClick={() => deleteSection(section.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                      {section.subtitle !== undefined && !collapsedSections.has(section.id) && (
-                        <input
-                          type="text"
-                          value={section.subtitle ?? ''}
-                          onChange={(e) => updateSection(section.id, { subtitle: e.target.value })}
-                          className="mt-2 text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 w-full"
-                          placeholder="Section Subtitle (optional)"
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Block Picker Dropdown */}
-                  {showBlockPicker === section.id && !isPreview && !collapsedSections.has(section.id) && (
-                    <div className="p-4 bg-blue-50 border-b border-blue-200">
-                      <p className="text-sm font-semibold mb-3">Choose a block type:</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {BLOCK_TYPES.map(blockType => {
-                          const Icon = getBlockIcon(blockType.type);
-                          return (
-                            <button
-                              key={blockType.type}
-                              onClick={() => addBlock(section.id, blockType.type)}
-                              className="p-3 bg-white border border-gray-200 rounded hover:border-blue-500 hover:bg-blue-50 text-left"
-                            >
-                              <Icon className="w-5 h-5 text-blue-600 mb-1" />
-                              <div className="text-sm font-medium">{blockType.label}</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Section Blocks */}
-                  {collapsedSections.has(section.id) ? (
-                    <div className="p-6 text-sm text-gray-500 italic">Section collapsed. Expand to edit blocks.</div>
-                  ) : (
-                    <div className="p-6">
-                      {section.blocks.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400">
-                          No blocks in this section. Click "Add Block" to add content.
-                        </div>
-                      ) : (
-                        section.blocks.map((block, blockIndex) => {
-                          const isSelected = selectedBlock === block.id;
-                          const isTableBlock = block.block_type === 'table';
-                          const isTableEditing = !isPreview && isTableBlock && openBlockEditor === block.id;
-                          const isInlineEditable = INLINE_EDITABLE_BLOCKS.has(block.block_type);
-                          const showSideEditor = !isTableBlock && !isInlineEditable && !isPreview && openBlockEditor === block.id;
-
-                          return (
-                            <div
-                              key={block.id}
-                              className={`relative group mb-4 rounded border transition-colors ${
-                                isSelected ? 'ring-2 ring-blue-500' : 'border-transparent'
-                              }`}
-                              onClick={() => setSelectedBlock(block.id)}
-                            >
-                              {/* Block Controls */}
-                              {!isPreview && (
-                                <div className="absolute -left-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <div className="flex items-center gap-1">
                                   <button
-                                    onClick={() => moveBlock(section.id, block.id, 'up')}
-                                    disabled={blockIndex === 0}
-                                    className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
-                                    title="Move block up"
+                                    onClick={() => moveSection(section.id, 'up')}
+                                    disabled={sectionIndex === 0}
+                                    className="p-1 rounded border border-gray-200 hover:bg-white disabled:opacity-30"
+                                    title="Move section up"
                                   >
                                     <ArrowUp className="w-4 h-4" />
                                   </button>
                                   <button
-                                    onClick={() => moveBlock(section.id, block.id, 'down')}
-                                    disabled={blockIndex === section.blocks.length - 1}
-                                    className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
-                                    title="Move block down"
+                                    onClick={() => moveSection(section.id, 'down')}
+                                    disabled={sectionIndex === sections.length - 1}
+                                    className="p-1 rounded border border-gray-200 hover:bg-white disabled:opacity-30"
+                                    title="Move section down"
                                   >
                                     <ArrowDown className="w-4 h-4" />
                                   </button>
+                                </div>
+                                <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => deleteBlock(section.id, block.id)}
-                                    className="p-1 bg-white border border-red-300 rounded hover:bg-red-50 text-red-600"
+                                    onClick={() => toggleSectionSidebar(section.id)}
+                                    className={`px-3 py-1 rounded text-sm border ${section.is_sidebar
+                                        ? 'border-amber-500 text-amber-600 bg-amber-50'
+                                        : 'border-gray-200 text-gray-700'
+                                      }`}
                                   >
-                                    <Trash2 className="w-4 h-4" />
+                                    {section.is_sidebar ? 'Use as main' : 'Use as sidebar'}
                                   </button>
-                                  {!isTableBlock && !isInlineEditable && (
-                                    <button
-                                      onClick={() =>
-                                        setOpenBlockEditor((prev) => (prev === block.id ? null : block.id))
-                                      }
-                                      className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                  {section.is_sidebar && availableTabs && availableTabs.length > 0 && (
+                                    <select
+                                      value={section.sidebar_tab_id || ''}
+                                      onChange={(e) => updateSidebarTab(section.id, e.target.value || null)}
+                                      className="px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+                                      title="Assign sidebar to specific tab"
                                     >
-                                      {showSideEditor ? 'Close' : 'Edit'}
-                                    </button>
+                                      <option value="">All tabs (shared)</option>
+                                      {availableTabs.map((tab) => (
+                                        <option key={tab.id} value={tab.id}>
+                                          {tab.label} only
+                                        </option>
+                                      ))}
+                                    </select>
                                   )}
                                 </div>
-                              )}
-
-                              {/* Block Content */}
-                              {isTableBlock && !isPreview && (
-                                <div className="flex justify-end gap-2 mb-3">
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenBlockEditor((prev) => (prev === block.id ? null : prev))}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
-                                      !isTableEditing ? 'bg-white text-blue-600 border-blue-600' : 'text-gray-500 border-gray-200'
-                                    }`}
-                                  >
-                                    Preview Table
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenBlockEditor(block.id)}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
-                                      isTableEditing ? 'bg-blue-600 text-white border-blue-600' : 'text-blue-600 border-blue-600'
-                                    }`}
-                                  >
-                                    Edit Table
-                                  </button>
-                                </div>
-                              )}
-
-                              {isTableBlock && isTableEditing && (
-                                <InlineTableEditor
-                                  content={block.content}
-                                  onChange={(updatedContent) =>
-                                    updateBlock(section.id, block.id, { content: updatedContent })
-                                  }
-                                />
-                              )}
-
-                              {!isPreview && isInlineEditable ? (
-                                <InlineTextBlockEditor
-                                  block={block}
-                                  onContentChange={(nextContent) =>
-                                    updateBlock(section.id, block.id, { content: nextContent })
-                                  }
-                                />
-                              ) : (
-                                <BlockRenderer block={block} isEditing={!isPreview} />
-                              )}
-
-                              {showSideEditor && (
-                                <div className="mt-4 border border-blue-200 bg-blue-50/40 rounded-lg p-4">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
-                                      <Settings className="w-4 h-4" />
-                                      Configure {block.block_type} block
-                                    </div>
-                                    <button
-                                      className="text-blue-600 text-sm font-medium"
-                                      onClick={() => setOpenBlockEditor(null)}
-                                    >
-                                      Done
-                                    </button>
-                                  </div>
-                                  <BlockContentEditor
-                                    blockType={block.block_type}
-                                    content={block.content}
-                                    settings={block.settings}
-                                    onChange={(updatedContent) =>
-                                      updateBlock(section.id, block.id, { content: updatedContent })
-                                    }
-                                    onSettingsChange={(updatedSettings) =>
-                                      updateBlock(section.id, block.id, { settings: updatedSettings })
-                                    }
-                                    mediaUploadConfig={mediaUploadConfig}
-                                  />
-                                </div>
-                              )}
+                                <button
+                                  onClick={() => setShowBlockPicker(showBlockPicker === section.id ? null : section.id)}
+                                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                                >
+                                  <Plus className="w-4 h-4 inline mr-1" />
+                                  Add Block
+                                </button>
+                                <button
+                                  onClick={() => deleteSection(section.id)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
+                            {section.subtitle !== undefined && !collapsedSections.has(section.id) && (
+                              <input
+                                type="text"
+                                value={section.subtitle ?? ''}
+                                onChange={(e) => updateSection(section.id, { subtitle: e.target.value })}
+                                className="mt-2 text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 w-full"
+                                placeholder="Section Subtitle (optional)"
+                              />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Block Picker Dropdown */}
+                        {showBlockPicker === section.id && !isPreview && !collapsedSections.has(section.id) && (
+                          <div className="p-4 bg-blue-50 border-b border-blue-200">
+                            <p className="text-sm font-semibold mb-3">Choose a block type:</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {BLOCK_TYPES.map(blockType => {
+                                const Icon = getBlockIcon(blockType.type);
+                                return (
+                                  <button
+                                    key={blockType.type}
+                                    onClick={() => addBlock(section.id, blockType.type)}
+                                    className="p-3 bg-white border border-gray-200 rounded hover:border-blue-500 hover:bg-blue-50 text-left"
+                                  >
+                                    <Icon className="w-5 h-5 text-blue-600 mb-1" />
+                                    <div className="text-sm font-medium">{blockType.label}</div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Section Blocks */}
+                        {collapsedSections.has(section.id) ? (
+                          <div className="p-6 text-sm text-gray-500 italic">Section collapsed. Expand to edit blocks.</div>
+                        ) : (
+                          <div className="p-6">
+                            {section.blocks.length === 0 ? (
+                              <div className="text-center py-12 text-gray-400">
+                                No blocks in this section. Click "Add Block" to add content.
+                              </div>
+                            ) : (
+                              section.blocks.map((block, blockIndex) => {
+                                const isSelected = selectedBlock === block.id;
+                                const isTableBlock = block.block_type === 'table';
+                                const isTableEditing = !isPreview && isTableBlock && openBlockEditor === block.id;
+                                const isInlineEditable = INLINE_EDITABLE_BLOCKS.has(block.block_type);
+                                const showSideEditor = !isTableBlock && !isInlineEditable && !isPreview && openBlockEditor === block.id;
+
+                                return (
+                                  <div
+                                    key={block.id}
+                                    className={`relative group mb-4 rounded border transition-colors ${isSelected ? 'ring-2 ring-blue-500' : 'border-transparent'
+                                      }`}
+                                    onClick={() => setSelectedBlock(block.id)}
+                                  >
+                                    {/* Block Controls */}
+                                    {!isPreview && (
+                                      <div className="absolute -left-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col space-y-1">
+                                        <button
+                                          onClick={() => moveBlock(section.id, block.id, 'up')}
+                                          disabled={blockIndex === 0}
+                                          className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
+                                          title="Move block up"
+                                        >
+                                          <ArrowUp className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => moveBlock(section.id, block.id, 'down')}
+                                          disabled={blockIndex === section.blocks.length - 1}
+                                          className="p-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-30"
+                                          title="Move block down"
+                                        >
+                                          <ArrowDown className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => deleteBlock(section.id, block.id)}
+                                          className="p-1 bg-white border border-red-300 rounded hover:bg-red-50 text-red-600"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                        {!isTableBlock && !isInlineEditable && (
+                                          <button
+                                            onClick={() =>
+                                              setOpenBlockEditor((prev) => (prev === block.id ? null : block.id))
+                                            }
+                                            className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                          >
+                                            {showSideEditor ? 'Close' : 'Edit'}
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Block Content */}
+                                    {isTableBlock && !isPreview && (
+                                      <div className="flex justify-end gap-2 mb-3">
+                                        <button
+                                          type="button"
+                                          onClick={() => setOpenBlockEditor((prev) => (prev === block.id ? null : prev))}
+                                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${!isTableEditing ? 'bg-white text-blue-600 border-blue-600' : 'text-gray-500 border-gray-200'
+                                            }`}
+                                        >
+                                          Preview Table
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setOpenBlockEditor(block.id)}
+                                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${isTableEditing ? 'bg-blue-600 text-white border-blue-600' : 'text-blue-600 border-blue-600'
+                                            }`}
+                                        >
+                                          Edit Table
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {isTableBlock && isTableEditing && (
+                                      <InlineTableEditor
+                                        content={block.content}
+                                        onChange={(updatedContent) =>
+                                          updateBlock(section.id, block.id, { content: updatedContent })
+                                        }
+                                      />
+                                    )}
+
+                                    {!isPreview && isInlineEditable ? (
+                                      <InlineTextBlockEditor
+                                        block={block}
+                                        onContentChange={(nextContent) =>
+                                          updateBlock(section.id, block.id, { content: nextContent })
+                                        }
+                                      />
+                                    ) : (
+                                      <BlockRenderer block={block} isEditing={!isPreview} />
+                                    )}
+
+                                    {showSideEditor && (
+                                      <div className="mt-4 border border-blue-200 bg-blue-50/40 rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
+                                            <Settings className="w-4 h-4" />
+                                            Configure {block.block_type} block
+                                          </div>
+                                          <button
+                                            className="text-blue-600 text-sm font-medium"
+                                            onClick={() => setOpenBlockEditor(null)}
+                                          >
+                                            Done
+                                          </button>
+                                        </div>
+                                        <BlockContentEditor
+                                          blockType={block.block_type}
+                                          content={block.content}
+                                          settings={block.settings}
+                                          onChange={(updatedContent) =>
+                                            updateBlock(section.id, block.id, { content: updatedContent })
+                                          }
+                                          onSettingsChange={(updatedSettings) =>
+                                            updateBlock(section.id, block.id, { settings: updatedSettings })
+                                          }
+                                          mediaUploadConfig={mediaUploadConfig}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </React.Fragment>
                   );
                 })}
-                
+
                 {reservedTabInfo && reservedPosition === sections.length && (
                   <div className="mb-8 bg-amber-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
                     <div className="flex items-start gap-4">
@@ -2453,7 +2429,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                 )}
               </>
             )}
-            
+
           </div>
         </div>
       </div>
@@ -2496,7 +2472,7 @@ const BlockContentEditor: React.FC<{
           </div>
         </>
       );
-    
+
     case 'paragraph':
       return (
         <RichTextField
@@ -2518,7 +2494,7 @@ const BlockContentEditor: React.FC<{
       return (
         <ImageContentEditor content={content} onChange={onChange} mediaUploadConfig={mediaUploadConfig} />
       );
-    
+
     case 'button':
       return <ButtonContentEditor content={content} onChange={onChange} />;
 
@@ -2663,7 +2639,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
     if (headers.length === 1) return;
     const nextHeaders = headers.filter((_, i) => i !== index);
     const nextRows = rows.map((row) => row.filter((_, i) => i !== index));
-    
+
     // Remove links for deleted column
     const nextLinks = { ...cellLinks };
     Object.keys(nextLinks).forEach(key => {
@@ -2676,7 +2652,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
         delete nextLinks[key];
       }
     });
-    
+
     update({ headers: nextHeaders, rows: nextRows, cellLinks: nextLinks });
   };
 
@@ -2704,7 +2680,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
   const addRow = () => update({ rows: [...rows, headers.map(() => '')] });
   const removeRow = (index: number) => {
     if (rows.length === 1) return;
-    
+
     // Remove links for deleted row
     const nextLinks = { ...cellLinks };
     Object.keys(nextLinks).forEach(key => {
@@ -2717,7 +2693,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
         delete nextLinks[key];
       }
     });
-    
+
     update({ rows: rows.filter((_, i) => i !== index), cellLinks: nextLinks });
   };
 
@@ -2740,13 +2716,8 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
       const tmp = document.createElement('div');
       tmp.innerHTML = DOMPurify.sanitize(html, {
         USE_PROFILES: { html: true },
-        ADD_TAGS: ['b', 'strong', 'i', 'em', 'u', 'sub', 'sup', 'code'],
-        FORBID_ATTR: ['style', 'class', 'color', 'face', 'size'],
-      });
-      // Remove any remaining style attributes
-      tmp.querySelectorAll('*').forEach(el => {
-        el.removeAttribute('style');
-        el.removeAttribute('class');
+        ADD_TAGS: ['font', 'b', 'strong', 'i', 'em', 'u', 'sub', 'sup', 'code'],
+        ADD_ATTR: ['style', 'class', 'color', 'face', 'size']
       });
       document.execCommand('insertHTML', false, tmp.innerHTML);
     }
@@ -2874,7 +2845,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
                 {headers.map((_, colIndex) => {
                   const cellKey = `${rowIndex}-${colIndex}`;
                   const cellLink = cellLinks[cellKey] || '';
-                  
+
                   return (
                     <div key={colIndex} className="flex flex-col gap-1">
                       <div className="flex items-center gap-1">
@@ -3472,7 +3443,7 @@ const InlineTableEditor = ({
     if (headers.length <= 1) return;
     const nextHeaders = headers.filter((_, i) => i !== index);
     const nextRows = rows.map((row) => row.filter((_, i) => i !== index));
-    
+
     // Remove links and colors for deleted column
     const nextLinks = { ...cellLinks };
     const nextColors = { ...cellColors };
@@ -3503,7 +3474,7 @@ const InlineTableEditor = ({
         }
       }
     });
-    
+
     // Clean up headerColors for deleted/shifted columns
     const nextHeaderColors = { ...content.headerColors || {} };
     Object.keys(nextHeaderColors).forEach(key => {
@@ -3518,6 +3489,60 @@ const InlineTableEditor = ({
     update({ headers: nextHeaders, rows: nextRows, cellLinks: nextLinks, cellColors: nextColors, headerColors: nextHeaderColors });
   };
 
+
+  const handleTablePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const html = e.clipboardData?.getData('text/html');
+    if (!html) return false;
+
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const table = tmp.querySelector('table');
+
+    if (table) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const trs = Array.from(table.querySelectorAll('tr'));
+      if (trs.length === 0) return true;
+
+      let newHeaders = [];
+      let newRows = [];
+
+      const sanitizeCell = (cell: any) => {
+        return DOMPurify.sanitize(cell.innerHTML || '', {
+          USE_PROFILES: { html: true },
+          ADD_TAGS: ['font', 'b', 'strong', 'i', 'em', 'u', 'sub', 'sup'],
+          ADD_ATTR: ['style', 'class', 'color', 'face', 'size']
+        });
+      };
+
+      if (hasHeader) {
+        newHeaders = Array.from(trs[0].querySelectorAll('th, td')).map(sanitizeCell);
+        for (let i = 1; i < trs.length; i++) {
+          newRows.push(Array.from(trs[i].querySelectorAll('th, td')).map(sanitizeCell));
+        }
+      } else {
+        newHeaders = Array.from(trs[0].querySelectorAll('th, td')).map(() => '');
+        for (let i = 0; i < trs.length; i++) {
+          newRows.push(Array.from(trs[i].querySelectorAll('th, td')).map(sanitizeCell));
+        }
+      }
+
+      // Pad rows to match max columns
+      const maxCols = Math.max(newHeaders.length, ...newRows.map(r => r.length));
+      while (newHeaders.length < maxCols) newHeaders.push('');
+      newRows = newRows.map(row => {
+        const newRow = [...row];
+        while (newRow.length < maxCols) newRow.push('');
+        return newRow;
+      });
+
+      update({ headers: newHeaders, rows: newRows });
+      return true;
+    }
+    return false;
+  };
+
   const addRow = () => {
     if (!headers.length) return;
     update({ rows: [...rows, headers.map(() => '')] });
@@ -3525,7 +3550,7 @@ const InlineTableEditor = ({
 
   const removeRow = (index: number) => {
     if (rows.length <= 1) return;
-    
+
     // Remove links and colors for deleted row
     const nextLinks = { ...cellLinks };
     const nextColors = { ...cellColors };
@@ -3556,7 +3581,7 @@ const InlineTableEditor = ({
         }
       }
     });
-    
+
     update({ rows: rows.filter((_, i) => i !== index), cellLinks: nextLinks, cellColors: nextColors });
   };
 
@@ -3763,64 +3788,64 @@ const InlineTableEditor = ({
                     return '#ffffff';
                   })();
                   return (
-                  <th key={index} className="border border-gray-200 p-2 align-top min-w-[120px] text-left">
-                    <div className="flex flex-col gap-1">
-                      <CellToolbar />
-                      <div
-                        contentEditable
-                        suppressContentEditableWarning
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[32px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{ color: hText, backgroundColor: headerEditorBg }}
-                        dangerouslySetInnerHTML={{ __html: header }}
-                        onBlur={(e) => handleHeaderChange(index, e.currentTarget.innerHTML)}
-                        onPaste={(e) => {
-                          const html = e.clipboardData?.getData('text/html');
-                          if (html) {
-                            e.preventDefault();
-                            const tmp = document.createElement('div');
-                            tmp.innerHTML = DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ADD_TAGS: ['b', 'strong', 'i', 'em', 'u', 'sub', 'sup'], FORBID_ATTR: ['style', 'class', 'color', 'face', 'size'] });
-                            tmp.querySelectorAll('*').forEach(el => { el.removeAttribute('style'); el.removeAttribute('class'); });
-                            document.execCommand('insertHTML', false, tmp.innerHTML);
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.ctrlKey || e.metaKey) {
-                            if (e.key === 'b') { e.preventDefault(); document.execCommand('bold'); }
-                            if (e.key === 'i') { e.preventDefault(); document.execCommand('italic'); }
-                            if (e.key === 'u') { e.preventDefault(); document.execCommand('underline'); }
-                          }
-                        }}
-                      />
-                      <div className="flex gap-1 mt-1">
-                        <div className="flex-1">
-                          <label className="block text-[10px] text-gray-500 mb-0.5">BG</label>
-                          <input
-                            type="color"
-                            value={hBg}
-                            onChange={(e) => handleHeaderColorChange(index, 'bg', e.target.value)}
-                            className="w-full h-5 rounded border border-gray-300 cursor-pointer"
-                          />
+                    <th key={index} className="border border-gray-200 p-2 align-top min-w-[120px] text-left">
+                      <div className="flex flex-col gap-1">
+                        <CellToolbar />
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[32px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          style={{ color: hText, backgroundColor: headerEditorBg }}
+                          dangerouslySetInnerHTML={{ __html: header }}
+                          onBlur={(e) => handleHeaderChange(index, e.currentTarget.innerHTML)}
+                          onPaste={(e) => {
+                            if (handleTablePaste(e)) return;
+                            const html = e.clipboardData?.getData('text/html');
+                            if (html) {
+                              e.preventDefault();
+                              const tmp = document.createElement('div');
+                              tmp.innerHTML = DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ADD_TAGS: ['font', 'b', 'strong', 'i', 'em', 'u', 'sub', 'sup'], ADD_ATTR: ['style', 'class', 'color', 'face', 'size'] });
+                              document.execCommand('insertHTML', false, tmp.innerHTML);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.ctrlKey || e.metaKey) {
+                              if (e.key === 'b') { e.preventDefault(); document.execCommand('bold'); }
+                              if (e.key === 'i') { e.preventDefault(); document.execCommand('italic'); }
+                              if (e.key === 'u') { e.preventDefault(); document.execCommand('underline'); }
+                            }
+                          }}
+                        />
+                        <div className="flex gap-1 mt-1">
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-gray-500 mb-0.5">BG</label>
+                            <input
+                              type="color"
+                              value={hBg}
+                              onChange={(e) => handleHeaderColorChange(index, 'bg', e.target.value)}
+                              className="w-full h-5 rounded border border-gray-300 cursor-pointer"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-gray-500 mb-0.5">Text</label>
+                            <input
+                              type="color"
+                              value={hText}
+                              onChange={(e) => handleHeaderColorChange(index, 'text', e.target.value)}
+                              className="w-full h-5 rounded border border-gray-300 cursor-pointer"
+                            />
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <label className="block text-[10px] text-gray-500 mb-0.5">Text</label>
-                          <input
-                            type="color"
-                            value={hText}
-                            onChange={(e) => handleHeaderColorChange(index, 'text', e.target.value)}
-                            className="w-full h-5 rounded border border-gray-300 cursor-pointer"
-                          />
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeColumn(index)}
+                          className="text-xs text-red-600 hover:underline"
+                          disabled={headers.length <= 1}
+                        >
+                          Remove
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeColumn(index)}
-                        className="text-xs text-red-600 hover:underline"
-                        disabled={headers.length <= 1}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </th>
+                    </th>
                   );
                 })}
                 <th className="p-2 w-20" />
@@ -3850,7 +3875,7 @@ const InlineTableEditor = ({
                     }
                     return '#ffffff';
                   })();
-                  
+
                   return (
                     <td key={cellIndex} className="border border-gray-200 p-2 align-top min-w-[120px]">
                       <div className="flex flex-col gap-1">
@@ -3868,12 +3893,12 @@ const InlineTableEditor = ({
                           dangerouslySetInnerHTML={{ __html: cell }}
                           onBlur={(e) => handleCellChange(rowIndex, cellIndex, e.currentTarget.innerHTML)}
                           onPaste={(e) => {
+                            if (handleTablePaste(e)) return;
                             const html = e.clipboardData?.getData('text/html');
                             if (html) {
                               e.preventDefault();
                               const tmp = document.createElement('div');
-                              tmp.innerHTML = DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ADD_TAGS: ['b', 'strong', 'i', 'em', 'u', 'sub', 'sup'], FORBID_ATTR: ['style', 'class', 'color', 'face', 'size'] });
-                              tmp.querySelectorAll('*').forEach(el => { el.removeAttribute('style'); el.removeAttribute('class'); });
+                              tmp.innerHTML = DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ADD_TAGS: ['font', 'b', 'strong', 'i', 'em', 'u', 'sub', 'sup'], ADD_ATTR: ['style', 'class', 'color', 'face', 'size'] });
                               document.execCommand('insertHTML', false, tmp.innerHTML);
                             }
                           }}
@@ -4454,11 +4479,11 @@ const getDefaultBlockContent = (blockType: string): any => {
     heading: { text: 'New Heading', level: 2, alignment: 'left' },
     paragraph: { text: 'Enter your text here...', alignment: 'left' },
     list: { type: 'unordered', items: ['Item 1', 'Item 2', 'Item 3'] },
-    table: { 
-      headers: ['Column 1', 'Column 2', 'Column 3'], 
-      rows: [['Data 1', 'Data 2', 'Data 3']], 
-      hasHeader: true, 
-      striped: true 
+    table: {
+      headers: ['Column 1', 'Column 2', 'Column 3'],
+      rows: [['Data 1', 'Data 2', 'Data 3']],
+      hasHeader: true,
+      striped: true
     },
     image: {
       url: '',
@@ -4481,6 +4506,6 @@ const getDefaultBlockContent = (blockType: string): any => {
     card: { title: 'Card Title', headingTag: 'h3', description: 'Add supporting content here...' },
     adBanner: { headline: 'Banner headline', headingTag: 'h3', description: 'Banner copy goes here.' }
   };
-  
+
   return defaults[blockType] || {};
 };

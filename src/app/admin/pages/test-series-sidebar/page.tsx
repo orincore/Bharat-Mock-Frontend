@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   Loader2,
   ArrowUp,
@@ -842,6 +843,17 @@ export default function TestSeriesSidebarAdmin() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            asChild
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <Link href={`/admin/test-series/${series.id}/editor`}>
+                              <FileText className="h-4 w-4" />
+                              Edit Content
+                            </Link>
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

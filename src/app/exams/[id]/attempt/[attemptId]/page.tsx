@@ -7,7 +7,7 @@ import {
   AlertCircle, Clock, ChevronLeft, ChevronRight, Flag,
   CheckCircle2, Circle, AlertTriangle, FileText, X, CheckCheck, List, Pause,
   Maximize2, Minimize2, Languages,
-  ChevronDown
+  ChevronDown, Lightbulb
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
@@ -225,6 +225,34 @@ export default function ExamAttemptPage() {
   }, [isFastLoad, examId, attemptId]);
 
   const [showFSRecovery, setShowFSRecovery] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  useEffect(() => {
+    setShowExplanation(false);
+  }, [currentSectionIndex, currentQuestionIndex]);
+
+  // Inject a stable, persistent body-top fix for Google Translate.
+  // This MUST live outside the React JSX tree (via DOM injection) so it
+  // is never removed/re-applied on re-renders (which was causing the jump).
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const styleId = 'exam-body-fix';
+    if (document.getElementById(styleId)) return;
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      body { top: 0 !important; position: static !important; }
+      body.translated-ltr, body.translated-rtl { top: 0 !important; position: static !important; }
+      .goog-te-banner-frame { display: none !important; }
+      .skiptranslate.goog-te-banner-frame { display: none !important; }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      // Clean up on unmount (exam finished/navigated away)
+      const el = document.getElementById(styleId);
+      if (el) el.remove();
+    };
+  }, []);
 
   // Trigger AI Translation on mount or if language changes
   useEffect(() => {
@@ -1377,12 +1405,9 @@ export default function ExamAttemptPage() {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-muted/30 relative">
+    <div className="flex flex-col h-screen overflow-hidden select-none relative bg-[#f8fafc]">
       {/* Hidden Google Translate Element - Persistent outside the soft-refresh container */}
       <div id="google_translate_element" className="hidden" />
-
-      {/* Main Content Wrapper - Controlled by soft-refresh engine to apply localized content */}
-      <div className="flex flex-col h-screen overflow-hidden select-none relative bg-[#f8fafc]">
         {isLoading && isFastLoad && (
           <div className="fixed inset-0 z-[100] bg-white/20 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
             <div className="bg-white/90 p-4 rounded-xl shadow-lg border border-primary/20 flex items-center gap-3 animate-in fade-in zoom-in duration-300">
@@ -1412,18 +1437,7 @@ export default function ExamAttemptPage() {
           </div>
         )}
 
-        <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Gujarati:wght@400;700&family=Noto+Sans+Kannada:wght@400;700&family=Noto+Sans+Malayalam:wght@400;700&family=Noto+Sans+Oriya:wght@400;700&family=Noto+Sans+Tamil:wght@400;700&family=Noto+Sans+Telugu:wght@400;700&family=Noto+Sans+Gurmukhi:wght@400;700&display=swap');
-
-        :root {
-          --font-fallback: 'Noto Sans Devanagari', 'Noto Sans Bengali', 'Noto Sans Telugu', 'Noto Sans Tamil', 'Noto Sans Gujarati', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Gurmukhi', 'Noto Sans Oriya', sans-serif;
-        }
-
-        body {
-          font-family: 'Inter', var(--font-fallback) !important;
-          top: 0 !important;
-        }
-
+        <style dangerouslySetInnerHTML={{ __html: `
         .goog-te-banner-frame.skiptranslate, 
         .goog-te-gadget-icon, 
         .goog-te-gadget-simple span, 
@@ -1449,7 +1463,7 @@ export default function ExamAttemptPage() {
           background: #cbd5e1;
           border-radius: 10px;
         }
-      `}</style>
+      ` }} />
 
         {showSubmissionModal && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -1658,7 +1672,7 @@ export default function ExamAttemptPage() {
               {/* SCROLLABLE question + options only */}
               <div className="flex-1 overflow-y-auto">
                 <div className="px-4 md:px-6 py-4 md:py-5">
-                  <div className="bg-white md:bg-card border-0 md:border border-slate-200 md:border-border rounded-none md:rounded-xl p-4 sm:p-5 md:p-6 shadow-sm">
+                  <div className="bg-white md:bg-card border-0 md:border border-slate-200 md:border-border rounded-none md:rounded-xl p-4 sm:p-5 md:p-6 shadow-sm min-h-[300px]">
                     {/* Question header row */}
                     <div className="mb-5">
                       <div className="hidden md:flex items-center gap-3 mb-3">
@@ -1680,11 +1694,11 @@ export default function ExamAttemptPage() {
                       />
                     </div>
                     {resolveQuestionImage(currentQuestion) && (
-                      <div className="mt-5 mb-5 p-2 bg-white rounded-lg border border-slate-100 shadow-sm flex justify-center">
+                      <div className="mt-5 mb-5 p-2 bg-white rounded-lg border border-slate-100 shadow-sm flex justify-start">
                         <img
                           src={resolveQuestionImage(currentQuestion)}
                           alt="Question"
-                          className="max-w-3xl w-full max-h-[500px] h-auto object-contain transition-transform hover:scale-[1.01] duration-300"
+                          className="max-w-3xl max-h-[250px] w-auto h-auto object-contain transition-transform hover:scale-[1.01] duration-300"
                         />
                       </div>
                     )}
@@ -1697,14 +1711,17 @@ export default function ExamAttemptPage() {
                           : selectedAnswer === option.id;
 
                         return (
-                          <label
+                          <div
                             key={option.id}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-sm border cursor-pointer transition-all ${isSelected
+                            role={currentQuestion.type === 'multiple' ? 'checkbox' : 'radio'}
+                            aria-checked={isSelected}
+                            onClick={() => option.id && handleAnswerChange(option.id)}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-sm border cursor-pointer ${isSelected
                               ? 'border-slate-400 bg-white'
                               : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/30'
                               }`}
                           >
-                            <div className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-slate-600 bg-white' : 'border-slate-400 bg-white'
+                            <div className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-slate-600 bg-white' : 'border-slate-400 bg-white'
                               }`}>
                               {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />}
                             </div>
@@ -1713,7 +1730,7 @@ export default function ExamAttemptPage() {
                                 <img
                                   src={resolveOptionImage(option)}
                                   alt={`Option ${String.fromCharCode(65 + idx)}`}
-                                  className="max-h-64 object-contain self-start border border-slate-100 rounded p-1 bg-white"
+                                  className="max-h-[150px] object-contain self-start border border-slate-100 rounded p-1 bg-white"
                                 />
                               )}
                               <MathRenderer
@@ -1722,15 +1739,7 @@ export default function ExamAttemptPage() {
                                   } ${currentSection?.name?.toLowerCase().includes('english') ? 'notranslate' : ''}`}
                               />
                             </div>
-                            <input
-                              type={currentQuestion.type === 'multiple' ? 'checkbox' : 'radio'}
-                              name={`question-${currentQuestion.id}`}
-                              value={option.id || ''}
-                              checked={isSelected}
-                              onChange={() => option.id && handleAnswerChange(option.id)}
-                              className="sr-only"
-                            />
-                          </label>
+                          </div>
                         );
                       })}
                     </div>
@@ -1744,10 +1753,55 @@ export default function ExamAttemptPage() {
                         Clear Response
                       </button>
                     </div>
+
+                    {/* Explanation Toggle */}
+                    {((requestedLanguage === 'hi' ? currentQuestion.explanation_hi : currentQuestion.explanation) || currentQuestion.explanation_image_url) && (
+                      <div className="mt-6 border border-slate-200 rounded-lg overflow-hidden bg-white">
+                        <button
+                          onClick={() => setShowExplanation(!showExplanation)}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-slate-700 font-medium text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            View Explanation
+                          </div>
+                          <svg 
+                            className={`w-5 h-5 transition-transform duration-200 ${showExplanation ? 'rotate-180' : ''}`} 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        
+                        {showExplanation && (
+                          <div className="p-4 border-t border-slate-200 bg-indigo-50/30">
+                            {(requestedLanguage === 'hi' ? currentQuestion.explanation_hi : currentQuestion.explanation) && (
+                              <MathRenderer
+                                html={requestedLanguage === 'hi' ? (currentQuestion.explanation_hi || '') : (currentQuestion.explanation || '')}
+                                className={`rich-text-content text-sm text-slate-700 leading-relaxed ${currentSection?.name?.toLowerCase().includes('english') ? 'notranslate' : ''}`}
+                              />
+                            )}
+                            {currentQuestion.explanation_image_url && (
+                              <div className="mt-4 flex justify-start">
+                                <img 
+                                  src={currentQuestion.explanation_image_url.startsWith('http') ? currentQuestion.explanation_image_url : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/exam-images/${currentQuestion.explanation_image_url}`}
+                                  alt="Explanation" 
+                                  className="max-h-[250px] w-auto object-contain rounded-lg border border-slate-200 shadow-sm"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Essential Spacer: ensures content isn't hidden behind global action bar */}
-                  <div className="h-6" aria-hidden="true" />
+                  <div className="h-8" aria-hidden="true" />
                 </div>
               </div>
             </div>
@@ -2228,7 +2282,6 @@ export default function ExamAttemptPage() {
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

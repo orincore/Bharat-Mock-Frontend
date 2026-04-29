@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
@@ -88,6 +88,11 @@ interface CustomTab {
   display_order: number;
 }
 
+interface TableOfContentsEntry {
+  id: string;
+  label: string;
+}
+
 type TabDescriptor = {
   id: string;
   label: string;
@@ -106,6 +111,8 @@ interface PageContentResponse {
     updated_at?: string;
   };
   customTabs?: CustomTab[];
+  tocOrder?: Record<string, number>;
+  tabHeadings?: Record<string, string>;
   tabSeo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }>;
 }
 
@@ -143,6 +150,17 @@ const buildApiUrl = (path: string) => {
   return `/api/v1${normalizedPath}`;
 };
 
+const sanitizeAnchor = (value?: string | null) => {
+  if (!value) return '';
+  return value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/--+/g, '-');
+};
+
 const sanitizeTabSlug = (value: string | null | undefined) => {
   if (!value) return "";
   return value
@@ -152,6 +170,59 @@ const sanitizeTabSlug = (value: string | null | undefined) => {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .replace(/--+/g, "-");
+};
+
+const MobileTOC = ({
+  tableOfContents,
+  scrollToAnchor,
+}: {
+  tableOfContents: TableOfContentsEntry[];
+  scrollToAnchor: (id: string) => void;
+}) => {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="lg:hidden">
+      {/* Backdrop */}
+      {open && (
+        <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setOpen(false)} />
+      )}
+
+      {/* Bottom drawer */}
+      <div className={`fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-2xl shadow-2xl transition-transform duration-300 ${open ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <List className="h-4 w-4 text-primary" />
+            <span className="font-bold text-sm text-foreground">Table of Contents</span>
+          </div>
+          <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-muted transition">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+        <nav className="overflow-y-auto max-h-[60vh] pb-safe p-3 space-y-0.5">
+          {tableOfContents.map((entry, idx) => (
+            <button
+              key={`${entry.id || 'toc'}-${idx}`}
+              type="button"
+              onClick={() => { scrollToAnchor(entry.id); setOpen(false); }}
+              className="w-full flex items-start gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted hover:text-primary transition text-left group"
+            >
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary/40 flex-shrink-0 group-hover:bg-primary" />
+              <span className="text-foreground group-hover:text-primary leading-snug">{entry.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Floating button */}
+      <button
+        onClick={() => setOpen(true)}
+        className="fixed bottom-5 left-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg text-sm font-semibold"
+      >
+        <List className="h-4 w-4" />
+        Contents
+      </button>
+    </div>
+  );
 };
 
 const blobToDataUrl = (blob: Blob) =>
@@ -192,7 +263,7 @@ const inlineImagesForPdf = async (root: HTMLElement | null) => {
       }
 
       // Strategy 2: Canvas with anonymous crossOrigin
-      const imgElement = new Image();
+      const imgElement = new window.Image();
       imgElement.crossOrigin = "anonymous";
       imgElement.onload = () => {
         try {
@@ -500,9 +571,17 @@ export default function NewCategoryPage({
   }, [currentTabDescriptor?.id, currentTabDescriptor?.label, heroTitle, pageContent]);
 
   const sections = pageContent?.sections ?? [];
-  const sidebarSections = sections.filter((s) => s.is_sidebar);
-  const hasSidebar = sidebarSections.length > 0;
-  const containerClass = "w-full max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12";
+
+  const getSidebarSectionsForTab = (tabId: string) => {
+    return sections.filter((section) => {
+      if (!section.is_sidebar) return false;
+      const sidebarTabId = (section as any).sidebar_tab_id || (section as any).category_custom_tab_id || section.custom_tab_id;
+      if (sidebarTabId === null || sidebarTabId === undefined) return true;
+      return sidebarTabId === tabId;
+    });
+  };
+
+  const sidebarSections = getSidebarSectionsForTab(activeTab);
 
   const getSectionsForTab = (tabId: string) => {
     if (tabId === "overview") {
@@ -524,24 +603,33 @@ export default function NewCategoryPage({
   const tabItems = tabDescriptors.map(({ id, label }) => ({ id, label }));
   const isContentTab = true;
 
-  const scrollToAnchor = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      const offset = 90;
-      const top = el.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top, behavior: 'smooth' });
-    }
-  };
+  const buildSectionAnchor = useCallback(
+    (section: Section) => sanitizeAnchor(section.section_key || section.title || section.id),
+    []
+  );
 
-  const tableOfContents = useMemo(() => {
+  const scrollToAnchor = useCallback((anchorId: string) => {
+    if (!anchorId) return;
+    const element = document.getElementById(anchorId);
+    if (!element) return;
+    const headerOffset = 90;
+    const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+    const offsetPosition = elementPosition - headerOffset;
+    window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+  }, []);
+
+  const tableOfContents = useMemo<TableOfContentsEntry[]>(() => {
+    if (!isContentTab) return [];
     return visibleSections
-      .filter(s => !s.is_sidebar)
-      .map(section => {
+      .map((section) => {
         const decoded = getSectionTocLabel(section);
-        return { id: section.section_key, label: decoded };
+        return {
+          id: buildSectionAnchor(section),
+          label: decoded,
+        };
       })
-      .filter(e => Boolean(e.id) && Boolean(e.label));
-  }, [visibleSections]);
+      .filter((entry) => Boolean(entry.id) && Boolean(entry.label));
+  }, [visibleSections, isContentTab, buildSectionAnchor]);
 
   if (isLoading) {
     return (
@@ -573,18 +661,40 @@ export default function NewCategoryPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12">
-        <div className={containerClass}>
-          <div className="text-left">
-            <h1 className="text-4xl md:text-5xl font-bold mb-3">
-              {heroTitle}
-            </h1>
-            {heroSubtitle && (
-              <p className="text-xl md:text-2xl text-blue-100 mb-4 max-w-3xl">
-                {heroSubtitle}
-              </p>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12 relative overflow-hidden">
+        {category?.logo_url && (
+          <div className="absolute right-4 sm:right-12 lg:right-24 top-1/2 -translate-y-1/2 pointer-events-none select-none">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={category.logo_url}
+              alt=""
+              className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 object-contain opacity-15"
+            />
+          </div>
+        )}
+        <div className="container-main relative z-10">
+          <div className="text-left flex items-center gap-5">
+            {category?.logo_url && (
+              <div className="flex-shrink-0 hidden sm:block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={category.logo_url}
+                  alt={heroTitle || ''}
+                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-xl bg-white/10 p-2 border border-white/20"
+                />
+              </div>
             )}
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-3">
+                {(currentTabDescriptor && pageContent?.tabHeadings?.[currentTabDescriptor.id])
+                  ? pageContent.tabHeadings[currentTabDescriptor.id]
+                  : (currentTabDescriptor && currentTabDescriptor.id !== "overview" ? currentTabDescriptor.label : heroTitle)}
+              </h1>
+              {heroSubtitle && (
+                <p className="text-lg md:text-xl text-blue-100 mb-4 max-w-3xl">
+                  {heroSubtitle}
+                </p>
+              )}
             {(pageContent?.seo?.author_name || pageContent?.seo?.updated_at) && (
               <div className="flex flex-wrap items-center gap-3 mb-3 text-sm text-blue-100/80">
                 {pageContent.seo.author_name && (
@@ -614,13 +724,14 @@ export default function NewCategoryPage({
                 </React.Fragment>
               ))}
             </nav>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tab bar */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className={containerClass}>
+        <div className="container-main">
           <div className="flex items-center py-4" style={{ gap: "8px" }}>
             {/* Left scroll arrow */}
             <button
@@ -673,15 +784,10 @@ export default function NewCategoryPage({
       </div>
 
       {/* Content */}
-      <div className={`${containerClass} py-10`}>
-        <div
-          className={`grid grid-cols-1 gap-8 ${
-            hasSidebar
-              ? "lg:grid-cols-[minmax(0,2.6fr)_minmax(280px,1fr)] xl:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)]"
-              : ""
-          }`}
-        >
-          <div>
+      <div className="container-main py-6 lg:py-8">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          
+          <div className="flex-1 min-w-0 w-full space-y-8 order-2 lg:order-1">
             {/* Download PDF button for overview */}
             {activeTab === "overview" && (
               <div className="flex justify-end mb-4">
@@ -792,6 +898,14 @@ export default function NewCategoryPage({
                   </div>
                 ))}
 
+                {/* Mobile TOC — rendered inline at the position set in admin */}
+                {tableOfContents.length > 0 && (() => {
+                  const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
+                  return tocPos === 0 ? (
+                    <MobileTOC key="toc-mobile" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
+                  ) : null;
+                })()}
+
                 {visibleSections.length === 0 &&
                 (!pageContent?.orphanBlocks ||
                   pageContent.orphanBlocks.length === 0) ? (
@@ -800,27 +914,45 @@ export default function NewCategoryPage({
                     cards above.
                   </div>
                 ) : (
-                  visibleSections.map((section) => (
-                    <section
-                      key={section.id}
-                      id={section.section_key}
-                      className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-                      style={{
-                        backgroundColor:
-                          section.background_color || "white",
-                        color: section.text_color || "inherit",
-                      }}
-                    >
-                      {/* Section titles hidden to match subcategory page design */}
-                      <div className="p-6">
-                        {section.blocks.map((block) => (
-                          <div key={block.id} className="mb-4">
-                            <PageBlockRenderer block={block} />
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))
+                  <>
+                    {visibleSections.map((section, sectionIndex) => {
+                      const sectionAnchor = buildSectionAnchor(section);
+                      const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
+                      const renderTocAfter = tableOfContents.length > 0 && tocPos > 0 && sectionIndex === tocPos - 1;
+
+                      return (
+                        <React.Fragment key={section.id}>
+                          <section
+                            id={sectionAnchor}
+                            className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
+                            style={{
+                              backgroundColor: section.background_color || "white",
+                              color: section.text_color || "inherit",
+                            }}
+                          >
+                            <div className="p-4 sm:p-6 lg:p-8">
+                              {section.blocks.map((block) => (
+                                <div key={block.id} className="mb-4 last:mb-0">
+                                  <PageBlockRenderer block={block} />
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+                          {renderTocAfter && (
+                            <MobileTOC key={`toc-mobile-${section.id}`} tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+
+                    {/* TOC at end: when tocPos >= sections count */}
+                    {tableOfContents.length > 0 && (() => {
+                      const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
+                      return tocPos > 0 && tocPos >= visibleSections.length ? (
+                        <MobileTOC key="toc-mobile-end" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
+                      ) : null;
+                    })()}
+                  </>
                 )}
               </div>
             )}
@@ -829,98 +961,52 @@ export default function NewCategoryPage({
           </div>
 
           {/* Sidebar */}
-          <aside className="lg:col-span-1">
-            {(sidebarSections.length > 0 || tableOfContents.length > 0) && (
-              <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto">
-                {tableOfContents.length > 0 && (
-                  <section className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200 bg-gray-50">
-                      <div className="text-lg font-bold text-gray-900">Table of Contents</div>
-                      <p className="mt-1 text-sm text-gray-600">Jump to any section on this tab.</p>
-                    </div>
-                    <div className="divide-y">
-                      {tableOfContents.map((entry, idx) => (
-                        <button
-                          key={`${entry.id}-${idx}`}
-                          type="button"
-                          onClick={() => scrollToAnchor(entry.id)}
-                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50"
-                        >
-                          {entry.label}
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                )}
-                {sidebarSections.map((section) => (
-                  <section
-                    key={section.id}
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-                    style={{
-                      backgroundColor:
-                        section.background_color || "white",
-                      color: section.text_color || "inherit",
-                    }}
-                  >
-                    {/* Sidebar section titles hidden to match subcategory page design */}
-                    <div className="p-4 space-y-4">
-                      {section.blocks.map((block) => (
-                        <div key={block.id}>
-                          <PageBlockRenderer block={block} />
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            )}
+          <aside className="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2">
+            <div className="sticky top-24 space-y-6">
+              {tableOfContents.length > 0 && (
+                <div className="hidden lg:block bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <List className="w-4 h-4 text-primary" />
+                    <h3 className="font-bold text-sm text-foreground">Table of Contents</h3>
+                  </div>
+                  <nav className="flex flex-col space-y-1">
+                    {tableOfContents.map((entry, idx) => (
+                      <button
+                        key={`${entry.id}-${idx}`}
+                        type="button"
+                        onClick={() => scrollToAnchor(entry.id)}
+                        className="text-left text-xs font-medium text-muted-foreground hover:text-primary py-1.5 px-2 rounded-lg hover:bg-muted transition-colors flex items-start gap-2 group"
+                      >
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-primary/40 flex-shrink-0 group-hover:bg-primary" />
+                        <span className="leading-relaxed">{entry.label}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+              )}
+              
+              {sidebarSections.map((section) => (
+                <div
+                  key={section.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                  style={{
+                    backgroundColor: section.background_color || "white",
+                    color: section.text_color || "inherit",
+                  }}
+                >
+                  <div className="p-5">
+                    {section.blocks.map((block) => (
+                      <div key={block.id} className="mb-4 last:mb-0">
+                        <PageBlockRenderer block={block} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </aside>
         </div>
       </div>
-
-      {/* Mobile TOC — floating button + bottom drawer */}
-      {tableOfContents.length > 0 && (() => {
-        const MobileTocDrawer = () => {
-          const [open, setOpen] = React.useState(false);
-          return (
-            <div className="lg:hidden">
-              {open && <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setOpen(false)} />}
-              <div className={`fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-2xl shadow-2xl transition-transform duration-300 ${open ? 'translate-y-0' : 'translate-y-full'}`}>
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <List className="h-4 w-4 text-primary" />
-                    <span className="font-bold text-sm text-foreground">Table of Contents</span>
-                  </div>
-                  <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-muted transition">
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
-                <nav className="overflow-y-auto max-h-[60vh] pb-safe p-3 space-y-0.5">
-                  {tableOfContents.map((entry, idx) => (
-                    <button
-                      key={`${entry.id}-${idx}`}
-                      type="button"
-                      onClick={() => { scrollToAnchor(entry.id); setOpen(false); }}
-                      className="w-full flex items-start gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted hover:text-primary transition text-left group"
-                    >
-                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary/40 flex-shrink-0 group-hover:bg-primary" />
-                      <span className="text-foreground group-hover:text-primary leading-snug">{entry.label}</span>
-                    </button>
-                  ))}
-                </nav>
-              </div>
-              <button
-                onClick={() => setOpen(true)}
-                className="fixed bottom-5 left-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg text-sm font-semibold"
-              >
-                <List className="h-4 w-4" />
-                Contents
-              </button>
-            </div>
-          );
-        };
-        return <MobileTocDrawer />;
-      })()}
 
       {/* Mobile tab list overlay */}
       {isTabListOpen && (

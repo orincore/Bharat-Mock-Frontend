@@ -87,6 +87,7 @@ interface ReviewQuestion {
   marks: number;
   negativeMarks: number;
   explanation?: string;
+  explanationImageUrl?: string;
   imageUrl?: string;
   options: Array<{
     id: string;
@@ -800,7 +801,7 @@ export default function ResultPage() {
                             Marks: {question.marksObtained} / {question.marks}
                             {question.negativeMarks > 0 && ` (Negative: -${question.negativeMarks})`}
                           </p>
-                          {question.explanation && (
+                          {(question.explanation || question.explanationImageUrl) && (
                             <details className="mt-4">
                               <summary className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 font-semibold text-sm rounded-lg border border-blue-200 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md select-none">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -811,10 +812,21 @@ export default function ResultPage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                               </summary>
-                              <div
-                                className="text-sm text-muted-foreground mt-2 rich-text-content"
-                                dangerouslySetInnerHTML={createRichTextMarkup(question.explanation)}
-                              />
+                              {question.explanation && (
+                                <div
+                                  className="text-sm text-muted-foreground mt-2 rich-text-content"
+                                  dangerouslySetInnerHTML={createRichTextMarkup(question.explanation)}
+                                />
+                              )}
+                              {question.explanationImageUrl && (
+                                <div className="mt-4 flex justify-start">
+                                  <img 
+                                    src={question.explanationImageUrl.startsWith('http') ? question.explanationImageUrl : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/exam-images/${question.explanationImageUrl}`}
+                                    alt="Explanation" 
+                                    className="max-h-[250px] w-auto object-contain rounded-lg border border-slate-200 shadow-sm"
+                                  />
+                                </div>
+                              )}
                             </details>
                           )}
                         </div>

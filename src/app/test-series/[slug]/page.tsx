@@ -30,6 +30,19 @@ import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { Exam } from '@/types';
 import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { PageBlockRenderer } from '@/components/PageEditor/PageBlockRenderer';
+
+const apiBase = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")
+  : "";
+
+const buildApiUrl = (path: string) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (apiBase) {
+    return `${apiBase}${normalizedPath}`;
+  }
+  return `/api/v1${normalizedPath}`;
+};
 
 type NormalizedEntry = {
   raw: any;
@@ -50,7 +63,7 @@ function shuffleArray<T>(items: T[]): T[] {
 export default function TestSeriesDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
-  
+
   const [testSeries, setTestSeries] = useState<TestSeries | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,6 +73,10 @@ export default function TestSeriesDetailPage() {
   const [sidebarSeries, setSidebarSeries] = useState<TestSeries[]>([]);
   const [sidebarBanner, setSidebarBanner] = useState<PageBanner | null>(null);
   const [sidebarLoading, setSidebarLoading] = useState(true);
+  const [globalTab, setGlobalTab] = useState<string>('overview');
+  const [pageContent, setPageContent] = useState<any>({ sections: [], orphanBlocks: [] });
+  const [customTabs, setCustomTabs] = useState<any[]>([]);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
   const sectionsScrollRef = useRef<HTMLDivElement>(null);
   const topicsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +97,14 @@ export default function TestSeriesDetailPage() {
     try {
       const data = await testSeriesService.getTestSeriesBySlug(slug);
       setTestSeries(data);
+      if (data?.id) {
+        const contentRes = await fetch(buildApiUrl(`/test-series-page-content/${data.id}`));
+        if (contentRes.ok) {
+          const contentData = await contentRes.json();
+          setPageContent(contentData);
+          setCustomTabs(Array.isArray(contentData.customTabs) ? contentData.customTabs : []);
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load test series');
     } finally {
@@ -87,7 +112,7 @@ export default function TestSeriesDetailPage() {
     }
   };
 
-    const faqItems = useMemo(
+  const faqItems = useMemo(
     () => [
       {
         question: 'How often should I attempt a Bharat Mock test series exam?',
@@ -373,12 +398,20 @@ export default function TestSeriesDetailPage() {
 
   const { grouped, uncategorized } = groupedData;
 
+  const getSectionsForTab = (tabId: string) => {
+    if (!pageContent?.sections) return [];
+    if (tabId === 'overview') {
+      return pageContent.sections.filter((s: any) => !s.custom_tab_id && !s.category_custom_tab_id && !s.testSeries_custom_tab_id);
+    }
+    return pageContent.sections.filter((s: any) => s.custom_tab_id === tabId || s.category_custom_tab_id === tabId || s.testSeries_custom_tab_id === tabId);
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f7fb]">
       {/* Hero Section */}
       <div className="bg-[#eef4ff] border-b border-blue-100">
         <div className="container-main py-6">
-          <Breadcrumbs 
+          <Breadcrumbs
             items={[
               HomeBreadcrumb(),
               { label: 'Test Series', href: '/mock-test-series' },
@@ -451,10 +484,10 @@ export default function TestSeriesDetailPage() {
                       <span>
                         {testSeries.updated_at
                           ? `Last updated ${new Date(testSeries.updated_at).toLocaleDateString(undefined, {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })}`
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}`
                           : 'Updated recently'}
                       </span>
                     </div>
@@ -467,118 +500,192 @@ export default function TestSeriesDetailPage() {
         </div>
       </div>
 
+      {/* Global Tab Bar */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div className="container-main">
+          <div className="flex items-center py-4 gap-2">
+            <button
+              onClick={() => tabScrollRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
+              className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-blue-600 hover:border-blue-400 shadow-sm"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div ref={tabScrollRef} className="flex-1 overflow-x-auto hide-scrollbar">
+              <div className="flex items-center space-x-6">
+                <button
+                  onClick={() => setGlobalTab('overview')}
+                  className={`whitespace-nowrap text-sm font-medium transition-colors ${globalTab === 'overview'
+                    ? "text-blue-600 border-b-2 border-blue-600 pb-1"
+                    : "text-slate-700 hover:text-blue-600"
+                    }`}
+                >
+                  Overview
+                </button>
+                {customTabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setGlobalTab(tab.id)}
+                    className={`whitespace-nowrap text-sm font-medium transition-colors ${globalTab === tab.id
+                      ? "text-blue-600 border-b-2 border-blue-600 pb-1"
+                      : "text-slate-700 hover:text-blue-600"
+                      }`}
+                  >
+                    {tab.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+              className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-blue-600 hover:border-blue-400 shadow-sm"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Test Series Content */}
       <div className="container-main py-6 overflow-hidden">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] items-start">
           <div className="space-y-5 min-w-0 w-full overflow-hidden">
-            <div className="flex flex-col lg:flex-row gap-4 items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3 min-w-0 overflow-hidden">
-              <div className="flex items-center gap-3 text-sm text-slate-500">
-                <Search className="h-4 w-4 text-slate-400" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search Tests"
-                  className="border-0 focus-visible:ring-0 text-base"
-                />
-              </div>
-              <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
-                <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-600">
-                  <Layers className="h-3.5 w-3.5" /> {sectionFilters.length} Sections
-                </span>
-                <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">
-                  <BookOpen className="h-3.5 w-3.5" /> {normalizedEntries.length} Tests
-                </span>
-                <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-600">
-                  <Globe className="h-3.5 w-3.5" /> {availableLanguages.join(', ')}
-                </span>
-              </div>
-            </div>
+            {globalTab === 'overview' ? (
+              <>
 
-            {/* Section/Topic Tabs & Listings */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5 min-w-0 overflow-hidden">
-              {/* Sections — inline arrows on desktop */}
-              <div className="border-b border-slate-200 pb-0">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => scroll(sectionsScrollRef, 'left')}
-                    className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
-                    aria-label="Scroll sections left"
-                  >
-                    <ChevronLeft className="h-4 w-4 text-slate-600" />
-                  </button>
-                  <div
-                    ref={sectionsScrollRef}
-                    className="flex items-center gap-4 overflow-x-auto pb-3 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth -mx-5 px-5"
-                  >
-                    {sectionFilters.map(section => (
-                      <button
-                        key={section.id}
-                        onClick={() => setActiveTab(section.id)}
-                        className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
-                          activeTab === section.id ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        {section.name} ({section.count})
-                        {activeTab === section.id && (
-                          <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
-                        )}
-                      </button>
-                    ))}
+                <div className="flex flex-col lg:flex-row gap-4 items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3 min-w-0 overflow-hidden">
+                  <div className="flex items-center gap-3 text-sm text-slate-500">
+                    <Search className="h-4 w-4 text-slate-400" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search Tests"
+                      className="border-0 focus-visible:ring-0 text-base"
+                    />
                   </div>
-                  <button
-                    onClick={() => scroll(sectionsScrollRef, 'right')}
-                    className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
-                    aria-label="Scroll sections right"
-                  >
-                    <ChevronRight className="h-4 w-4 text-slate-600" />
-                  </button>
+                  <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
+                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-600">
+                      <Layers className="h-3.5 w-3.5" /> {sectionFilters.length} Sections
+                    </span>
+                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">
+                      <BookOpen className="h-3.5 w-3.5" /> {normalizedEntries.length} Tests
+                    </span>
+                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-600">
+                      <Globe className="h-3.5 w-3.5" /> {availableLanguages.join(', ')}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {currentSection ? (
-                <>
-                  {/* Topics — inline arrows on desktop */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => scroll(topicsScrollRef, 'left')}
-                      className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
-                      aria-label="Scroll topics left"
-                    >
-                      <ChevronLeft className="h-4 w-4 text-slate-600" />
-                    </button>
-                    <div
-                      ref={topicsScrollRef}
-                      className="flex items-center gap-3 overflow-x-auto pb-1 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth -mx-5 px-5"
-                    >
-                      {(sectionTopicFilters.get(currentSection.id) || []).map(topic => (
-                        <button
-                          key={topic.id}
-                          onClick={() =>
-                            setSelectedTopicId(prev => (prev === topic.id ? null : topic.id))
-                          }
-                          className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                            selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {topic.name} ({topic.count})
-                        </button>
-                      ))}
-                      {sectionTopicFilters.get(currentSection.id)?.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No topics available for this section.</p>
-                      )}
+                {/* Section/Topic Tabs & Listings */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5 min-w-0 overflow-hidden">
+                  {/* Sections — inline arrows on desktop */}
+                  <div className="border-b border-slate-200 pb-0">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => scroll(sectionsScrollRef, 'left')}
+                        className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
+                        aria-label="Scroll sections left"
+                      >
+                        <ChevronLeft className="h-4 w-4 text-slate-600" />
+                      </button>
+                      <div
+                        ref={sectionsScrollRef}
+                        className="flex items-center gap-4 overflow-x-auto pb-3 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth -mx-5 px-5"
+                      >
+                        {sectionFilters.map(section => (
+                          <button
+                            key={section.id}
+                            onClick={() => setActiveTab(section.id)}
+                            className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === section.id ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+                              }`}
+                          >
+                            {section.name} ({section.count})
+                            {activeTab === section.id && (
+                              <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => scroll(sectionsScrollRef, 'right')}
+                        className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
+                        aria-label="Scroll sections right"
+                      >
+                        <ChevronRight className="h-4 w-4 text-slate-600" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => scroll(topicsScrollRef, 'right')}
-                      className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
-                      aria-label="Scroll topics right"
-                    >
-                      <ChevronRight className="h-4 w-4 text-slate-600" />
-                    </button>
                   </div>
 
-                  {searchedSectionEntries.length > 0 ? (
+                  {currentSection ? (
+                    <>
+                      {/* Topics — inline arrows on desktop */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => scroll(topicsScrollRef, 'left')}
+                          className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                          aria-label="Scroll topics left"
+                        >
+                          <ChevronLeft className="h-4 w-4 text-slate-600" />
+                        </button>
+                        <div
+                          ref={topicsScrollRef}
+                          className="flex items-center gap-3 overflow-x-auto pb-1 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth -mx-5 px-5"
+                        >
+                          {(sectionTopicFilters.get(currentSection.id) || []).map(topic => (
+                            <button
+                              key={topic.id}
+                              onClick={() =>
+                                setSelectedTopicId(prev => (prev === topic.id ? null : topic.id))
+                              }
+                              className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${selectedTopicId === topic.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }`}
+                            >
+                              {topic.name} ({topic.count})
+                            </button>
+                          ))}
+                          {sectionTopicFilters.get(currentSection.id)?.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No topics available for this section.</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => scroll(topicsScrollRef, 'right')}
+                          className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                          aria-label="Scroll topics right"
+                        >
+                          <ChevronRight className="h-4 w-4 text-slate-600" />
+                        </button>
+                      </div>
+
+                      {searchedSectionEntries.length > 0 ? (
+                        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                          {searchedSectionEntries.map(entry => (
+                            <StandardExamCard
+                              key={entry.raw.id}
+                              exam={{
+                                ...entry.card,
+                                category_logo_url: entry.card.exam_categories?.logo_url,
+                                category_icon: entry.card.exam_categories?.icon,
+                              }}
+                              ctaLabel="Attempt Now"
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 rounded-xl border border-slate-200 p-10 text-center">
+                          <p className="text-muted-foreground">No tests match your filters yet.</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No sections available.</p>
+                  )}
+                </div>
+
+                {/* Uncategorized Exams */}
+                {currentSection && activeTab && uncategorized.length > 0 && (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-slate-900">Other Tests</h2>
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                      {searchedSectionEntries.map(entry => (
+                      {uncategorized.map((entry) => (
                         <StandardExamCard
                           key={entry.raw.id}
                           exam={{
@@ -590,42 +697,51 @@ export default function TestSeriesDetailPage() {
                         />
                       ))}
                     </div>
-                  ) : (
-                    <div className="bg-slate-50 rounded-xl border border-slate-200 p-10 text-center">
-                      <p className="text-muted-foreground">No tests match your filters yet.</p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">No sections available.</p>
-              )}
-            </div>
+                  </div>
+                )}
 
-            {/* Uncategorized Exams */}
-            {currentSection && activeTab && uncategorized.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-slate-900">Other Tests</h2>
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {uncategorized.map((entry) => (
-                    <StandardExamCard
-                      key={entry.raw.id}
-                      exam={{
-                        ...entry.card,
-                        category_logo_url: entry.card.exam_categories?.logo_url,
-                        category_icon: entry.card.exam_categories?.icon,
-                      }}
-                      ctaLabel="Attempt Now"
-                    />
-                  ))}
-                </div>
+                {!currentSection && normalizedEntries.length === 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                    <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-foreground mb-2">No tests available yet</h3>
+                    <p className="text-muted-foreground">Tests will be added soon to this series</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-8">
+                {getSectionsForTab(globalTab).length > 0 ? (
+                  getSectionsForTab(globalTab).map((section: any) => (
+                    <div key={section.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                      <h2 className="text-2xl font-bold text-slate-900 mb-6">{section.title}</h2>
+                      <div className="space-y-5">
+                        {section.blocks?.map((block: any) => (
+                          <PageBlockRenderer key={block.id} block={block} />
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                    <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground text-center">No content available for this tab.</p>
+                  </div>
+                )}
               </div>
             )}
 
-            {!currentSection && normalizedEntries.length === 0 && (
-              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-                <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-foreground mb-2">No tests available yet</h3>
-                <p className="text-muted-foreground">Tests will be added soon to this series</p>
+            {globalTab === 'overview' && getSectionsForTab('overview').length > 0 && (
+              <div className="space-y-8 mt-8">
+                {getSectionsForTab('overview').map((section: any) => (
+                  <section key={section.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-6">{section.title}</h2>
+                    <div className="space-y-5">
+                      {section.blocks?.map((block: any) => (
+                        <PageBlockRenderer key={block.id} block={block} />
+                      ))}
+                    </div>
+                  </section>
+                ))}
               </div>
             )}
           </div>
@@ -651,15 +767,15 @@ export default function TestSeriesDetailPage() {
                     <Link
                       key={series.id}
                       href={`/test-series/${series.slug}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-blue-200 hover:bg-blue-50/40 transition"
+                      className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:shadow-md hover:bg-blue-50/40 transition-all duration-200"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900 line-clamp-1">{series.title}</p>
-                        <p className="text-xs text-slate-500">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{series.title}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {series.total_tests || 0} tests · {series.category?.name || 'General'}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-blue-500" />
+                      <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                     </Link>
                   ))
                 ) : (
@@ -686,8 +802,8 @@ export default function TestSeriesDetailPage() {
                         loading="lazy"
                       />
                     </div>
-                    
-                      
+
+
                   </div>
                 </Link>
               ) : (
@@ -706,53 +822,7 @@ export default function TestSeriesDetailPage() {
             )}
           </aside>
         </div>
-        <section className="mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
-          <h2 className="text-2xl font-bold text-slate-900">Mastering Test Series Preparation: Detailed Guide</h2>
-          <p className="text-slate-600 leading-relaxed">
-            Building momentum with a structured test series is one of the surest ways to move from passive reading to confident performance. When aspirants attempt carefully curated mock exams, they replicate every nuance of the eventual challenge—timing pressure, question diversity, evolving difficulty, and post-exam analysis. The Bharat Mock approach to test series emphasises this end-to-end simulation mindset. Aspirants are encouraged to treat each scheduled test like a rehearsal of the main stage: wake up at the same time, sit in a distraction-free environment, and log every micro-learning immediately after submission. Over weeks, this rhythm transforms assessment anxiety into a familiar companion. It is also the fastest way to expose topic blind spots. Every test highlights a new pattern, whether it is misreading multi-step reasoning problems or hesitating on direct recall questions that demand instant retrieval. Recognising these micro-patterns early prevents knowledge leakage during the final sprint.
-          </p>
-          <p className="text-slate-600 leading-relaxed">
-            Serious aspirants also know that a test series is more than the sum of its question papers. The surrounding ecosystem matters just as much. Quality editorial summaries, exam-wise notes, and community-driven doubt-clearing channels add extra value with minimal effort. Bharat Mock test series weave these elements into each release so learners can double-click into complex solutions, mark them for revision, or bookmark them as collaborative flashcards. The goal is to avoid the trap of passive review. Instead of simply reading answer keys, aspirants should rewrite mistaken solutions in their own words, attach a voice note explaining the concept, or design a short quiz for peers. These activities convert a one-time failure into a portfolio of custom assets. Over 1000+ aspirants reported that this strategy alone improved retention by more than 40%, especially when paired with spaced repetition alerts from the dashboard.
-          </p>
-          <p className="text-slate-600 leading-relaxed">
-            Time management remains the decisive differentiator in competitive exams, so every test series attempt should be monitored with meticulous precision. Before attempting a mock, aspirants should outline mini-goals for each section: number of questions to attempt in the first 15 minutes, buffer time for review, and must-attempt topics. During analysis, they should compare the intended allocation with the actual timeline captured in the submission report. If an aspirant spent ten minutes on a puzzle that typically requires four, the dashboard will surface that anomaly. Bharat Mock analytics not only highlight these deviations but also suggest alternative approaches: skipping heuristics, elimination-first strategies, or partial marking techniques. By reflecting on this timeline after every test, aspirants can calibrate their instincts. Within three weeks, most learners find they can predict completion times with near-perfect accuracy, which reduces panic on the final day.
-          </p>
-          <p className="text-slate-600 leading-relaxed">
-            Strategic syllabus coverage is another pillar of successful test series participation. It is tempting to only focus on familiar subjects, but real progress comes from allocating extra attempts to weak zones. Bharat Mock recommends the 3-2-1 rotation rule: three practice sessions for high-scoring strengths, two for average topics, and one for the weakest area. When this cadence is mirrored inside the test series schedule, aspirants experience a balanced diet of questions. Each test automatically tags sections with colour-coded heat maps so learners can visualise improvement. For example, a candidate preparing for banking exams might see data interpretation turning green over time while descriptive English remains amber. Instead of feeling overwhelmed, they can pause the default schedule, deep-dive into remedial modules, and rejoin the flow once confidence rebounds. This adaptive loop keeps motivation high without compromising overall consistency.
-          </p>
-          <p className="text-slate-600 leading-relaxed">
-            Collaboration plays an underrated role in sustaining long-term preparation. When aspirants discuss mock test experiences with peers, they gain fresh perspectives on question framing, test-taking psychology, and evolving trends. The Bharat Mock community portal encourages sharing personalised debriefs after every exam: what strategy worked, which surprise topic appeared, and how nerves were handled. Over time, these micro-stories form a living knowledge base. Newcomers can read archived debriefs to understand the emotional arc of the journey, while veterans can mentor juniors with targeted advice. This sense of accountability ensures that aspirants do not disappear after one bad test—they re-enter the arena with community backing.
-          </p>
-          <p className="text-slate-600 leading-relaxed">
-            Expert faculty insights further enrich the test series ecosystem. After every major release, Bharat Mock mentors host breakdown sessions where they dissect tricky questions, highlight most probable areas for upcoming exams, and share note-making hacks. Learners are encouraged to revisit these sessions while analysing their own scripts. By cross-referencing faculty reasoning with personal attempts, aspirants develop nuance and recognise subtle cues—like when to skip a question despite knowing the concept, or how to decode pattern shifts in newly introduced sections. These insights accumulate into a mental toolkit that proves priceless during actual exams, especially when patterns deviate from previous years.
-          </p>
-          <p className="text-slate-600 leading-relaxed">
-            It is equally important to build resilience through healthy routines. Test series fatigue is real; constant evaluation can feel draining if not balanced with reflection and rest. Bharat Mock recommends scheduling deliberate downtime after every two mocks. During this window, aspirants should revisit wins, celebrate subtle improvements, and engage in light revision activities like flashcards or short-form quizzes. This prevents burnout and ensures that motivation remains sustainable over the multi-month preparation arc. Data from thousands of aspirants shows that those who followed structured rest cycles maintained higher accuracy rates compared to peers who attempted back-to-back mocks without breathing space.
-          </p>
-          <p className="text-slate-600 leading-relaxed">
-            Finally, aspirants should treat the test series dashboard as a living roadmap. Every insight—accuracy graphs, percentile rankings, or topic mastery indicators—offers a clue about what to prioritise next. Instead of chasing a perfect score in isolation, learners should aim for progressive milestones: consistent 80% accuracy, sub-5 minute review windows, or error-free attempts in critical sections. Bharat Mock surfaces these micro-goals within the UI, nudging users to focus on actionable improvements. Over time, these small wins converge into exam-day readiness. When aspirants eventually sit for the actual test, they carry thousands of simulated decisions, refined strategies, and community-backed confidence. That is the power of a well-designed test series: it converts uncertainty into measurable growth and turns preparation into a decisive competitive edge.
-          </p>
-        </section>
 
-        <section className="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-          <div className="mb-4">
-            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">FAQs</p>
-            <h2 className="text-2xl font-bold text-slate-900">Test Series Frequently Asked Questions</h2>
-            <p className="text-slate-600">Detailed answers to the most common queries about Bharat Mock test series.</p>
-          </div>
-          <Accordion type="single" collapsible className="divide-y divide-slate-200">
-            {faqItems.map((item, idx) => (
-              <AccordionItem key={item.question} value={`faq-${idx}`}>
-                <AccordionTrigger className="text-left text-base font-semibold text-slate-800">
-                  <h3 className="inline text-base font-semibold text-slate-800 text-left">{item.question}</h3>
-                </AccordionTrigger>
-                <AccordionContent className="text-sm text-slate-700 leading-relaxed">
-                  {item.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </section>
       </div>
     </div>
   );

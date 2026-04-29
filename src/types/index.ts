@@ -357,6 +357,7 @@ export interface Question {
   negativeMarks?: number;
   explanation?: string;
   explanation_hi?: string;
+  explanation_image_url?: string;
   image_url?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
   question_order?: number;

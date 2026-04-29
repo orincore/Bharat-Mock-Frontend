@@ -57,6 +57,7 @@ interface Block {
 interface CategoryInfo {
   id: string;
   name: string;
+  title?: string;
   slug: string;
   description?: string;
   logo_url?: string | null;
@@ -78,11 +79,11 @@ interface SEOData {
   updated_at?: string;
 }
 
-export default function AdminCategoryEditorPage() {
+export default function AdminTestSeriesEditorPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const categoryId = params?.categoryId ?? '';
+  const testSeriesId = params?.testSeriesId ?? '';
   const envApi = process.env.NEXT_PUBLIC_API_URL
     ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
     : '';
@@ -98,7 +99,7 @@ export default function AdminCategoryEditorPage() {
     }
   };
 
-  const [categoryInfo, setCategoryInfo] = useState<CategoryInfo | null>(null);
+  const [testSeriesInfo, setTestSeriesInfo] = useState<CategoryInfo | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const latestSectionsRef = useRef<Section[]>([]);
   latestSectionsRef.current = sections;
@@ -118,7 +119,7 @@ export default function AdminCategoryEditorPage() {
   const loadCustomTabs = async () => {
     try {
       const token = getAuthToken();
-      const endpoint = buildApiUrl(`/category-page-content/${categoryId}/custom-tabs`);
+      const endpoint = buildApiUrl(`/test-series-page-content/${testSeriesId}/custom-tabs`);
       const res = await fetch(endpoint, {
         cache: 'no-store',
         headers: token ? { 
@@ -145,7 +146,7 @@ export default function AdminCategoryEditorPage() {
     if (!title || !title.trim()) return;
     try {
       const token = getAuthToken();
-      await fetch(buildApiUrl(`/category-page-content/${categoryId}/custom-tabs`), {
+      await fetch(buildApiUrl(`/test-series-page-content/${testSeriesId}/custom-tabs`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +166,7 @@ export default function AdminCategoryEditorPage() {
     if (!title || !title.trim() || title.trim() === tab.title) return;
     try {
       const token = getAuthToken();
-      await fetch(buildApiUrl(`/category-page-content/${categoryId}/custom-tabs/${tab.id}`), {
+      await fetch(buildApiUrl(`/test-series-page-content/${testSeriesId}/custom-tabs/${tab.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -185,7 +186,7 @@ export default function AdminCategoryEditorPage() {
     if (!confirmDelete) return;
     try {
       const token = getAuthToken();
-      await fetch(buildApiUrl(`/category-page-content/${categoryId}/custom-tabs/${tab.id}`), {
+      await fetch(buildApiUrl(`/test-series-page-content/${testSeriesId}/custom-tabs/${tab.id}`), {
         method: 'DELETE',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -213,7 +214,7 @@ export default function AdminCategoryEditorPage() {
     setCustomTabs(reordered);
     try {
       const token = getAuthToken();
-      await fetch(buildApiUrl(`/category-page-content/${categoryId}/custom-tabs/reorder`), {
+      await fetch(buildApiUrl(`/test-series-page-content/${testSeriesId}/custom-tabs/reorder`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -227,12 +228,12 @@ export default function AdminCategoryEditorPage() {
   };
 
   useEffect(() => {
-    if (!categoryId) return;
+    if (!testSeriesId) return;
     const bootstrap = async () => {
       setLoading(true);
       try {
         await Promise.all([
-          loadCategoryInfo(),
+          loadTestSeriesInfo(),
           loadPageContent(),
           loadCustomTabs()
         ]);
@@ -241,7 +242,7 @@ export default function AdminCategoryEditorPage() {
       }
     };
     void bootstrap();
-  }, [categoryId]);
+  }, [testSeriesId]);
 
   const updateSectionsForActiveTab = useCallback((updatedSubset: Section[]) => {
     setSections((prev) => {
@@ -296,9 +297,9 @@ export default function AdminCategoryEditorPage() {
       const token = getAuthToken();
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('folder', `page-content/category/${categoryId}/${context.blockType === 'image' ? 'images' : 'videos'}/${activeTabId}`);
+      formData.append('folder', `page-content/category/${testSeriesId}/${context.blockType === 'image' ? 'images' : 'videos'}/${activeTabId}`);
 
-      const res = await fetch(buildApiUrl(`/category-page-content/${categoryId}/media`), {
+      const res = await fetch(buildApiUrl(`/test-series-page-content/${testSeriesId}/media`), {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
@@ -318,11 +319,11 @@ export default function AdminCategoryEditorPage() {
     onUploadSuccess: (message?: string) => {
       toast({ title: message || 'Upload complete', description: 'File is ready to use inside the block editor.' });
     }
-  }), [categoryId, activeTabId, toast]);
+  }), [testSeriesId, activeTabId, toast]);
 
-  const loadCategoryInfo = async () => {
+  const loadTestSeriesInfo = async () => {
     try {
-      const endpoint = buildApiUrl(`/taxonomy/category-id/${categoryId}`);
+      const endpoint = buildApiUrl(`/test-series/${testSeriesId}`);
       debugLog('Fetching category info', endpoint);
       const response = await fetch(endpoint, {
         cache: 'no-store',
@@ -338,7 +339,7 @@ export default function AdminCategoryEditorPage() {
 
       const raw = await response.json();
       const payload = raw?.data ?? raw;
-      setCategoryInfo(payload);
+      setTestSeriesInfo(payload);
       return payload;
     } catch (error) {
       console.error('Error loading category info:', error);
@@ -350,8 +351,8 @@ export default function AdminCategoryEditorPage() {
   const loadPageContent = async () => {
     try {
       const token = getAuthToken();
-      const separator = (categoryId || '').includes('?') ? '&' : '?';
-      const endpoint = buildApiUrl(`/category-page-content/${categoryId}${separator}_t=${Date.now()}`);
+      const separator = (testSeriesId || '').includes('?') ? '&' : '?';
+      const endpoint = buildApiUrl(`/test-series-page-content/${testSeriesId}${separator}_t=${Date.now()}`);
       debugLog('Fetching page content', endpoint);
       const response = await fetch(endpoint, {
         cache: 'no-store',
@@ -406,7 +407,7 @@ export default function AdminCategoryEditorPage() {
         }))
       };
 
-      const endpoint = buildApiUrl(`/category-page-content/${categoryId}/bulk-sync`);
+      const endpoint = buildApiUrl(`/test-series-page-content/${testSeriesId}/bulk-sync`);
       debugLog('Bulk syncing page content', { endpoint, payloadSize: bulkPayload.sections.length });
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -424,7 +425,7 @@ export default function AdminCategoryEditorPage() {
       const saveResult = await response.json();
 
       // Create revision asynchronously (don't wait for it)
-      const revisionEndpoint = buildApiUrl(`/category-page-content/${categoryId}/revisions`);
+      const revisionEndpoint = buildApiUrl(`/test-series-page-content/${testSeriesId}/revisions`);
       fetch(revisionEndpoint, {
         method: 'POST',
         headers: {
@@ -469,10 +470,10 @@ export default function AdminCategoryEditorPage() {
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('folder', `seo/${categoryId}`);
+      formData.append('folder', `seo/${testSeriesId}`);
 
       const uploadResponse = await fetch(
-        buildApiUrl(`/category-page-content/${categoryId}/media`),
+        buildApiUrl(`/test-series-page-content/${testSeriesId}/media`),
         {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
@@ -507,7 +508,7 @@ export default function AdminCategoryEditorPage() {
       }
 
       const response = await fetch(
-        buildApiUrl(`/category-page-content/${categoryId}/seo`),
+        buildApiUrl(`/test-series-page-content/${testSeriesId}/seo`),
         {
           method: 'PUT',
           headers: {
@@ -537,7 +538,7 @@ export default function AdminCategoryEditorPage() {
         }
       });
       const response = await fetch(
-        buildApiUrl(`/category-page-content/${categoryId}/seo`),
+        buildApiUrl(`/test-series-page-content/${testSeriesId}/seo`),
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
@@ -572,7 +573,7 @@ export default function AdminCategoryEditorPage() {
         if (val && val.trim()) cleanHeadings[tab] = val.trim();
       });
       const response = await fetch(
-        buildApiUrl(`/category-page-content/${categoryId}/seo`),
+        buildApiUrl(`/test-series-page-content/${testSeriesId}/seo`),
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
@@ -600,19 +601,19 @@ export default function AdminCategoryEditorPage() {
   };
 
   const handlePreview = () => {
-    if (categoryInfo?.slug) {
-      window.open(`/${categoryInfo.slug}`, '_blank');
+    if (testSeriesInfo?.slug) {
+      window.open(`/${testSeriesInfo.slug}`, '_blank');
       return;
     }
     toast({ title: 'Preview Unavailable', description: 'Cannot generate preview URL', variant: 'destructive' });
   };
 
   const handleRefresh = () => {
-    if (!categoryId) return;
+    if (!testSeriesId) return;
     const refresh = async () => {
       setLoading(true);
       try {
-        await Promise.all([loadCategoryInfo(), loadPageContent(), loadCustomTabs()]);
+        await Promise.all([loadTestSeriesInfo(), loadPageContent(), loadCustomTabs()]);
       } finally {
         setLoading(false);
       }
@@ -641,7 +642,7 @@ export default function AdminCategoryEditorPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push(`/admin/categories/${categoryId}`)}
+                onClick={() => router.push(`/admin/pages/test-series-sidebar`)}
                 className="flex items-center"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -650,10 +651,10 @@ export default function AdminCategoryEditorPage() {
               <div className="border-l border-gray-300 h-6" />
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  {categoryInfo?.name || 'Category Page Editor'}
+                  {testSeriesInfo?.title || testSeriesInfo?.name || 'Test Series Editor'}
                 </h1>
                 <p className="text-sm text-gray-600">
-                  /{categoryInfo?.slug || 'category'}
+                  /test-series/{testSeriesInfo?.slug || ''}
                 </p>
               </div>
             </div>
@@ -818,7 +819,7 @@ export default function AdminCategoryEditorPage() {
                     type="text"
                     value={tabHeadings[tab.id] || ''}
                     onChange={e => setTabHeadings(prev => ({ ...prev, [tab.id]: e.target.value }))}
-                    placeholder={`e.g. ${tab.title} for ${categoryInfo?.name || 'Category'}`}
+                    placeholder={`e.g. ${tab.title} for ${testSeriesInfo?.name || 'Category'}`}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
@@ -893,8 +894,8 @@ export default function AdminCategoryEditorPage() {
                 <p className="text-xs uppercase font-semibold text-gray-500 mb-3">Search Preview</p>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex flex-col md:flex-row gap-4">
                   <div className="flex-1">
-                    <p className="text-xs text-gray-500">google.com › {categoryInfo?.slug || 'category'}</p>
-                    <p className="text-lg text-blue-700 font-semibold leading-tight">{seoData.meta_title || categoryInfo?.name || 'Meta title preview'}</p>
+                    <p className="text-xs text-gray-500">google.com › {testSeriesInfo?.slug || 'category'}</p>
+                    <p className="text-lg text-blue-700 font-semibold leading-tight">{seoData.meta_title || testSeriesInfo?.name || 'Meta title preview'}</p>
                     <p className="text-sm text-gray-600 mt-1">
                       {seoData.meta_description || 'Meta description preview will appear here once you add it.'}
                     </p>

@@ -237,15 +237,20 @@ export const adminService = {
         id: string;
         type: string;
         text: string;
+        text_hi?: string;
         marks: number;
         negative_marks: number;
         explanation?: string;
+        explanation_hi?: string;
+        explanation_image_url?: string | null;
         difficulty: string;
         image_url?: string;
         question_order?: number;
+        question_number?: number;
         options: Array<{
           id: string;
           option_text: string;
+          option_text_hi?: string;
           is_correct: boolean;
           option_order: number;
           image_url?: string;
@@ -445,6 +450,14 @@ export const adminService = {
     formData.append('image', image);
 
     const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/options/${optionId}/upload-image`, formData, true);
+    return response.data;
+  },
+
+  async uploadExplanationImage(image: File) {
+    const formData = new FormData();
+    formData.append('image', image);
+
+    const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/upload/explanation-image`, formData, true);
     return response.data;
   },
 

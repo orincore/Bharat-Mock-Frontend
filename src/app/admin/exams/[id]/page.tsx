@@ -38,6 +38,7 @@ interface Question {
   negative_marks: number;
   explanation?: string;
   explanation_hi?: string;
+  explanation_image_url?: string | null;
   difficulty: 'easy' | 'medium' | 'hard';
   image_url?: string | null;
   image?: File | null;
@@ -151,6 +152,8 @@ export default function ExamFormPage() {
   });
 
   const [sections, setSections] = useState<Section[]>([]);
+  const [questionPages, setQuestionPages] = useState<Record<string, number>>({});
+  const QUESTIONS_PER_PAGE = 10;
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const numericFieldNames = useMemo(
     () => new Set([
@@ -552,6 +555,7 @@ export default function ExamFormPage() {
         negative_marks: question.negative_marks,
         explanation: question.explanation || null,
         explanation_hi: question.explanation_hi || null,
+        explanation_image_url: question.explanation_image_url || null,
         difficulty: question.difficulty,
         image_url: question.image_url || null,
         question_order: question.question_order ?? questionIdx + 1,
@@ -749,6 +753,7 @@ export default function ExamFormPage() {
               negative_marks: q.negative_marks,
               explanation: q.explanation || '',
               explanation_hi: q.explanation_hi || '',
+              explanation_image_url: q.explanation_image_url || null,
               difficulty: q.difficulty as 'easy' | 'medium' | 'hard',
               image_url: q.image_url || null,
               imagePreview: q.image_url || undefined,
@@ -1307,7 +1312,8 @@ export default function ExamFormPage() {
     markUnsavedChanges();
     const updatedSection = updatedSections.find(s => s.id === sectionId);
     if (updatedSection) {
-      // Section updated
+      const lastPage = Math.max(1, Math.ceil(updatedSection.questions.length / QUESTIONS_PER_PAGE));
+      setQuestionPages(prev => ({ ...prev, [sectionId]: lastPage }));
     }
   };
 
@@ -1795,6 +1801,56 @@ export default function ExamFormPage() {
       setToastType('error');
       setShowToast(true);
     }
+  };
+
+  const handleExplanationImageUpload = async (sectionId: string, questionId: string, file: File) => {
+    try {
+      setToastMessage('Uploading explanation image...');
+      setToastType('loading');
+      setShowToast(true);
+
+      const result = await adminService.uploadExplanationImage(file);
+      const imageUrl = result?.image_url;
+      if (!imageUrl) {
+        throw new Error('No image URL returned from server');
+      }
+
+      setSections(prev => prev.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          questions: section.questions.map(q =>
+            q.id === questionId
+              ? { ...q, explanation_image_url: imageUrl }
+              : q
+          )
+        };
+      }));
+
+      setToastMessage('Explanation image uploaded successfully');
+      setToastType('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error('Explanation image upload error:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to upload explanation image';
+      setToastMessage(errorMessage);
+      setToastType('error');
+      setShowToast(true);
+    }
+  };
+
+  const clearExplanationImage = (sectionId: string, questionId: string) => {
+    setSections(prev => prev.map(section => {
+      if (section.id !== sectionId) return section;
+      return {
+        ...section,
+        questions: section.questions.map(q =>
+          q.id === questionId
+            ? { ...q, explanation_image_url: null }
+            : q
+        )
+      };
+    }));
   };
 
   const handlePdfEnChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3785,9 +3841,35 @@ export default function ExamFormPage() {
 
                         {section.questions.length === 0 ? (
                           <p className="text-sm text-muted-foreground text-center py-4">No questions added</p>
-                        ) : (
+                        ) : (() => {
+                          const totalPages = Math.max(1, Math.ceil(section.questions.length / QUESTIONS_PER_PAGE));
+                          const currentPage = Math.min(Math.max(1, questionPages[section.id] ?? 1), totalPages);
+                          const startIdx = (currentPage - 1) * QUESTIONS_PER_PAGE;
+                          const visibleQuestions = section.questions.slice(startIdx, startIdx + QUESTIONS_PER_PAGE);
+                          const setPage = (page: number) => setQuestionPages(prev => ({ ...prev, [section.id]: page }));
+                          const PaginationBar = () => (
+                            totalPages > 1 ? (
+                              <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/30 rounded-lg p-3">
+                                <span className="text-sm text-muted-foreground">
+                                  Showing {startIdx + 1}-{Math.min(startIdx + QUESTIONS_PER_PAGE, section.questions.length)} of {section.questions.length} questions
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <Button type="button" variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+                                    Previous
+                                  </Button>
+                                  <span className="text-sm font-medium px-2">Page {currentPage} of {totalPages}</span>
+                                  <Button type="button" variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>
+                                    Next
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null
+                          );
+                          return (
                           <div className="space-y-6">
-                            {section.questions.map((question, qIndex) => {
+                            <PaginationBar />
+                            {visibleQuestions.map((question, vIndex) => {
+                              const qIndex = startIdx + vIndex;
                               const questionNeedsImage = Boolean(question.requires_image && !question.image && !question.imagePreview);
                               const questionKey = `question-${section.id}-${question.id}`;
                               const hasErrors = validationErrors[questionKey] && validationErrors[questionKey].length > 0;
@@ -4119,11 +4201,39 @@ export default function ExamFormPage() {
                                       rows={3}
                                       variant="compact"
                                     />
+                                    {question.explanation_image_url ? (
+                                      <div className="mt-2 flex items-center gap-4">
+                                        <img src={question.explanation_image_url} alt="Explanation" className="h-20 object-contain rounded border" />
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => clearExplanationImage(section.id, question.id)}
+                                        >
+                                          Remove
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <label className="mt-2 cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted">
+                                        <ImageIcon className="h-4 w-4" />
+                                        <span className="text-sm">Upload Explanation Image</span>
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleExplanationImageUpload(section.id, question.id, file);
+                                          }}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                    )}
                                   </div>
                                 </div>
                               </div>
                               );
                             })}
+                            <PaginationBar />
                             <div className="mt-4 flex justify-center">
                               <Button
                                 type="button"
@@ -4136,7 +4246,8 @@ export default function ExamFormPage() {
                               </Button>
                             </div>
                           </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
