@@ -225,11 +225,6 @@ export default function ExamAttemptPage() {
   }, [isFastLoad, examId, attemptId]);
 
   const [showFSRecovery, setShowFSRecovery] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
-
-  useEffect(() => {
-    setShowExplanation(false);
-  }, [currentSectionIndex, currentQuestionIndex]);
 
   // Inject a stable, persistent body-top fix for Google Translate.
   // This MUST live outside the React JSX tree (via DOM injection) so it
@@ -1754,50 +1749,6 @@ export default function ExamAttemptPage() {
                       </button>
                     </div>
 
-                    {/* Explanation Toggle */}
-                    {((requestedLanguage === 'hi' ? currentQuestion.explanation_hi : currentQuestion.explanation) || currentQuestion.explanation_image_url) && (
-                      <div className="mt-6 border border-slate-200 rounded-lg overflow-hidden bg-white">
-                        <button
-                          onClick={() => setShowExplanation(!showExplanation)}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-slate-700 font-medium text-sm"
-                        >
-                          <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            View Explanation
-                          </div>
-                          <svg 
-                            className={`w-5 h-5 transition-transform duration-200 ${showExplanation ? 'rotate-180' : ''}`} 
-                            fill="none" 
-                            viewBox="0 0 24 24" 
-                            stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                        
-                        {showExplanation && (
-                          <div className="p-4 border-t border-slate-200 bg-indigo-50/30">
-                            {(requestedLanguage === 'hi' ? currentQuestion.explanation_hi : currentQuestion.explanation) && (
-                              <MathRenderer
-                                html={requestedLanguage === 'hi' ? (currentQuestion.explanation_hi || '') : (currentQuestion.explanation || '')}
-                                className={`rich-text-content text-sm text-slate-700 leading-relaxed ${currentSection?.name?.toLowerCase().includes('english') ? 'notranslate' : ''}`}
-                              />
-                            )}
-                            {currentQuestion.explanation_image_url && (
-                              <div className="mt-4 flex justify-start">
-                                <img 
-                                  src={currentQuestion.explanation_image_url.startsWith('http') ? currentQuestion.explanation_image_url : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/exam-images/${currentQuestion.explanation_image_url}`}
-                                  alt="Explanation" 
-                                  className="max-h-[250px] w-auto object-contain rounded-lg border border-slate-200 shadow-sm"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   {/* Essential Spacer: ensures content isn't hidden behind global action bar */}
