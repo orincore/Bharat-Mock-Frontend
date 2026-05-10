@@ -817,7 +817,6 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
                 {getSectionsForTab(globalTab).length > 0 ? (
                   getSectionsForTab(globalTab).map((section: any) => (
                     <section key={section.id} id={`section-${section.id}`} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                      <h2 className="text-2xl font-bold text-slate-900 mb-6">{section.title}</h2>
                       <div className="space-y-5">
                         {section.blocks?.map((block: any) => (
                           <PageBlockRenderer key={block.id} block={block} />
@@ -838,7 +837,6 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
               <div className="space-y-8 mt-8">
                 {getSectionsForTab('overview').map((section: any) => (
                   <section key={section.id} id={`section-${section.id}`} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-6">{section.title}</h2>
                     <div className="space-y-5">
                       {section.blocks?.map((block: any) => (
                         <PageBlockRenderer key={block.id} block={block} />
