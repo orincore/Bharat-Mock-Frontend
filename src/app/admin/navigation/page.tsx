@@ -59,7 +59,6 @@ export default function NavigationAdminPage() {
 
   useEffect(() => {
     loadLinks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resetForm = () => {
