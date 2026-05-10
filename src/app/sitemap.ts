@@ -23,16 +23,6 @@ async function fetchJson<T>(url: string, timeout = 10000): Promise<T | null> {
   }
 }
 
-function sanitizeTabSlug(value: string): string {
-  return value
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/--+/g, '-');
-}
-
 const STATIC_TAB_SLUGS = ['mock-tests', 'previous-papers'];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -55,12 +45,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/disclaimer`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ];
 
-  const [blogsData, testSeriesData, categoriesData, subcategoriesData, examsData] = await Promise.all([
-    fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string; is_current_affairs_note?: boolean }[] }>(`${API_BASE_URL}/blogs?limit=1000&published=true`),
-    fetchJson<{ data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/test-series?limit=1000`),
-    fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/categories?limit=500`),
-    fetchJson<{ data?: { id: string; slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/subcategories?limit=1000`),
-    fetchJson<{ success?: boolean; data?: { url_path: string; updated_at?: string }[] }>(`${API_BASE_URL}/exams?limit=1000`),
+  const [blogsData, testSeriesData, categoriesData, subcategoriesData, examsData, collegesData] = await Promise.all([
+    fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string; is_current_affairs_note?: boolean }[] }>(`${API_BASE_URL}/blogs?limit=1000&published=true`, 8000),
+    fetchJson<{ data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/test-series?limit=1000`, 8000),
+    fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/categories?limit=500`, 8000),
+    fetchJson<{ data?: { id: string; slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/subcategories?limit=1000`, 8000),
+    fetchJson<{ success?: boolean; data?: { url_path: string; updated_at?: string }[] }>(`${API_BASE_URL}/exams?limit=1000`, 8000),
+    fetchJson<{ success?: boolean; data?: { id: string; slug?: string; updated_at?: string; name?: string }[] }>(`${API_BASE_URL}/colleges?limit=500`, 5000),
   ]);
 
   const blogUrls: MetadataRoute.Sitemap = (blogsData?.data || [])
@@ -113,52 +104,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
 
-  // Fetch page-content for each subcategory in parallel (batched) to get custom tabs
-  // Reduced concurrency and limited to first 50 subcategories to avoid 503 errors
-  const PAGE_CONTENT_CONCURRENCY = 3;
-  const MAX_SUBCATEGORIES_FOR_TABS = 50;
+  const collegeUrls: MetadataRoute.Sitemap = (collegesData?.data || [])
+    .filter((college) => college.slug)
+    .map((college) => ({
+      url: `${BASE_URL}/colleges/${college.slug}`,
+      lastModified: college.updated_at ? new Date(college.updated_at).toISOString() : now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    }));
+
+  // Generate static tab URLs for ALL subcategories (no expensive API calls)
+  // Skip custom tabs to avoid 503 errors - just include the known static tabs
   const subcategoryTabUrls: MetadataRoute.Sitemap = [];
 
-  const subcategoriesForTabs = subcategoryItems.slice(0, MAX_SUBCATEGORIES_FOR_TABS);
+  for (const sub of subcategoryItems) {
+    const lastMod = sub.updated_at ? new Date(sub.updated_at).toISOString() : now;
 
-  for (let i = 0; i < subcategoriesForTabs.length; i += PAGE_CONTENT_CONCURRENCY) {
-    const batch = subcategoriesForTabs.slice(i, i + PAGE_CONTENT_CONCURRENCY);
-    const results = await Promise.all(
-      batch.map((sub) =>
-        fetchJson<{ customTabs?: { id: string; title: string; tab_key?: string }[] }>(
-          `${API_BASE_URL}/page-content/${sub.id}`,
-          5000 // 5 second timeout for individual page-content requests
-        ).then((data) => ({ sub, data }))
-      )
-    );
-
-    for (const { sub, data } of results) {
-      const lastMod = sub.updated_at ? new Date(sub.updated_at).toISOString() : now;
-
-      // Static tabs (mock-tests, previous-papers) for every subcategory
-      for (const tabSlug of STATIC_TAB_SLUGS) {
-        subcategoryTabUrls.push({
-          url: `${BASE_URL}/${sub.slug}/${tabSlug}`,
-          lastModified: lastMod,
-          changeFrequency: 'weekly' as const,
-          priority: 0.65,
-        });
-      }
-
-      // Dynamic custom tabs from page content
-      const customTabs = data?.customTabs || [];
-      for (const tab of customTabs) {
-        const tabSlug = sanitizeTabSlug(tab.tab_key || tab.title || tab.id);
-        if (!tabSlug || tabSlug === 'overview') continue;
-        subcategoryTabUrls.push({
-          url: `${BASE_URL}/${sub.slug}/${tabSlug}`,
-          lastModified: lastMod,
-          changeFrequency: 'weekly' as const,
-          priority: 0.65,
-        });
-      }
+    // Static tabs (mock-tests, previous-papers) for every subcategory
+    for (const tabSlug of STATIC_TAB_SLUGS) {
+      subcategoryTabUrls.push({
+        url: `${BASE_URL}/${sub.slug}/${tabSlug}`,
+        lastModified: lastMod,
+        changeFrequency: 'weekly' as const,
+        priority: 0.65,
+      });
     }
   }
 
-  return [...staticPages, ...blogUrls, ...currentAffairsUrls, ...testSeriesUrls, ...categoryUrls, ...subcategoryUrls, ...examUrls, ...subcategoryTabUrls];
+  return [...staticPages, ...blogUrls, ...currentAffairsUrls, ...testSeriesUrls, ...categoryUrls, ...subcategoryUrls, ...examUrls, ...collegeUrls, ...subcategoryTabUrls];
 }
