@@ -138,9 +138,9 @@ export default function CurrentAffairsPage() {
             )}
             <p className="uppercase text-sm tracking-[0.4em] text-white/70">Daily GK Capsules</p>
             <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight">
-              {settings.heroTitle || 'Current Affairs Videos, Notes & Quizzes'}
+              Stay Updated with Daily Current Affairs
             </h1>
-            {settings.heroSubtitle && <p className="text-lg text-white/80">{settings.heroSubtitle}</p>}
+           <p className="text-lg text-white/80"> Get daily current affairs updates to boost knowledge and better exam preparation</p>
           </div>
         </div>
       </section>
@@ -168,8 +168,9 @@ export default function CurrentAffairsPage() {
               <header className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-primary font-semibold">Quizzes</p>
-                  <h2 className="font-display text-3xl font-bold">Current Affairs Quick Challenges</h2>
-                  <p className="text-muted-foreground">Attach the capsule to your practice session. Each quiz is linked with live leaderboard and analytics.</p>
+                  <h2 className="font-display text-3xl font-bold">Daily Current Affairs</h2>
+                  <p className="text-muted-foreground">Stay informed with important daily news and key current affairs topics
+</p>
                 </div>
                 <Link href="/live-tests">
                   <Button variant="outline" className="gap-2">
@@ -346,27 +347,191 @@ export default function CurrentAffairsPage() {
       </div>
       <div className="container-main">
         <PageSeoSections
-          whyTitle="Why use Bharat Mock for Current Affairs?"
+          whyTitle="Why BharatMock is Best for Current Affairs"
           whySubtitle="Daily capsules, bilingual support, and quiz-based recall—Bharat Mock's current affairs ecosystem is built to convert news into exam marks."
+          whyContent={
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 sm:p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
+                      Smart Exam Filters
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      Easily switch between exam categories to focus only on the most relevant and important current affairs topics.
+                    </p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+
+              <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 sm:p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
+                      Daily Current Affairs
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      Read important daily current affairs in a clear format to stay informed and improve your overall preparation.
+                    </p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+
+              <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
+                      Monthly Current Affairs PDF
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      Access all important monthly current affairs in one place for quick revision and better long-term retention.
+                    </p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+            </div>
+          }
           faqTitle="FAQ's"
-          faqSubtitle="Everything you need to know about our daily GK updates, quiz integration, and how to stay consistent with your preparation."
+          faqSubtitle="Find answers to common questions about current affairs preparation and daily learning."
+          faqItems={[
+            {
+              q: 'What is the best way to read daily current affairs for competitive exams?',
+              a: 'The best approach is a focused daily routine instead of reading everything. Spend 15–20 minutes on today\'s current affairs with important topics. Then take a quiz to test what you remember. Consistency beats last-minute revision. There is no need to read everything; a focused and daily routine is enough. Read today\'s current affairs for 15-20 minutes with important topics. After that, take a quiz to test what you remember.'
+            },
+            {
+              q: 'How many months of current affairs are important for exams?',
+              a: 'Most competitive exams focus on the last six months of current affairs in India, making it the most important preparation window.'
+            },
+            {
+              q: 'Is there a current affairs quiz available for today?',
+              a: 'Yes, a daily quiz is available based on the latest updates. It will allow you to assess your knowledge and prepare you for the exam.'
+            },
+            {
+              q: 'How many hours should I spend on current affairs daily?',
+              a: 'You do not need long hours. About 15-20 minutes a day is sufficient if you have a focused mindset and stick with it.'
+            },
+            {
+              q: 'How do I remember current affairs for a long time?',
+              a: 'The best way is to read regularly and revise through quizzes or weekly PDFs. This helps improve long-term retention.'
+            },
+            {
+              q: 'Is reading current affairs enough, or should I practice questions?',
+              a: 'Reading alone is not enough. Practising questions helps improve recall, speed, and accuracy in exams.'
+            },
+            {
+              q: 'What topics are covered in current affairs?',
+              a: 'It covers national and international news, economy, science, sports, government schemes and other major events.'
+            },
+            {
+              q: 'How is a current affairs mock test different from a quiz?',
+              a: 'A quiz is a short test, meant for daily practice, while a mock test is a full-length test, meant for exam-like settings.'
+            },
+            {
+              q: 'Can I download current affairs PDFs for revision?',
+              a: 'Yes, there are weekly and monthly PDFs. These help with quick and organised revision.'
+            },
+            {
+              q: 'What is the difference between the latest and the last six months of current affairs?',
+              a: 'Latest current affairs cover daily updates, while the last six months provide a complete revision set, important for exams.'
+            }
+          ]}
           testimonialsDescription="Real feedback from aspirants who made current affairs a daily habit with Bharat Mock and saw it reflect in their scores."
           seoContent={
             <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
               <header className="space-y-2">
-                <h2 className="font-display text-3xl font-bold">Why Daily Current Affairs is your competitive edge in every govt exam</h2>
+                <h2 className="font-display text-3xl font-bold">How daily current affairs improve your exam performance?</h2>
               </header>
               <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
                 <p className="text-base" style={{ color: '#1a1a1a' }}>
-                  A deep dive into how staying updated with current events transforms your preparation strategy and directly impacts your score in SSC, Banking, UPSC, Railways, and State PSC exams.</p>
-                <p>Every competitive exam in India reserves a significant portion of its question paper for General Awareness and Current Affairs. Whether it is the SSC CGL Tier-I, IBPS PO Prelims, UPSC Prelims, or any State PSC, the GK section is often the differentiator between candidates who clear the cutoff and those who fall just short. Bharat Mock's Current Affairs page is engineered to close that gap by delivering daily, weekly, and monthly capsules that are directly mapped to the question patterns observed in recent exam cycles.</p>
-                <p>The architecture of this page mirrors the way toppers actually consume current affairs. They do not read everything—they read strategically. The category filters on this page let you zero in on National, International, Economy, Science & Technology, Sports, Environment, and Defence topics in seconds.</p>
-                <p>Consistency is the single most underrated factor in current affairs preparation. A candidate who reads 15 minutes of current affairs every day for six months will outperform someone who crammed three months of news in the final week before the exam.</p>
-                <p>The integration between current affairs content and mock tests on this platform is a force multiplier. When you read about a new government scheme in the morning capsule and then encounter a question about it in an afternoon mock test, the neural pathway for that fact becomes significantly stronger.</p>
-                <p>Language accessibility is another dimension that sets this platform apart. A large percentage of government exam aspirants are more comfortable in Hindi than in English, and the bilingual support on this page ensures that the language barrier never becomes a preparation barrier.</p>
-                <p>Beyond individual articles, the monthly compilations serve as revision anchors. In the final weeks before an exam, when time is scarce and anxiety is high, a well-structured monthly PDF or on-screen digest lets you review three hundred events in under two hours.</p>
-                <p>The quiz component embedded within this section is perhaps the most powerful tool for converting passive reading into active recall. After consuming a week's worth of current affairs, attempting a 20-question quiz on those exact topics reveals your retention gaps with surgical precision.</p>
-                <p>Ultimately, the Current Affairs page is not just a content repository—it is a preparation ecosystem. It connects the news you read today with the mock tests you attempt this week, the revision you do next month, and the confidence you carry into the exam hall.</p>
+                  Daily current affairs have a direct impact on your score in SSC, Banking, Railway, UPSC, and State PSC exams. The GK and General Awareness section alone can make or break your cutoff. Candidates who read current affairs regularly on a daily basis score much higher than those who do last-minute preparation.</p>
+              </div>
+
+              <header className="space-y-2 mt-8">
+                <h2 className="font-display text-3xl font-bold">What Makes Current Affairs So Important?</h2>
+              </header>
+              <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
+                <p className="text-base" style={{ color: '#1a1a1a' }}>
+                  In most government exams in India, general awareness carries 20 to 40 marks. The GK section is the edge for serious aspirants, whether it is SSC CGL Tier-1 or IBPS PO Prelims or any State PSC.</p>
+                <p>Often, the difference between clearing the cutoff and missing the cutoff is only 3-5 questions, and these questions are almost always from current affairs.</p>
+                <p>BharatMock allows you to focus only on important current affairs so that you can learn faster and remember better for exams.</p>
+              </div>
+
+              <h3 className="font-display text-2xl font-bold mt-8 mb-4">Why Smart Revision Matters</h3>
+              <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
+                <p className="text-base" style={{ color: '#1a1a1a' }}>
+                  If you study a little every day for six months, it will help you remember it much better than studying at the last minute.</p>
+                <p>Weekly PDFs will make revision easy, and you will quickly remember important events.</p>
+                <p>With monthly capsules, you will be able to revise hundreds of important topics easily before your exams.</p>
+                <p>Great for quick, focused revision when short on time and accuracy counts.</p>
+                <p>We also cover current affairs in Hindi for aspirants who are more comfortable preparing in their first language. However, a language barrier should not be a barrier to preparation.</p>
+              </div>
+
+              <header className="space-y-2 mt-8">
+                <h2 className="font-display text-3xl font-bold">From reading to understanding</h2>
+              </header>
+              <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
+                <p className="text-base" style={{ color: '#1a1a1a' }}>
+                  Once you have gone through the daily current affairs, the built-in current affairs quiz puts that reading to the test.</p>
+                <p>A quick current affairs quiz after your morning session will help you see what you remember and what you need to improve.</p>
+                <p>Solve Current affairs questions to improve your preparation step by step. Take a full mock test to experience the real exam. You can choose short quizzes or longer tests depending on your time.</p>
+                <p>If you are looking for a reliable place for current affairs preparation. Which connects learning, practice and revision. All is available here in one place.</p>
+              </div>
+
+              <div className="mt-8 overflow-x-auto">
+                <table className="w-full border-collapse border border-border">
+                  <thead>
+                    <tr className="bg-muted">
+                      <th className="border border-border px-4 py-3 text-left font-semibold">Feature</th>
+                      <th className="border border-border px-4 py-3 text-left font-semibold">What does it help you do</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-border px-4 py-3">Daily current affairs</td>
+                      <td className="border border-border px-4 py-3">Stay updated every single day</td>
+                    </tr>
+                    <tr className="bg-muted/50">
+                      <td className="border border-border px-4 py-3">Weekly current affairs PDF</td>
+                      <td className="border border-border px-4 py-3">Review the full week at once</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-border px-4 py-3">Monthly current affairs</td>
+                      <td className="border border-border px-4 py-3">Deep revision before exams</td>
+                    </tr>
+                    <tr className="bg-muted/50">
+                      <td className="border border-border px-4 py-3">Current affairs quiz</td>
+                      <td className="border border-border px-4 py-3">Test what you actually retained</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-border px-4 py-3">Current affairs mock test</td>
+                      <td className="border border-border px-4 py-3">Simulate real exam pressure</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-8 p-6 bg-primary/10 rounded-2xl border border-primary/20">
+                <p className="font-semibold text-lg" style={{ color: '#1a1a1a' }}>
+                  Start with today's current affairs. Take the daily quiz. Download the monthly PDF. Repeat every day till exam day.
+                </p>
               </div>
             </section>
           }

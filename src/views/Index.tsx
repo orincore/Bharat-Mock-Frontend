@@ -81,39 +81,39 @@ const fallbackHero = {
 };
 
 const impactStats = [
-  { label: 'Mock Tests', value: '500+', gradient: 'from-[#fed7aa] via-[#fef3c7] to-[#fde68a]', icon: BookOpenCheck },
-  { label: 'Study Plans', value: '120+', gradient: 'from-[#bfdbfe] via-[#dbeafe] to-[#eef2ff]', icon: LineChart },
-  { label: 'Students', value: '1M+', gradient: 'from-[#e9d5ff] via-[#f5d0fe] to-[#fde2ff]', icon: UserCheck },
-  { label: 'Success Rate', value: '95%', gradient: 'from-[#bbf7d0] via-[#dcfce7] to-[#f0fdf4]', icon: Award }
+  { label: 'Mock Tests', value: '1000+', gradient: 'from-[#fed7aa] via-[#fef3c7] to-[#fde68a]', icon: BookOpenCheck },
+  { label: 'Past Year Papers', value: '60+', gradient: 'from-[#bfdbfe] via-[#dbeafe] to-[#eef2ff]', icon: FileText },
+  { label: 'Test Series', value: '5,000+', gradient: 'from-[#e9d5ff] via-[#f5d0fe] to-[#fde2ff]', icon: BarChart3 },
+  { label: 'Success Rate', value: '90%', gradient: 'from-[#bbf7d0] via-[#dcfce7] to-[#f0fdf4]', icon: Award }
 ];
 
 const whyChooseFeatures = [
   {
-    icon: BookOpen,
-    title: 'Guided Learning',
-    description: 'Through Better Prepared Mock Tests and Qualified Professors Insights'
+    icon: FileText,
+    title: 'Mock Tests',
+    description: 'Practice with full-length government exam mock tests built on real exam patterns - timed, realistic, and score-accurate.'
+  },
+  {
+    icon: LineChart,
+    title: 'Deep Performance Analytics',
+    description: 'Get clear insights after every test, understand mistakes, track progress, and turn your online exam practice into real results.'
+  },
+  {
+    icon: Sparkles,
+    title: 'Daily Current Affairs & Updates',
+    description: 'Stay updated with daily GK quizzes, exam notifications, and syllabus updates – so you\'re always ready for your next online exam.'
   },
   {
     icon: Target,
-    title: 'Free Mock Tests',
-    description: 'Your Expert Learning Guides to the Best Exam and Content Based Material with Test Quality Mix'
-  },
-  {
-    icon: Users,
-    title: 'Faculty Members',
-    description: 'We have Team of Highly Experienced and Exam and More Certified Professors to Guides for Best Career'
-  },
-  {
-    icon: Award,
-    title: 'Expert Designed Prep',
-    description: 'Study plans curated by exam experts so every mock, note, and quiz follows the actual syllabus pattern'
+    title: 'Sectional Practice',
+    description: 'Target weak areas with focused topic-wise sessions. Ideal for online exam preparation when you want to improve specific subjects fast.'
   }
 ];
 
 const passStats = [
-  { label: 'Exams Covered', value: '670+' },
-  { label: 'Mock Tests Solved', value: '3.2M+' },
-  { label: 'Avg. Score Boost', value: '18%' }
+  { label: 'EXAMS COVERED', value: '100+' },
+  { label: 'TESTS ATTEMPTED', value: '25k+' },
+  { label: 'AVG. SCORE BOOST', value: '15%' }
 ];
 
 const featuredPartners = [
@@ -127,27 +127,27 @@ const featuredPartners = [
 
 const passHighlights = [
   {
-    icon: Shield,
-    title: 'All India Rank',
-    description: 'Benchmark yourself against lakhs of serious aspirants.',
+    icon: LineChart,
+    title: 'Smart Learning Flow',
+    description: 'A structured study path that helps you stay consistent and cover your syllabus step by step - no confusion, no gaps in govt exam preparation.',
     accent: 'bg-amber-50 text-amber-600'
   },
   {
-    icon: TrendingUp,
-    title: 'Latest Exam Patterns',
-    description: 'Mocks updated weekly to match SSC, Banking, and State exams.',
+    icon: Target,
+    title: 'Focused Practice Sessions',
+    description: 'Short, goal-based sessions that keep you engaged. Great for online exam practice when you have limited time but still want to improve daily.',
     accent: 'bg-indigo-50 text-indigo-600'
   },
   {
-    icon: BarChart3,
-    title: 'In-depth Performance',
-    description: 'Topic heatmaps, speed charts, and accuracy meters.',
+    icon: TrendingUp,
+    title: 'Consistent Progress',
+    description: 'Stay consistent with your daily study routine and focus on small improvements. Over time, this is what helps toppers crack all sarkari exams.',
     accent: 'bg-emerald-50 text-emerald-600'
   },
   {
-    icon: Languages,
-    title: 'Multi-lingual Tests',
-    description: 'Attempt seamlessly in English and हिंदी with one pass.',
+    icon: Award,
+    title: 'Exam Mindset',
+    description: 'Train yourself to stay calm and confident under pressure. The right mindset is what separates toppers from the rest in any online competitive exam.',
     accent: 'bg-sky-50 text-sky-600'
   }
 ];
@@ -545,7 +545,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                 </div>
                 <div className="text-left">
                   <p className="font-display text-2xl text-slate-900 leading-none">{stat.value}</p>
-                  <p className="text-xs uppercase tracking-[0.35em] text-slate-600">{stat.label}</p>
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-600 whitespace-nowrap">{stat.label}</p>
                 </div>
               </div>
             ))}
@@ -709,7 +709,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/80">Community Pulse</p>
                 <h2 className="font-display text-3xl font-bold text-slate-900 mt-2">Most Attempted Exams</h2>
-                <p className="text-muted-foreground mt-2">Live ranking of the exams BharatMock students attempt the most.</p>
+                <p className="text-muted-foreground mt-2">Find the most popular exams in India and get all the practice tests you need to clear them.</p>
               </div>
               <Link href="/mock-test-series" className="inline-flex">
                 <Button variant="secondary" className="gap-2">
@@ -758,7 +758,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
             <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
             <div className="relative space-y-5 sm:space-y-6">
               <h2 className="font-display text-xl leading-tight md:text-3xl font-bold text-slate-900">
-                Start preparing for your dream government job
+                Your 5-Step Journey to Crack Any Govt Exam
               </h2>
               <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs sm:gap-2 sm:text-sm">
                 {learningJourneySteps.map((step, index) => (
@@ -791,13 +791,13 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
           <div className="rounded-3xl border border-slate-200 bg-white/90 shadow-sm px-6 py-10 sm:px-10">
             <div className="flex flex-col gap-4 text-center max-w-3xl mx-auto">
               <span className="inline-flex items-center justify-center gap-2 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-primary/80">
-                <Shield className="h-4 w-4" /> Trusted by toppers
+                <Shield className="h-4 w-4" /> TRUSTED BY TOP PERFORMERS
               </span>
               <h2 className="font-display text-3xl md:text-4xl font-bold text-slate-900">
-                Why students pick <span className="text-primary">BharatMock</span>
+                Why students choose <span className="text-primary">BharatMock</span>
               </h2>
               <p className="text-slate-600">
-                Simple, reliable prep blocks— curated tests, instant analytics, and fast revision loops.
+                Smart tools, clear insights, and everything built for proper online exam preparation.
               </p>
             </div>
 
@@ -875,13 +875,13 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
               <div className="space-y-8">
                 <div className="space-y-3">
                   <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/80">
-                    <Sparkles className="h-4 w-4" /> Power Prep Bundle
+                    <Sparkles className="h-4 w-4" /> BUILT FOR SERIOUS ASPIRANTS
                   </p>
                   <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 leading-tight">
-                    Enroll in Test Series for <span className="text-primary">670+ exams</span> with BharatMock Pass
+                    Enroll In Test Series for <span className="text-primary">100+ Exams</span> With Bharatmock Pass
                   </h2>
                   <p className="text-slate-600 max-w-2xl">
-                    Unlock bilingual mock tests, structured analysis, and guided revision loops built for serious aspirants. One pass, unlimited high-quality attempts.
+                    Stop paying separately. Get all your online exam preparation in one place, featuring mock tests and tools for every government exam in one simple plan.
                   </p>
                 </div>
 
@@ -969,8 +969,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
         <div className="container-home">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="font-display text-3xl font-bold text-foreground mb-2">Featured Exams</h2>
-              <p className="text-muted-foreground">Practice with our top mock tests</p>
+              <h2 className="font-display text-3xl font-bold text-foreground mb-2">Popular Government Exams</h2>
+              <p className="text-muted-foreground">Attempt our most popular mock tests and get exam-ready today.</p>
             </div>
            
             
@@ -1043,10 +1043,10 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
             
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold">
-            Ready to Start Your Journey?
+            Your selection starts with one mock test.
           </h2>
           <p className="text-white/90 max-w-2xl mx-auto">
-            Join thousands of successful students who have achieved their dreams with Bharat Mock.
+            Start your preparation today and move closer to success.
           </p>
           <GetStartedButton />
         </div>

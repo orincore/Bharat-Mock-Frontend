@@ -829,6 +829,17 @@ export default function AdminSubcategoryEditorPage() {
         return;
       }
 
+      // Parse structured_data if it's a valid JSON string, otherwise keep as string
+      let parsedStructuredData = seoData.structured_data;
+      if (typeof seoData.structured_data === 'string' && seoData.structured_data.trim()) {
+        try {
+          parsedStructuredData = JSON.parse(seoData.structured_data);
+        } catch (e) {
+          // If parsing fails, keep as string
+          parsedStructuredData = seoData.structured_data;
+        }
+      }
+
       const response = await fetch(
         buildApiUrl(`/page-content/${subcategoryId}/seo`),
         {
@@ -837,7 +848,10 @@ export default function AdminSubcategoryEditorPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(seoData)
+          body: JSON.stringify({
+            ...seoData,
+            structured_data: parsedStructuredData
+          })
         }
       );
 

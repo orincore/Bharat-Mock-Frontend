@@ -328,10 +328,10 @@ export default function QuizzesPage() {
           <div className="max-w-3xl">
             <Breadcrumbs items={[HomeBreadcrumb(), { label: 'Quizzes' }]} variant="dark" className="mb-6" />
             <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
-              Practice Quick Quizzes
+              Practice Smart Quizzes
             </h1>
             <p className="text-lg text-background/80 mb-8">
-              Bite-sized Q&A quizzes to strengthen your concepts in minutes.
+              Topic-wise short quizzes for all govt exams to improve your accuracy & confidence.
             </p>
             <form onSubmit={(e) => { e.preventDefault(); setPagination((p) => ({ ...p, page: 1 })); }}
               className="flex flex-col sm:flex-row gap-3 sm:items-stretch" suppressHydrationWarning>
@@ -480,28 +480,184 @@ export default function QuizzesPage() {
 
       <div className="container-main">
         <PageSeoSections
-          whyTitle="Why take Bharat Mock Quizzes?"
+          whyTitle="Why Choose Bharat Mock Quizzes"
           whySubtitle="Short, sharp, and exam-focused—Bharat Mock quizzes are engineered to sharpen your speed and accuracy across every topic that matters."
+          whyContent={
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 sm:p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">Daily Quizzes</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">New daily quizzes keep your practice fresh, helping you stay consistent and improve your performance every day.</p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+
+              <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 sm:p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">Topic-wise Targeting</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">Stop practising everything. Pick the one topic hurting your score and fix it with a focused quiz.</p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+
+              <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <div className="flex items-start gap-4 lg:gap-6">
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">Latest Exam Patterns</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">Every quiz mirrors the latest exam blueprint. What you practice here is exactly what shows up on exam day.</p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+            </div>
+          }
           faqTitle="FAQ's"
-          faqSubtitle="Everything you need to know about our quiz format, scoring, and how to get the most out of every session."
+          faqSubtitle="Everything you need to know before you attempt your first quiz"
+          faqItems={[
+            { q: 'Which is the best quiz to start with as a beginner?', a: 'Start with a subject-wise quiz on your strongest subject first. It builds confidence early. Once you are comfortable, try mixed quizzes that have mixed questions from multiple subjects, similar to your actual SSC quiz or banking quiz paper.' },
+            { q: 'How is a quiz different from a full mock test?', a: 'A mock test covers the full paper in one go. A quiz is shorter, more specific to one topic or subject and gives you faster feedback.' },
+            { q: 'Can I filter quizzes by exam and difficulty?', a: 'Yes. You can pick quizzes by type of exam, topic, difficulty and language. From a basic railway quiz to a complex banking quiz on Data Interpretation, you can choose the quiz you want.' },
+            { q: 'Do quizzes follow negative marking like the actual exam?', a: 'Yes, the CBT-style quizzes follow the exact same negative marking as the official pattern, so that you learn to attempt questions confidently before the actual paper.' },
+            { q: 'How many quizzes should I attempt in a day?', a: 'It\'s better to attempt two or three quizzes per day rather than ten quizzes. Consistency and quality are key in any govt exam.' },
+            { q: 'Are there quizzes for current affairs and GK?', a: 'Yes. Current Affairs Quizzes are published every day, so you can keep up-to-date with news and events without having to read a newspaper.' },
+            { q: 'Can I attempt quizzes without creating an account?', a: 'You can view the quizzes, but to save time and progress to track your improvement and build your own personal weak area list while you revise, you will need to register (it\'s free).' },
+            { q: 'Are police quiz questions based on state-specific patterns?', a: 'Yes. We offer state paper pattern police quizzes for various topics like General knowledge, reasoning, current affairs, in the same pattern you will get in your state exam.' },
+            { q: 'What happens if I run out of time during a quiz?', a: 'The quiz will automatically submit when the time is over, as in a CBT paper. Your attempt is evaluated, giving you an instant result.' },
+          ]}
+          mostAskedItems={[
+            { q: 'Are quizzes updated after every official exam notification?', a: 'Yes. Whenever a new notification is released or an exam pattern changes, our team updates the relevant quiz sets within a few days. This ensures your practice always matches the latest exam trends.' },
+            { q: 'Can I attempt quizzes on my mobile?', a: 'All quizzes are mobile-friendly. You can take any quiz on any device, anywhere and anytime you want.' },
+            { q: 'Do I get answers and explanations after the quiz?', a: 'Yes. With all quizzes, explanations are provided to understand the concepts, and hence improve your performance.' },
+            { q: 'Are quizzes available in Hindi and English?', a: 'Yes, all quizzes are in Hindi and English. This ensures students are well prepared for bilingual exams.' },
+            { q: 'Are quiz questions repeated in real exams?', a: 'Questions may not be the same, but patterns are quite similar to the actual exams, such as SSC and banking. This lets you know the exam pattern.' },
+            { q: 'Are SSC quiz questions based on previous year papers?', a: 'Yes. SSC quiz questions are set according to previous year papers of SSC CGL, CHSL, and MTS, so you get to practice actual exam questions.' },
+            { q: 'Can I prepare for multiple exams at the same time on Bharat Mock?', a: 'Yes. You can practice the SSC quiz, the banking quiz, and the railway quiz in one account, and it will track your score.' },
+            { q: 'Are quizzes enough, or do I need mock tests too?', a: 'Both are important. Practice quizzes help to learn new things fast, while mock tests give you an idea of how ready you are for the exam. Both are best.' },
+            { q: 'How many questions are there in each quiz?', a: 'Each quiz has 10 to 20 questions, depending on the level. It\'s brief enough to finish in a reasonable time, but long enough to practise.' },
+            { q: 'What happens if I accidentally close the quiz or lose internet connection?', a: 'Your answers are automatically saved. You will be able to start from the last question answered.' },
+          ]}
           testimonialsDescription="Real feedback from toppers and serious contenders who used Bharat Mock quizzes to sharpen their preparation."
           seoContent={
-            <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
-              <header className="space-y-2">
-                <h2 className="font-display text-3xl font-bold">Why Bharat Mock Quizzes are the sharpest tool in your exam prep arsenal</h2>
-                <p className="text-base" style={{ color: '#1a1a1a' }}>
-                  A deep dive into how short, focused quizzes build the speed, accuracy, and mental stamina that separate toppers from the rest in every competitive exam.
+            <section className="bg-card border border-border rounded-3xl p-8 space-y-8">
+              <header className="space-y-4">
+                <h2 className="font-display text-3xl font-bold">Why BharatMock Quizzes Are the Smartest Part of Your Exam Preparation</h2>
+                <p className="text-base text-gray-700">
+                  An honest look at how short, focused quizzes develop the speed, accuracy and mental sharpness that truly distinguishes selected candidates.
                 </p>
               </header>
-              <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
-                <p>The human brain learns best in short, intense bursts followed by immediate feedback. This is the science behind Bharat Mock's quiz format—10 to 20 carefully calibrated questions delivered in a timed window that forces you to think fast, eliminate wrong options, and commit to answers under pressure. Unlike full-length mocks that demand two to three hours of uninterrupted focus, quizzes slot into the gaps in your day: the 15 minutes between coaching lectures, the commute home, or the quiet half-hour before dinner. Consistency across these micro-sessions compounds into a measurable accuracy advantage by exam day.</p>
-                <p>Every quiz on this platform is tagged by subject, difficulty, and exam category so that your preparation stays targeted rather than scattered. If you are preparing for SSC CGL, you can run a daily Quantitative Aptitude sprint and a separate English Comprehension drill without ever touching irrelevant content. If your target is IBPS PO, the Reasoning and Data Interpretation filters surface exactly the question types that appear in the prelims. This surgical specificity means every minute you spend on a quiz is a minute invested in your actual exam, not in generic practice that may never appear on your paper.</p>
-                <p>The leaderboard and percentile overlay after each quiz is more than a vanity metric—it is a calibration tool. When you score 14 out of 20 and discover that the national average for that quiz was 11, you know you are ahead of the curve on that topic. When you score 8 and the average is 13, you have identified a gap before the exam does. This real-time benchmarking against thousands of aspirants gives you a live pulse on your competitive standing, something that self-study with textbooks can never replicate. The data accumulates across attempts, building a personal accuracy trendline that reveals whether your preparation is moving in the right direction.</p>
-                <p>Negative marking is one of the most psychologically challenging aspects of competitive exams, and quizzes are the ideal training ground for mastering it. When every wrong answer costs you a fraction of a mark, the decision to attempt or skip becomes a strategic calculation rather than a guess. Regular quiz practice trains your brain to assess confidence levels quickly—to distinguish between "I know this" and "I think this might be right"—and to act accordingly. Aspirants who have attempted hundreds of quizzes before their exam walk into the hall with a calibrated risk appetite that untrained candidates simply do not possess.</p>
-                <p>The bilingual support across quizzes is a significant equalizer for aspirants who are more comfortable in Hindi. Many government exams offer bilingual question papers, and practicing in both languages simultaneously builds the cognitive flexibility to switch between them without losing time. The Bharat Mock quiz engine renders questions in both English and Hindi side by side, so you can verify your understanding of terminology in both languages and build the dual-language fluency that state PSC and central government exams increasingly demand.</p>
-                <p>Beyond individual performance, quizzes serve as a diagnostic engine for your overall preparation strategy. If you consistently underperform on Current Affairs quizzes, that is a signal to increase your daily GK reading. If your Reasoning scores plateau despite regular practice, the topic-level breakdown will show you exactly which question types are dragging your average down—seating arrangements, blood relations, coding-decoding—so you can target remedial practice with precision. This feedback loop between quiz performance and study planning is what transforms random practice into structured preparation.</p>
-                <p>The streak system embedded in the quiz interface is a behavioral design choice rooted in habit formation research. Maintaining a daily quiz streak for 30 days does not just improve your scores—it rewires your relationship with preparation. You stop thinking of studying as a chore and start treating it as a daily ritual, as automatic as brushing your teeth. The aspirants who appear in merit lists year after year are not necessarily the most talented; they are the most consistent. Bharat Mock's quiz streak tracker is a small but powerful nudge toward that consistency.</p>
-                <p>Finally, the quiz archive means that no session is ever wasted. Every quiz you attempt is saved to your profile, and you can revisit any question, review the explanation, and reattempt the full set whenever you want. This creates a personal question bank of your weak areas—a curated revision resource built entirely from your own performance data. In the final days before an exam, when time is too precious for full-length mocks, targeted reattempts of your weakest quiz sets deliver maximum revision value in minimum time.</p>
+              <div className="space-y-4 leading-relaxed text-base md:text-lg text-gray-800">
+                <p>BharatMock quizzes are small topic-wise practice sets for SSC, Banking, Railway, Police and all government exam aspirants. Each quiz is modeled on real exam patterns, gives instant feedback and tracks your accuracy over time.</p>
+                <p>The aim is simple: fix weak areas fast, practice consistently and walk into your exam more prepared than the average candidate. The human brain doesn't learn well during long, gruelling sessions. It learns in short bursts with immediate feedback.</p>
+                <p>Whether it is an SSC quiz or a banking quiz, these are the sessions that will keep your preparation going every day without disturbing your schedule.</p>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-gray-900">What makes short quizzes more effective than long study sessions:</h2>
+                <ul className="list-disc pl-6 space-y-2 text-gray-800">
+                  <li>They force active recall, which builds memory faster than passive reading.</li>
+                  <li>You get immediate feedback on each question, telling you exactly what to fix now.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-4 text-gray-800 leading-relaxed">
+                <p>Every quiz is mapped to a particular exam, topic and difficulty level. An SSC quiz is meant to cover only Tier 1 and Tier 2 question types.</p>
+                <p>Banking quiz on Reasoning or Data Interpretation is exactly what comes in IBPS PO and SBI PO prelims. You aren't studying for a general exam. You are rehearsing for your exam.</p>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-gray-900">Why targeted quizzes outperform random practice:</h2>
+                <ul className="list-disc pl-6 space-y-2 text-gray-800">
+                  <li>You only spend time on things that actually show up in your paper</li>
+                  <li>Topic-level tagging reveals which concepts require more immediate focus</li>
+                </ul>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-border">
+                  <thead>
+                    <tr className="bg-muted">
+                      <th className="border border-border px-4 py-3 text-left font-semibold">Quiz Type</th>
+                      <th className="border border-border px-4 py-3 text-left font-semibold">Exams Covered</th>
+                      <th className="border border-border px-4 py-3 text-left font-semibold">Key Topics</th>
+                      <th className="border border-border px-4 py-3 text-left font-semibold">Avg. Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-border px-4 py-3">SSC Quiz</td>
+                      <td className="border border-border px-4 py-3">SSC CGL, CHSL, MTS</td>
+                      <td className="border border-border px-4 py-3">Quant, English, GK, Reasoning</td>
+                      <td className="border border-border px-4 py-3">8 – 12 mins</td>
+                    </tr>
+                    <tr className="bg-muted/50">
+                      <td className="border border-border px-4 py-3">Banking Quiz</td>
+                      <td className="border border-border px-4 py-3">IBPS PO, SBI PO, RBI</td>
+                      <td className="border border-border px-4 py-3">DI, Reasoning, English, GA</td>
+                      <td className="border border-border px-4 py-3">10 – 15 mins</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-border px-4 py-3">Railway Quiz</td>
+                      <td className="border border-border px-4 py-3">RRB NTPC, Group D, ALP</td>
+                      <td className="border border-border px-4 py-3">Maths, GK, Reasoning, Science</td>
+                      <td className="border border-border px-4 py-3">8 – 10 mins</td>
+                    </tr>
+                    <tr className="bg-muted/50">
+                      <td className="border border-border px-4 py-3">Police Quiz</td>
+                      <td className="border border-border px-4 py-3">State Police, SSC CPO</td>
+                      <td className="border border-border px-4 py-3">GK, Current Affairs, Reasoning</td>
+                      <td className="border border-border px-4 py-3">5 – 8 mins</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-4 text-gray-800 leading-relaxed">
+                <p>All questions are categorised by topic, difficulty and exam category. If you answer a question wrong, you know exactly what concept you need to work on and how often it appears in your actual paper.</p>
+                <p>Every wrong answer is no longer a disappointment; it is a direction. The only real challenge for the railway aspirants is consistency.</p>
+                <p>The RRB syllabus is vast, and it is easy to practice the topics which you are already good at. A daily railway quiz forces you to confront weak areas early, before the exam does it for you.</p>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-gray-900">How a Daily Quiz Habit Pays Off on Exam Day</h2>
+                <ul className="list-disc pl-6 space-y-2 text-gray-800">
+                  <li>You get accuracy and speed from short, frequent practice sessions that full-length mocks cannot give you.</li>
+                  <li>Trying one quiz a day makes you stay active on things you would otherwise keep postponing.</li>
+                  <li>Your weak areas surface faster when you practice daily, giving you more time to fix them before exam day.</li>
+                  <li>Over time, students who quiz often enter the exam hall with a confidence that last-minute preparation cannot match.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-gray-900">Two things only quizzes can show you:</h2>
+                <ul className="list-disc pl-6 space-y-2 text-gray-800">
+                  <li>What sub-topics need more attention before the exam day</li>
+                  <li>Whether you are truly improving, or it is just random changes</li>
+                </ul>
+              </div>
+
+              <div className="space-y-4 text-gray-800 leading-relaxed">
+                <p>Then, the psychology of negative marking is what most aspirants learn only when it's too late. Timed quizzes train your brain to make quick, confident decisions.</p>
+                <p>To differentiate between "I am sure" and "I think so." It is that instinct, built up over hundreds of attempts at quizzes, that separates calm thinking in the exam hall from panic-stricken guessing.</p>
+                <p>Last but not least, nothing you do here is wasted. All quizzes are tracked forever to your profile. Return to questions you found difficult, attempt full sets again before your exam and build up a bank of your own weak areas to revise.</p>
               </div>
             </section>
           }

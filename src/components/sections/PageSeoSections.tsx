@@ -17,38 +17,48 @@ const allFaqs = [
   { q: 'Do you provide bilingual tests?', a: 'Yes. Most of our mock tests support English and Hindi, and we continue to add more regional language support based on demand.' },
 ];
 
-const paymentFaqs = [
-  { q: 'What payment methods are accepted?', a: 'We accept UPI (GPay, PhonePe, Paytm), Net Banking, Credit/Debit Cards (Visa, Mastercard, RuPay), and popular wallets via Razorpay.' },
-  { q: 'Is my payment information secure?', a: 'Yes. All transactions are processed through Razorpay, a PCI-DSS compliant payment gateway. We never store your card details on our servers.' },
-  { q: 'Can I get a refund if I am not satisfied?', a: 'We offer a 7-day refund policy for premium subscriptions. If you face any issues, contact support@bharatmock.com within 7 days of purchase.' },
-  { q: 'Will I get a receipt or invoice for my payment?', a: 'Yes. A payment confirmation email with a GST invoice is sent to your registered email address immediately after a successful transaction.' },
-  { q: 'What happens if my payment fails but money is deducted?', a: 'In case of a failed transaction where money is deducted, it is automatically refunded to your source account within 5–7 business days. Contact us if it takes longer.' },
-  { q: 'Are there any hidden charges or auto-renewals?', a: 'No hidden charges. Subscriptions do not auto-renew unless you explicitly enable it. You will always be notified before any renewal.' },
-  { q: 'Can I upgrade or downgrade my subscription plan?', a: 'Yes. You can upgrade your plan at any time and pay only the prorated difference. Downgrades take effect at the end of the current billing cycle.' },
-  { q: 'Do you offer student discounts or group pricing?', a: 'Yes, we periodically offer discounts for students and group enrollments. Check the Subscriptions page or contact us for bulk pricing.' },
+const mostAskedFaqs = [
+  { q: 'How can I improve speed in solving current affairs questions?', a: 'Speed improves with regular practice. Daily quizzes train your brain to recall information faster and help you answer questions within a limited time frame during exams.' },
+  { q: 'How do quizzes help in exam preparation?', a: 'Quizzes convert learning into active recall. They test your memory instantly, improve accuracy, and help identify weak topics for better focus.' },
+  { q: 'Can I rely only on monthly current affairs PDFs?', a: 'No, monthly PDFs are best for revision, but daily learning and quizzes are necessary for continuous understanding and retention.' },
+  { q: 'How do current affairs help in competitive exam selection?', a: 'Current affairs enhance your general awareness marks - important for clearing the cut-off of most government exams.' },
+  { q: 'What is the biggest mistake students make in current affairs preparation?', a: 'The common mistake is to read too much without revising it or quiz questions. If you don\'t revise or practice quizzes, you will forget the information quickly.' },
+  { q: 'How can quizzes improve current affairs preparation?', a: 'Quizzes make passive learning active. They instantly test your memory retention and help you identify the gaps, which help focus your revision in a better way.' },
+  { q: 'Are current affairs enough for scoring well in the general awareness sections?', a: 'Current affairs are very important, but they should be complemented by static GK. They cater to 80 to 90% of the general awareness section of competitive exams.' },
+  { q: 'Can I attempt a current affairs quiz more than once?', a: 'You can take the current affairs quiz multiple times. This will help you perform better and build a better memory of the issues, as well as understand your learning curve.' },
+  { q: 'Can I track my progress in current affairs quizzes?', a: 'Yes, your quiz performance is tracked so you can see your accuracy, improvement areas, and overall progress over time.' },
+  { q: 'Can I practice quizzes based on specific topics?', a: 'Yes, you can choose topic-wise quizzes to focus on weak areas and improve your understanding step by step.' },
 ];
 
 interface PageSeoSectionsProps {
   faqTitle?: string;
   faqSubtitle?: string;
+  faqItems?: Array<{ q: string; a: string }>;
+  mostAskedItems?: Array<{ q: string; a: string }>;
   testimonialsDescription?: string;
   whyTitle?: string;
   whySubtitle?: string;
+  whyContent?: React.ReactNode;
   seoContent?: React.ReactNode;
 }
 
 export function PageSeoSections({
   faqTitle = "FAQ's",
   faqSubtitle = "Everything you need to know—compiled from the questions aspirants ask our support mentors most often.",
+  faqItems,
+  mostAskedItems,
   testimonialsDescription = "Real feedback from toppers and serious contenders—curated from app reviews and our student community.",
   whyTitle = "Why take Bharat Mock Test Series?",
   whySubtitle = "Whether you attempt a live mock or a rapid-fire quiz, the Bharat Mock ecosystem goes beyond scores. Each pillar below highlights the key advantages that help you prepare smarter.",
+  whyContent,
   seoContent,
 }: PageSeoSectionsProps) {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
-  const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
+  const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'MostAsked'>('All');
 
-  const activeFaqs = activeFaqTab === 'All' ? allFaqs : paymentFaqs;
+  const activeFaqs = activeFaqTab === 'All' 
+    ? (faqItems || allFaqs)
+    : (mostAskedItems || mostAskedFaqs);
 
   return (
     <>
@@ -58,74 +68,78 @@ export function PageSeoSections({
           {whyTitle}
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Card 1 - Latest Exam Patterns */}
-          <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 sm:p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-            <div className="flex items-start gap-4 lg:gap-6">
-              <div className="relative shrink-0">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
-                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        {whyContent ? (
+          whyContent
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Card 1 - Latest Exam Patterns */}
+            <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 sm:p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+              <div className="flex items-start gap-4 lg:gap-6">
+                <div className="relative shrink-0">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="absolute -top-1 -left-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-lg">
+                      NEW
+                    </span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
+                    Latest Exam Patterns
+                  </h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    Mocks and quizzes replicate the freshest shifts in exam blueprints so that the difficulty you face on test day feels familiar.
+                  </p>
+                </div>
+              </div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </div>
+
+            {/* Card 2 - Save Tests & Questions */}
+            <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 sm:p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+              <div className="flex items-start gap-4 lg:gap-6">
+                <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
                 </div>
-                <div className="absolute -top-1 -left-1">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-lg">
-                    NEW
-                  </span>
+                <div className="flex-1">
+                  <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
+                    Save Tests & Questions
+                  </h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    Bookmark clutch attempts, tricky questions, or entire fixtures to retake them when revision week arrives.
+                  </p>
                 </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
-                  Latest Exam Patterns
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Mocks and quizzes replicate the freshest shifts in exam blueprints so that the difficulty you face on test day feels familiar.
-                </p>
-              </div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </div>
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </div>
 
-          {/* Card 2 - Save Tests & Questions */}
-          <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 sm:p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-            <div className="flex items-start gap-4 lg:gap-6">
-              <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
-                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
+            {/* Card 3 - Performance Analysis */}
+            <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+              <div className="flex items-start gap-4 lg:gap-6">
+                <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
+                    In-depth Analysis
+                  </h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    Access strength vs. weakness reports, percentile charts, and topper comparisons immediately after every attempt.
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
-                  Save Tests & Questions
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Bookmark clutch attempts, tricky questions, or entire fixtures to retake them when revision week arrives.
-                </p>
-              </div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </div>
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </div>
-
-          {/* Card 3 - Performance Analysis */}
-          <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 border border-amber-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-            <div className="flex items-start gap-4 lg:gap-6">
-              <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
-                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
-                  In-depth Analysis
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Access strength vs. weakness reports, percentile charts, and topper comparisons immediately after every attempt.
-                </p>
-              </div>
-            </div>
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* Testimonials */}
@@ -142,7 +156,7 @@ export function PageSeoSections({
 
           {/* Tabs */}
           <div className="flex gap-2 mb-8 border-b border-border">
-            {(['All', 'Payments'] as const).map((tab) => (
+            {(['All', 'MostAsked'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => { setExpandedFaq(null); setActiveFaqTab(tab); }}
@@ -151,7 +165,7 @@ export function PageSeoSections({
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
               >
-                {tab === 'All' ? 'All FAQ' : 'Payment FAQ'}
+                {tab === 'All' ? 'All FAQ' : 'Most Asked'}
               </button>
             ))}
           </div>

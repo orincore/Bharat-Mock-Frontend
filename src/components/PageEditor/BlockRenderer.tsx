@@ -195,17 +195,11 @@ const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content })
     fontSize 
   } = content;
   
-  // Clean text by trimming and removing empty leading/trailing tags
-  const processedText = stripLineBreakTags(text)
-    .replace(/^(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+|(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+$/g, '')
-    .trim();
-
-  // Change to <div> instead of <p> if it contains block-level elements from rich text editor
-  const Tag = (processedText.includes('<p>') || processedText.includes('<div') || processedText.includes('<ul')) ? 'div' : 'p';
+  const processedText = removeStandaloneHeadingMarkers(text);
 
   return (
-    <Tag
-      className={`text-${alignment} mb-4 text-gray-800 font-normal leading-relaxed rich-text-content`}
+    <p
+      className={`text-${alignment} mb-4 text-foreground font-normal leading-relaxed rich-text-content`}
       style={{ fontSize }}
       dangerouslySetInnerHTML={{ __html: processedText }}
     />
@@ -219,17 +213,17 @@ const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   return (
     <ListTag className={`mb-4 ml-2 md:ml-3 pl-3 md:pl-4 ${type === 'ordered' ? 'list-decimal' : 'list-disc'} space-y-1 md:space-y-2`}>
       {items.map((item: string, index: number) => (
-        <li key={index} className="text-gray-700 rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(item) }} />
+        <li key={index} className="text-foreground rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(item) }} />
       ))}
     </ListTag>
   );
 };
 
 const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
-  const { 
-    headers = [], 
-    rows = [], 
-    hasHeader = true, 
+  const {
+    headers = [],
+    rows = [],
+    hasHeader = true,
     striped = false,
     headerBgColor = '#2563eb',
     headerTextColor = '#ffffff',
@@ -238,12 +232,12 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     cellColors = {},
     headerColors = {}
   } = content;
-  
+
   const borderStyle = { borderColor };
-  
+
   return (
     <div className="overflow-x-auto mb-6">
-      <table className="min-w-full border-collapse" style={{ border: `1px solid ${borderColor}` }}>
+      <table className="w-full min-w-full border-collapse" style={{ border: `1px solid ${borderColor}` }}>
         {hasHeader && headers.length > 0 && (
           <thead>
             <tr>
@@ -255,9 +249,9 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                   color: hColor.text || headerTextColor,
                 };
                 return (
-                <th key={index} className="px-4 py-3 text-left font-semibold whitespace-nowrap !whitespace-nowrap text-base" style={thStyle}>
-                  <span className="text-base" dangerouslySetInnerHTML={{ __html: header }} />
-                </th>
+                  <th key={index} className="px-4 py-3 text-left font-semibold whitespace-nowrap text-base" style={thStyle}>
+                    <span dangerouslySetInnerHTML={{ __html: header }} />
+                  </th>
                 );
               })}
             </tr>
@@ -265,7 +259,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
         )}
         <tbody>
           {rows.map((row: string[], rowIndex: number) => (
-            <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+            <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-muted/50' : 'bg-background'}>
               {row.map((cell: string, cellIndex: number) => {
                 const cellKey = `${rowIndex}-${cellIndex}`;
                 const cellLinkData = cellLinks[cellKey];
@@ -277,19 +271,19 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                   ...(cellColor.bg && { backgroundColor: cellColor.bg }),
                   ...(cellColor.text && { color: cellColor.text })
                 };
-                
+
                 return (
-                  <td key={cellIndex} className="px-4 py-3 text-gray-700 !whitespace-nowrap text-base" style={cellStyle}>
+                  <td key={cellIndex} className="px-4 py-3 text-foreground whitespace-nowrap text-base" style={cellStyle}>
                     {cellLink ? (
-                      <a 
-                        href={cellLink} 
-                        className="text-blue-600 hover:underline text-base"
+                      <a
+                        href={cellLink}
+                        className="text-primary hover:underline"
                         target={cellLinkTarget}
                         rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
                         dangerouslySetInnerHTML={{ __html: cell }}
                       />
                     ) : (
-                      <span className="text-base" dangerouslySetInnerHTML={{ __html: cell }} />
+                      <span dangerouslySetInnerHTML={{ __html: cell }} />
                     )}
                   </td>
                 );
@@ -431,13 +425,13 @@ const QuoteBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   const processedAttribution = attribution.replace(/^(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+|(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+$/g, '').trim();
 
   return (
-    <div className={`border-l-4 border-blue-500 pl-4 py-1 mb-4 italic text-${alignment}`}>
-      <div 
-        className="text-gray-700 leading-relaxed rich-text-content"
+    <div className={`border-l-4 border-primary pl-4 py-1 mb-4 italic text-${alignment}`}>
+      <div
+        className="text-foreground leading-relaxed rich-text-content"
         dangerouslySetInnerHTML={{ __html: processedText }}
       />
       {processedAttribution && (
-        <p className="text-gray-500 text-sm mt-2 font-not-italic" dangerouslySetInnerHTML={{ __html: processedAttribution }} />
+        <p className="text-muted-foreground text-sm mt-2 font-not-italic" dangerouslySetInnerHTML={{ __html: processedAttribution }} />
       )}
     </div>
   );
@@ -447,23 +441,23 @@ const CodeBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { code, language = 'javascript' } = content;
   
   return (
-    <pre className="mb-6 p-4 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto">
+    <pre className="mb-6 p-4 bg-muted text-foreground rounded-lg overflow-x-auto">
       <code className={`language-${language}`}>{code}</code>
     </pre>
   );
 };
 
 const DividerBlock: React.FC<{ settings?: any }> = ({ settings }) => {
-  return <hr className="my-8 border-t-2 border-gray-300" />;
+  return <hr className="my-8 border-t-2 border-border" />;
 };
 
 const ButtonBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { text, url, variant = 'primary', size = 'medium' } = content;
   
   const variantClasses = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
-    secondary: 'bg-gray-600 hover:bg-gray-700 text-white',
-    outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50'
+    primary: 'bg-primary hover:bg-primary/90 text-primary-foreground',
+    secondary: 'bg-secondary hover:bg-secondary/90 text-secondary-foreground',
+    outline: 'border-2 border-primary text-primary hover:bg-primary/10'
   };
   
   const sizeClasses = {
@@ -531,11 +525,11 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content })
                     };
                     
                     return (
-                      <td key={ci} className="px-4 py-2 text-gray-700 rich-text-content" style={cellStyle}>
+                      <td key={ci} className="px-4 py-2 text-foreground rich-text-content" style={cellStyle}>
                         {cellLink ? (
-                          <a 
-                            href={cellLink} 
-                            className="text-blue-600 hover:underline"
+                          <a
+                            href={cellLink}
+                            className="text-primary hover:underline"
                             target={cellLinkTarget}
                             rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
                             dangerouslySetInnerHTML={{ __html: cell }}
@@ -559,10 +553,10 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content })
   return (
     <div className="mb-6 space-y-2">
       {items.map((item: any, index: number) => (
-        <div key={index} className="border border-gray-300 rounded-lg overflow-hidden">
+        <div key={index} className="border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setOpenIndex(openIndex === index ? null : index)}
-            className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex justify-between items-center text-left font-semibold"
+            className="w-full px-4 py-3 bg-muted hover:bg-muted/80 flex justify-between items-center text-left font-semibold"
           >
             <DynamicBlockHeading
               text={item.title}
@@ -573,7 +567,7 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content })
             <ChevronDown className={`w-5 h-5 transition-transform ${openIndex === index ? 'rotate-180' : ''}`} />
           </button>
           {openIndex === index && (
-            <div className="px-4 py-3 bg-white">
+            <div className="px-4 py-3 bg-background">
               {renderItemContent(item)}
             </div>
           )}
@@ -589,22 +583,22 @@ const TabsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   
   return (
     <div className="mb-6">
-      <div className="flex border-b border-gray-300">
+      <div className="flex border-b border-border">
         {tabs.map((tab: any, index: number) => (
           <button
             key={index}
             onClick={() => setActiveTab(index)}
             className={`px-6 py-3 font-semibold transition-colors ${
               activeTab === index
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-800'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {tab.title}
           </button>
         ))}
       </div>
-      <div className="p-4 bg-white">
+      <div className="p-4 bg-background">
         {tabs[activeTab] && (
           <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(tabs[activeTab].content || '') }} />
         )}
@@ -617,7 +611,7 @@ const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { title, description, image, link } = content;
   
   return (
-    <div className="mb-6 border border-gray-300 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+    <div className="mb-6 border border-border rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
       {image && (
         <img src={image} alt={title} width={800} height={192} className="w-full h-48 object-cover" />
       )}
@@ -630,9 +624,9 @@ const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
             className="text-xl font-semibold mb-2"
           />
         )}
-        {description && <p className="text-gray-700 mb-4">{description}</p>}
+        {description && <p className="text-foreground mb-4">{description}</p>}
         {link && (
-          <a href={link.url} className="text-blue-600 hover:underline font-semibold">
+          <a href={link.url} className="text-primary hover:underline font-semibold">
             {link.text || 'Learn More'} →
           </a>
         )}
@@ -646,10 +640,10 @@ const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   const cleanedText = removeStandaloneHeadingMarkers(text || '');
   
   const typeClasses = {
-    info: 'bg-blue-50 border-blue-500 text-blue-900',
-    success: 'bg-green-50 border-green-500 text-green-900',
-    warning: 'bg-yellow-50 border-yellow-500 text-yellow-900',
-    error: 'bg-red-50 border-red-500 text-red-900'
+    info: 'bg-blue-50 border-blue-500 text-blue-900 dark:bg-blue-950 dark:border-blue-400 dark:text-blue-100',
+    success: 'bg-green-50 border-green-500 text-green-900 dark:bg-green-950 dark:border-green-400 dark:text-green-100',
+    warning: 'bg-yellow-50 border-yellow-500 text-yellow-900 dark:bg-yellow-950 dark:border-yellow-400 dark:text-yellow-100',
+    error: 'bg-red-50 border-red-500 text-red-900 dark:bg-red-950 dark:border-red-400 dark:text-red-100'
   };
   
   return (

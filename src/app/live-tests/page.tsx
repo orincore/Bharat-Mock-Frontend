@@ -222,24 +222,40 @@ export default function LiveTestsPage() {
   const faqItems = useMemo(
     () => [
       {
-        q: 'What makes a Bharat Mock live test different from standard mocks?',
-        a: 'Live tests run in real-time windows with leaderboards, proctored timers, and restriction policies that mirror actual exam centers. You compete alongside thousands of aspirants, so percentile and AIR insights are more representative of the real cutoffs.'
+        q: 'Can I retake a Live Test after it has ended?',
+        a: 'Yes, you can attempt Live Tests again in practice mode after the live window closes. This enables you to rework and compare your two attempts and measure progress over time.'
       },
       {
-        q: 'Can I revisit a live test after the window closes?',
-        a: 'Yes. Once the window closes you can reattempt the same paper as an anytime mock or review the full explanation set. The Save Tests & Questions feature also lets you bookmark specific items for later revision.'
+        q: 'What is the difference between a Live Test and a Normal Mock Test?',
+        a: 'You can take a regular mock test at your own pace anytime. A Live Test is scheduled, has real-time competition with other aspirants and a live leaderboard that keeps updating as you attempt. It\'s the real exam-day adrenaline that a solo mock simply can\'t give you.'
       },
       {
-        q: 'How often are new live quizzes or mocks added?',
-        a: 'The content team schedules fresh fixtures every week across SSC, banking, railways, defence, and state exams. Tap the filters or search bar to discover upcoming slots relevant to your target category.'
+        q: 'How to join a Live Test on Bharat Mock?',
+        a: 'To join the live test, log in to Bharat Mock, click on the Live Tests, select your exam category and then click on Join.'
       },
       {
-        q: 'Do I need a paid subscription to join live tests?',
-        a: 'Most live quizzes are free and rotating mock fixtures are included in standard plans. Premium badges indicate advanced analytics or mentor-led reviews; everything else can be attempted with a free Bharat Mock account.'
+        q: 'What exams are covered under Bharat Mock Live Tests?',
+        a: 'Our mock tests are available for SSC, Banking, Railways, UPSC, State PSC, CTET, Defence, Insurance and many more exams.'
       },
       {
-        q: 'Will my analytics sync with the main Bharat Mock dashboard?',
-        a: 'Absolutely. Every live attempt feeds into your profile. Accuracy, sectional speed, and percentile trends are visible on the analytics tab so you can measure improvements over time.'
+        q: 'Are Live Tests available in Hindi and English both?',
+        a: 'Yes. The Live Tests are bilingual so that students from all the regions of India can attempt the tests easily in their own preferred language.'
+      },
+      {
+        q: 'What if I miss a scheduled Live Test?',
+        a: 'Certain tests may be re-attempted at a later date. But you will not be included in the live leaderboard. It is best to take the test during the live window for a competitive experience.'
+      },
+      {
+        q: 'Do live tests follow the real exam pattern?',
+        a: 'Yes, Live tests are based on the exam format, so you can get an experience of the actual exam.'
+      },
+      {
+        q: 'How many Live Tests are held in a week on Bharat Mock?',
+        a: 'We have several live tests every week in different categories. Your dashboard will have a calendar where you can plan to take the Live tests.'
+      },
+      {
+        q: 'Will I get a performance report after each Live Test?',
+        a: 'Yes. Along with every test, you will get a report containing your marks, accuracy, question-wise time, topic-wise score, hesitation report and your percentile among the best candidates.'
       }
     ],
     []
@@ -247,14 +263,14 @@ export default function LiveTestsPage() {
 
   const paymentFaqItems = useMemo(
     () => [
-      { q: 'What payment methods are accepted?', a: 'We accept UPI (GPay, PhonePe, Paytm), Net Banking, Credit/Debit Cards (Visa, Mastercard, RuPay), and popular wallets via Razorpay.' },
-      { q: 'Is my payment information secure?', a: 'Yes. All transactions are processed through Razorpay, a PCI-DSS compliant payment gateway. We never store your card details on our servers.' },
-      { q: 'Can I get a refund if I am not satisfied?', a: 'We offer a 7-day refund policy for premium subscriptions. If you face any issues, contact support@bharatmock.com within 7 days of purchase.' },
-      { q: 'Will I get a receipt or invoice for my payment?', a: 'Yes. A payment confirmation email with a GST invoice is sent to your registered email address immediately after a successful transaction.' },
-      { q: 'What happens if my payment fails but money is deducted?', a: 'In case of a failed transaction where money is deducted, it is automatically refunded to your source account within 5–7 business days. Contact us if it takes longer.' },
-      { q: 'Are there any hidden charges or auto-renewals?', a: 'No hidden charges. Subscriptions do not auto-renew unless you explicitly enable it. You will always be notified before any renewal.' },
-      { q: 'Can I upgrade or downgrade my subscription plan?', a: 'Yes. You can upgrade your plan at any time and pay only the prorated difference. Downgrades take effect at the end of the current billing cycle.' },
-      { q: 'Do you offer student discounts or group pricing?', a: 'Yes, we periodically offer discounts for students and group enrollments. Check the Subscriptions page or contact us for bulk pricing.' },
+      { q: 'Can I stop a live test once it starts?', a: 'Yes, you can use your plan on all devices. Simply log in to your account to access the tests on any device.' },
+      { q: 'Can I give paid Live Tests on both mobile and laptop?', a: 'Yes, your plan works on all devices. Just log in with your account to take tests anywhere.' },
+      { q: 'Is it possible to share my Bharat Mock account after purchasing a plan?', a: 'No. Accounts are not shareable. If you share your account, you may be blocked from accessing your account.' },
+      { q: 'How to buy a paid Live Test plan on Bharat Mock?', a: 'Sign in to your account, go to the Plans or Subscription page, choose your plan and pay the amount. You can access your account immediately with a successful payment.' },
+      { q: 'How long is my paid Live Test plan valid for?', a: 'The duration of the plan depends on which plan you buy. It\'s displayed on the plan page.' },
+      { q: 'Is it possible to upgrade my plan later?', a: 'Yes, you can upgrade anytime. It will be calculated based on your plan and validity.' },
+      { q: 'What do I do if my internet drops during the test?', a: 'You will be able to rejoin a test, but time will continue to be counted.' },
+      { q: 'Which Live Tests are free and which are paid?', a: 'You can spot Free Live Tests on the Live Tests page - they are clearly marked as "Free". Other tests require a plan. Register and then filter by free, premium or browse the schedule.' },
     ],
     []
   );
@@ -632,47 +648,40 @@ export default function LiveTestsPage() {
         <div className="container-main pb-20 space-y-20 overflow-hidden">
           <section className="bg-background border border-border/60 rounded-3xl shadow-sm p-6 sm:p-8 lg:p-10 space-y-8">
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-6 text-center">
-              Why take Bharat Mock Test Series?
+              Why Take Bharat Live Test Series
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* Card 1 - Latest Exam Patterns */}
+              {/* Card 1 - Real Exam Feel */}
               <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 sm:p-8 border border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                 <div className="flex items-start gap-4 lg:gap-6">
-                  <div className="relative shrink-0">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
-                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="absolute -top-1 -left-1 sm:-top-1.5 sm:-left-1.5">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-lg">
-                        NEW
-                      </span>
-                    </div>
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </div>
                   <div className="flex-1 text-gray-900">
-                    <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Latest Exam Patterns</h3>
+                    <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Real Exam Feel</h3>
                     <p className="text-gray-600 text-sm leading-relaxed">
-                      Live mocks and quizzes replicate the freshest shifts in exam blueprints for familiar difficulty.
+                      Experience real exam pressure with timed tests and authentic question experience.
                     </p>
                   </div>
                 </div>
                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
 
-              {/* Card 2 - Save Tests & Questions */}
+              {/* Card 2 - Topic-Wise Tests */}
               <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 sm:p-8 border border-purple-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                 <div className="flex items-start gap-4 lg:gap-6">
                   <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
                     <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                     </svg>
                   </div>
                   <div className="flex-1 text-gray-900">
-                    <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Save Tests & Questions</h3>
+                    <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2">Topic-Wise Tests</h3>
                     <p className="text-gray-600 text-sm leading-relaxed">
-                      Bookmark attempts, tricky questions, or entire live fixtures for easy revision later.
+                      Master every topic with focused tests designed for deeper concept clarity.
                     </p>
                   </div>
                 </div>
@@ -690,7 +699,7 @@ export default function LiveTestsPage() {
                   <div className="flex-1 text-gray-900">
                     <h3 className="font-display text-lg sm:text-xl font-bold mb-1 sm:mb-2 text-gray-900">Performance Analysis</h3>
                     <p className="text-gray-600 text-sm leading-relaxed">
-                      Access strength vs. weakness reports and topper comparisons after every live session.
+                      Unlock smart insights to track progress and improve weak areas instantly.
                     </p>
                   </div>
                 </div>
@@ -703,33 +712,87 @@ export default function LiveTestsPage() {
             description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to remind you that live fixtures here translate into real selection stories."
           />
 
-          <section className="bg-card border border-border rounded-3xl p-8 space-y-6">
+          <section className="bg-card border border-border rounded-3xl p-8 space-y-8">
             <header className="space-y-4 text-center mb-6">
-
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">Why the Live Tests calendar is your competitive advantage</h2>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">Plan Better Preparation with Scheduled Live Tests</h2>
               <p className="text-muted-foreground max-w-4xl mx-auto text-lg leading-relaxed">
-                Settle in for a detailed narrative that connects the UI you are scrolling through with the discipline, analytics, and accountability needed to ace nationwide exams.
+                Bharat Mock Live Test Series is the closest to a real exam you will get without stepping into a centre. Each test is designed to sharpen your speed, accuracy, and confidence so that when the day of the exam comes, you are ready for it.
               </p>
             </header>
-            <div className="grid md:grid-cols-2 gap-8 md:gap-12 leading-relaxed text-gray-800">
-              <div className="space-y-6">
-                <p>
-                  Bharat Mock live fixtures are built to replicate the electric tension of center-based exams while still giving you the convenience of attempting from wherever you are. Every timer tick, leaderboard update, and proctored checkpoint is meticulously choreographed so that your muscle memory for actual exam day is forged weeks in advance. Instead of passively reading notes, you are inserted into a vibrant arena where lakhs of aspirants jostle for the same selection and every mark reclaimed from negative marking counts toward a life-changing cutoff.
-                </p>
-                <p>
-                  To make those preparations tangible, each live test listing includes micro-details such as sectional timing, average accuracy benchmarks from the last cohort, and suggested buffer slots for revision. When you scroll through the Live Tests page after dinner or between coaching lectures, you are effectively building a personalized tournament bracket. Maybe you begin with a 30 minute reasoning duel on Tuesday, stack a bilingual GS sprint on Thursday, and close the week with a mega mock on Sunday morning.
-                </p>
-                <p>
-                  Live quizzes deserve special mention because they weaponize the power of short, intense bursts of cognition. Ten to fifteen carefully balanced questions delivered in a ten minute window create the same adrenaline spike as the rapid-fire sections of SSC, banking, and state PSC prelims. The streak tracker sitting beside each card is more than a vanity metric; it is a behavioral nudge reminding you that consistency beats sporadic genius.
-                </p>
+
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-foreground">Exam-Standard Practice</h2>
+                <div className="space-y-4 leading-relaxed text-gray-800">
+                  <p>Most students work hard, but then "freeze" on exam day. That's because reading notes and actually performing under pressure are two completely different skills.</p>
+                  <p>With Bharat Mock, you get the real experience of an exam on your screen. Every timer, leaderboard change and checkpoint is designed for you to feel the actual exam pressure. It builds your exam practice and confidence before the actual test.</p>
+                  <p>When you try a live test here, you are not only practising. You are in a real-time competition with lakhs of students where every mark you save from negative marking brings you closer to your cut-off.</p>
+                  <ul className="list-disc pl-6 space-y-2 text-gray-800">
+                    <li>Live leaderboard updates keep you on your toes and in the game</li>
+                    <li>Sectional timing trains you to distribute time like a topper</li>
+                  </ul>
+                </div>
               </div>
-              <div className="space-y-6 text-gray-800">
-                <p>
-                  Behind the interface sits an orchestration engine that quietly reconciles thousands of constraints pulled from the backend schedule service. When the admin team marks a new exam as live, the cache invalidates, the status propagates to the tabs, and your feed refreshes without needing a hard reload. If you belong to multiple categories—say BPSC and CTET—the recommendation logic alternates fixtures so you never go two weeks without facing pedagogy or reasoning.
-                </p>
-                <p>
-                  Speaking of analytics, Bharat Mock's post-test breakdowns dive deeper than generic scorecards. Once you finish a live mock or quiz, the dashboard overlays your timeline with the national average, highlights segments where hesitation taxes were paid, and points to remedial video lessons curated by faculty. Every live attempt is simultaneously a rehearsal and a revelation. The nation's toughest exams await; let the Bharat Mock calendar be the drumbeat that keeps you marching.
-                </p>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-foreground">Topic-Wise Tests</h2>
+                <div className="space-y-4 leading-relaxed text-gray-800">
+                  <p>You can't fix what you can't find. Topic-wise tests help you identify your exact weak spots before they cost you marks in the final paper.</p>
+                  <p>In Bharat Mock, each live mock test is supported with micro-details such as sectional accuracy benchmarks, average scores of recent test-takers, and suggested revision slots. You are not attempting a test. You are building a custom study plan, one subject at a time.</p>
+                  <p>Maybe you start with a 30-minute reasoning session on Tuesday, tack on a bilingual GS sprint on Thursday, and round out the week with a full live exam mock test on Sunday. This is what makes practice performance.</p>
+                  <p>Short live quizzes are part of the practice. 10-15 questions in 10 minutes builds real exam speed and pressure. They keep you consistent, since studying a little every day is more effective than putting in effort only occasionally.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-foreground">Smart Performance Insights</h2>
+                <div className="space-y-4 leading-relaxed text-gray-800">
+                  <p>Completing a test is only the start. What you do with your result is what really moves your rank. After taking a live online quiz or mock test series, the platform shows your performance in detail.</p>
+                  <p>Compare it to overall averages, highlight time-loss points, and get guidance on areas for improvement.</p>
+                </div>
+
+                <div className="mt-6 overflow-x-auto">
+                  <table className="w-full border-collapse border border-border">
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="border border-border px-4 py-3 text-left font-semibold">Insight</th>
+                        <th className="border border-border px-4 py-3 text-left font-semibold">Benefit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-border px-4 py-3">Score Comparison</td>
+                        <td className="border border-border px-4 py-3">See how you perform vs the overall average</td>
+                      </tr>
+                      <tr className="bg-muted/50">
+                        <td className="border border-border px-4 py-3">Topic Accuracy</td>
+                        <td className="border border-border px-4 py-3">Find weak and strong areas easily</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border px-4 py-3">Time Analysis</td>
+                        <td className="border border-border px-4 py-3">Improve speed on tough questions</td>
+                      </tr>
+                      <tr className="bg-muted/50">
+                        <td className="border border-border px-4 py-3">Performance Report</td>
+                        <td className="border border-border px-4 py-3">Get clear guidance for better practice</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-4 leading-relaxed text-gray-800">
+                  <p>Your feed gets updated as soon as a new exam is launched. For SSC, Railway, Banking and Police students, practice is rotated to cover all important topics regularly.</p>
+                  <p>The outcome? A prep cycle that feels personal, not generic.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-foreground">Why This Approach Works</h2>
+                <div className="space-y-4 leading-relaxed text-gray-800">
+                  <p>Toppers have one thing in common: practise with a strategy is more effective than passive learning.</p>
+                  <p>The Bharat Mock Test Series doesn't just test you, it highlights your weaknesses, benchmarks your scores and tracks your improvement over time so you can build a study habit.</p>
+                  <p>The nation's toughest exams are waiting. Let Bharat Mock be the system that keeps you driving towards them, one live test at a time.</p>
+                </div>
               </div>
             </div>
           </section>
@@ -737,9 +800,9 @@ export default function LiveTestsPage() {
           <section>
             <div className="text-center space-y-3 mb-8">
 
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">FAQ's</h2>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">All FAQ's</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Everything you need to know about schedules, analytics, and access—compiled from the questions aspirants ask our support mentors most often.
+                Understand how live tests, quizzes, and analysis help improve your preparation.
               </p>
             </div>
 
@@ -754,7 +817,7 @@ export default function LiveTestsPage() {
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                     }`}
                 >
-                  {tab === 'All' ? 'All FAQ' : 'Payment FAQ'}
+                  {tab === 'All' ? 'All FAQ\'s' : 'Most Asked FAQ\'s'}
                 </button>
               ))}
             </div>

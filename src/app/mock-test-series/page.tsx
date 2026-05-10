@@ -366,27 +366,27 @@ function ExamsPageContent() {
   };
 
   const allFaqs = [
-    { q: 'Are Bharat Mock tests really free to attempt?', a: 'Yes. Every registered user gets instant access to curated free tests across SSC, IBPS, SBI, Railways, NDA, and more. Premium series exist for deeper analytics, but the entry tier is always free.' },
-    { q: 'How often are exam patterns updated?', a: 'Our content team refreshes question banks every time TCS/NTA updates the blueprint or releases a new notification, ensuring alignment with 2026 exam trends.' },
-    { q: 'Can I attempt tests anytime on mobile?', a: 'Absolutely. The platform is responsive and supports Android/iOS browsers. You can attempt, pause, and resume on any device with stable internet.' },
-    { q: 'Do I get AIR (All India Rank) after each mock?', a: 'Yes. After submitting, you receive All India Rank, percentile, accuracy, and topic-level insights driven by our analytics engine.' },
-    { q: 'How many exams are covered right now?', a: 'We cover 80+ central and state exams—from SSC CGL, CHSL, JE to SBI PO, IBPS Clerk, Railway NTPC, Group D, CDS, AFCAT, and more.' },
-    { q: 'Can I download solutions or explanations?', a: 'Each question carries explainers, shortcuts, and PDF exports so you can revise offline and share notes with friends.' },
-    { q: 'Is there sectional timing like the actual CBT?', a: 'Yes, our mock engine simulates sectional timing, negative marking, and auto-submit behavior exactly like SSC and Banking CBTs.' },
-    { q: 'How do I track progress across attempts?', a: 'Navigate to your dashboard to view attempt history, accuracy trendlines, and topic heatmaps that highlight weak zones.' },
-    { q: 'Can I retake the same mock?', a: 'You can retake most free tests multiple times. Scores are stored separately so you can benchmark improvement.' },
-    { q: 'Do you provide bilingual tests?', a: 'Yes. Most of our mock tests support English and Hindi, and we continue to add more regional language support based on demand.' },
+    { q: 'Why are mock tests important for competitive exams?', a: 'A mock test is an exam you take that simulates a similar pattern, level and duration of the real exam. It can be an SSC mock test, a bank exam mock test or any other mock test; it will help improve speed, accuracy, and boost exam confidence.' },
+    { q: 'How many mock tests should I attempt before my exam?', a: 'Take at least 15-20 mock tests prior to the exam. It can also help you perform better by familiarising yourself with the exam format.' },
+    { q: 'Are the mock tests based on the latest exam pattern?', a: 'Yes, all mock tests are updated as per the latest pattern and syllabus, so you can practise the latest questions.' },
+    { q: 'Will I get solutions after each mock test?', a: 'Yes, you gain access to detailed solutions and explanations for each test, to learn from your errors and improve your accuracy.' },
+    { q: 'Is there a bank mock test for all major exams?', a: 'Yes, mock tests are available for IBPS PO, Clerk, SBI PO, SBI Clerk, RBI Assistant and others, which are as per the actual exam difficulty level.' },
+    { q: 'Is there a railway mock test available?', a: 'Yes, you can find railway mock tests for RRB NTPC, Group D, ALP, JE, RPF and other exams as per the latest pattern.' },
+    { q: 'Can I attempt the railway mock test in Hindi?', a: 'Yes, a railway mock test in Hindi is available (as well as English), so you can select the language before attempting the test.' },
+    { q: 'Are mock tests available in police exam format?', a: 'Yes, you can attempt mock tests on the basis of police test question papers for GK, Reasoning, Maths and Current Affairs as per the syllabus.' },
+    { q: 'Can I attempt mock tests on mobile?', a: 'Yes, mock tests can be done on a mobile phone, tablet, or laptop without installing any app.' },
+    { q: 'Can I re-attempt mock tests?', a: 'Yes, you can attempt mock tests in practice mode again and again to analyse the progress and improve your weak areas.' },
   ];
 
   const paymentFaqs = [
-    { q: 'What payment methods are accepted?', a: 'We accept UPI (GPay, PhonePe, Paytm), Net Banking, Credit/Debit Cards (Visa, Mastercard, RuPay), and popular wallets via Razorpay.' },
-    { q: 'Is my payment information secure?', a: 'Yes. All transactions are processed through Razorpay, a PCI-DSS compliant payment gateway. We never store your card details on our servers.' },
-    { q: 'Can I get a refund if I am not satisfied?', a: 'We offer a 7-day refund policy for premium subscriptions. If you face any issues, contact support@bharatmock.com within 7 days of purchase.' },
-    { q: 'Will I get a receipt or invoice for my payment?', a: 'Yes. A payment confirmation email with a GST invoice is sent to your registered email address immediately after a successful transaction.' },
-    { q: 'What happens if my payment fails but money is deducted?', a: 'In case of a failed transaction where money is deducted, it is automatically refunded to your source account within 5–7 business days. Contact us if it takes longer.' },
-    { q: 'Are there any hidden charges or auto-renewals?', a: 'No hidden charges. Subscriptions do not auto-renew unless you explicitly enable it. You will always be notified before any renewal.' },
-    { q: 'Can I upgrade or downgrade my subscription plan?', a: 'Yes. You can upgrade your plan at any time and pay only the prorated difference. Downgrades take effect at the end of the current billing cycle.' },
-    { q: 'Do you offer student discounts or group pricing?', a: 'Yes, we periodically offer discounts for students and group enrollments. Check the Subscriptions page or contact us for bulk pricing.' },
+    { q: 'Are all mock tests free on this platform?', a: 'Unfortunately, only some mock tests are available for free. Full mock tests are covered by a plan that offers access to all exams.' },
+    { q: 'Why are most mock tests paid?', a: 'Our mock tests are developed by experts, regularly updated, with solutions and analysis. This quality preparation system is sustained by paid plans.' },
+    { q: 'How do I purchase a mock test plan?', a: 'Visit the Plans section, select your exam plan and make the payment. You can access your plan immediately after payment.' },
+    { q: 'What payment methods are accepted?', a: 'You can choose to pay with UPI, Credit & Debit card, Net banking or using wallets - Paytm or PhonePe.' },
+    { q: 'Can I share my account with others?', a: 'No, each account is for individual use only. Sharing may lead to suspension without refund.' },
+    { q: 'How long is the paid plan valid?', a: 'The plan you select will determine the duration, which is clearly stated before purchasing. Always check before payment.' },
+    { q: 'Does the plan auto-renew?', a: 'There is an option for auto-renewal. You can TURN-ON the auto-renewal option.' },
+    { q: 'Can I use my plan on mobile and laptop?', a: 'Yes, you can use any device. All you need to do is log in to the same account.' },
   ];
 
   const scrollLeft = (ref: React.RefObject<HTMLDivElement>) => {
@@ -484,8 +484,8 @@ function ExamsPageContent() {
               variant="dark"
               className="mb-2 md:mb-6"
             />
-            <h1 className="font-display text-2xl md:text-5xl font-bold text-background">Practice with thousands of mock tests</h1>
-            <p className="text-sm md:text-lg text-background/80 max-w-3xl">Filter by category, difficulty, and status to find the perfect exam for your preparation.</p>
+            <h1 className="font-display text-2xl md:text-5xl font-bold text-background">Boost Your Score with Smart Mock Test Practice</h1>
+            <p className="text-sm md:text-lg text-background/80 max-w-3xl">Experience real exam pressure and improve performance with regular mock tests.</p>
           </div>
           <form onSubmit={(e) => { e.preventDefault(); setPagination(prev => ({ ...prev, page: 1 })); }} className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-6 max-w-2xl">
             <div className="relative flex-1">
@@ -865,54 +865,47 @@ function ExamsPageContent() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* Card 1 - Latest Exam Patterns */}
+              {/* Card 1 - Real Exam Experience */}
               <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-2xl p-6 sm:p-8 border border-blue-100 dark:border-blue-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                 <div className="flex items-start gap-4 lg:gap-6">
-                  <div className="relative shrink-0">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
-                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="absolute -top-1 -left-1 sm:-top-1.5 sm:-left-1.5">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-lg">
-                        NEW
-                      </span>
-                    </div>
+                  <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </div>
                   <div className="flex-1">
                     <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
-                      Latest Exam Patterns
+                      Real Exam Experience
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                      Prepare for the level expected in upcoming exams with updated question sets.
+                      Practice mock tests designed to match the real exam pattern and difficulty, so you feel fully prepared before the actual exam.
                     </p>
                   </div>
                 </div>
                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
 
-              {/* Card 2 - Save Tests & Questions */}
+              {/* Card 2 - Improve Speed & Accuracy */}
               <div className="group relative bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-2xl p-6 sm:p-8 border border-purple-100 dark:border-purple-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                 <div className="flex items-start gap-4 lg:gap-6">
                   <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
                     <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
                   <div className="flex-1">
                     <h3 className="font-display text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
-                      Save Tests & Questions
+                      Improve Speed & Accuracy
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                      Save important items to revise or reattempt them later at your convenience.
+                      Strengthen your problem-solving skills with regular practice and improve your speed, accuracy, and confidence step by step.
                     </p>
                   </div>
                 </div>
                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
 
-              {/* Card 3 - Performance Analysis */}
+              {/* Card 3 - In-depth Analysis */}
               <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-2xl p-6 sm:p-8 border border-amber-100 dark:border-amber-900/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                 <div className="flex items-start gap-4 lg:gap-6">
                   <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform duration-300 shadow-sm">
@@ -925,7 +918,7 @@ function ExamsPageContent() {
                       In-depth Analysis
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                      Get AI-powered insights on your AIR & Comparison with the Toppers.
+                      Analyse your performance after every test, identify weak areas, and improve continuously with detailed insights.
                     </p>
                   </div>
                 </div>
@@ -1170,29 +1163,108 @@ function ExamsPageContent() {
       {!debouncedSearch && (
         <div className="container-main">
           <section className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
-            <div className="max-w-5xl mx-auto space-y-4">
-              <p className="text-xs uppercase tracking-[0.4em] text-blue-300">Master your exams</p>
+            <div className="max-w-5xl mx-auto space-y-8">
               <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
-                Conquer 2026 exams with Bharat Mock’s free mock test universe
+                How Bharat Mock Test Series Helps You Prepare Better for Exams
               </h2>
-              <p className="text-slate-100 text-base leading-relaxed">
-                Each year more than five million aspirants compete for coveted roles across SSC, Banking, Railways, Defence, and State services. The ones who succeed build a habit of attempting calibrated <strong className="text-blue-200">mock tests that mirror the exact exam interface</strong>. Bharat Mock curates 100% free test sets mapped to RBI Grade B, IBPS PO, SBI Clerk, SEBI Grade A, SSC CGL, NTPC, and 70+ other competitive tracks so you stay exam-ready without guesswork.
-              </p>
-              <p className="text-slate-100 text-base leading-relaxed">
-                Our experts reverse-engineer the latest TCS/NTA blueprints, replicate adaptive difficulty, and plug in AI-driven performance analytics. That means you master time management, accuracy, and question selection before the real paper. Whether you’re looking for weekly Anytime Exams, deep-dive sectional quizzes, or full-length practice sets, Bharat Mock’s free test series ensures you’re always preparing on the most recent <em className="text-blue-200">exam pattern for 2026</em>.
-              </p>
-              <div className="grid sm:grid-cols-3 gap-4 text-sm text-slate-200">
-                <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
-                  <p className="text-3xl font-bold text-blue-200">80+</p>
-                  <p className="mt-1">exam categories with detailed mock coverage</p>
+              <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                <p>Bharat Mock Mock Test Series gives you practice tests for SSC, Banking, Railway, Police, and other competitive exams.</p>
+                <p>You can practice questions based on the latest exam pattern and improve your speed, accuracy, and confidence in a real exam-like setup.</p>
+                <p>Here, you can find organised mock tests with simple filters by category and difficulty, to help you plan your preparation and improve your performance.</p>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-white">Why Practice Mock Tests on Bharat Mock?</h2>
+                <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                  <p>Most students read, revise and then skip the most important step, which is testing under real exam pressure. A good mock test is not only a test of your knowledge. It builds your time management, shows the weak areas and trains you to perform on the actual day.</p>
                 </div>
-                <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
-                  <p className="text-3xl font-bold text-blue-200">2M+</p>
-                  <p className="mt-1">attempts analyzed using smart ranking algorithms</p>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg text-blue-200">Here is what makes this platform different:</h3>
+                  <ul className="list-disc pl-6 space-y-2 text-slate-100 text-base">
+                    <li>Tests are designed to closely replicate the real exam interface so you feel at home on exam day</li>
+                    <li>AI-powered performance analysis makes your rank transparent and makes your improvement trackable</li>
+                    <li>Added new tests regularly to be in tune with the latest exam pattern for 2026</li>
+                  </ul>
                 </div>
-                <div className="bg-white/10 border border-white/10 rounded-2xl p-4">
-                  <p className="text-3xl font-bold text-blue-200">99.7%</p>
-                  <p className="mt-1">accuracy with TCS/NTA CBT interface simulation</p>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-white">What Mock Tests Will You Find Here?</h2>
+                <p className="text-slate-100 text-base leading-relaxed">Here you will find the latest mock tests, practice sets, and test series for almost all major competitive exams in India. This includes exam-specific practice for SSC, Banking, Railway, Police, and State exams.</p>
+                <ul className="list-disc pl-6 space-y-1 text-slate-100 text-base">
+                  <li><strong>SSC Exams:</strong> SSC CGL, CHSL, MTS, GD Constable, CPO, Stenographer, SSC JE, and more.</li>
+                  <li><strong>Banking Exams:</strong> IBPS PO, IBPS Clerk, SBI PO, SBI Clerk, RBI Grade B, RBI Assistant, NABARD, LIC AAO, etc.</li>
+                  <li><strong>Railway Exams:</strong> RRB NTPC, RPF constable, Group D, ALP, Technician, and other railway exams.</li>
+                  <li><strong>Police & Defence Exams:</strong> Police Bharti, Constable, SI, Army, CAPF, and other defence exams.</li>
+                  <li><strong>State-Level Exams:</strong> CET, Patwari, State Public Service Commission (PSC), Gram Sevak, Talathi, and more.</li>
+                </ul>
+                <p className="text-slate-100 text-base leading-relaxed">You will get subject-wise tests, full mock tests, and previous year question papers to enhance your speed, accuracy, and confidence.</p>
+                <p className="text-slate-100 text-base leading-relaxed">The best part is, you can either take a quick 20-minute sectional quiz or attempt a full 3-hour mock test based on your schedule.</p>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-white">Quick Look: Popular Mock Test Categories</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-white/20">
+                    <thead>
+                      <tr className="bg-white/10">
+                        <th className="border border-white/20 px-4 py-3 text-left font-semibold">Exam Category</th>
+                        <th className="border border-white/20 px-4 py-3 text-left font-semibold">Test Type</th>
+                        <th className="border border-white/20 px-4 py-3 text-left font-semibold">Difficulty Options</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-white/20 px-4 py-3">SSC Mock Test</td>
+                        <td className="border border-white/20 px-4 py-3">Full-length + Sectional</td>
+                        <td className="border border-white/20 px-4 py-3">Easy / Medium / Hard</td>
+                      </tr>
+                      <tr className="bg-white/5">
+                        <td className="border border-white/20 px-4 py-3">Bank Exam Mock Test</td>
+                        <td className="border border-white/20 px-4 py-3">IBPS, SBI, RBI Series</td>
+                        <td className="border border-white/20 px-4 py-3">Easy / Medium / Hard</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-white/20 px-4 py-3">Railway Mock Test</td>
+                        <td className="border border-white/20 px-4 py-3">NTPC, Group D, ALP</td>
+                        <td className="border border-white/20 px-4 py-3">Easy / Medium / Hard</td>
+                      </tr>
+                      <tr className="bg-white/5">
+                        <td className="border border-white/20 px-4 py-3">Police Bharti Test</td>
+                        <td className="border border-white/20 px-4 py-3">State + Central Level</td>
+                        <td className="border border-white/20 px-4 py-3">Easy / Medium / Hard</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-white/20 px-4 py-3">Online Test Series</td>
+                        <td className="border border-white/20 px-4 py-3">Weekly Anytime Exams</td>
+                        <td className="border border-white/20 px-4 py-3">Adaptive Difficulty</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-white">Updated as per the Latest Exam Pattern</h2>
+                <ul className="list-disc pl-6 space-y-2 text-slate-100 text-base">
+                  <li>Regular updates as per the latest exam trends and syllabus updates</li>
+                  <li>Copies the difficulty and question style of the real exam</li>
+                  <li>Makes sure that practice is always relevant and up to date</li>
+                </ul>
+                <p className="text-slate-100 text-base leading-relaxed">Mock tests are regularly updated to be in sync with the latest exam pattern and syllabus changes. In other words, you are always working on the most relevant and up-to-date questions.</p>
+                <p className="text-slate-100 text-base leading-relaxed">The tests are adapted as exam trends change, so you're always up-to-date with your preparation. You will be exposed to the same level of difficulty and style of questions that appear in the real exams.</p>
+                <p className="text-slate-100 text-base leading-relaxed">This way, you are aligned with what examiners are actually asking for. Your preparation remains relevant, practical, and exam-ready at all times.</p>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-display text-2xl font-bold text-white">Start Where You Are, Get Where You Want to Be</h2>
+                <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                  <p>It does not matter whether you are starting from scratch or are already 60% through your preparation.</p>
+                  <p>The filter system lets you pick up right where you left off. Filter by exam status to find tests you haven't taken yet, or look back at older sets to see how much you've improved.</p>
+                  <p>Every year, more than 5 million aspirants apply for SSC, Banking and Railway jobs. The people who crack it aren't necessarily the brightest. They are the most regular ones.</p>
+                  <p>The difference between selection and rejection is the habit of taking one mock test daily, analysing your mistakes and re-attempting the weak areas.</p>
+                  <p>Your next mock test is a click away. Select your difficulty, filter by category and get started today.</p>
                 </div>
               </div>
             </div>

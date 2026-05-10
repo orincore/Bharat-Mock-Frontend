@@ -243,27 +243,34 @@ export default function AdminBlogEditorPage() {
   };
 
   const buildPayload = (targetStatus: BlogStatus): BlogPayload => ({
-    title: formState.title,
-    slug: formState.slug || undefined,
-    excerpt: formState.excerpt,
-    category: formState.category,
-    tags: formState.tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean),
-    featured_image_url: formState.featured_image_url,
-    canonical_url: formState.canonical_url,
-    status: targetStatus,
+    title: formState.title.trim(),
+    slug: formState.slug.trim(),
+    excerpt: formState.excerpt.trim(),
+    category: formState.category.trim(),
+    tags: formState.tags.trim().split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+    featured_image_url: formState.featured_image_url.trim(),
+    canonical_url: formState.canonical_url.trim(),
     is_published: targetStatus === "published",
     is_featured: formState.is_featured,
-    meta_title: formState.meta_title,
-    meta_description: formState.meta_description,
+    meta_title: formState.meta_title.trim(),
+    meta_description: formState.meta_description.trim(),
     meta_keywords: formState.meta_keywords,
     og_title: formState.og_title,
     og_description: formState.og_description,
     og_image_url: formState.og_image_url,
     robots_meta: formState.robots_meta,
-    structured_data: formState.structured_data || undefined,
+    // Parse structured_data if it's a valid JSON string, otherwise keep as string
+    structured_data: (() => {
+      if (typeof formState.structured_data === 'string' && formState.structured_data.trim()) {
+        try {
+          return JSON.parse(formState.structured_data);
+        } catch (e) {
+          // If parsing fails, keep as string
+          return formState.structured_data;
+        }
+      }
+      return formState.structured_data || undefined;
+    })(),
     is_current_affairs_note: formState.isCurrentAffairsNote,
     current_affairs_tag: formState.currentAffairsTag?.trim() || null,
     author_id: formState.author_id || null
