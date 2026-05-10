@@ -48,19 +48,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/disclaimer`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ];
 
-  const [blogsData, testSeriesData, categoriesData, subcategoriesData] = await Promise.all([
-    fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/blogs?limit=1000&published=true`),
+  const [blogsData, testSeriesData, categoriesData, subcategoriesData, examsData] = await Promise.all([
+    fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string; is_current_affairs_note?: boolean }[] }>(`${API_BASE_URL}/blogs?limit=1000&published=true`),
     fetchJson<{ data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/test-series?limit=1000`),
     fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/categories?limit=500`),
     fetchJson<{ data?: { id: string; slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/subcategories?limit=1000`),
+    fetchJson<{ success?: boolean; data?: { url_path: string; updated_at?: string }[] }>(`${API_BASE_URL}/exams?limit=5000`),
   ]);
 
-  const blogUrls: MetadataRoute.Sitemap = (blogsData?.data || []).map((blog) => ({
-    url: `${BASE_URL}/blogs/${blog.slug}`,
-    lastModified: blog.updated_at ? new Date(blog.updated_at).toISOString() : now,
-    changeFrequency: 'weekly' as const,
-    priority: 0.7,
-  }));
+  const blogUrls: MetadataRoute.Sitemap = (blogsData?.data || [])
+    .filter((blog) => !blog.is_current_affairs_note)
+    .map((blog) => ({
+      url: `${BASE_URL}/blogs/${blog.slug}`,
+      lastModified: blog.updated_at ? new Date(blog.updated_at).toISOString() : now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    }));
+
+  const currentAffairsUrls: MetadataRoute.Sitemap = (blogsData?.data || [])
+    .filter((blog) => blog.is_current_affairs_note)
+    .map((blog) => ({
+      url: `${BASE_URL}/current-affairs/${blog.slug}`,
+      lastModified: blog.updated_at ? new Date(blog.updated_at).toISOString() : now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    }));
 
   const testSeriesUrls: MetadataRoute.Sitemap = (testSeriesData?.data || []).map((series) => ({
     url: `${BASE_URL}/test-series/${series.slug}`,
@@ -84,6 +96,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: 'weekly' as const,
     priority: 0.7,
   }));
+
+  const examUrls: MetadataRoute.Sitemap = (examsData?.data || [])
+    .filter((exam) => exam.url_path && exam.url_path.startsWith('/'))
+    .map((exam) => ({
+      url: `${BASE_URL}${exam.url_path}`,
+      lastModified: exam.updated_at ? new Date(exam.updated_at).toISOString() : now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    }));
 
   // Fetch page-content for each subcategory in parallel (batched) to get custom tabs
   const PAGE_CONTENT_CONCURRENCY = 10;
@@ -127,5 +148,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  return [...staticPages, ...blogUrls, ...testSeriesUrls, ...categoryUrls, ...subcategoryUrls, ...subcategoryTabUrls];
+  return [...staticPages, ...blogUrls, ...currentAffairsUrls, ...testSeriesUrls, ...categoryUrls, ...subcategoryUrls, ...examUrls, ...subcategoryTabUrls];
 }
