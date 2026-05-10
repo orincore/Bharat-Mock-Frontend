@@ -27,7 +27,7 @@ export default function Head({ params }: HeadProps) {
     'Bharat Mock'
   ].join(', ');
 
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bharatmock.com'}/test-series/${params.slug}`;
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bharatmock.com'}/mock-test-series/${params.slug}`;
 
   const faqItems = [
     {

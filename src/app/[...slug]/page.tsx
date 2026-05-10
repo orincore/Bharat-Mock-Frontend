@@ -18,6 +18,7 @@ const STATIC_PREFIXES = new Set([
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 async function fetchSeoForSlug(slugArray: string[]): Promise<{
   meta_title?: string;
@@ -151,13 +152,46 @@ export default async function DynamicPage(
     notFound();
   }
 
+  // Generate JSON-LD structured data
+  const slugPath = slugArray.join('/');
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: seo?.meta_title || `${slugArray[0].charAt(0).toUpperCase() + slugArray[0].slice(1)} - Bharat Mock`,
+    description: seo?.meta_description || `Browse ${slugArray[0]} resources on Bharat Mock`,
+    url: `${SITE_URL}/${slugPath}`,
+    breadcrumb: {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: SITE_URL,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: slugArray[0].charAt(0).toUpperCase() + slugArray[0].slice(1),
+          item: `${SITE_URL}/${slugArray[0]}`,
+        },
+      ],
+    },
+  };
+
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-      </div>
-    }>
-      <DynamicPageWrapper slugArray={slugArray} />
-    </Suspense>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+        </div>
+      }>
+        <DynamicPageWrapper slugArray={slugArray} />
+      </Suspense>
+    </>
   );
 }

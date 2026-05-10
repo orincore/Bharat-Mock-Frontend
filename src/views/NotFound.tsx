@@ -79,7 +79,7 @@ const NotFound = () => {
               <Link href="/contact" className="text-sm text-slate-500 hover:text-blue-600 flex items-center gap-1.5">
                 Help & Support
               </Link>
-              <Link href="/test-series" className="text-sm text-slate-500 hover:text-blue-600 flex items-center gap-1.5">
+              <Link href="/mock-test-series" className="text-sm text-slate-500 hover:text-blue-600 flex items-center gap-1.5">
                 Latest Tests
               </Link>
             </div>

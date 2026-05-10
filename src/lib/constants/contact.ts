@@ -40,8 +40,7 @@ export const fallbackContactInfo: ContactInfo = {
   postal_code: '441911',
   country: 'India',
   support_hours: 'Monday - Saturday · 9:00 AM to 8:00 PM IST',
-  map_embed_url:
-    'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.8894897918354!2d77.6411544751557!3d12.91413898740154!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae15d6e7c2f72b%3A0x7e1df6ebadc177a8!2sHSR%20Layout%20Sector%206!5e0!3m2!1sen!2sin!4v1707571200000!5m2!1sen!2sin',
+  map_embed_url: 'https://www.google.com/maps?q=Gondia,Maharashtra&output=embed',
   contact_social_links: [
     { id: 'fb', platform: 'facebook', label: 'Facebook', url: 'https://facebook.com/bharatmock', icon: 'facebook', display_order: 0, is_active: true },
     { id: 'ig', platform: 'instagram', label: 'Instagram', url: 'https://instagram.com/bharatmock', icon: 'instagram', display_order: 1, is_active: true },

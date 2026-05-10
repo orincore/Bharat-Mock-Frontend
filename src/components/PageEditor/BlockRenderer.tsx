@@ -142,7 +142,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
   };
 
   return (
-    <div className={`block-wrapper ${isEditing ? 'editing' : ''}`}>
+    <div className={`block-wrapper ${isEditing ? 'editing' : ''}`} suppressHydrationWarning>
       {renderBlockContent()}
     </div>
   );
@@ -175,6 +175,7 @@ const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =
       className={baseClasses}
       style={{ color: color || undefined, textAlign: alignment as any }}
       dangerouslySetInnerHTML={{ __html: cleanedText }}
+      suppressHydrationWarning
     />
   );
 };
@@ -202,6 +203,7 @@ const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content })
       className={`text-${alignment} mb-4 text-foreground font-normal leading-relaxed rich-text-content`}
       style={{ fontSize }}
       dangerouslySetInnerHTML={{ __html: processedText }}
+      suppressHydrationWarning
     />
   );
 };
@@ -213,7 +215,7 @@ const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   return (
     <ListTag className={`mb-4 ml-2 md:ml-3 pl-3 md:pl-4 ${type === 'ordered' ? 'list-decimal' : 'list-disc'} space-y-1 md:space-y-2`}>
       {items.map((item: string, index: number) => (
-        <li key={index} className="text-foreground rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(item) }} />
+        <li key={index} className="text-foreground rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(item) }} suppressHydrationWarning />
       ))}
     </ListTag>
   );
@@ -429,6 +431,7 @@ const QuoteBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
       <div
         className="text-foreground leading-relaxed rich-text-content"
         dangerouslySetInnerHTML={{ __html: processedText }}
+        suppressHydrationWarning
       />
       {processedAttribution && (
         <p className="text-muted-foreground text-sm mt-2 font-not-italic" dangerouslySetInnerHTML={{ __html: processedAttribution }} />
@@ -600,7 +603,7 @@ const TabsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
       </div>
       <div className="p-4 bg-background">
         {tabs[activeTab] && (
-          <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(tabs[activeTab].content || '') }} />
+          <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(tabs[activeTab].content || '') }} suppressHydrationWarning />
         )}
       </div>
     </div>
@@ -650,7 +653,7 @@ const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     <div className={`mb-6 p-4 border-l-4 rounded ${typeClasses[type as keyof typeof typeClasses]}`}>
       <div className="flex items-start">
         <AlertCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
-        <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedText }} />
+        <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedText }} suppressHydrationWarning />
       </div>
     </div>
   );
@@ -678,7 +681,7 @@ const EmbedBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   const { embedCode } = content;
   
   return (
-    <div className="mb-6" dangerouslySetInnerHTML={{ __html: embedCode }} />
+    <div className="mb-6" dangerouslySetInnerHTML={{ __html: embedCode }} suppressHydrationWarning />
   );
 };
 
@@ -687,7 +690,7 @@ const HtmlBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const cleanedHtml = removeStandaloneHeadingMarkers(html || '');
   
   return (
-    <div className="mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedHtml }} />
+    <div className="mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedHtml }} suppressHydrationWarning />
   );
 };
 
@@ -697,7 +700,7 @@ const ColumnsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =
   return (
     <div className={`mb-6 grid grid-cols-${columns.length} gap-6`}>
       {columns.map((column: any, index: number) => (
-        <div key={index} className="rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(column.content || '') }} />
+        <div key={index} className="rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(column.content || '') }} suppressHydrationWarning />
       ))}
     </div>
   );

@@ -117,12 +117,12 @@ const passStats = [
 ];
 
 const featuredPartners = [
-  { name: 'Aaj Tak', url: 'https://logowik.com/content/uploads/images/aaj-tak1841.jpg' },
-  { name: 'The Times of India', url: 'https://twoheadmarketing.wordpress.com/wp-content/uploads/2020/07/1546517908_1bhj7d_time-of-india.jpg' },
-  { name: 'Mint', url: 'https://logowik.com/content/uploads/images/mint-magazine8794.jpg' },
-  { name: 'The Economic Times', url: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/The_Economic_Times_logo.png' },
   { name: 'Startup India', url: 'https://cdn-prod.mybharats.in/events/17052955243640.png' },
-  { name: 'YourStory', url: 'https://polarity.in/wp-content/uploads/2020/01/YourStory-Logo.png' }
+  { name: 'Medium', url: 'https://miro.medium.com/v2/resize:fit:1290/1*cbyNf_R8Ld_ZzKVv07Ezag.jpeg' },
+  { name: 'Trust Pilot', url: 'https://1000logos.net/wp-content/uploads/2022/10/Trustpilot-Logo.png' },
+  { name: 'Wikipedia', url: 'https://images.seeklogo.com/logo-png/25/2/wikipedia-logo-png_seeklogo-259331.png' },
+  { name: 'Google My Business', url: 'https://londonproofreaders.co.uk/wp-content/uploads/2025/06/google-my-business-logo-png-transparent.png' },
+  { name: 'JustDial', url: 'https://indiancompanies.in/wp-content/uploads/2021/10/About-Just-Dial-Limited-Company.png' },
 ];
 
 const passHighlights = [
@@ -624,7 +624,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                             {sub.logo_url ? (
                               <img
                                 src={sub.logo_url}
-                                alt=""
+                                alt={sub.name}
                                 width={32}
                                 height={32}
                                 className="w-8 h-8 object-contain"
@@ -632,7 +632,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
                             ) : selectedCategory.logo_url ? (
                               <img
                                 src={selectedCategory.logo_url}
-                                alt=""
+                                alt={selectedCategory.name}
                                 width={32}
                                 height={32}
                                 className="w-8 h-8 object-contain"
@@ -831,7 +831,13 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
               </div>
             </div>
             <div className="relative overflow-hidden rounded-2xl border border-white/60 bg-gradient-to-r from-white via-slate-50 to-primary/5 px-2 py-2">
-              <div className="flex gap-8 animate-featured-marquee">
+              <div 
+                className="flex gap-8 animate-featured-marquee"
+                style={{ 
+                  animationDuration: `${featuredPartners.length * 8}s`,
+                  width: 'max-content'
+                }}
+              >
                 {[...featuredPartners, ...featuredPartners].map((partner, index) => (
                   <div
                     key={`${partner.name}-${index}`}

@@ -400,6 +400,7 @@ export function Navbar() {
           <button
             className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            suppressHydrationWarning
           >
             {isMobileMenuOpen ? (
               <X className="h-6 w-6" />

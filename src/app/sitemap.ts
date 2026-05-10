@@ -21,27 +21,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/`, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
-    { url: `${BASE_URL}/exams`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${BASE_URL}/test-series`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${BASE_URL}/blogs`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
+    { url: `${BASE_URL}/mock-test-series`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${BASE_URL}/blogs`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${BASE_URL}/live-tests`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
     { url: `${BASE_URL}/current-affairs`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
-    { url: `${BASE_URL}/mock-test-series`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${BASE_URL}/previous-year-papers`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${BASE_URL}/quizzes`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${BASE_URL}/live-tests`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
-    { url: `${BASE_URL}/subscriptions`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${BASE_URL}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${BASE_URL}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE_URL}/quizzes`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${BASE_URL}/previous-year-papers`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${BASE_URL}/courses`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${BASE_URL}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${BASE_URL}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/privacy-policy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE_URL}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE_URL}/refund-policy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE_URL}/disclaimer`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ];
 
-  const [blogsData, testSeriesData, categoriesData] = await Promise.all([
+  const [blogsData, testSeriesData, categoriesData, subcategoriesData] = await Promise.all([
     fetchJson<{ data?: { items?: { slug: string; updated_at?: string }[] } }>(`${API_BASE_URL}/blogs?limit=1000&published=true`),
     fetchJson<{ data?: { items?: { slug: string; updated_at?: string }[] } }>(`${API_BASE_URL}/test-series?limit=1000`),
     fetchJson<{ data?: { items?: { slug: string; updated_at?: string }[] } }>(`${API_BASE_URL}/categories?limit=500`),
+    fetchJson<{ data?: { items?: { slug: string; category_slug?: string; updated_at?: string }[] } }>(`${API_BASE_URL}/subcategories?limit=1000`),
   ]);
 
   const blogUrls: MetadataRoute.Sitemap = (blogsData?.data?.items || []).map((blog) => ({
@@ -65,5 +64,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...blogUrls, ...testSeriesUrls, ...categoryUrls];
+  const subcategoryUrls: MetadataRoute.Sitemap = (subcategoriesData?.data?.items || []).map((sub) => ({
+    url: `${BASE_URL}/${sub.category_slug}/${sub.slug}`,
+    lastModified: sub.updated_at ? new Date(sub.updated_at).toISOString() : now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.7,
+  }));
+
+  return [...staticPages, ...blogUrls, ...testSeriesUrls, ...categoryUrls, ...subcategoryUrls];
 }

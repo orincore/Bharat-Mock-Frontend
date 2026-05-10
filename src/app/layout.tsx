@@ -4,6 +4,7 @@ import "../index.css";
 import { Providers } from "./providers";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { ServiceWorkerRegistration } from "@/components/common/ServiceWorkerRegistration";
+import { WebVitals } from "@/components/common/WebVitals";
 
 // Only load the two fonts actually used in tailwind.config.ts
 const inter = Inter({
@@ -75,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
 
         <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
+        <link rel="icon" type="image/x-icon" href="/favicon.jpg" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         {/* Google Tag Manager (noscript) */}
@@ -84,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <ScrollToTopButton />
           <ServiceWorkerRegistration />
+          <WebVitals />
         </Providers>
       </body>
     </html>

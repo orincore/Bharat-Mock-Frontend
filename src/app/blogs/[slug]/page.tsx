@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 async function fetchBlog(slug: string) {
   try {
@@ -92,14 +93,45 @@ export default async function BlogDetailPage(
     fetchCategories(),
   ]);
 
+  // Generate JSON-LD structured data
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description: article.excerpt || article.meta_description,
+    image: article.featured_image_url,
+    author: {
+      '@type': 'Person',
+      name: article.author?.name || 'Bharat Mock',
+    },
+    datePublished: article.published_at,
+    dateModified: article.updated_at,
+    url: `${SITE_URL}/blogs/${slug}`,
+    publisher: {
+      '@type': 'Organization',
+      name: 'Bharat Mock',
+      logo: `${SITE_URL}/favicon.jpg`,
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${SITE_URL}/blogs/${slug}`,
+    },
+  };
+
   return (
-    <BlogDetailClient
-      article={article}
-      sections={sections}
-      latestBlogs={latestBlogs}
-      relatedArticles={relatedArticles}
-      categories={categories}
-      slug={slug}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <BlogDetailClient
+        article={article}
+        sections={sections}
+        latestBlogs={latestBlogs}
+        relatedArticles={relatedArticles}
+        categories={categories}
+        slug={slug}
+      />
+    </>
   );
 }

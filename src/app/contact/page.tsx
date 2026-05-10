@@ -20,6 +20,38 @@ import { useContactInfo } from '@/hooks/useContactInfo';
 import { socialIconMap, fallbackContactInfo } from '@/lib/constants/contact';
 import Link from 'next/link';
 
+// Convert Google Maps place URL to embed URL
+function convertGoogleMapsUrlToEmbed(url: string): string {
+  if (!url) return '';
+
+  // Already an embed URL
+  if (url.includes('/maps/embed?')) {
+    return url;
+  }
+
+  // Extract coordinates from @lat,lng,zoom format
+  const coordsMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),(\d+\.?\d*)z/);
+  if (coordsMatch) {
+    const lat = coordsMatch[1];
+    const lng = coordsMatch[2];
+    return `https://www.google.com/maps?q=${lat},${lng}&output=embed`;
+  }
+
+  // Try to extract place name from /place/ format
+  const placeMatch = url.match(/\/place\/([^/]+)/);
+  if (placeMatch) {
+    const place = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+    return `https://www.google.com/maps?q=${encodeURIComponent(place)}&output=embed`;
+  }
+
+  // Fallback: try to use the URL as-is with output=embed
+  if (url.includes('google.com/maps')) {
+    return `https://www.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+  }
+
+  return url;
+}
+
 export default function ContactPage() {
   const { contactInfo, loading, error } = useContactInfo();
   const info = contactInfo ?? fallbackContactInfo;
@@ -287,65 +319,18 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {socialLinks.length > 0 && (
-              <div className="bg-card border border-border rounded-3xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Social Presence</p>
-                    <h3 className="font-display text-xl font-bold">Follow our updates</h3>
-                  </div>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {socialLinks.map((link) => {
-                    const Icon = socialIconMap[link.icon || link.platform?.toLowerCase()] ?? FaTelegram;
-                    return (
-                      <Link
-                        key={link.id ?? link.url}
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3 hover:border-primary transition"
-                      >
-                        <Icon className="h-5 w-5 text-primary" />
-                        <div>
-                          <p className="font-semibold text-foreground">{link.label || link.platform}</p>
-                          <p className="text-xs text-muted-foreground">{link.platform?.toUpperCase()}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {info.map_embed_url && (
               <div className="rounded-3xl overflow-hidden border border-border">
                 <iframe
-                  src={info.map_embed_url}
+                  src={convertGoogleMapsUrlToEmbed(info.map_embed_url)}
                   title="Bharat Mock HQ Map"
                   loading="lazy"
                   className="w-full h-80"
                   referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
                 />
               </div>
             )}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-padding bg-muted/20">
-        <div className="container-main text-center space-y-6">
-          <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">Need instant answers?</p>
-          <h2 className="font-display text-3xl font-bold max-w-3xl mx-auto">
-            Visit the help centre for onboarding guides, troubleshooting steps, and exam-day checklists.
-          </h2>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg">
-              <Link href="/help">Explore Help Centre</Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/faq">Visit FAQ</Link>
-            </Button>
           </div>
         </div>
       </section>

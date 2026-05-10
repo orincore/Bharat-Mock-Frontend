@@ -414,7 +414,7 @@ export default function CurrentAffairsPage() {
           faqItems={[
             {
               q: 'What is the best way to read daily current affairs for competitive exams?',
-              a: 'The best approach is a focused daily routine instead of reading everything. Spend 15–20 minutes on today\'s current affairs with important topics. Then take a quiz to test what you remember. Consistency beats last-minute revision. There is no need to read everything; a focused and daily routine is enough. Read today\'s current affairs for 15-20 minutes with important topics. After that, take a quiz to test what you remember.'
+              a: 'The best approach is a focused daily routine instead of reading everything. Spend 15-20 minutes on today\'s current affairs with important topics. Then take a quiz to test what you remember. Consistency beats last-minute revision. There is no need to read everything; a focused and daily routine is enough. Read today\'s current affairs for 15-20 minutes with important topics. After that, take a quiz to test what you remember.'
             },
             {
               q: 'How many months of current affairs are important for exams?',

@@ -13,6 +13,45 @@ import { Loader2, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react';
 import { fallbackContactInfo } from '@/lib/constants/contact';
 import { FaFacebook, FaInstagram, FaTwitter, FaLinkedin, FaYoutube, FaWhatsapp, FaTelegram, FaGithub, FaGlobe } from 'react-icons/fa';
 
+// Convert Google Maps place URL to embed URL
+function convertGoogleMapsUrlToEmbed(url: string): string {
+  if (!url) return '';
+  
+  // Already an embed URL
+  if (url.includes('/maps/embed?')) {
+    return url;
+  }
+  
+  // Extract coordinates from @lat,lng,zoom format
+  const coordsMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),(\d+\.?\d*)z/);
+  if (coordsMatch) {
+    const lat = coordsMatch[1];
+    const lng = coordsMatch[2];
+    // Use the Google Maps Embed API format with coordinates
+    return `https://www.google.com/maps?q=${lat},${lng}&output=embed`;
+  }
+  
+  // Try to extract place name from /place/ format
+  const placeMatch = url.match(/\/place\/([^/]+)/);
+  if (placeMatch) {
+    const place = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+    // Use place-based embed
+    return `https://www.google.com/maps?q=${encodeURIComponent(place)}&output=embed`;
+  }
+  
+  // Fallback: try to use the URL as-is with output=embed
+  if (url.includes('google.com/maps')) {
+    return `https://www.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+  }
+  
+  return url;
+}
+
+// Get the URL to use for the iframe (converts if needed)
+function getMapEmbedUrl(url: string): string {
+  return convertGoogleMapsUrlToEmbed(url);
+}
+
 const SOCIAL_ICON_OPTIONS = [
   { value: 'facebook',  label: 'Facebook',  Icon: FaFacebook },
   { value: 'instagram', label: 'Instagram', Icon: FaInstagram },
@@ -330,16 +369,20 @@ export default function ContactAdminPage() {
               id="map_embed_url"
               value={form.map_embed_url ?? ''}
               onChange={(e) => handleFieldChange('map_embed_url', e.target.value)}
-              placeholder="https://www.google.com/maps/embed?..."
+              placeholder="Paste Google Maps URL (e.g., https://www.google.com/maps/place/...) or embed URL"
             />
+            <p className="text-xs text-muted-foreground">
+              Accepts both regular Google Maps URLs and iframe embed URLs
+            </p>
             {form.map_embed_url && (
               <div className="mt-4 border border-border rounded-xl overflow-hidden">
                 <iframe
-                  src={form.map_embed_url}
+                  src={getMapEmbedUrl(form.map_embed_url)}
                   title="Office Map Preview"
                   className="w-full h-64"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
                 />
               </div>
             )}

@@ -3,7 +3,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Head from 'next/head';
 import { useRouter } from 'next/navigation';
 import { Crown, CheckCircle2, Shield, Loader2, Sparkles, Star, Users, TrendingUp, Award, BookOpen, Target, Zap, Trophy, ChevronDown, ChevronUp, ExternalLink, GraduationCap, BarChart3, Clock, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -405,29 +404,6 @@ export default function SubscriptionLandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <Head>
-        <title>{metaTitle}</title>
-        <meta name="description" content={metaDescription} />
-        <meta name="keywords" content={metaKeywords} />
-        <link rel="canonical" href={canonicalUrl} />
-
-        {/* Open Graph */}
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content={ogTitle} />
-        <meta property="og:description" content={ogDescription} />
-        <meta property="og:image" content={ogImage} />
-        <meta property="og:url" content={canonicalUrl} />
-
-        {/* Twitter */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={ogTitle} />
-        <meta name="twitter:description" content={ogDescription} />
-        <meta name="twitter:image" content={ogImage} />
-        <meta name="twitter:site" content="@BharatMock" />
-
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: productStructuredData }} />
-      </Head>
-
       <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white py-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]"></div>
         <div className="w-full max-w-6xl mx-auto px-4 relative z-10">
@@ -886,7 +862,7 @@ export default function SubscriptionLandingPage() {
           </section>
         )}
 
-        {curriculumBannersSection && curriculumBannersSection.blocks && curriculumBannersSection.blocks.length > 0 && (
+        {curriculumBannersSection?.blocks && curriculumBannersSection.blocks.length > 0 && (
           <section className="py-4">
             {curriculumBannersSection.blocks.length === 1 && (
               <div className="text-center text-sm text-muted-foreground mb-4">
@@ -903,7 +879,7 @@ export default function SubscriptionLandingPage() {
             )}
             <div className="space-y-4">
               {curriculumBannersSection.blocks.map((block, idx) => {
-                const isSingle = curriculumBannersSection.blocks.length === 1;
+                const isSingle = curriculumBannersSection.blocks?.length === 1;
                 const containerClasses = isSingle
                   ? 'relative w-full max-w-5xl mx-auto overflow-hidden rounded-3xl border border-gray-200 bg-gray-900/5'
                   : 'relative w-full overflow-hidden rounded-3xl border border-gray-200 bg-gray-900/5';
