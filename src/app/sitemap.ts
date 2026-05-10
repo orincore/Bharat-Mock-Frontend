@@ -3,12 +3,19 @@ import { MetadataRoute } from 'next';
 const BASE_URL = 'https://bharatmock.com';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+async function fetchJson<T>(url: string, timeout = 10000): Promise<T | null> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     const res = await fetch(url, {
       cache: 'no-store',
-      next: { revalidate: 0 },
+      next: { revalidate: 3600 }, // Cache for 1 hour to reduce API load
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
+
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -53,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchJson<{ data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/test-series?limit=1000`),
     fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/categories?limit=500`),
     fetchJson<{ data?: { id: string; slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/subcategories?limit=1000`),
-    fetchJson<{ success?: boolean; data?: { url_path: string; updated_at?: string }[] }>(`${API_BASE_URL}/exams?limit=5000`),
+    fetchJson<{ success?: boolean; data?: { url_path: string; updated_at?: string }[] }>(`${API_BASE_URL}/exams?limit=1000`),
   ]);
 
   const blogUrls: MetadataRoute.Sitemap = (blogsData?.data || [])
@@ -107,15 +114,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 
   // Fetch page-content for each subcategory in parallel (batched) to get custom tabs
-  const PAGE_CONTENT_CONCURRENCY = 10;
+  // Reduced concurrency and limited to first 50 subcategories to avoid 503 errors
+  const PAGE_CONTENT_CONCURRENCY = 3;
+  const MAX_SUBCATEGORIES_FOR_TABS = 50;
   const subcategoryTabUrls: MetadataRoute.Sitemap = [];
 
-  for (let i = 0; i < subcategoryItems.length; i += PAGE_CONTENT_CONCURRENCY) {
-    const batch = subcategoryItems.slice(i, i + PAGE_CONTENT_CONCURRENCY);
+  const subcategoriesForTabs = subcategoryItems.slice(0, MAX_SUBCATEGORIES_FOR_TABS);
+
+  for (let i = 0; i < subcategoriesForTabs.length; i += PAGE_CONTENT_CONCURRENCY) {
+    const batch = subcategoriesForTabs.slice(i, i + PAGE_CONTENT_CONCURRENCY);
     const results = await Promise.all(
       batch.map((sub) =>
         fetchJson<{ customTabs?: { id: string; title: string; tab_key?: string }[] }>(
-          `${API_BASE_URL}/page-content/${sub.id}`
+          `${API_BASE_URL}/page-content/${sub.id}`,
+          5000 // 5 second timeout for individual page-content requests
         ).then((data) => ({ sub, data }))
       )
     );
