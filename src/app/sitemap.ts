@@ -3,9 +3,22 @@ import { MetadataRoute } from 'next';
 const BASE_URL = 'https://bharatmock.com';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+interface SitemapResponse {
+  success: boolean;
+  data?: {
+    blogs: { url: string; lastModified: string; changeFrequency: string; priority: number }[];
+    testSeries: { url: string; lastModified: string; changeFrequency: string; priority: number }[];
+    categories: { url: string; lastModified: string; changeFrequency: string; priority: number }[];
+    subcategories: { url: string; lastModified: string; changeFrequency: string; priority: number }[];
+    exams: { url: string; lastModified: string; changeFrequency: string; priority: number }[];
+    subcategoryTabs: { url: string; lastModified: string; changeFrequency: string; priority: number }[];
+    pdfs: { url: string; lastModified: string; changeFrequency: string; priority: number }[];
+  };
+}
+
+async function fetchSitemapData(): Promise<SitemapResponse | null> {
   try {
-    const res = await fetch(url, {
+    const res = await fetch(`${API_BASE_URL}/sitemap`, {
       cache: 'no-store',
       next: { revalidate: 0 },
     });
@@ -16,21 +29,10 @@ async function fetchJson<T>(url: string): Promise<T | null> {
   }
 }
 
-function sanitizeTabSlug(value: string): string {
-  return value
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/--+/g, '-');
-}
-
-const STATIC_TAB_SLUGS = ['mock-tests', 'previous-papers'];
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date().toISOString();
 
+  // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/`, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
     { url: `${BASE_URL}/mock-test-series`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
@@ -48,94 +50,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/disclaimer`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ];
 
-  const [blogsData, testSeriesData, categoriesData, subcategoriesData, examsData] = await Promise.all([
-    fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/blogs?limit=1000&published=true`),
-    fetchJson<{ data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/test-series?limit=1000`),
-    fetchJson<{ success?: boolean; data?: { slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/categories?limit=500`),
-    fetchJson<{ data?: { id: string; slug: string; updated_at?: string }[] }>(`${API_BASE_URL}/taxonomy/subcategories?limit=1000`),
-    fetchJson<{ success?: boolean; data?: { url_path: string; updated_at?: string }[] }>(`${API_BASE_URL}/exams?limit=5000`),
-  ]);
+  // Fetch all dynamic data from optimized single endpoint
+  const sitemapData = await fetchSitemapData();
 
-  const blogUrls: MetadataRoute.Sitemap = (blogsData?.data || []).map((blog) => ({
-    url: `${BASE_URL}/blogs/${blog.slug}`,
-    lastModified: blog.updated_at ? new Date(blog.updated_at).toISOString() : now,
-    changeFrequency: 'weekly' as const,
-    priority: 0.7,
-  }));
-
-  const testSeriesUrls: MetadataRoute.Sitemap = (testSeriesData?.data || []).map((series) => ({
-    url: `${BASE_URL}/test-series/${series.slug}`,
-    lastModified: series.updated_at ? new Date(series.updated_at).toISOString() : now,
-    changeFrequency: 'weekly' as const,
-    priority: 0.8,
-  }));
-
-  const categoryUrls: MetadataRoute.Sitemap = (categoriesData?.data || []).map((cat) => ({
-    url: `${BASE_URL}/${cat.slug}`,
-    lastModified: cat.updated_at ? new Date(cat.updated_at).toISOString() : now,
-    changeFrequency: 'weekly' as const,
-    priority: 0.8,
-  }));
-
-  const subcategoryItems = subcategoriesData?.data || [];
-
-  const subcategoryUrls: MetadataRoute.Sitemap = subcategoryItems.map((sub) => ({
-    url: `${BASE_URL}/${sub.slug}`,
-    lastModified: sub.updated_at ? new Date(sub.updated_at).toISOString() : now,
-    changeFrequency: 'weekly' as const,
-    priority: 0.7,
-  }));
-
-  const examUrls: MetadataRoute.Sitemap = (examsData?.data || [])
-    .filter((exam) => exam.url_path && exam.url_path.startsWith('/'))
-    .map((exam) => ({
-      url: `${BASE_URL}${exam.url_path}`,
-      lastModified: exam.updated_at ? new Date(exam.updated_at).toISOString() : now,
-      changeFrequency: 'weekly' as const,
-      priority: 0.6,
-    }));
-
-  // Fetch page-content for each subcategory in parallel (batched) to get custom tabs
-  const PAGE_CONTENT_CONCURRENCY = 10;
-  const subcategoryTabUrls: MetadataRoute.Sitemap = [];
-
-  for (let i = 0; i < subcategoryItems.length; i += PAGE_CONTENT_CONCURRENCY) {
-    const batch = subcategoryItems.slice(i, i + PAGE_CONTENT_CONCURRENCY);
-    const results = await Promise.all(
-      batch.map((sub) =>
-        fetchJson<{ customTabs?: { id: string; title: string; tab_key?: string }[] }>(
-          `${API_BASE_URL}/page-content/${sub.id}`
-        ).then((data) => ({ sub, data }))
-      )
-    );
-
-    for (const { sub, data } of results) {
-      const lastMod = sub.updated_at ? new Date(sub.updated_at).toISOString() : now;
-
-      // Static tabs (mock-tests, previous-papers) for every subcategory
-      for (const tabSlug of STATIC_TAB_SLUGS) {
-        subcategoryTabUrls.push({
-          url: `${BASE_URL}/${sub.slug}/${tabSlug}`,
-          lastModified: lastMod,
-          changeFrequency: 'weekly' as const,
-          priority: 0.65,
-        });
-      }
-
-      // Dynamic custom tabs from page content
-      const customTabs = data?.customTabs || [];
-      for (const tab of customTabs) {
-        const tabSlug = sanitizeTabSlug(tab.tab_key || tab.title || tab.id);
-        if (!tabSlug || tabSlug === 'overview') continue;
-        subcategoryTabUrls.push({
-          url: `${BASE_URL}/${sub.slug}/${tabSlug}`,
-          lastModified: lastMod,
-          changeFrequency: 'weekly' as const,
-          priority: 0.65,
-        });
-      }
-    }
+  if (!sitemapData?.success || !sitemapData.data) {
+    // Fallback to static pages only if API fails
+    return staticPages;
   }
 
-  return [...staticPages, ...blogUrls, ...testSeriesUrls, ...categoryUrls, ...subcategoryUrls, ...examUrls, ...subcategoryTabUrls];
+  const data = sitemapData.data;
+
+  // Transform relative URLs to absolute URLs
+  const transformUrl = (item: { url: string; lastModified: string; changeFrequency: string; priority: number }): MetadataRoute.Sitemap[0] => ({
+    url: item.url.startsWith('http') ? item.url : `${BASE_URL}${item.url}`,
+    lastModified: item.lastModified,
+    changeFrequency: item.changeFrequency as 'daily' | 'weekly' | 'monthly' | 'yearly',
+    priority: item.priority,
+  });
+
+  return [
+    ...staticPages,
+    ...data.blogs.map(transformUrl),
+    ...data.testSeries.map(transformUrl),
+    ...data.categories.map(transformUrl),
+    ...data.subcategories.map(transformUrl),
+    ...data.exams.map(transformUrl),
+    ...data.subcategoryTabs.map(transformUrl),
+    ...data.pdfs.map(transformUrl),
+  ];
 }
