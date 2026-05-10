@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Compress public assets at build time using sharp.
- * Runs during Amplify preBuild to reduce image sizes before deployment.
+ * Runs Amplify preBuild to reduce image sizes before deployment.
  */
 
 const sharp = require('sharp');
