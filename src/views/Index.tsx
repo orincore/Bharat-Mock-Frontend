@@ -21,26 +21,22 @@ import { taxonomyService, Category, Subcategory } from '@/lib/api/taxonomyServic
 import { Exam, Article } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { HomepageHero, HomepageHeroMediaItem, HomepageData, HomepageBanner } from '@/lib/api/homepageService';
-import { useAuth } from '@/context/AuthContext';
 import { heroUrl, bannerUrl, logoUrl } from '@/lib/utils/imageUrl';
 
-// Isolated client component so useAuth doesn't break SSR prerender of Index
+// Isolated client component — does not call useAuth to avoid SSR prerender issues.
+// Reads localStorage after mount as a lightweight proxy for auth state.
 function GetStartedButton() {
   const [mounted, setMounted] = useState(false);
-  let isAuthenticated = false;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const auth = useAuth();
-    isAuthenticated = mounted && auth.isAuthenticated;
-  } catch {
-    // AuthProvider not available during prerender — default to guest
-  }
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    setIsAuthenticated(!!localStorage.getItem('auth_token'));
+  }, []);
 
-  // Always render /mock-test-series on server to avoid hydration mismatch.
-  // After mount, authenticated users stay on /mock-test-series anyway.
-  // Only unauthenticated users after mount go to /register.
+  // Server: always /mock-test-series (stable across SSR and hydration).
+  // Client + authenticated: /mock-test-series.
+  // Client + guest: /register.
   const href = !mounted || isAuthenticated ? '/mock-test-series' : '/register';
 
   return (

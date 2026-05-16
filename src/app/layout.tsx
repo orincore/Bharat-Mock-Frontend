@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   icons: {
     icon: [{ url: "/favicon.jpg", type: "image/jpeg" }],
-    apple: [{ url: "/favicon.jpg", type: "image/jpeg" }],
+    apple: [{ url: "/favicon.jpg" }],
   },
   openGraph: {
     title: "Bharat Mock — India's Smart Exam Companion",
@@ -74,7 +74,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://translate.googleapis.com" />
         <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
 
-        <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         {/* Google Tag Manager (noscript) */}

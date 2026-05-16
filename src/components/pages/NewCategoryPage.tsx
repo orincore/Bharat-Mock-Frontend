@@ -136,6 +136,7 @@ interface SubcategoryItem {
 interface NewCategoryPageProps {
   categorySlug: string;
   initialTabSlug?: string;
+  serverPageData?: { categoryInfo?: any; categoryId?: string; pageContentData?: any } | null;
 }
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL
@@ -335,23 +336,27 @@ const inlineImagesForPdf = async (root: HTMLElement | null) => {
 export default function NewCategoryPage({
   categorySlug,
   initialTabSlug,
+  serverPageData,
 }: NewCategoryPageProps) {
   const router = useRouter();
   const overviewRef = useRef<HTMLDivElement>(null);
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
-  const [category, setCategory] = useState<Category | null>(null);
+  const [category, setCategory] = useState<Category | null>(serverPageData?.categoryInfo || null);
   const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([]);
-  const [pageContent, setPageContent] = useState<PageContentResponse | null>(null);
-  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const [pageContent, setPageContent] = useState<PageContentResponse | null>(serverPageData?.pageContentData || null);
+  const [customTabs, setCustomTabs] = useState<CustomTab[]>(serverPageData?.pageContentData?.customTabs || []);
   const [activeTab, setActiveTab] = useState<string>("overview");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!serverPageData?.categoryId);
   const [error, setError] = useState<string | null>(null);
   const [isTabListOpen, setIsTabListOpen] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Fetch category info + subcategories
   useEffect(() => {
+    // Server already fetched category info and page content — skip client-side fetch.
+    if (serverPageData?.categoryId) return;
+
     const fetchCategory = async () => {
       try {
         setIsLoading(true);

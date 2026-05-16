@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -161,7 +161,7 @@ const MobileExamTimer = ({ initialTime, isRunning, onTimeUpdate }: { initialTime
   return <>{fTime}</>;
 };
 
-export default function ExamAttemptPage() {
+function ExamAttemptContent() {
   const { user } = useAuth();
   const params = useParams();
   const router = useRouter();
@@ -2234,6 +2234,14 @@ export default function ExamAttemptPage() {
           )}
         </div>
     </div>
+  );
+}
+
+export default function ExamAttemptPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background animate-pulse" />}>
+      <ExamAttemptContent />
+    </Suspense>
   );
 }
 

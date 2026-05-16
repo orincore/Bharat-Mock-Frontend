@@ -37,8 +37,6 @@ const nextConfig = {
       '@radix-ui/react-tooltip',
       'recharts',
     ],
-    // Surfaces BAILOUT_TO_CLIENT_SIDE_RENDERING as a build warning so they can be fixed
-    missingSuspenseWithCSRBailout: true,
   },
 
   trailingSlash: false,

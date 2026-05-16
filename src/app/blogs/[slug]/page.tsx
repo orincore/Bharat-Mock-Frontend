@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 async function fetchBlog(slug: string) {
   try {
@@ -61,13 +61,30 @@ export async function generateMetadata(
   const { slug } = await params;
   const article = await fetchBlog(slug);
   if (!article) return { title: 'Blog Not Found' };
+  const canonicalUrl = `${SITE_URL}/blogs/${slug}`;
+  const title = article.meta_title || article.title;
+  const description = article.meta_description || article.excerpt;
   return {
-    title: article.meta_title || article.title,
-    description: article.meta_description || article.excerpt,
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
     openGraph: {
-      title: article.title,
-      description: article.excerpt,
-      images: article.featured_image_url ? [article.featured_image_url] : [],
+      title: article.og_title || article.title,
+      description: article.og_description || article.excerpt,
+      url: canonicalUrl,
+      type: 'article',
+      siteName: 'BharatMock',
+      images: article.featured_image_url
+        ? [{ url: article.featured_image_url, width: 1200, height: 630, alt: title }]
+        : [{ url: `${SITE_URL}/assets/login_banner_image.jpg`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.og_title || article.title,
+      description: article.og_description || article.excerpt,
+      images: article.featured_image_url
+        ? [article.featured_image_url]
+        : [`${SITE_URL}/assets/login_banner_image.jpg`],
     },
   };
 }

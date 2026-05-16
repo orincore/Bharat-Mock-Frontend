@@ -3,10 +3,13 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 
 // ── Lazy recharts primitives ──────────────────────────────────────────────────
+// IMPORTANT: ssr:false throws BailoutToCSR during SSR. ChartContainer wraps
+// ResponsiveContainer in <Suspense fallback={null}> so the bailout is local.
 const ResponsiveContainer = dynamic(
   () => import("recharts").then((m) => m.ResponsiveContainer),
   { ssr: false }
@@ -61,7 +64,11 @@ const ChartContainer = React.forwardRef<
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <ResponsiveContainer>{children as React.ReactElement}</ResponsiveContainer>
+        {/* Suspense catches BailoutToCSR from the ssr:false ResponsiveContainer
+            so only this chart slot is skipped during SSR, not the whole page. */}
+        <Suspense fallback={null}>
+          <ResponsiveContainer>{children as React.ReactElement}</ResponsiveContainer>
+        </Suspense>
       </div>
     </ChartContext.Provider>
   );

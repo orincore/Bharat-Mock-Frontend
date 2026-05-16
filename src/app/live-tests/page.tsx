@@ -1,14 +1,38 @@
+import type { Metadata } from 'next';
 import LiveTestsClient from './LiveTestsClient';
 import type { Exam } from '@/types';
 import type { Category } from '@/lib/api/taxonomyService';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata: Metadata = {
+  title: "Free Live Mock Tests 2026 — SSC, Banking, Railway & Police | BharatMock",
+  description: "Attempt scheduled live mock tests with real-time leaderboards for SSC CGL, IBPS PO, RRB NTPC, UP Police and 100+ government exams. Join thousands of aspirants competing live.",
+  keywords: "live mock test, live test SSC, live test banking, online live exam, real-time mock test",
+  alternates: {
+    canonical: "https://bharatmock.com/live-tests",
+  },
+  openGraph: {
+    title: "Free Live Mock Tests 2026 | BharatMock",
+    description: "Attempt scheduled live mock tests with real-time leaderboards for 100+ government exams. Join the competition.",
+    url: "https://bharatmock.com/live-tests",
+    type: "website",
+    siteName: "BharatMock",
+    images: [{ url: "/assets/login_banner_image.jpg", width: 1200, height: 630, alt: "BharatMock Live Tests" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free Live Mock Tests 2026 | BharatMock",
+    description: "Scheduled live mock tests with real-time leaderboards for SSC, Banking, Railway & Police exams.",
+    images: ["/assets/login_banner_image.jpg"],
+  },
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
   : 'http://localhost:8000/api/v1';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 async function fetchInitialData() {
   try {

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { removeStandaloneHeadingMarkers, stripLineBreakTags } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { AutoExamCardsBlock } from './AutoExamCardsBlock';
@@ -410,7 +410,10 @@ const ChartBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   return (
     <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
       <div className="h-[320px]">
-        {chartBody}
+        {/* Suspense catches BailoutToCSR from ssr:false recharts components */}
+        <Suspense fallback={<div className="h-full flex items-center justify-center text-slate-400 text-sm">Loading chart…</div>}>
+          {chartBody}
+        </Suspense>
       </div>
       {options?.footnote && (
         <p className="mt-3 text-xs text-slate-500">{options.footnote}</p>

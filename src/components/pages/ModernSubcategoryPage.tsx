@@ -79,6 +79,7 @@ interface ModernSubcategoryPageProps {
   subcategorySlug?: string;
   combinedSlug?: string;
   initialTabSlug?: string;
+  serverPageData?: { subcategoryInfo?: any; subcategoryId?: string; pageContentData?: any } | null;
 }
 
 const getSectionTocLabel = (section: Section): string => {
@@ -236,7 +237,7 @@ const MobileTOC = ({
   );
 };
 
-export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, combinedSlug, initialTabSlug }: ModernSubcategoryPageProps) {
+export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, combinedSlug, initialTabSlug, serverPageData }: ModernSubcategoryPageProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
@@ -248,9 +249,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
   const [resolvedCategorySlug, setResolvedCategorySlug] = useState<string | null>(categorySlug?.toLowerCase() || null);
   const [resolvedSubcategorySlug, setResolvedSubcategorySlug] = useState<string | null>(subcategorySlug?.toLowerCase() || null);
-  const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
-  const [subcategoryInfo, setSubcategoryInfo] = useState<any>(null);
-  const [pageContent, setPageContent] = useState<PageContentResponse | null>(null);
+  const [subcategoryId, setSubcategoryId] = useState<string | null>(serverPageData?.subcategoryId || null);
+  const [subcategoryInfo, setSubcategoryInfo] = useState<any>(serverPageData?.subcategoryInfo || null);
+  const [pageContent, setPageContent] = useState<PageContentResponse | null>(serverPageData?.pageContentData || null);
   const [mockTests, setMockTests] = useState<any[]>([]);
   const [questionPapers, setQuestionPapers] = useState<any[]>([]);
   const [pastPaperExams, setPastPaperExams] = useState<any[]>([]);
@@ -259,9 +260,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const [pastPaperLoading, setPastPaperLoading] = useState(false);
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
-  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const [customTabs, setCustomTabs] = useState<CustomTab[]>(serverPageData?.pageContentData?.customTabs || []);
   const [activeTab, setActiveTab] = useState<string>('overview');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!serverPageData?.subcategoryId);
   const [error, setError] = useState<string | null>(null);
   const [downloadingExamId, setDownloadingExamId] = useState<string | null>(null);
   const [isTabListOpen, setIsTabListOpen] = useState(false);
@@ -269,6 +270,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Server already fetched subcategory info — skip client-side fetch entirely.
+    if (serverPageData?.subcategoryId) return;
+
     const fetchSubcategory = async () => {
       try {
         setIsLoading(true);
@@ -425,6 +429,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   }, [currentTabDescriptor?.slug, basePath, hasAppliedInitialTab]);
 
   useEffect(() => {
+    // Server already fetched page content — skip client-side fetch entirely.
+    if (serverPageData?.pageContentData) return;
+
     const fetchPageContent = async () => {
       if (!subcategoryId) return;
       try {
@@ -444,7 +451,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           if (prev === 'overview' || prev === 'mock-tests' || prev === 'question-papers') {
             return prev;
           }
-          return nextTabs.some((tab) => tab.id === prev) ? prev : 'overview';
+          return nextTabs.some((tab: CustomTab) => tab.id === prev) ? prev : 'overview';
         });
       } catch (err: any) {
         setError(err.message || "Unable to load page content");

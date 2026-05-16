@@ -1,14 +1,38 @@
+import type { Metadata } from 'next';
 import QuizzesClient from './QuizzesClient';
 import type { Exam } from '@/types';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata: Metadata = {
+  title: "Free Daily Quizzes 2026 — GK, Current Affairs & Exam Practice | BharatMock",
+  description: "Practice with free daily quizzes on GK, current affairs, reasoning and quantitative aptitude for SSC CGL, IBPS PO, RRB NTPC and all government exams. Short, targeted, and free.",
+  keywords: "daily quiz, GK quiz, current affairs quiz, aptitude quiz, SSC quiz, banking quiz, railway quiz",
+  alternates: {
+    canonical: "https://bharatmock.com/quizzes",
+  },
+  openGraph: {
+    title: "Free Daily Quizzes 2026 | BharatMock",
+    description: "Short daily quizzes on GK, current affairs and aptitude for SSC, Banking, Railway & Police exam preparation.",
+    url: "https://bharatmock.com/quizzes",
+    type: "website",
+    siteName: "BharatMock",
+    images: [{ url: "/assets/login_banner_image.jpg", width: 1200, height: 630, alt: "BharatMock Daily Quizzes" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free Daily Quizzes 2026 | BharatMock",
+    description: "Practice daily GK and aptitude quizzes for government exam preparation. Free and targeted.",
+    images: ["/assets/login_banner_image.jpg"],
+  },
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
   : 'http://localhost:8000/api/v1';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 async function fetchInitialData() {
   try {

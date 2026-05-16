@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ExamDetailPage } from '@/components/pages/ExamDetailPage';
 import ModernSubcategoryPage from '@/components/pages/ModernSubcategoryPage';
 import NewCategoryPage from '@/components/pages/NewCategoryPage';
+import type { FirstSegmentType, ServerPageData } from './page';
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
@@ -16,10 +17,25 @@ const buildApiUrl = (path: string) => {
 
 type ResolvedType = 'subcategory' | 'combined-subcategory' | 'category' | null;
 
-function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
-  const [resolved, setResolved] = useState<ResolvedType>(null);
+function SlugResolver({
+  slug,
+  tabSlug,
+  firstSegmentType,
+  serverPageData,
+}: {
+  slug: string;
+  tabSlug?: string;
+  firstSegmentType: FirstSegmentType;
+  serverPageData: ServerPageData | null;
+}) {
+  // Initialise from the server-resolved type to avoid the client-side spinner on first paint.
+  const [resolved, setResolved] = useState<ResolvedType>(firstSegmentType);
+  const resolvedRef = useRef(firstSegmentType);
 
   useEffect(() => {
+    // If the server already told us what type this slug is, skip all API calls.
+    if (resolvedRef.current !== null) return;
+
     let cancelled = false;
     const resolve = async () => {
       try {
@@ -27,7 +43,7 @@ function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
         if (res.ok) {
           const data = await res.json();
           if (data?.data?.id) {
-            if (!cancelled) setResolved('subcategory');
+            if (!cancelled) { resolvedRef.current = 'subcategory'; setResolved('subcategory'); }
             return;
           }
         }
@@ -38,13 +54,13 @@ function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
         if (combinedRes.ok) {
           const data = await combinedRes.json();
           if (data?.data?.id) {
-            if (!cancelled) setResolved('combined-subcategory');
+            if (!cancelled) { resolvedRef.current = 'combined-subcategory'; setResolved('combined-subcategory'); }
             return;
           }
         }
       } catch { /* not a combined subcategory slug */ }
 
-      if (!cancelled) setResolved('category');
+      if (!cancelled) { resolvedRef.current = 'category'; setResolved('category'); }
     };
     resolve();
     return () => { cancelled = true; };
@@ -62,14 +78,32 @@ function SlugResolver({ slug, tabSlug }: { slug: string; tabSlug?: string }) {
   }
 
   if (resolved === 'subcategory') {
-    return <ModernSubcategoryPage subcategorySlug={slug} initialTabSlug={tabSlug} />;
+    return (
+      <ModernSubcategoryPage
+        subcategorySlug={slug}
+        initialTabSlug={tabSlug}
+        serverPageData={serverPageData}
+      />
+    );
   }
 
   if (resolved === 'combined-subcategory') {
-    return <ModernSubcategoryPage combinedSlug={slug} initialTabSlug={tabSlug} />;
+    return (
+      <ModernSubcategoryPage
+        combinedSlug={slug}
+        initialTabSlug={tabSlug}
+        serverPageData={serverPageData}
+      />
+    );
   }
 
-  return <NewCategoryPage categorySlug={slug} initialTabSlug={tabSlug} />;
+  return (
+    <NewCategoryPage
+      categorySlug={slug}
+      initialTabSlug={tabSlug}
+      serverPageData={serverPageData}
+    />
+  );
 }
 
 const KNOWN_TAB_SLUGS = new Set([
@@ -81,13 +115,38 @@ const KNOWN_TAB_SLUGS = new Set([
 
 type TwoSegmentResolved = 'exam' | 'subcategory' | 'subcategory-tab' | 'combined-subcategory-tab' | 'category-tab' | null;
 
-function TwoSegmentResolver({ first, second }: { first: string; second: string }) {
-  const [resolved, setResolved] = useState<TwoSegmentResolved>(null);
+function TwoSegmentResolver({
+  first,
+  second,
+  firstSegmentType,
+  serverPageData,
+}: {
+  first: string;
+  second: string;
+  firstSegmentType: FirstSegmentType;
+  serverPageData: ServerPageData | null;
+}) {
+  // If the server resolved the first segment AND the second segment is a known tab,
+  // we can render immediately without any client-side API calls.
+  const isKnownTab = KNOWN_TAB_SLUGS.has(second.toLowerCase());
+  const immediateResolved: TwoSegmentResolved | null =
+    firstSegmentType && isKnownTab
+      ? firstSegmentType === 'subcategory'
+        ? 'subcategory-tab'
+        : firstSegmentType === 'combined-subcategory'
+        ? 'combined-subcategory-tab'
+        : 'category-tab'
+      : null;
+
+  const [resolved, setResolved] = useState<TwoSegmentResolved>(immediateResolved);
+  const resolvedRef = useRef(immediateResolved);
 
   useEffect(() => {
+    // Already resolved server-side — skip all API calls.
+    if (resolvedRef.current !== null) return;
+
     let cancelled = false;
     const resolve = async () => {
-      const isKnownTab = KNOWN_TAB_SLUGS.has(second.toLowerCase());
 
       try {
         const examPath = `/${first}/${second}`;
@@ -186,19 +245,43 @@ function TwoSegmentResolver({ first, second }: { first: string; second: string }
   }
 
   if (resolved === 'subcategory-tab') {
-    return <ModernSubcategoryPage subcategorySlug={first} initialTabSlug={second} />;
+    return (
+      <ModernSubcategoryPage
+        subcategorySlug={first}
+        initialTabSlug={second}
+        serverPageData={serverPageData}
+      />
+    );
   }
 
   if (resolved === 'subcategory') {
-    return <ModernSubcategoryPage categorySlug={first} subcategorySlug={second} />;
+    return (
+      <ModernSubcategoryPage
+        categorySlug={first}
+        subcategorySlug={second}
+        serverPageData={serverPageData}
+      />
+    );
   }
 
   if (resolved === 'combined-subcategory-tab') {
-    return <ModernSubcategoryPage combinedSlug={first} initialTabSlug={second} />;
+    return (
+      <ModernSubcategoryPage
+        combinedSlug={first}
+        initialTabSlug={second}
+        serverPageData={serverPageData}
+      />
+    );
   }
 
   if (resolved === 'category-tab') {
-    return <NewCategoryPage categorySlug={first} initialTabSlug={second} />;
+    return (
+      <NewCategoryPage
+        categorySlug={first}
+        initialTabSlug={second}
+        serverPageData={serverPageData}
+      />
+    );
   }
 
   return <ExamDetailPage urlPath={`/${first}/${second}`} />;
@@ -213,7 +296,15 @@ const STATIC_ROUTE_PREFIXES = new Set([
   'refund-policy', 'disclaimer', 'terms', 'onboarding',
 ]);
 
-export default function DynamicPageClient({ slugArray }: { slugArray: string[] }) {
+export default function DynamicPageClient({
+  slugArray,
+  firstSegmentType,
+  serverPageData,
+}: {
+  slugArray: string[];
+  firstSegmentType: FirstSegmentType;
+  serverPageData: ServerPageData | null;
+}) {
   // Prevent handling system paths
   if (slugArray.length > 0 && slugArray[0].startsWith('_')) {
     return null;
@@ -229,11 +320,24 @@ export default function DynamicPageClient({ slugArray }: { slugArray: string[] }
   }
 
   if (slugArray.length === 2) {
-    return <TwoSegmentResolver first={slugArray[0]} second={slugArray[1]} />;
+    return (
+      <TwoSegmentResolver
+        first={slugArray[0]}
+        second={slugArray[1]}
+        firstSegmentType={firstSegmentType}
+        serverPageData={serverPageData}
+      />
+    );
   }
 
   if (slugArray.length === 1 && slugArray[0]) {
-    return <SlugResolver slug={slugArray[0]} />;
+    return (
+      <SlugResolver
+        slug={slugArray[0]}
+        firstSegmentType={firstSegmentType}
+        serverPageData={serverPageData}
+      />
+    );
   }
 
   // Fallback for empty or invalid slugs

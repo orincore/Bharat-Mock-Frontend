@@ -30,7 +30,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
   : 'http://localhost:8000/api/v1';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 async function fetchInitialData() {
   try {

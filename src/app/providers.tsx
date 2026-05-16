@@ -16,18 +16,14 @@ import { usePathname } from "next/navigation";
 import { Ban, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-// Lazy-load below-fold / non-critical components — keeps initial JS bundle small
 const Footer = dynamic(
-  () => import("@/components/common/Footer").then((m) => ({ default: m.Footer })),
-  { ssr: false }
+  () => import("@/components/common/Footer").then((m) => ({ default: m.Footer }))
 );
 const AuthReminderDialog = dynamic(
-  () => import("@/components/common/AuthReminderDialog").then((m) => ({ default: m.AuthReminderDialog })),
-  { ssr: false }
+  () => import("@/components/common/AuthReminderDialog").then((m) => ({ default: m.AuthReminderDialog }))
 );
 const SubscriptionPromoBanner = dynamic(
-  () => import("@/components/common/SubscriptionPromoBanner").then((m) => ({ default: m.SubscriptionPromoBanner })),
-  { ssr: false }
+  () => import("@/components/common/SubscriptionPromoBanner").then((m) => ({ default: m.SubscriptionPromoBanner }))
 );
 
 function DeletedAccountGate({ children }: { children: React.ReactNode }) {
@@ -113,23 +109,23 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
           <Toaster />
           <Sonner />
           <GoogleTranslate />
-          <DeletedAccountGate>
-          <BlockedAccountGate>
-            <div className="flex flex-col min-h-screen">
-              {!hideChrome && (
-                <div className="sticky top-0 z-50">
-                  <Navbar />
-                  <SubscriptionPromoBanner />
-                </div>
-              )}
-              <main className={`flex-grow ${hideChrome ? "min-h-screen bg-background" : ""}`}>
-                {children}
-              </main>
-              {!hideChrome && !hideFooterOnly && <Footer />}
-            </div>
-            <AuthReminderDialog />
-          </BlockedAccountGate>
-          </DeletedAccountGate>
+          <div className="flex flex-col min-h-screen">
+            {!hideChrome && (
+              <div className="sticky top-0 z-50">
+                <Navbar />
+              </div>
+            )}
+            {!hideChrome && <SubscriptionPromoBanner />}
+            <main className={`flex-grow ${hideChrome ? "min-h-screen bg-background" : ""}`}>
+              <DeletedAccountGate>
+                <BlockedAccountGate>
+                  {children}
+                </BlockedAccountGate>
+              </DeletedAccountGate>
+            </main>
+            {!hideChrome && !hideFooterOnly && <Footer />}
+          </div>
+          <AuthReminderDialog />
         </TooltipProvider>
       </ExamProvider>
     </AuthProvider>
