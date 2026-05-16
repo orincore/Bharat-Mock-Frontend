@@ -37,9 +37,11 @@ const nextConfig = {
       '@radix-ui/react-tooltip',
       'recharts',
     ],
+    // Surfaces BAILOUT_TO_CLIENT_SIDE_RENDERING as a build warning so they can be fixed
+    missingSuspenseWithCSRBailout: true,
   },
 
-  skipTrailingSlashRedirect: true,
+  trailingSlash: false,
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -84,7 +86,13 @@ const nextConfig = {
   },
 
   async redirects() {
-    return [];
+    return [
+      {
+        source: '/:path+/',
+        destination: '/:path+',
+        permanent: true,
+      },
+    ];
   },
 
   async rewrites() {

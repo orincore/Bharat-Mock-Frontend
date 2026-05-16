@@ -1,8 +1,32 @@
+import type { Metadata } from 'next';
 import MockTestSeriesClient from './MockTestSeriesClient';
 import type { TestSeries } from '@/lib/api/testSeriesService';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: "Free Mock Test Series 2026 — SSC, Banking, Railway & Police | BharatMock",
+  description: "Practice with 5000+ free mock tests for SSC CGL, IBPS PO, RRB NTPC, UP Police and 100+ govt exams. Topic-wise, chapter-wise & full-length test series with detailed analytics.",
+  keywords: "free mock test series, SSC CGL mock test 2026, IBPS PO mock test, RRB NTPC mock test, UP Police mock test, government exam practice tests",
+  alternates: {
+    canonical: "https://bharatmock.com/mock-test-series",
+  },
+  openGraph: {
+    title: "Free Mock Test Series 2026 — SSC, Banking, Railway & Police | BharatMock",
+    description: "Practice with 5000+ free mock tests for SSC CGL, IBPS PO, RRB NTPC, UP Police and 100+ govt exams. Start free today!",
+    url: "https://bharatmock.com/mock-test-series",
+    type: "website",
+    siteName: "BharatMock",
+    images: [{ url: "/assets/login_banner_image.jpg", width: 1200, height: 630, alt: "BharatMock Mock Test Series" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free Mock Test Series 2026 — SSC, Banking, Railway & Police | BharatMock",
+    description: "Practice with 5000+ free mock tests for 100+ govt exams. Start free today!",
+    images: ["/assets/login_banner_image.jpg"],
+  },
+};
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')

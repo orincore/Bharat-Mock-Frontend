@@ -3,13 +3,15 @@ import Index from "@/views/Index";
 import { HomepageHero, HomepageData } from "@/lib/api/homepageService";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
-const DEFAULT_TITLE = "BharatMock All Govt exams  |  Mock Test & Previous Year Papers";
+const SITE_URL = "https://bharatmock.com";
+const DEFAULT_TITLE = "Free Mock Tests for SSC, Banking, Railway & Police Exams | BharatMock";
 const DEFAULT_DESCRIPTION =
-  "Get free mock tests and previous year papers for all sarkari exams on BharatMock. Practice smarter and boost your exam preparation and results.";
+  "Practice free mock tests for SSC CGL, IBPS PO, RRB NTPC, and 100+ govt exams. Live tests, previous year papers & detailed analytics. Start free today!";
+const DEFAULT_OG_IMAGE = "/assets/login_banner_image.jpg";
 
 async function fetchHomepageData(): Promise<HomepageData | null> {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
+  const id = setTimeout(() => controller.abort(), 5000);
 
   try {
     const response = await fetch(`${API_BASE_URL}/homepage/data`, {
@@ -18,16 +20,13 @@ async function fetchHomepageData(): Promise<HomepageData | null> {
       signal: controller.signal
     });
     clearTimeout(id);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to load homepage data: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Failed to load homepage data: ${response.status}`);
     const payload = await response.json();
     return payload?.data ?? null;
   } catch (error: any) {
     clearTimeout(id);
     if (error.name === 'AbortError') {
-      console.warn("Homepage data fetch timed out - API might be slow or down");
+      console.warn("Homepage data fetch timed out");
     } else {
       console.error("Failed to fetch homepage data", error);
     }
@@ -35,13 +34,27 @@ async function fetchHomepageData(): Promise<HomepageData | null> {
   }
 }
 
+async function fetchMostAttemptedExams(): Promise<any[]> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/exams?limit=8&sortBy=attempts&sortOrder=desc&exam_type=mock_test`,
+      { cache: 'no-store', signal: AbortSignal.timeout(5000) }
+    );
+    if (!response.ok) return [];
+    const payload = await response.json();
+    return (payload?.data || []).slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+
 const parseRobots = (value?: string | null) => {
-  // Treat null/undefined/empty as index,follow — never block the homepage by default
   if (!value) return { index: true, follow: true };
   const normalized = value.toLowerCase();
-  const index = !normalized.includes("noindex");
-  const follow = !normalized.includes("nofollow");
-  return { index, follow };
+  return {
+    index: !normalized.includes("noindex"),
+    follow: !normalized.includes("nofollow"),
+  };
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -49,29 +62,79 @@ export async function generateMetadata(): Promise<Metadata> {
   const hero = data?.hero;
   const robots = parseRobots(hero?.robots_meta);
 
+  const title = hero?.meta_title || DEFAULT_TITLE;
+  const description = hero?.meta_description || DEFAULT_DESCRIPTION;
+  const canonical = hero?.canonical_url || SITE_URL;
+  const ogTitle = hero?.og_title || title;
+  const ogDescription = hero?.og_description || description;
+  const ogImage = hero?.og_image_url || DEFAULT_OG_IMAGE;
+
   return {
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESCRIPTION,
-    keywords: "All sarkari exam, online exam test, all government exams, govt exam preparation, online exam for govt jobs, online competitive exams, government exams india",
-    alternates: { canonical: hero?.canonical_url || "https://bharatmock.com" },
+    title,
+    description,
+    keywords: "SSC CGL mock test, IBPS PO mock test, RRB NTPC mock test, free government exam mock tests, sarkari exam preparation, online exam practice",
+    alternates: { canonical },
     robots,
     openGraph: {
-      title: DEFAULT_TITLE,
-      description: DEFAULT_DESCRIPTION,
-      url: hero?.canonical_url || "https://bharatmock.com",
+      title: ogTitle,
+      description: ogDescription,
+      url: canonical,
       type: "website",
-      images: hero?.og_image_url ? [hero.og_image_url] : undefined
+      siteName: "BharatMock",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: ogTitle }],
     },
     twitter: {
       card: "summary_large_image",
-      title: DEFAULT_TITLE,
-      description: DEFAULT_DESCRIPTION,
-      images: hero?.og_image_url ? [hero.og_image_url] : undefined
-    }
+      title: ogTitle,
+      description: ogDescription,
+      images: [ogImage],
+    },
   };
 }
 
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  url: SITE_URL,
+  name: "BharatMock",
+  description: DEFAULT_DESCRIPTION,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE_URL}/mock-test-series?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "BharatMock",
+  url: SITE_URL,
+  logo: `${SITE_URL}/logo.png`,
+  sameAs: [],
+};
+
 export default async function HomePage() {
-  const data = await fetchHomepageData();
-  return <Index initialHero={data?.hero ?? null} initialData={data} />;
+  const [data, mostAttemptedExams] = await Promise.all([
+    fetchHomepageData(),
+    fetchMostAttemptedExams(),
+  ]);
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <Index
+        initialHero={data?.hero ?? null}
+        initialData={data}
+        initialMostAttemptedExams={mostAttemptedExams}
+      />
+    </>
+  );
 }

@@ -1,7 +1,30 @@
+import type { Metadata } from 'next';
 import BlogsClient from './BlogsClient';
 import type { Blog } from '@/lib/api/blogService';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: "Exam Preparation Blog — SSC, Banking & Railway Tips | BharatMock",
+  description: "Read expert tips, exam strategies, current affairs updates and study guides for SSC CGL, IBPS PO, RRB NTPC and all govt exams on BharatMock Blog.",
+  alternates: {
+    canonical: "https://bharatmock.com/blogs",
+  },
+  openGraph: {
+    title: "Exam Preparation Blog | BharatMock",
+    description: "Read expert tips, exam strategies, current affairs updates and study guides for SSC CGL, IBPS PO, RRB NTPC and all govt exams on BharatMock Blog.",
+    url: "https://bharatmock.com/blogs",
+    type: "website",
+    siteName: "BharatMock",
+    images: [{ url: "/assets/login_banner_image.jpg", width: 1200, height: 630, alt: "BharatMock Blog" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Exam Preparation Blog | BharatMock",
+    description: "Read expert tips, exam strategies, current affairs updates and study guides for SSC CGL, IBPS PO, RRB NTPC and all govt exams.",
+    images: ["/assets/login_banner_image.jpg"],
+  },
+};
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')

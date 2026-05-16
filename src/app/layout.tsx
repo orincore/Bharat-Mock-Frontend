@@ -24,7 +24,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,
+  maximumScale: 1,
   themeColor: "#ffffff",
 };
 
@@ -37,9 +37,8 @@ export const metadata: Metadata = {
   authors: [{ name: "Bharat Mock" }],
   robots: { index: true, follow: true },
   icons: {
-    icon: "/favicon.jpg",
-    shortcut: "/favicon.jpg",
-    apple: "/favicon.jpg",
+    icon: [{ url: "/favicon.jpg", type: "image/jpeg" }],
+    apple: [{ url: "/favicon.jpg", type: "image/jpeg" }],
   },
   openGraph: {
     title: "Bharat Mock — India's Smart Exam Companion",
@@ -76,7 +75,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
 
         <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
-        <link rel="icon" type="image/x-icon" href="/favicon.jpg" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         {/* Google Tag Manager (noscript) */}

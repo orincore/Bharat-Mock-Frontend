@@ -58,10 +58,11 @@ function GetStartedButton() {
 type IndexProps = {
   initialHero?: HomepageHero | null;
   initialData?: HomepageData | null;
+  initialMostAttemptedExams?: Exam[];
 };
 
 const fallbackHero = {
-  title: 'Bharat Mock Hero',
+  title: 'Free Mock Tests for SSC, Banking, Railway & Police Exams',
   subtitle: '',
   descriptions: [
     'Start Your Journey With Us! Your Tests, Exams, Quizzes, & Information About Latest Government Exams.',
@@ -207,7 +208,7 @@ const faqs = [
   'Which test series is best, online or offline?'
 ];
 
-export default function Index({ initialHero, initialData }: IndexProps = { initialHero: null, initialData: null }) {
+export default function Index({ initialHero, initialData, initialMostAttemptedExams }: IndexProps = { initialHero: null, initialData: null }) {
   const [exams, setExams] = useState<Exam[]>(initialData?.featuredExams || []);
   const [articles, setArticles] = useState<(Article | Blog)[]>(initialData?.featuredArticles || []);
   const heroBanners: HomepageBanner[] = initialData?.banners?.filter((banner) => banner.is_active) ?? [];
@@ -242,8 +243,8 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [showAllSubcategories, setShowAllSubcategories] = useState(false);
   const [activeHeroMedia, setActiveHeroMedia] = useState(0);
-  const [mostAttemptedExams, setMostAttemptedExams] = useState<Exam[]>([]);
-  const [mostAttemptedLoading, setMostAttemptedLoading] = useState(true);
+  const [mostAttemptedExams, setMostAttemptedExams] = useState<Exam[]>(initialMostAttemptedExams || []);
+  const [mostAttemptedLoading, setMostAttemptedLoading] = useState(!initialMostAttemptedExams?.length);
   const heroButtonsScrollRef = useRef<HTMLDivElement>(null);
   const categoryPillsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -376,6 +377,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
   }, [selectedCategoryId, subcategoryMap]);
 
   useEffect(() => {
+    if (initialMostAttemptedExams?.length) return;
     const fetchMostAttempted = async () => {
       setMostAttemptedLoading(true);
       try {
@@ -396,7 +398,7 @@ export default function Index({ initialHero, initialData }: IndexProps = { initi
     };
 
     fetchMostAttempted();
-  }, []);
+  }, [initialMostAttemptedExams]);
 
   useEffect(() => {
     setShowAllSubcategories(false);

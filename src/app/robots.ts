@@ -26,8 +26,14 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           '/admin/',
           '/api/',
-          '/results/',
+          '/auth/',
+          '/profile/',
+          '/onboarding/',
           '/exams/*/attempt/',
+          '/forgot-password',
+          '/reset-password',
+          '/register',
+          '/login',
         ],
       },
       {
@@ -47,6 +53,5 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: 'https://bharatmock.com/sitemap.xml',
-    host: 'https://bharatmock.com',
   };
 }
