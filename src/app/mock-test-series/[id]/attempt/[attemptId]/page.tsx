@@ -658,7 +658,7 @@ function ExamAttemptContent() {
     return question.text || '';
   };
 
-  const getLocalizedOptionText = (option: Question['options'][number]) => {
+  const getLocalizedOptionText = (option: NonNullable<Question['options']>[number]) => {
     if (selectedLanguage === 'hi' && option.option_text_hi) {
       return option.option_text_hi;
     }
@@ -881,7 +881,7 @@ function ExamAttemptContent() {
                       <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
                         {currentQuestion?.marks} {currentQuestion?.marks === 1 ? 'Mark' : 'Marks'}
                       </span>
-                      {exam?.negative_marking && currentQuestion?.negative_marks > 0 && (
+                      {exam?.negative_marking && (currentQuestion?.negative_marks ?? 0) > 0 && (
                         <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive font-medium">
                           -{currentQuestion.negative_marks} Negative
                         </span>
@@ -906,7 +906,7 @@ function ExamAttemptContent() {
                 <p className="text-sm font-medium text-muted-foreground mb-3">Options:</p>
                 {currentQuestion?.options?.map((option, idx) => {
                   const isSelected = currentQuestion.type === 'multiple'
-                    ? Array.isArray(selectedAnswer) && selectedAnswer.includes(option.id)
+                    ? Array.isArray(selectedAnswer) && selectedAnswer.includes(option.id ?? '')
                     : selectedAnswer === option.id;
 
                   return (
@@ -921,9 +921,9 @@ function ExamAttemptContent() {
                       <input
                         type={currentQuestion.type === 'multiple' ? 'checkbox' : 'radio'}
                         name={`question-${currentQuestion.id}`}
-                        value={option.id}
+                        value={option.id ?? ''}
                         checked={isSelected}
-                        onChange={() => handleAnswerChange(option.id)}
+                        onChange={() => handleAnswerChange(option.id ?? '')}
                         className="mt-1"
                       />
                       <div className="flex-1">

@@ -736,14 +736,14 @@ export default function LiveTestsClient({ initialData }: { initialData: InitialD
                   <p>You can't fix what you can't find. Topic-wise tests help you identify your exact weak spots before they cost you marks in the final paper.</p>
                   <p>In Bharat Mock, each live mock test is supported with micro-details such as sectional accuracy benchmarks, average scores of recent test-takers, and suggested revision slots. You are not attempting a test. You are building a custom study plan, one subject at a time.</p>
                   <p>Maybe you start with a 30-minute reasoning session on Tuesday, tack on a bilingual GS sprint on Thursday, and round out the week with a full live exam mock test on Sunday. This is what makes practice performance.</p>
-                  <p>Short live quizzes are part of the practice. 10-15 questions in 10 minutes builds real exam speed and pressure. They keep you consistent, since studying a little every day is more effective than putting in effort only occasionally.</p>
+                  <p>Short live quizzes are part of the practice. 10-15 questions in 10 minutes builds real exam speed and pressure. They keep you consistent, since studying a little every day is more effective than putting in effort only occasionally. <Link href="/quizzes" className="text-primary hover:underline">Try short live quizzes</Link>.</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h2 className="font-display text-2xl font-bold text-foreground">Smart Performance Insights</h2>
                 <div className="space-y-4 leading-relaxed text-gray-800">
-                  <p>Completing a test is only the start. What you do with your result is what really moves your rank. After taking a live online quiz or mock test series, the platform shows your performance in detail.</p>
+                  <p>Completing a test is only the start. What you do with your result is what really moves your rank. After taking a live online quiz or <Link href="/mock-test-series" className="text-primary hover:underline">mock test series</Link>, the platform shows your performance in detail.</p>
                   <p>Compare it to overall averages, highlight time-loss points, and get guidance on areas for improvement.</p>
                 </div>
 
@@ -777,7 +777,7 @@ export default function LiveTestsClient({ initialData }: { initialData: InitialD
                 </div>
 
                 <div className="mt-4 leading-relaxed text-gray-800">
-                  <p>Your feed gets updated as soon as a new exam is launched. For SSC, Railway, Banking and Police students, practice is rotated to cover all important topics regularly.</p>
+                  <p>Your feed gets updated as soon as a new exam is launched. For <Link href="/ssc" className="text-primary hover:underline">SSC</Link>, <Link href="/railway" className="text-primary hover:underline">Railway</Link>, <Link href="/banking" className="text-primary hover:underline">Banking</Link> and <Link href="/police" className="text-primary hover:underline">Police</Link> students, practice is rotated to cover all important topics regularly.</p>
                   <p>The outcome? A prep cycle that feels personal, not generic.</p>
                 </div>
               </div>
@@ -793,56 +793,6 @@ export default function LiveTestsClient({ initialData }: { initialData: InitialD
             </div>
           </section>
 
-          <section>
-            <div className="text-center space-y-3 mb-8">
-
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">All FAQ's</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                Understand how live tests, quizzes, and analysis help improve your preparation.
-              </p>
-            </div>
-
-            {/* FAQ Tabs */}
-            <div className="flex gap-2 mb-8 border-b border-border">
-              {(['All', 'Payments'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => { setExpandedFaq(null); setActiveFaqTab(tab); }}
-                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${activeFaqTab === tab
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                >
-                  {tab === 'All' ? 'All FAQ\'s' : 'Most Asked FAQ\'s'}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              {(activeFaqTab === 'All' ? faqItems : paymentFaqItems).map((item, index) => (
-                <div key={item.q} className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-                  <button
-                    onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
-                  >
-                    <h3 className="font-medium text-foreground text-base">
-                      {index + 1}. {item.q}
-                    </h3>
-                    {expandedFaq === index ? (
-                      <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    )}
-                  </button>
-                  {expandedFaq === index && (
-                    <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                      <p className="text-sm text-slate-700 leading-relaxed">{item.a}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
       )}
 

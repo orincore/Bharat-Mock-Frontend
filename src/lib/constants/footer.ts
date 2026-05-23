@@ -11,21 +11,25 @@ export const fallbackFooterSections: FooterSection[] = [
     title: 'Popular Exams',
     order: 0,
     links: [
-      { label: 'JEE Main', href: '/exams?category=engineering' },
-      { label: 'NEET', href: '/exams?category=medical' },
-      { label: 'CAT', href: '/exams?category=management' },
-      { label: 'GATE', href: '/exams?category=engineering' },
-      { label: 'UPSC', href: '/exams?category=civil-services' }
+      { label: 'SSC CGL', href: '/ssc-cgl-exam' },
+      { label: 'SSC CHSL', href: '/ssc-chsl-exam' },
+      { label: 'IBPS PO', href: '/ibps-po-exam' },
+      { label: 'SBI PO', href: '/sbi-po-exam' },
+      { label: 'RRB NTPC', href: '/rrb-ntpc-exam' },
+      { label: 'SSC MTS', href: '/ssc-mts-exam' },
+      { label: 'UP Police', href: '/up-police-exam' },
+      { label: 'View All Exams', href: '/mock-test-series' },
     ]
   },
   {
     title: 'Resources',
     order: 1,
     links: [
-      { label: 'Articles', href: '/blogs' },
-      { label: 'Courses', href: '/courses' },
-      { label: 'Study Material', href: '/blogs' },
-      { label: 'Previous Papers', href: '/previous-year-papers' }
+      { label: 'Blog', href: '/blogs' },
+      { label: 'Previous Papers', href: '/previous-year-papers' },
+      { label: 'Current Affairs', href: '/current-affairs' },
+      { label: 'Live Tests', href: '/live-tests' },
+      { label: 'Quizzes', href: '/quizzes' },
     ]
   },
   {
@@ -34,10 +38,9 @@ export const fallbackFooterSections: FooterSection[] = [
     links: [
       { label: 'About Us', href: '/about' },
       { label: 'Contact', href: '/contact' },
-      { label: 'Careers', href: '/careers' },
-      { label: 'Privacy Policy', href: 'http://localhost:3000/privacy-policy' },
-      { label: 'Disclaimer', href: 'http://localhost:3000/disclaimer' },
-      { label: 'Terms of Service', href: '/terms' }
+      { label: 'Privacy Policy', href: '/privacy-policy' },
+      { label: 'Disclaimer', href: '/disclaimer' },
+      { label: 'Terms of Service', href: '/terms' },
     ]
   }
 ];

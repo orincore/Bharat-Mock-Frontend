@@ -2,6 +2,23 @@
 
 import React, { Suspense } from 'react';
 import { removeStandaloneHeadingMarkers, stripLineBreakTags } from '@/lib/utils';
+
+// Strip HTML tags for plain-text comparison
+const stripTags = (html: string) => html.replace(/<[^>]*>/g, '').trim();
+
+// Returns true when a string is clearly draft/placeholder content that should not render
+const DRAFT_PATTERNS = [
+  /^hello$/i,
+  /^enter your text here\.{0,3}$/i,
+  /^fasdffadsf$/i,
+  /^column\s+\d+$/i,
+  /^data\s+\d+$/i,
+];
+const isDraftContent = (html: string) => {
+  const plain = stripTags(html);
+  if (!plain) return false;
+  return DRAFT_PATTERNS.some((re) => re.test(plain));
+};
 import dynamic from 'next/dynamic';
 import { AutoExamCardsBlock } from './AutoExamCardsBlock';
 
@@ -155,8 +172,9 @@ const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =
   // Aggressively trim leading/trailing white space from head/tail of the HTML content
   const cleanedText = sanitizeHeadingInnerHtml(text);
 
-  // If text is empty after cleaning, don't render anything
+  // If text is empty or draft placeholder, don't render anything
   if (!cleanedText && !text.includes('img') && !text.includes('math')) return null;
+  if (isDraftContent(cleanedText)) return null;
 
   const baseClasses = [
     level === 1 ? 'text-3xl sm:text-4xl font-bold tracking-tight' : '',
@@ -165,7 +183,7 @@ const HeadingBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =
     level === 4 ? 'text-lg font-semibold' : '',
     level === 5 ? 'text-base font-semibold' : '',
     level === 6 ? 'text-sm font-semibold' : '',
-    'mb-4 mt-6'
+    'mb-3 mt-4'
   ]
     .filter(Boolean)
     .join(' ');
@@ -190,17 +208,19 @@ const DynamicBlockHeading: React.FC<{
 );
 
 const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
-  const { 
-    text = '', 
+  const {
+    text = '',
     alignment = 'left',
-    fontSize 
+    fontSize
   } = content;
-  
+
   const processedText = removeStandaloneHeadingMarkers(text);
+
+  if (isDraftContent(processedText)) return null;
 
   return (
     <p
-      className={`text-${alignment} mb-4 text-foreground font-normal leading-relaxed rich-text-content`}
+      className={`text-${alignment} mb-3 text-foreground font-normal leading-relaxed rich-text-content`}
       style={{ fontSize }}
       dangerouslySetInnerHTML={{ __html: processedText }}
       suppressHydrationWarning
@@ -213,7 +233,7 @@ const ListBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const ListTag = type === 'ordered' ? 'ol' : 'ul';
   
   return (
-    <ListTag className={`mb-4 ml-2 md:ml-3 pl-3 md:pl-4 ${type === 'ordered' ? 'list-decimal' : 'list-disc'} space-y-1 md:space-y-2`}>
+    <ListTag className={`mb-3 ml-2 md:ml-3 pl-3 md:pl-4 ${type === 'ordered' ? 'list-decimal' : 'list-disc'} space-y-1 md:space-y-2`}>
       {items.map((item: string, index: number) => (
         <li key={index} className="text-foreground rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(item) }} suppressHydrationWarning />
       ))}
@@ -238,8 +258,8 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   const borderStyle = { borderColor };
 
   return (
-    <div className="overflow-x-auto mb-6">
-      <table className="w-full min-w-full border-collapse" style={{ border: `1px solid ${borderColor}` }}>
+    <div className="overflow-x-auto mb-4">
+      <table className="w-full min-w-[1000px] border-collapse" style={{ border: `1px solid ${borderColor}` }}>
         {hasHeader && headers.length > 0 && (
           <thead>
             <tr>
@@ -275,7 +295,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                 };
 
                 return (
-                  <td key={cellIndex} className="px-4 py-3 text-foreground whitespace-nowrap text-base" style={cellStyle}>
+                  <td key={cellIndex} className="px-4 py-3 text-foreground text-base whitespace-nowrap" style={cellStyle}>
                     {cellLink ? (
                       <a
                         href={cellLink}
@@ -307,7 +327,7 @@ const ImageBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   }
   
   return (
-    <figure className={`mb-6 text-${alignment}`}>
+    <figure className={`mb-4 text-${alignment}`}>
       <img 
         src={safeUrl} 
         alt={alt} 
@@ -345,7 +365,7 @@ const ChartBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
 
   if (!chartData.length || !datasetKeys.length) {
     return (
-      <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 text-sm text-slate-500">
+      <div className="mb-4 p-4 bg-white rounded-xl border border-slate-200 text-sm text-slate-500">
         Unable to render chart — please provide labels and values.
       </div>
     );
@@ -408,7 +428,7 @@ const ChartBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   if (chartType === 'pie') chartBody = renderPieChart();
 
   return (
-    <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+    <div className="mb-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
       <div className="h-[320px]">
         {/* Suspense catches BailoutToCSR from ssr:false recharts components */}
         <Suspense fallback={<div className="h-full flex items-center justify-center text-slate-400 text-sm">Loading chart…</div>}>
@@ -430,7 +450,7 @@ const QuoteBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   const processedAttribution = attribution.replace(/^(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+|(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+$/g, '').trim();
 
   return (
-    <div className={`border-l-4 border-primary pl-4 py-1 mb-4 italic text-${alignment}`}>
+    <div className={`border-l-4 border-primary pl-4 py-1 mb-3 italic text-${alignment}`}>
       <div
         className="text-foreground leading-relaxed rich-text-content"
         dangerouslySetInnerHTML={{ __html: processedText }}
@@ -447,7 +467,7 @@ const CodeBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { code, language = 'javascript' } = content;
   
   return (
-    <pre className="mb-6 p-4 bg-muted text-foreground rounded-lg overflow-x-auto">
+    <pre className="mb-4 p-4 bg-muted text-foreground rounded-lg overflow-x-auto">
       <code className={`language-${language}`}>{code}</code>
     </pre>
   );
@@ -473,7 +493,7 @@ const ButtonBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =>
   };
   
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       <a
         href={url}
         className={`inline-block rounded-lg font-semibold transition-colors ${sizeClasses[size as keyof typeof sizeClasses]} ${variantClasses[variant as keyof typeof variantClasses]}`}
@@ -557,7 +577,7 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content })
   };
 
   return (
-    <div className="mb-6 space-y-2">
+    <div className="mb-4 space-y-2">
       {items.map((item: any, index: number) => (
         <div key={index} className="border border-border rounded-lg overflow-hidden">
           <button
@@ -588,7 +608,7 @@ const TabsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const [activeTab, setActiveTab] = React.useState(0);
   
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       <div className="flex border-b border-border">
         {tabs.map((tab: any, index: number) => (
           <button
@@ -617,7 +637,7 @@ const CardBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const { title, description, image, link } = content;
   
   return (
-    <div className="mb-6 border border-border rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+    <div className="mb-4 border border-border rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
       {image && (
         <img src={image} alt={title} width={800} height={192} className="w-full h-48 object-cover" />
       )}
@@ -653,7 +673,7 @@ const AlertBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   };
   
   return (
-    <div className={`mb-6 p-4 border-l-4 rounded ${typeClasses[type as keyof typeof typeClasses]}`}>
+    <div className={`mb-4 p-4 border-l-4 rounded ${typeClasses[type as keyof typeof typeClasses]}`}>
       <div className="flex items-start">
         <AlertCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
         <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedText }} suppressHydrationWarning />
@@ -666,7 +686,7 @@ const VideoBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   const { url, caption } = content;
   
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       <div className="relative pb-[56.25%] h-0 overflow-hidden rounded-lg shadow-md">
         <iframe
           src={url}
@@ -684,7 +704,7 @@ const EmbedBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
   const { embedCode } = content;
   
   return (
-    <div className="mb-6" dangerouslySetInnerHTML={{ __html: embedCode }} suppressHydrationWarning />
+    <div className="mb-4" dangerouslySetInnerHTML={{ __html: embedCode }} suppressHydrationWarning />
   );
 };
 
@@ -693,7 +713,7 @@ const HtmlBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => {
   const cleanedHtml = removeStandaloneHeadingMarkers(html || '');
   
   return (
-    <div className="mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedHtml }} suppressHydrationWarning />
+    <div className="mb-4 rich-text-content" dangerouslySetInnerHTML={{ __html: cleanedHtml }} suppressHydrationWarning />
   );
 };
 
@@ -701,7 +721,7 @@ const ColumnsBlock: React.FC<{ content: any; settings?: any }> = ({ content }) =
   const { columns = [] } = content;
   
   return (
-    <div className={`mb-6 grid grid-cols-${columns.length} gap-6`}>
+    <div className={`mb-4 grid grid-cols-${columns.length} gap-6`}>
       {columns.map((column: any, index: number) => (
         <div key={index} className="rich-text-content" dangerouslySetInnerHTML={{ __html: removeStandaloneHeadingMarkers(column.content || '') }} suppressHydrationWarning />
       ))}
@@ -808,7 +828,7 @@ const ExamCardsBlock: React.FC<{ content: any; settings?: any }> = ({ content })
   const colClass = columns === 1 ? 'grid-cols-1' : columns === 3 ? 'grid-cols-1 md:grid-cols-3' : columns === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2';
 
   return (
-    <div className="mb-6" data-block-type="examCards" data-exam-ids={JSON.stringify(examIds)} data-layout={layout} data-columns={columns}>
+    <div className="mb-4" data-block-type="examCards" data-exam-ids={JSON.stringify(examIds)} data-layout={layout} data-columns={columns}>
       {title && (
         <DynamicBlockHeading
           text={title}
@@ -869,7 +889,7 @@ const AutoExamCardsPreviewBlock: React.FC<{ content: any }> = ({ content }) => {
   const labels: Record<string, string> = { category: 'Category Exams', subcategory: 'Subcategory Exams', quizzes: 'Quizzes', live: 'Live Exams' };
   const variant = content?.variant || 'category';
   return (
-    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
       <div className="flex items-center gap-2 mb-2">
         <GraduationCap className="w-5 h-5 text-blue-600" />
         <span className="font-semibold text-blue-800">{content?.title || labels[variant]}</span>

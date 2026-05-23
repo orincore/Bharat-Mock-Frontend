@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { ServiceWorkerRegistration } from "@/components/common/ServiceWorkerRegistration";
 import { WebVitals } from "@/components/common/WebVitals";
+import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
 
 // Only load the two fonts actually used in tailwind.config.ts
 const inter = Inter({
@@ -24,7 +25,6 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   themeColor: "#ffffff",
 };
 
@@ -79,6 +79,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Google Tag Manager (noscript) */}
         <noscript dangerouslySetInnerHTML={{ __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PSWFF7GC" height="0" width="0" style="display:none;visibility:hidden"></iframe>` }} />
         {/* End Google Tag Manager (noscript) */}
+        <OrganizationJsonLd />
+        <WebSiteJsonLd />
         <Providers>
           {children}
           <ScrollToTopButton />

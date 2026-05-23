@@ -322,6 +322,7 @@ export default function CurrentAffairsClient({ initialData }: { initialData?: Cu
 
       <div className="container-main">
         <PageSeoSections
+          showFaq={false}
           whyTitle="Why BharatMock is Best for Current Affairs"
           whySubtitle="Daily capsules, bilingual support, and quiz-based recall—Bharat Mock's current affairs ecosystem is built to convert news into exam marks."
           whyContent={
@@ -393,7 +394,18 @@ export default function CurrentAffairsClient({ initialData }: { initialData?: Cu
                 <h2 className="font-display text-3xl font-bold">How daily current affairs improve your exam performance?</h2>
               </header>
               <div className="space-y-4 leading-relaxed text-base md:text-lg" style={{ color: '#1a1a1a' }}>
-                <p>Daily current affairs have a direct impact on your score in SSC, Banking, Railway, UPSC, and State PSC exams. The GK and General Awareness section alone can make or break your cutoff. Candidates who read current affairs regularly on a daily basis score much higher than those who do last-minute preparation.</p>
+                <p>
+                  Daily current affairs have a direct impact on your score in{' '}
+                  <Link href="/ssc" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">SSC</Link>,{' '}
+                  <Link href="/banking" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">Banking</Link>,{' '}
+                  <Link href="/railway" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">Railway</Link>,{' '}
+                  UPSC, and State PSC exams. The GK and General Awareness section alone can make or break your cutoff. Candidates who read current affairs regularly on a daily basis score much higher than those who do last-minute preparation.
+                </p>
+                <p>
+                  Solve Current affairs questions to improve your preparation step by step.{' '}
+                  <Link href="/mock-test-series" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">Take a full mock test</Link>{' '}
+                  to experience the real exam. You can choose short quizzes or longer tests depending on your time.
+                </p>
               </div>
               <header className="space-y-2 mt-8">
                 <h2 className="font-display text-3xl font-bold">What Makes Current Affairs So Important?</h2>

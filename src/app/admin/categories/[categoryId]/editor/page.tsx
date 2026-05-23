@@ -533,6 +533,9 @@ export default function AdminCategoryEditorPage() {
       );
 
       if (!response.ok) throw new Error('Failed to save SEO settings');
+      const saved = await response.json();
+      // Refresh seoData from what the API persisted so local state stays in sync.
+      if (saved?.data) setSeoData(saved.data);
       toast({ title: 'Success', description: 'SEO settings saved successfully' });
       setShowSEOPanel(false);
     } catch (error) {
@@ -1006,7 +1009,11 @@ export default function AdminCategoryEditorPage() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Structured Data Notes</label>
                   <textarea
-                    value={seoData.structured_data || ''}
+                    value={
+                      typeof seoData.structured_data === 'object' && seoData.structured_data !== null
+                        ? JSON.stringify(seoData.structured_data, null, 2)
+                        : (seoData.structured_data as string) || ''
+                    }
                     onChange={(e) => handleSeoChange('structured_data' as keyof SEOData, e.target.value)}
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

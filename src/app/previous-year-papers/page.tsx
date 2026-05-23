@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import PreviousYearPapersClient from './PreviousYearPapersClient';
+import { PreviousYearPapersFAQ } from './PreviousYearPapersFAQ';
 import type { Exam } from '@/types';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
 
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
-  : 'http://localhost:8000/api/v1';
+  : '';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
@@ -120,6 +121,7 @@ export default async function PreviousYearPapersPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <PreviousYearPapersClient initialData={initialData} />
+      <PreviousYearPapersFAQ />
     </>
   );
 }

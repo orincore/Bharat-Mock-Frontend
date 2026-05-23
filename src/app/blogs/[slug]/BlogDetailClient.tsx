@@ -154,7 +154,6 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
                 {section.title && <span id={toAnchorId(`section-${si}`)} className="block" />}
                 <div className="bg-card border border-border rounded-lg p-4 md:p-5 rich-text-content"
                   style={{ backgroundColor: section.background_color || undefined, color: section.text_color || undefined }}>
-                  {section.title && <h2 className="text-xl font-bold text-foreground mb-3">{section.title}</h2>}
                   {section.subtitle && <p className="text-muted-foreground mb-3">{section.subtitle}</p>}
                   <div className="space-y-3">
                     {section.blocks.map((block, bi) => {

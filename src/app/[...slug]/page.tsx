@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import DynamicPageWrapper from './DynamicPageWrapper';
+import ServerPageContent from './ServerPageContent';
+import DynamicPageClient from './DynamicPageClient';
+import { DynamicJsonLd } from '@/components/seo/JsonLd';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,7 +23,7 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com').
 
 // The slug type resolved by the server — tells the client what component to render
 // without needing its own API round-trips on first paint.
-export type FirstSegmentType = 'subcategory' | 'combined-subcategory' | 'category' | null;
+// Note: FirstSegmentType is exported below near ServerPageData
 
 interface TabSeoEntry {
   meta_title?: string;
@@ -57,6 +59,9 @@ export interface ServerPageData {
   categoryInfo?: any;
   categoryId?: string;
 }
+
+// Type for first segment resolution
+export type FirstSegmentType = 'subcategory' | 'combined-subcategory' | 'category' | null;
 
 interface SlugResolution {
   seo: SlugSeoResult | null;
@@ -249,10 +254,9 @@ export async function generateMetadata(
   const keywords = tabOverride?.meta_keywords || seo?.meta_keywords;
   const slugPath = slugArray.join('/');
 
-  // Tab pages must have their own canonical, never inherit the parent page canonical.
-  // If admin set a tab-specific canonical use it, else fall back to the actual URL.
-  const canonical = tabOverride?.canonical_url
-    || (isTabPage ? `${SITE_URL}/${slugPath}` : (seo?.canonical_url || `${SITE_URL}/${slugPath}`));
+  // Always construct canonical from SITE_URL env variable
+  // Ignore any hardcoded canonical URLs from the database/API
+  const canonical = `${SITE_URL}/${slugPath}`;
 
   // Apply tab-level robots override when set
   const robotsMeta = tabOverride?.robots_meta || seo?.robots_meta;
@@ -309,16 +313,14 @@ export default async function DynamicPage(
     notFound();
   }
 
-  // Resolve tab-level SEO override (same logic as generateMetadata)
   const isTabPage = slugArray.length >= 2;
   const tabSlugForSchema = isTabPage ? slugArray[slugArray.length - 1] : undefined;
   const tabOverrideForSchema = resolveTabSeo(tabSlugForSchema, seo);
-
+  
   const slugPath = slugArray.join('/');
 
-  // Tab pages must never inherit the parent page canonical — use own URL
-  const pageUrl = tabOverrideForSchema?.canonical_url
-    || (isTabPage ? `${SITE_URL}/${slugPath}` : (seo?.canonical_url || `${SITE_URL}/${slugPath}`));
+  // Always use SITE_URL from env for page URL
+  const pageUrl = `${SITE_URL}/${slugPath}`;
 
   // Use tab-specific title/description when set by admin, fall back to page-level then slug
   const pageTitle = tabOverrideForSchema?.meta_title
@@ -370,17 +372,26 @@ export default async function DynamicPage(
         breadcrumb: { '@type': 'BreadcrumbList', itemListElement: breadcrumbItems },
       };
 
+  // Determine active tab slug for tab-specific rendering
+  const activeTabSlug = isTabPage ? slugArray[slugArray.length - 1] : undefined;
+
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <DynamicPageWrapper
-        slugArray={slugArray}
-        firstSegmentType={firstSegmentType}
-        serverPageData={serverPageData}
-      />
+      {jsonLd && <DynamicJsonLd schema={jsonLd} />}
+      {isTabPage ? (
+        <DynamicPageClient
+          slugArray={slugArray}
+          firstSegmentType={firstSegmentType}
+          serverPageData={serverPageData}
+        />
+      ) : (
+        <ServerPageContent
+          slugArray={slugArray}
+          firstSegmentType={firstSegmentType}
+          serverPageData={serverPageData}
+          activeTabSlug={activeTabSlug}
+        />
+      )}
     </>
   );
 }

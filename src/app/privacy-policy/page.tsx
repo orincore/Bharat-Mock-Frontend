@@ -79,11 +79,11 @@ export default async function PrivacyPolicyPage() {
   const normalized = normalizeSections(sectionsCandidate);
   const sections = normalized.length ? normalized : normalizeSections(fallbackPrivacyPolicy.sections);
 
-  const introBody = content?.intro_body ?? fallbackPrivacyPolicy.content.intro_body;
+  const introBody = content?.intro_body ?? fallbackPrivacyPolicy.content!.intro_body;
   const lastUpdated =
-    formatDate(content?.last_updated) ?? formatDate(fallbackPrivacyPolicy.content.last_updated) ?? 'Recently updated';
-  const contactEmail = content?.contact_email ?? fallbackPrivacyPolicy.content.contact_email;
-  const contactUrl = content?.contact_url ?? fallbackPrivacyPolicy.content.contact_url;
+    formatDate(content?.last_updated) ?? formatDate(fallbackPrivacyPolicy.content!.last_updated) ?? 'Recently updated';
+  const contactEmail = content?.contact_email ?? fallbackPrivacyPolicy.content!.contact_email;
+  const contactUrl = content?.contact_url ?? fallbackPrivacyPolicy.content!.contact_url;
   const rightsSummary =
     sections.find((section) => section.title?.toLowerCase().includes('right'))?.description ??
     'Update your profile, control notifications, and raise data requests whenever you need.';
@@ -96,7 +96,7 @@ export default async function PrivacyPolicyPage() {
             <ShieldCheck className="h-16 w-16 text-primary mx-auto mb-6" />
             <p className="text-sm uppercase tracking-[0.3em] text-background/70">Legal</p>
             <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
-              {content?.title ?? fallbackPrivacyPolicy.content.title}
+              {content?.title ?? fallbackPrivacyPolicy.content!.title}
             </h1>
             <p className="text-lg text-background/80">Last updated: {lastUpdated}</p>
           </div>

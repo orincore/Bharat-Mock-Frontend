@@ -5,7 +5,7 @@ import BlogDetailClient from './BlogDetailClient';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
+const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 async function fetchBlog(slug: string) {

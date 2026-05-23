@@ -276,7 +276,7 @@ export default function ResultsPage() {
                       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-4">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {new Date(result.submittedAt || result.created_at).toLocaleDateString()}
+                          {new Date(result.submittedAt || result.created_at || Date.now()).toLocaleDateString()}
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
@@ -284,7 +284,7 @@ export default function ResultsPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <FileText className="h-4 w-4" />
-                          {result.correct_answers}/{result.correct_answers + result.wrong_answers + result.unattempted} correct
+                          {result.correct_answers ?? 0}/{(result.correct_answers ?? 0) + (result.wrong_answers ?? 0) + (result.unattempted ?? 0)} correct
                         </div>
                       </div>
 

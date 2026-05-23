@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Link from 'next/link';
 import { Search, Filter, BookOpen, Crown, FileText, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -963,6 +964,7 @@ export default function PreviousYearPapersClient({ initialData }: { initialData:
       )}
       <div className="container-main">
         <PageSeoSections
+          showFaq={false}
           whyTitle="Why Practice with Bharat Mock Previous Year Papers?"
           whySubtitle="Solving real past papers is the single most effective way to understand exam patterns, manage time, and build the confidence to clear cutoffs."
           whyContent={
@@ -1088,22 +1090,22 @@ export default function PreviousYearPapersClient({ initialData }: { initialData:
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="border border-white/20 px-4 py-3">SSC Exams</td>
+                          <td className="border border-white/20 px-4 py-3"><Link href="/ssc" className="text-blue-200 hover:text-white hover:underline">SSC Exams</Link></td>
                           <td className="border border-white/20 px-4 py-3">Full Syllabus Papers</td>
                           <td className="border border-white/20 px-4 py-3">Detailed Solutions</td>
                         </tr>
                         <tr className="bg-white/5">
-                          <td className="border border-white/20 px-4 py-3">Banking Exams</td>
+                          <td className="border border-white/20 px-4 py-3"><Link href="/banking" className="text-blue-200 hover:text-white hover:underline">Banking Exams</Link></td>
                           <td className="border border-white/20 px-4 py-3">Pre + Mains Papers</td>
                           <td className="border border-white/20 px-4 py-3">Step-by-step Solutions</td>
                         </tr>
                         <tr>
-                          <td className="border border-white/20 px-4 py-3">Railway Exams</td>
+                          <td className="border border-white/20 px-4 py-3"><Link href="/railway" className="text-blue-200 hover:text-white hover:underline">Railway Exams</Link></td>
                           <td className="border border-white/20 px-4 py-3">NTPC, Group D, ALP Papers</td>
                           <td className="border border-white/20 px-4 py-3">Explained Solutions</td>
                         </tr>
                         <tr className="bg-white/5">
-                          <td className="border border-white/20 px-4 py-3">Police Bharti</td>
+                          <td className="border border-white/20 px-4 py-3"><Link href="/police" className="text-blue-200 hover:text-white hover:underline">Police Bharti</Link></td>
                           <td className="border border-white/20 px-4 py-3">State + Central Papers</td>
                           <td className="border border-white/20 px-4 py-3">Answered Papers</td>
                         </tr>

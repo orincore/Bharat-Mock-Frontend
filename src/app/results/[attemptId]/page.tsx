@@ -840,7 +840,7 @@ export default function ResultPage() {
         </div>
 
         <div className="flex gap-4 mt-6">
-          <Button onClick={() => router.push('/exams')} className="flex-1">
+          <Button onClick={() => router.push('/mock-test-series')} className="flex-1">
             Browse More Exams
           </Button>
           <Button

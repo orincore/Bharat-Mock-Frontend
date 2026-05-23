@@ -78,7 +78,7 @@ function OnboardingContent() {
           } else {
             setFormData(prev => ({
               ...prev,
-              phone: profile.phone.replace(/[^\d]/g, '')
+              phone: profile.phone!.replace(/[^\d]/g, '')
             }));
           }
         }
@@ -86,7 +86,7 @@ function OnboardingContent() {
         if (profile.date_of_birth) {
           setFormData(prev => ({
             ...prev,
-            date_of_birth: profile.date_of_birth.split('T')[0]
+            date_of_birth: profile.date_of_birth!.split('T')[0]
           }));
         }
 

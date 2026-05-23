@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import LiveTestsClient from './LiveTestsClient';
+import { LiveTestsFAQ } from './LiveTestsFAQ';
 import type { Exam } from '@/types';
 import type { Category } from '@/lib/api/taxonomyService';
 
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
-  : 'http://localhost:8000/api/v1';
+  : '';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
@@ -103,6 +104,7 @@ export default async function LiveTestsPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <LiveTestsClient initialData={initialData} />
+      <LiveTestsFAQ />
     </>
   );
 }

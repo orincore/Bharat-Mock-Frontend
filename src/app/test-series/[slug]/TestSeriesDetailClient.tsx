@@ -293,10 +293,12 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
 
   const normalizedEntries = useMemo<NormalizedEntry[]>(() => {
     if (!testSeries?.exams) return [];
-    return testSeries.exams.map(exam => ({
-      raw: exam,
-      card: normalizeExamForCard(exam, testSeries)
-    }));
+    return testSeries.exams
+      .filter(exam => exam.is_published !== false)
+      .map(exam => ({
+        raw: exam,
+        card: normalizeExamForCard(exam, testSeries)
+      }));
   }, [testSeries]);
 
   const groupedData = useMemo(() => {

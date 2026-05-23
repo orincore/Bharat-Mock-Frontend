@@ -79,11 +79,11 @@ export default async function RefundPolicyPage() {
   const normalized = normalizeSections(sectionsCandidate);
   const sections = normalized.length ? normalized : normalizeSections(fallbackRefundPolicy.sections);
 
-  const introBody = content?.intro_body ?? fallbackRefundPolicy.content.intro_body;
+  const introBody = content?.intro_body ?? fallbackRefundPolicy.content!.intro_body;
   const lastUpdated =
-    formatDate(content?.last_updated) ?? formatDate(fallbackRefundPolicy.content.last_updated) ?? 'Recently updated';
-  const contactEmail = content?.contact_email ?? fallbackRefundPolicy.content.contact_email;
-  const contactUrl = content?.contact_url ?? fallbackRefundPolicy.content.contact_url;
+    formatDate(content?.last_updated) ?? formatDate(fallbackRefundPolicy.content!.last_updated) ?? 'Recently updated';
+  const contactEmail = content?.contact_email ?? fallbackRefundPolicy.content!.contact_email;
+  const contactUrl = content?.contact_url ?? fallbackRefundPolicy.content!.contact_url;
   const eligibilitySummary =
     sections.find((section) => section.title?.toLowerCase().includes('eligibility'))?.description ??
     'Understand the conditions and timeframes for requesting refunds on digital educational content.';
@@ -96,7 +96,7 @@ export default async function RefundPolicyPage() {
             <CreditCard className="h-16 w-16 text-primary mx-auto mb-6" />
             <p className="text-sm uppercase tracking-[0.3em] text-background/70">Legal</p>
             <h1 className="font-display text-4xl md:text-5xl font-bold text-background mb-4">
-              {content?.title ?? fallbackRefundPolicy.content.title}
+              {content?.title ?? fallbackRefundPolicy.content!.title}
             </h1>
             <p className="text-lg text-background/80">Last updated: {lastUpdated}</p>
           </div>

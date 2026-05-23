@@ -2,9 +2,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 const authFetch = async (path: string, options: RequestInit = {}) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers || {}),
+    ...(options.headers as Record<string, string> || {}),
   };
 
   if (token) {
@@ -34,7 +34,7 @@ const authFetch = async (path: string, options: RequestInit = {}) => {
 
 const authFormFetch = async (path: string, formData: FormData, method: 'POST' | 'PUT' = 'POST') => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  const headers: HeadersInit = {};
+  const headers: Record<string, string> = {};
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

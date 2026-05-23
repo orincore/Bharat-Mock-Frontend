@@ -1,73 +1,98 @@
-# Welcome to Bharat Mock
+# BharatMock Frontend
 
-## Project info
+**Live site:** https://bharatmock.com
 
-**URL**: https://bharatmock.example
+India's leading platform for government exam preparation — mock tests, previous year papers, current affairs, and live exams for SSC, Banking, Railway, Police, and more.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| UI Components | shadcn/ui + Radix UI |
+| Data Fetching | TanStack Query + Apollo Client |
+| Deployment | Vercel (Mumbai region — `bom1`) |
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## Local Setup
 
-**Use your preferred IDE**
+### Prerequisites
+- Node.js 18+
+- npm 9+
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Steps
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+git clone <repo-url>
+cd Bharat-Mock-Frontend
+cp .env.example .env.local
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open http://localhost:3000 in your browser.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## Environment Variables
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Variable | Description | Example |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend API base URL | `https://api.bharatmock.com/api/v1` |
+| `NEXT_PUBLIC_SITE_URL` | Public site URL | `https://bharatmock.com` |
+| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Razorpay payment key | `rzp_live_...` |
 
-## What technologies are used for this project?
+All variables are documented in `.env.example`.
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Available Scripts
 
-## How can I deploy this project?
+```bash
+npm run dev          # Start dev server with Turbopack
+npm run build        # Production build
+npm run postbuild    # Generate sitemap (runs automatically after build)
+npm run start        # Start production server
+npm run lint         # Lint with ESLint
+npm run test         # Run Vitest test suite
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+---
 
-## Can I connect a custom domain to my Lovable project?
+## Project Structure
 
-Yes, you can!
+```
+src/
+  app/           # Next.js App Router pages
+  components/    # Shared UI components
+  lib/           # API clients, utilities, constants
+  context/       # React context providers
+  hooks/         # Custom React hooks
+  types/         # TypeScript types
+public/          # Static assets
+scripts/         # One-off migration/patch scripts (already applied to source)
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Deployment
+
+The app deploys on **Vercel** in the **Mumbai (bom1)** region for optimal performance for Indian users.
+
+- Push to `main` → automatic production deploy
+- Vercel config: `vercel.json`
+- Post-build sitemap generation: `next-sitemap.config.js`
+
+---
+
+## SEO
+
+- All public pages use server-side rendering (SSR/ISR) for Google indexability
+- JSON-LD structured data on all exam, blog, and listing pages
+- Sitemap auto-generated via `next-sitemap` after each build
+- Robots rules in `src/app/robots.ts`

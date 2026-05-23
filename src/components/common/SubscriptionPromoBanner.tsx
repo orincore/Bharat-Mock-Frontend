@@ -1,127 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Megaphone, X } from 'lucide-react';
-import { subscriptionService, SubscriptionPlan } from '@/lib/api/subscriptionService';
 import { useAuth } from '@/context/AuthContext';
 
-const FALLBACK_NORMAL_PRICE_CENTS = 0;
-const FALLBACK_SALE_PRICE_CENTS = 0;
-const SHOULD_FETCH_PLANS = true;
+// Hardcoded Flash Offer prices
+const FLASH_OFFER_NORMAL_PRICE = 499; // ₹499
+const FLASH_OFFER_SALE_PRICE = 99; // ₹99
 
-const formatPrice = (amountCents?: number | null, currency = 'INR') => {
-  if (typeof amountCents !== 'number' || Number.isNaN(amountCents)) {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(FALLBACK_SALE_PRICE_CENTS / 100);
-  }
-  try {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 0
-    }).format(amountCents / 100);
-  } catch (error) {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(FALLBACK_SALE_PRICE_CENTS / 100);
-  }
-};
-
-const getEffectivePriceCents = (plan?: SubscriptionPlan | null) => {
-  if (!plan) return null;
-  if (plan.sale_price_cents !== null && plan.sale_price_cents !== undefined) {
-    return plan.sale_price_cents;
-  }
-  if (typeof plan.price_cents === 'number') {
-    return plan.price_cents;
-  }
-  return plan.normal_price_cents ?? null;
+const formatPrice = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0
+  }).format(amount);
 };
 
 export function SubscriptionPromoBanner() {
   const [visible, setVisible] = useState<boolean>(true);
-  const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null);
   const { user } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!SHOULD_FETCH_PLANS) {
-      return;
-    }
-
-    let mounted = true;
-    const loadPlans = async () => {
-      try {
-        const fetched = await subscriptionService.getPlans();
-        if (!mounted) return;
-        if (fetched.length) {
-          setPlans(fetched);
-        } else {
-          console.warn('[SubscriptionPromoBanner] No plans returned from API');
-        }
-      } catch (error) {
-        console.error('[SubscriptionPromoBanner] Failed to fetch plans:', error);
-        console.warn('Subscription plans API unavailable, using fallback pricing');
-      }
-    };
-    loadPlans();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const highlightedPlan = useMemo(() => {
-    if (!plans || plans.length === 0) return null;
-    const sorted = [...plans].sort((a, b) => {
-      const priceA = getEffectivePriceCents(a) ?? Number.MAX_SAFE_INTEGER;
-      const priceB = getEffectivePriceCents(b) ?? Number.MAX_SAFE_INTEGER;
-      return priceA - priceB;
-    });
-    return sorted[0];
-  }, [plans]);
-
-  const currencyCode = highlightedPlan?.currency_code || 'INR';
-  const normalPriceFromPlan = highlightedPlan?.normal_price_cents ?? null;
-  const salePriceFromPlan = highlightedPlan?.sale_price_cents ?? null;
-  
-  
-  const resolvedNormalPriceCents = normalPriceFromPlan || FALLBACK_NORMAL_PRICE_CENTS;
-  const resolvedSalePriceCents = (() => {
-    if (
-      salePriceFromPlan !== null &&
-      salePriceFromPlan !== undefined &&
-      salePriceFromPlan > 0 &&
-      salePriceFromPlan < resolvedNormalPriceCents
-    ) {
-      return salePriceFromPlan;
-    }
-    const effective = getEffectivePriceCents(highlightedPlan);
-    if (effective && effective < resolvedNormalPriceCents) {
-      return effective;
-    }
-    return FALLBACK_SALE_PRICE_CENTS;
-  })();
-
-  const hasDiscount = resolvedNormalPriceCents > resolvedSalePriceCents;
-  
-
-
   const priceStack = (
     <span className="inline-flex items-baseline gap-1.5">
-      {hasDiscount && (
-        <span className="text-[10px] sm:text-base text-white/70 line-through">
-          {formatPrice(resolvedNormalPriceCents, currencyCode)}
-        </span>
-      )}
+      <span className="text-[10px] sm:text-base text-white/70 line-through">
+        {formatPrice(FLASH_OFFER_NORMAL_PRICE)}
+      </span>
       <span className="text-xs sm:text-lg font-semibold text-amber-200">
-        {formatPrice(resolvedSalePriceCents, currencyCode)}
+        {formatPrice(FLASH_OFFER_SALE_PRICE)}
       </span>
     </span>
   );

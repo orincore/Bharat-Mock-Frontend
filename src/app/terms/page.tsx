@@ -1,9 +1,15 @@
 import { FileText, Scale, Shield, Coins } from 'lucide-react';
 import type { Metadata } from 'next';
+import { COMPANY } from '@/lib/constants/company';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Bharat Mock',
   description: 'Understand the rules that govern Bharat Mock mock tests, paid plans, acceptable use, dispute resolution, and your responsibilities as a learner.',
+  alternates: {
+    canonical: `${SITE_URL}/terms`,
+  },
 };
 
 const userResponsibilities = [
@@ -145,15 +151,6 @@ export default function TermsPage() {
               We may update these Terms to reflect new features or regulatory changes. Continued use after
               the effective date constitutes acceptance of the revised Terms.
             </p>
-
-            <div className="rounded-2xl border border-muted bg-muted/30 p-6">
-              <h3 className="font-display text-xl mb-2">Questions?</h3>
-              <p className="text-muted-foreground">
-                Email <a href="mailto:legal@bharatmock.com" className="text-primary underline">legal@bharatmock.com</a> or call
-                +91 1800-123-4567. Our registered office is Bharat Mock EdTech Pvt. Ltd., 91Springboard,
-                Koramangala, Bengaluru 560034.
-              </p>
-            </div>
           </div>
         </div>
       </section>

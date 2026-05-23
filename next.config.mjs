@@ -1,10 +1,27 @@
 /** @type {import('next').NextConfig} */
 const isDev = process.env.NODE_ENV === 'development';
 
+// NOTE: middleware.ts matcher must be kept in sync with static-asset exclusions here.
+
+const prodCSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://api.bharatmock.com https://media.bharatmock.com https://www.googletagmanager.com https://www.google-analytics.com",
+  "frame-src 'self' https://www.google.com https://maps.google.com https://checkout.razorpay.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+].join('; ');
+
+const devCSP = "default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval' blob:; img-src * data: blob:; connect-src *; frame-src *;";
+
 const nextConfig = {
   distDir: '.next',
   poweredByHeader: false,
   compress: true,
+  generateEtags: true,
 
   // Image optimization
   images: {
@@ -40,9 +57,6 @@ const nextConfig = {
   },
 
   trailingSlash: false,
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 
   async headers() {
     const rules = [
@@ -66,6 +80,15 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+      // Content-Security-Policy for all routes
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Content-Security-Policy', value: isDev ? devCSP : prodCSP },
         ],
       },
     ];

@@ -25,6 +25,7 @@ export interface TestSeriesExamSummary {
   id: string;
   title: string;
   is_free: boolean;
+  is_published?: boolean;
   supports_hindi?: boolean;
   languages?: string[];
   language?: string;

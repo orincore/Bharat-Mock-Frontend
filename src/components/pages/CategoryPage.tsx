@@ -108,7 +108,7 @@ interface SubcategoryItem {
 
 export function CategoryPage({ categorySlug }: CategoryPageProps) {
   const tabScrollRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState('examCategories');
+  const [activeTab, setActiveTab] = useState('examCategories'); // Kept for backward compatibility, but tabs are hidden
   const [category, setCategory] = useState<Category | null>(null);
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -316,58 +316,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="border-b border-border bg-white/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
-          <div className="flex items-center gap-2">
-            {/* Left scroll arrow — desktop only */}
-            <button
-              type="button"
-              aria-label="Scroll tabs left"
-              className="tab-scroll-arrow flex-shrink-0 items-center justify-center w-7 h-7 rounded-full border border-gray-200 bg-white text-gray-500 hover:text-primary hover:border-primary/40 transition-colors"
-              onClick={() => tabScrollRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-
-            <div ref={tabScrollRef} className="flex gap-1 overflow-x-auto hide-scrollbar flex-1">
-              {[
-                { id: 'examCategories', label: 'Exam Categories', icon: Layers },
-                { id: 'notifications', label: 'Notifications', icon: Bell },
-                { id: 'syllabus', label: 'Syllabus', icon: FileText },
-                { id: 'cutoffs', label: 'Cutoffs', icon: Award },
-                { id: 'dates', label: 'Important Dates', icon: Calendar },
-                { id: 'tips', label: 'Preparation Tips', icon: Lightbulb },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'text-primary border-b-2 border-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Right scroll arrow — desktop only */}
-            <button
-              type="button"
-              aria-label="Scroll tabs right"
-              className="tab-scroll-arrow flex-shrink-0 items-center justify-center w-7 h-7 rounded-full border border-gray-200 bg-white text-gray-500 hover:text-primary hover:border-primary/40 transition-colors"
-              onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Content Sections */}
+      {/* Content Sections - Tabs removed for public category pages */}
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 py-10" id="examCategories">
         {activeTab === 'examCategories' && (
           <div className="space-y-6">
@@ -506,7 +455,7 @@ export function CategoryPage({ categorySlug }: CategoryPageProps) {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                   {exams.map((exam) => (
-                    <StandardExamCard key={exam.id} exam={{ ...exam, url_path: getExamUrl(exam), category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }} />
+                    <StandardExamCard key={exam.id} exam={{ ...exam, url_path: getExamUrl({ id: exam.id, slug: exam.slug, url_path: exam.url_path ?? undefined }) ?? undefined, logo_url: exam.logo_url ?? undefined, category_logo_url: exam.exam_categories?.logo_url ?? undefined, category_icon: exam.exam_categories?.icon } as any} />
                   ))}
                 </div>
 

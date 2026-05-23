@@ -208,9 +208,9 @@ export default function AdminBlogEditorPage() {
     };
 
     loadBlog();
-  }, [blogId, isNew, localBlogId, toast]);
+  }, [blogId, isNew, toast]);
 
-  const createBlogRecord = async (targetStatus: BlogStatus = "draft", notify = true) => {
+  const createBlogRecord = async (targetStatus: BlogStatus = "draft", notify = true, skipNavigation = false) => {
     const payload = buildPayload(targetStatus);
     const created = await blogAdminService.createBlog(payload);
     setLocalBlogId(created.id);
@@ -226,7 +226,9 @@ export default function AdminBlogEditorPage() {
         description: targetStatus === "published" ? "Blog is live now." : "Continue editing your draft."
       });
     }
-    router.replace(`/admin/blogs/editor/${created.id}`);
+    if (!skipNavigation) {
+      router.replace(`/admin/blogs/editor/${created.id}`);
+    }
     return created;
   };
 
@@ -298,7 +300,7 @@ export default function AdminBlogEditorPage() {
       let savedBlog: any = null;
 
       if (!targetId) {
-        savedBlog = await createBlogRecord(targetStatus, false);
+        savedBlog = await createBlogRecord(targetStatus, false, true);
         targetId = savedBlog.id;
         toast({ title: targetStatus === "published" ? "Blog published" : "Draft created" });
       } else {
@@ -319,6 +321,9 @@ export default function AdminBlogEditorPage() {
         const sectionsToSave = latestSectionsRef.current;
         await blogAdminService.bulkSyncBlogContent(targetId, sectionsToSave);
         toast({ title: "Content saved" });
+        if (isNew) {
+          router.replace(`/admin/blogs/editor/${targetId}`);
+        }
       }
     } catch (error: any) {
       toast({
@@ -337,7 +342,7 @@ export default function AdminBlogEditorPage() {
       setUploadingFeaturedImage(true);
       let targetId = effectiveBlogId;
       if (!targetId) {
-        const draft = await createBlogRecord("draft");
+        const draft = await createBlogRecord("draft", true, true);
         targetId = draft.id;
       }
       const media = await blogAdminService.uploadMedia(targetId, file, "featured-images");

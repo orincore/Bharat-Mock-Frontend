@@ -95,29 +95,46 @@ const ExamTimer = ({
   onAutoSubmit: () => void;
   onTimeUpdate?: (time: number) => void;
 }) => {
-  const [time, setTime] = useState(initialTime);
+  const [time, setTime] = useState(0);
   const onAutoSubmitRef = useRef(onAutoSubmit);
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  const timeRef = useRef(0);
+  const seededRef = useRef(false);
+  const runningRef = useRef(false);
 
   useEffect(() => { onAutoSubmitRef.current = onAutoSubmit; }, [onAutoSubmit]);
+  useEffect(() => { onTimeUpdateRef.current = onTimeUpdate; }, [onTimeUpdate]);
 
-  useEffect(() => { if (initialTime > 0 && time === 0) setTime(initialTime); }, [initialTime]);
+  // Seed the timer once with the first non-zero initialTime
+  useEffect(() => {
+    if (initialTime > 0 && !seededRef.current) {
+      seededRef.current = true;
+      timeRef.current = initialTime;
+      setTime(initialTime);
+    }
+  }, [initialTime]);
 
   useEffect(() => {
-    if (!isRunning || time === 0) return;
+    runningRef.current = isRunning;
+  }, [isRunning]);
+
+  // Single interval — never recreated after first start
+  useEffect(() => {
     const interval = setInterval(() => {
-      setTime(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onAutoSubmitRef.current();
-          return 0;
-        }
-        const next = prev - 1;
-        if (onTimeUpdate) onTimeUpdate(next);
-        return next;
-      });
+      if (!runningRef.current) return;
+      if (timeRef.current <= 1) {
+        clearInterval(interval);
+        timeRef.current = 0;
+        setTime(0);
+        onAutoSubmitRef.current();
+        return;
+      }
+      timeRef.current -= 1;
+      setTime(timeRef.current);
+      if (onTimeUpdateRef.current) onTimeUpdateRef.current(timeRef.current);
     }, 1000);
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, []);
 
   const h = Math.floor(time / 3600);
   const m = Math.floor((time % 3600) / 60);
@@ -125,40 +142,51 @@ const ExamTimer = ({
   const fTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
   return (
-    <div className={`flex items-center gap-2 px-4 h-9 rounded-full font-mono font-bold shadow-sm ${time < 300 && time > 0 ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-50 border border-slate-200 text-slate-700'
-      }`}>
+    <div
+      className={`flex items-center gap-2 px-4 h-9 rounded-full font-mono font-bold shadow-sm notranslate ${time < 300 && time > 0 ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-50 border border-slate-200 text-slate-700'
+        }`}
+      translate="no"
+    >
       <Clock className="h-4 w-4 shrink-0" />
-      <span className="text-[13px] tracking-wide whitespace-nowrap">Time {fTime}</span>
+      <span className="text-[13px] tracking-wide whitespace-nowrap notranslate" translate="no">Time {fTime}</span>
     </div>
   );
 };
 const MobileExamTimer = ({ initialTime, isRunning, onTimeUpdate }: { initialTime: number, isRunning: boolean, onTimeUpdate?: (time: number) => void }) => {
-  const [time, setTime] = useState(initialTime);
+  const [time, setTime] = useState(0);
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  const timeRef = useRef(0);
+  const seededRef = useRef(false);
+  const runningRef = useRef(false);
 
-  useEffect(() => { if (initialTime > 0 && time === 0) setTime(initialTime); }, [initialTime]);
+  useEffect(() => { onTimeUpdateRef.current = onTimeUpdate; }, [onTimeUpdate]);
+  useEffect(() => { runningRef.current = isRunning; }, [isRunning]);
 
   useEffect(() => {
-    if (!isRunning || time === 0) return;
+    if (initialTime > 0 && !seededRef.current) {
+      seededRef.current = true;
+      timeRef.current = initialTime;
+      setTime(initialTime);
+    }
+  }, [initialTime]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      setTime(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        const next = prev - 1;
-        if (onTimeUpdate) onTimeUpdate(next);
-        return next;
-      });
+      if (!runningRef.current) return;
+      if (timeRef.current <= 1) { clearInterval(interval); timeRef.current = 0; setTime(0); return; }
+      timeRef.current -= 1;
+      setTime(timeRef.current);
+      if (onTimeUpdateRef.current) onTimeUpdateRef.current(timeRef.current);
     }, 1000);
     return () => clearInterval(interval);
-  }, [isRunning, onTimeUpdate]);
+  }, []);
 
   const h = Math.floor(time / 3600);
   const m = Math.floor((time % 3600) / 60);
   const s = time % 60;
   const fTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
-  return <>{fTime}</>;
+  return <span className="notranslate" translate="no">{fTime}</span>;
 };
 
 function ExamAttemptContent() {
@@ -183,7 +211,9 @@ function ExamAttemptContent() {
   const urlQuestion = parseInt(searchParams?.get('question') || '0');
   const isStarted = searchParams?.get('started') === 'true';
   const urlTransLang = searchParams?.get('trans') || '';
-  const [googleTranslateLang, setGoogleTranslateLang] = useState(urlTransLang);
+  const urlHiParam = searchParams?.get('hi') === 'true' || searchParams?.get('hi') === '1';
+  const autoTranslateLang = urlHiParam ? 'hi' : urlTransLang;
+  const [googleTranslateLang, setGoogleTranslateLang] = useState(autoTranslateLang);
   const googleTranslateActive = Boolean(googleTranslateLang);
 
   const requestedLanguage = searchParams?.get('lang') || 'en';
@@ -226,9 +256,7 @@ function ExamAttemptContent() {
 
   const [showFSRecovery, setShowFSRecovery] = useState(false);
 
-  // Inject a stable, persistent body-top fix for Google Translate.
-  // This MUST live outside the React JSX tree (via DOM injection) so it
-  // is never removed/re-applied on re-renders (which was causing the jump).
+  // Suppress GT banner and body shift
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const styleId = 'exam-body-fix';
@@ -237,61 +265,40 @@ function ExamAttemptContent() {
     style.id = styleId;
     style.textContent = `
       body { top: 0 !important; position: static !important; }
-      body.translated-ltr, body.translated-rtl { top: 0 !important; position: static !important; }
-      .goog-te-banner-frame { display: none !important; }
+      body.translated-ltr, body.translated-rtl { top: 0 !important; margin-top: 0 !important; }
+      .goog-te-banner-frame, iframe.goog-te-banner-frame { display: none !important; }
       .skiptranslate.goog-te-banner-frame { display: none !important; }
+      .goog-text-highlight { background: none !important; box-shadow: none !important; }
     `;
     document.head.appendChild(style);
-    return () => {
-      // Clean up on unmount (exam finished/navigated away)
-      const el = document.getElementById(styleId);
-      if (el) el.remove();
-    };
+    return () => { document.getElementById(styleId)?.remove(); };
   }, []);
 
-  // Trigger AI Translation on mount or if language changes
+  // Load GT widget once on mount
   useEffect(() => {
-    if (googleTranslateLang) {
-      const initTranslation = () => {
-        // Force re-scan Google Translate internal state
-        if (typeof (window as any).googleTranslateElementInit === 'function') {
-          try { (window as any).googleTranslateElementInit(); } catch (e) { }
-        }
-
-        const select = document.querySelector('select.goog-te-combo') as HTMLSelectElement;
-        if (select) {
-          if (select.value !== googleTranslateLang) {
-            select.value = googleTranslateLang;
-            select.dispatchEvent(new Event('change'));
-          }
-        } else {
-          // Retry loop to catch the widget as it loads
-          let attempts = 0;
-          const int = setInterval(() => {
-            const s = document.querySelector('select.goog-te-combo') as HTMLSelectElement;
-            if (s) {
-              if (s.value !== googleTranslateLang) {
-                s.value = googleTranslateLang;
-                s.dispatchEvent(new Event('change'));
-              }
-              clearInterval(int);
-            }
-            if (++attempts > 20) clearInterval(int);
-          }, 800);
-        }
-      };
-      // Wait for stability
-      const timer = setTimeout(initTranslation, 1000);
-      return () => clearTimeout(timer);
+    if (typeof window === 'undefined') return;
+    
+    // Set cookie from URL params (?hi or ?trans) so GT auto-translates on load
+    if (autoTranslateLang && autoTranslateLang !== 'en') {
+      document.cookie = `googtrans=/en/${autoTranslateLang}; path=/`;
     }
-    // Reset on unmount to prevent translation bleeding into other pages
-    return () => {
-      if (typeof document !== 'undefined') {
-        document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
-      }
+    
+    (window as any).googleTranslateElementInit = () => {
+      new (window as any).google.translate.TranslateElement(
+        { pageLanguage: 'en', autoDisplay: true },
+        'google_translate_element'
+      );
     };
-  }, [googleTranslateLang]);
+    if (!document.getElementById('gt-script')) {
+      const s = document.createElement('script');
+      s.id = 'gt-script';
+      s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+      s.async = true;
+      document.body.appendChild(s);
+    } else if ((window as any).google?.translate?.TranslateElement) {
+      (window as any).googleTranslateElementInit();
+    }
+  }, [autoTranslateLang]);
 
   const googleLangs = [
     { code: 'en', label: 'English' },
@@ -334,26 +341,6 @@ function ExamAttemptContent() {
     window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
   }, [currentSectionIndex, currentQuestionIndex, showInstructions, isLoading, googleTranslateLang, selectedLanguage]);
 
-  // Load Google Translate widget once
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if ((window as any).google?.translate?.TranslateElement) return;
-    const script = document.createElement('script');
-    script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-    script.async = true;
-    document.body.appendChild(script);
-
-    (window as any).googleTranslateElementInit = () => {
-      new (window as any).google.translate.TranslateElement(
-        {
-          pageLanguage: '',
-          autoDisplay: false,
-          multilanguage: true
-        },
-        'google_translate_element'
-      );
-    };
-  }, []);
 
 
 
@@ -526,7 +513,9 @@ function ExamAttemptContent() {
         }
 
         setExam(examData);
-        setInitialTime((examData.duration || 0) * 60);
+        // Always prefer cached timer so paused/resumed exams don't reset
+        const savedTimer = sessionStorage.getItem(`timer_${attemptId}`);
+        setInitialTime(savedTimer ? parseInt(savedTimer) : (examData.duration || 0) * 60);
 
 
 
@@ -877,8 +866,13 @@ function ExamAttemptContent() {
   const handlePauseExam = async () => {
     try {
       setIsSaving(true);
-      // Save current question's state before pausing
+      // Save current question's state and timer before pausing
       await silentSave();
+      // Timer is already being written by onTimeUpdate every second — ensure it's flushed
+      const currentTimer = sessionStorage.getItem(`timer_${attemptId}`);
+      if (!currentTimer) {
+        sessionStorage.setItem(`timer_${attemptId}`, initialTime.toString());
+      }
 
       const id = params?.id as string;
       
@@ -943,11 +937,14 @@ function ExamAttemptContent() {
       exitDomFullscreen();
       return;
     }
-    requestDomFullscreen();
+    // Only auto-request fullscreen when the user just clicked "Start Exam" (not on page reload/fast-load)
+    if (!isFastLoad) {
+      requestDomFullscreen();
+    }
     return () => {
       exitDomFullscreen();
     };
-  }, [showInstructions]);
+  }, [showInstructions, isFastLoad]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -1145,6 +1142,30 @@ function ExamAttemptContent() {
             <img src="/logo.png" alt="Logo" className="h-6 md:h-7 w-auto shrink-0" />
             <div className="h-5 w-px bg-slate-200 mx-1 shrink-0" />
             <h1 className="font-black text-slate-800 tracking-tight text-[14px] md:text-[16px] truncate">Free Full Test : {exam?.title || 'SSC CGL 2025 (Tier-I)'}</h1>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="md:hidden flex h-8 items-center gap-1 bg-blue-50/80 rounded-lg px-2 border border-blue-100 shadow-sm active:bg-blue-100 transition-colors">
+              <Languages className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              <select
+                value={googleTranslateLang || (selectedLanguage === 'hi' ? 'hi' : 'en')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === selectedLanguage) {
+                    setGoogleTranslateLang('');
+                    toggleGoogleTranslate('en');
+                  } else {
+                    setGoogleTranslateLang(val);
+                    toggleGoogleTranslate(val);
+                  }
+                }}
+                className={`bg-transparent text-[11px] font-black uppercase tracking-tight focus:outline-none cursor-pointer max-w-[60px] notranslate ${googleTranslateLang ? 'text-blue-700' : 'text-slate-600'
+                  }`}
+              >
+                {googleLangs.map(lang => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </header>
 
@@ -1344,65 +1365,41 @@ function ExamAttemptContent() {
   } as const;
 
   const toggleGoogleTranslate = (targetLang: string) => {
-    // 1. Silent save of current progress
-    silentSave();
-
-    // 2. Cache current state for recovery (including Timer if possible)
-    // The Timer in the header is separate, but we ensure we HAVE the exam data cached.
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(`exam_${examId}`, JSON.stringify(exam));
-      sessionStorage.setItem(`sections_${attemptId}`, JSON.stringify(sections));
-    }
-
-    // 3. Set cookie and hash
-    document.cookie = `googtrans=/en/${targetLang}; path=/`;
-    window.location.hash = `#googtrans(en|${targetLang})`;
-
-    // 4. Update local state immediately for UI feedback
     const isClearing = targetLang === 'off' || targetLang === 'en' || !targetLang;
-    setGoogleTranslateLang(isClearing ? '' : targetLang);
+    const newLang = isClearing ? '' : targetLang;
 
-    // 2. Cache current state for recovery
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(`exam_${examId}`, JSON.stringify(exam));
-      sessionStorage.setItem(`sections_${attemptId}`, JSON.stringify(sections));
-      sessionStorage.setItem('wasFullScreen', isFullScreen.toString());
+    // Persist exam state so fast-reload restores without re-fetching
+    silentSave();
+    sessionStorage.setItem(`exam_${examId}`, JSON.stringify(exam));
+    sessionStorage.setItem(`sections_${attemptId}`, JSON.stringify(sections));
+    sessionStorage.setItem('wasFullScreen', isFullScreen.toString());
+    // Preserve current timer value so it continues from where it left off after reload
+    const currentTimerVal = sessionStorage.getItem(`timer_${attemptId}`);
+    if (!currentTimerVal && initialTime > 0) {
+      sessionStorage.setItem(`timer_${attemptId}`, initialTime.toString());
     }
 
-    // 3. Set cookie and hash in multiple formats for maximum compatibility
-    const cookieExpiry = new Date(Date.now() + 2 * 60 * 60 * 1000).toUTCString();
-    const sourceLang = selectedLanguage || 'en';
-    const cookieVal = `/${sourceLang}/${targetLang}`;
+    // Set googtrans cookie — path=/ only, NO domain= (domain= breaks on localhost)
+    const clearCookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+    document.cookie = clearCookie;
+    if (!isClearing) {
+      document.cookie = `googtrans=/en/${newLang}; path=/`;
+    }
 
-    // Clear potentially conflicting cookies first
-    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+    const params = new URLSearchParams(window.location.search);
+    params.set('fast', 'true');
+    if (!isClearing) params.set('trans', newLang);
+    else params.delete('trans');
 
-    // Set new cookies
-    document.cookie = `googtrans=${cookieVal}; expires=${cookieExpiry}; path=/`;
-    document.cookie = `googtrans=${cookieVal}; expires=${cookieExpiry}; path=/; domain=${window.location.hostname}`;
-    window.location.hash = `#googtrans(${sourceLang}|${targetLang})`;
-
-    // 4. Traditional High-Reliability Reload with slight delay for cookie propagation
-    const runTrigger = () => {
-      const params = new URLSearchParams(window.location.search);
-      params.set('fast', 'true');
-      if (!isClearing) params.set('trans', targetLang);
-      else params.delete('trans');
-
-      // Use location.replace for a clean session reset
-      setTimeout(() => {
-        window.location.replace(window.location.pathname + '?' + params.toString());
-      }, 500);
-    };
-
-    runTrigger();
+    setTimeout(() => {
+      window.location.replace(window.location.pathname + '?' + params.toString());
+    }, 150);
   };
 
   return (
     <div className="flex flex-col h-screen overflow-hidden select-none relative bg-[#f8fafc]">
-      {/* Hidden Google Translate Element - Persistent outside the soft-refresh container */}
-      <div id="google_translate_element" className="hidden" />
+      {/* Google Translate widget container — must be in flow (not display:none) so GT can render select.goog-te-combo */}
+      <div id="google_translate_element" style={{ position: 'fixed', bottom: 0, left: 0, width: '100px', height: '40px', overflow: 'hidden', opacity: 0, pointerEvents: 'none', zIndex: -1 }} />
         {isLoading && isFastLoad && (
           <div className="fixed inset-0 z-[100] bg-white/20 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
             <div className="bg-white/90 p-4 rounded-xl shadow-lg border border-primary/20 flex items-center gap-3 animate-in fade-in zoom-in duration-300">
@@ -1433,15 +1430,20 @@ function ExamAttemptContent() {
         )}
 
         <style dangerouslySetInnerHTML={{ __html: `
-        .goog-te-banner-frame.skiptranslate, 
-        .goog-te-gadget-icon, 
-        .goog-te-gadget-simple span, 
+        .goog-te-banner-frame,
+        .goog-te-banner-frame.skiptranslate,
+        .skiptranslate.goog-te-banner-frame,
+        .goog-te-gadget-icon,
+        .goog-te-gadget-simple span,
         .goog-te-menu-value span:nth-child(3),
-        .goog-te-gadget {
+        .goog-te-gadget,
+        iframe.goog-te-banner-frame {
           display: none !important;
         }
-        #google_translate_element {
-          display: none !important;
+        /* Prevent GT from shifting page down with its top bar */
+        body.translated-ltr, body.translated-rtl {
+          top: 0 !important;
+          margin-top: 0 !important;
         }
         .goog-text-highlight {
           background-color: transparent !important;
@@ -1547,34 +1549,22 @@ function ExamAttemptContent() {
           <div className="md:hidden sticky top-0 z-50 bg-white border-b border-border shadow-sm">
             <div className="px-3 pt-3 pb-2 space-y-2">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-1 items-center gap-3 min-w-0">
-                  <Clock className="h-6 w-6 text-primary shrink-0" />
-                  <div className="min-w-0 flex-1 flex flex-col justify-center">
-                    <h1 className="text-[15px] font-bold text-slate-900 leading-none mb-1">
-                      Time <span className="font-mono"><MobileExamTimer initialTime={initialTime} isRunning={!showInstructions && !isLoading} onTimeUpdate={(t) => sessionStorage.setItem(`timer_${attemptId}`, t.toString())} /></span>
-                    </h1>
-                    <p className="text-[10px] text-slate-500 font-medium truncate leading-none">
-                      {getLocalizedSectionName(currentSection)} <span className="mx-1 opacity-50">•</span> {exam?.title}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 items-center gap-1.5 bg-blue-50/80 rounded-lg px-2.5 border border-blue-100 shadow-sm active:bg-blue-100 transition-colors">
-                    <Languages className="h-4 w-4 text-blue-600 shrink-0" />
+                <div className="flex flex-1 items-center gap-2 min-w-0">
+                  <div className="flex h-8 items-center gap-1 bg-blue-50/80 rounded-lg px-2 border border-blue-100 shadow-sm active:bg-blue-100 transition-colors shrink-0">
+                    <Languages className="h-3.5 w-3.5 text-blue-600 shrink-0" />
                     <select
                       value={googleTranslateLang || (selectedLanguage === 'hi' ? 'hi' : 'en')}
                       onChange={(e) => {
                         const val = e.target.value;
-                        // Handle native vs translation properly
                         if (val === selectedLanguage) {
                           setGoogleTranslateLang('');
-                          toggleGoogleTranslate('en'); // Reset to native
+                          toggleGoogleTranslate('en');
                         } else {
                           setGoogleTranslateLang(val);
                           toggleGoogleTranslate(val);
                         }
                       }}
-                      className={`bg-transparent text-xs font-black uppercase tracking-tight focus:outline-none cursor-pointer max-w-[80px] notranslate ${googleTranslateLang ? 'text-blue-700' : 'text-slate-600'
+                      className={`bg-transparent text-[11px] font-black uppercase tracking-tight focus:outline-none cursor-pointer max-w-[60px] notranslate ${googleTranslateLang ? 'text-blue-700' : 'text-slate-600'
                         }`}
                     >
                       {googleLangs.map(lang => (
@@ -1582,7 +1572,17 @@ function ExamAttemptContent() {
                       ))}
                     </select>
                   </div>
-
+                  <Clock className="h-6 w-6 text-primary shrink-0" />
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <h1 className="text-[15px] font-bold text-slate-900 leading-none mb-1 notranslate" translate="no">
+                      Time <span className="font-mono notranslate" translate="no"><MobileExamTimer initialTime={initialTime} isRunning={!showInstructions && !isLoading} onTimeUpdate={(t) => sessionStorage.setItem(`timer_${attemptId}`, t.toString())} /></span>
+                    </h1>
+                    <p className="text-[10px] text-slate-500 font-medium truncate leading-none">
+                      {getLocalizedSectionName(currentSection)} <span className="mx-1 opacity-50">•</span> {exam?.title}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handlePauseExam}

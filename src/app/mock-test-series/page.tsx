@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import MockTestSeriesClient from './MockTestSeriesClient';
+import { MockTestSeriesFAQ } from './MockTestSeriesFAQ';
 import type { TestSeries } from '@/lib/api/testSeriesService';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
 
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
-  : 'http://localhost:8000/api/v1';
+  : '';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
@@ -120,6 +121,7 @@ export default async function MockTestSeriesPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <MockTestSeriesClient initialData={initialData} />
+      <MockTestSeriesFAQ />
     </>
   );
 }

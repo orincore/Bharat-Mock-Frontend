@@ -197,7 +197,7 @@ export function SocialShare({
         {showLabel && <p className="text-sm font-semibold text-gray-900">Share this article</p>}
         <div className="flex flex-wrap gap-2">
           {/* Native share button for mobile devices */}
-          {typeof navigator !== 'undefined' && navigator.share && (
+          {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
             <button
               onClick={() => handleShare('native')}
               className="h-9 px-3 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center gap-2 transition-colors text-white text-sm font-medium sm:hidden"

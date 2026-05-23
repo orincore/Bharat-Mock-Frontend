@@ -86,6 +86,13 @@ export function AuthReminderDialog() {
       return;
     }
 
+    // Don't show upsell for admin, editor, or author roles
+    if (user.role === 'admin' || user.role === 'editor' || user.role === 'author') {
+      setOpen(false);
+      setVariant((current) => (current === 'upsell' ? null : current));
+      return;
+    }
+
     if (upsellDismissKey && sessionStorage.getItem(upsellDismissKey) === 'true') {
       return;
     }
@@ -104,6 +111,11 @@ export function AuthReminderDialog() {
 
     const handleForcedOpen = () => {
       if (user?.is_premium) return;
+
+      // Don't show upsell for admin, editor, or author roles
+      if (user && (user.role === 'admin' || user.role === 'editor' || user.role === 'author')) {
+        return;
+      }
 
       if (user) {
         if (upsellDismissKey) {

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import CurrentAffairsClient from './CurrentAffairsClient';
+import { CurrentAffairsFAQ } from './CurrentAffairsFAQ';
 import type { CurrentAffairsPayload } from '@/lib/api/currentAffairsService';
 
 export const dynamic = 'force-dynamic';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
-  : 'http://localhost:8000/api/v1';
+  : '';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
@@ -72,6 +73,7 @@ export default async function CurrentAffairsPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <CurrentAffairsClient initialData={data} />
+      <CurrentAffairsFAQ />
     </>
   );
 }

@@ -41,6 +41,7 @@ interface StandardExamCardProps {
   hideAttempts?: boolean;
   showAttemptsTop?: boolean;
   ctaLabel?: string;
+  urlOverride?: string;
   onDownloadPDF?: (id: string) => void;
   isDownloading?: boolean;
 }
@@ -53,6 +54,7 @@ export function StandardExamCard({
   hideAttempts = false,
   showAttemptsTop = false,
   ctaLabel,
+  urlOverride,
   onDownloadPDF,
   isDownloading = false,
 }: StandardExamCardProps) {
@@ -84,7 +86,7 @@ export function StandardExamCard({
       : 'bg-amber-50 text-amber-700 border-amber-200/70';
 
   const languageLabel = exam.supports_hindi ? 'English + हिंदी' : 'English only';
-  const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
+  const examUrl = exam.url_path || `/mock-test-series/${exam.id}`;
 
   const hasPdfEn = Boolean(exam.pdf_url_en);
   const hasPdfHi = Boolean(exam.pdf_url_hi);

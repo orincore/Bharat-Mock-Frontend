@@ -90,11 +90,11 @@ export default async function DisclaimerPage() {
   const content = data.content ?? fallbackDisclaimer.content;
   const sections = normalizeSections(data);
 
-  const introBody = content?.intro_body ?? fallbackDisclaimer.content.intro_body;
+  const introBody = content?.intro_body ?? fallbackDisclaimer.content!.intro_body;
   const lastUpdated =
-    formatDate(content?.last_updated) ?? formatDate(fallbackDisclaimer.content.last_updated) ?? 'Recently updated';
-  const contactEmail = content?.contact_email ?? fallbackDisclaimer.content.contact_email;
-  const contactUrl = content?.contact_url ?? fallbackDisclaimer.content.contact_url;
+    formatDate(content?.last_updated) ?? formatDate(fallbackDisclaimer.content!.last_updated) ?? 'Recently updated';
+  const contactEmail = content?.contact_email ?? fallbackDisclaimer.content!.contact_email;
+  const contactUrl = content?.contact_url ?? fallbackDisclaimer.content!.contact_url;
 
   return (
     <div className="min-h-screen bg-background">

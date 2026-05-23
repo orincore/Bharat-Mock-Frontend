@@ -84,9 +84,19 @@ export function decodeHtmlText(value?: string | null): string {
 }
 
 export function getCleanContentLabel(value?: string | null): string {
-  return decodeHtmlText(removeStandaloneHeadingMarkers(value))
-    .replace(/^<\s*\/?\s*h[1-6]\b[^>]*>?/gi, "")
-    .replace(/<\s*\/?\s*h[1-6]\s*>$/gi, "")
+  if (!value) return "";
+  
+  // First fully decode HTML entities
+  let cleaned = fullyDecodeHtmlEntities(value);
+  
+  // Remove all HTML tags including those with attributes (like <strong style="...">)
+  cleaned = cleaned
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ");  // This removes ALL HTML tags
+  
+  // Clean up whitespace
+  return cleaned
     .replace(/\s+/g, " ")
     .trim();
 }

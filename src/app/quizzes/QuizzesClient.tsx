@@ -458,6 +458,7 @@ export default function QuizzesClient({ initialData }: { initialData: InitialDat
 
       <div className="container-main">
         <PageSeoSections
+          showFaq={false}
           whyTitle="Why Choose Bharat Mock Quizzes"
           whySubtitle="Short, sharp, and exam-focused—Bharat Mock quizzes are engineered to sharpen your speed and accuracy across every topic that matters."
           whyContent={
@@ -527,7 +528,7 @@ export default function QuizzesClient({ initialData }: { initialData: InitialDat
             { q: 'Do I get answers and explanations after the quiz?', a: 'Yes. With all quizzes, explanations are provided to understand the concepts, and hence improve your performance.' },
             { q: 'Are quizzes available in Hindi and English?', a: 'Yes, all quizzes are in Hindi and English. This ensures students are well prepared for bilingual exams.' },
             { q: 'Are quiz questions repeated in real exams?', a: 'Questions may not be the same, but patterns are quite similar to the actual exams, such as SSC and banking. This lets you know the exam pattern.' },
-            { q: 'Are SSC quiz questions based on previous year papers?', a: 'Yes. SSC quiz questions are set according to previous year papers of SSC CGL, CHSL, and MTS, so you get to practice actual exam questions.' },
+            { q: 'Are SSC quiz questions based on previous year papers?', a: 'Yes. SSC quiz questions are set according to <Link href="/previous-year-papers" className="text-primary hover:underline">previous year papers</Link> of SSC CGL, CHSL, and MTS, so you get to practice actual exam questions.' },
             { q: 'Can I prepare for multiple exams at the same time on Bharat Mock?', a: 'Yes. You can practice the SSC quiz, the banking quiz, and the railway quiz in one account, and it will track your score.' },
             { q: 'Are quizzes enough, or do I need mock tests too?', a: 'Both are important. Practice quizzes help to learn new things fast, while mock tests give you an idea of how ready you are for the exam. Both are best.' },
             { q: 'How many questions are there in each quiz?', a: "Each quiz has 10 to 20 questions, depending on the level. It's brief enough to finish in a reasonable time, but long enough to practise." },

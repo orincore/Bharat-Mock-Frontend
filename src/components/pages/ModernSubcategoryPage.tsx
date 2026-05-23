@@ -71,7 +71,7 @@ interface PageContentResponse {
   customTabs?: CustomTab[];
   tocOrder?: Record<string, number>;
   tabHeadings?: Record<string, string>;
-  tabSeo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string }>;
+  tabSeo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string; canonical_url?: string }>;
 }
 
 interface ModernSubcategoryPageProps {
@@ -600,53 +600,67 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     [subcategoryInfo]
   );
 
-  // Update all meta tags (title, description, keywords, canonical) when active tab or content changes
+  // Update meta tags when the active tab changes (tab switches use replaceState, not SSR).
+  // Never remove existing server-rendered tags — only add/update when a value exists.
   useEffect(() => {
     if (!pageContent) return;
     const tabId = currentTabDescriptor?.id;
+    const isOverview = !tabId || tabId === 'overview';
     const tabOverride = tabId ? pageContent?.tabSeo?.[tabId] : undefined;
 
+    // --- Title (apply root-layout template suffix if missing) ---
+    const TITLE_SUFFIX = ' | Bharat Mock';
+    const applyTemplate = (base: string) =>
+      base.includes(TITLE_SUFFIX) ? base : `${base}${TITLE_SUFFIX}`;
 
-    // --- Title ---
     if (tabOverride?.meta_title) {
-      document.title = tabOverride.meta_title;
+      document.title = applyTemplate(tabOverride.meta_title);
     } else if (heroTitle) {
       const customHeading = tabId ? pageContent?.tabHeadings?.[tabId] : null;
-      const tabLabel = tabId && tabId !== 'overview' ? (customHeading || currentTabDescriptor?.label) : null;
-      document.title = tabLabel ? `${tabLabel} - ${heroTitle}` : (pageContent?.seo?.meta_title || heroTitle);
+      const tabLabel = !isOverview ? (customHeading || currentTabDescriptor?.label) : null;
+      const base = tabLabel ? `${tabLabel} - ${heroTitle}` : (pageContent?.seo?.meta_title || heroTitle);
+      document.title = applyTemplate(base);
     }
 
+    // Only add/update — never remove a server-rendered tag when no new value is provided.
     const setMeta = (name: string, content: string | undefined) => {
+      if (!content) return;
       let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
-      if (content) {
-        if (!el) {
-          el = document.createElement('meta');
-          el.setAttribute('name', name);
-          document.head.appendChild(el);
-        }
-        el.setAttribute('content', content);
-      } else if (el) {
-        el.remove();
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute('name', name);
+        document.head.appendChild(el);
       }
+      el.setAttribute('content', content);
     };
 
+    // Only update canonical if we have an explicit value; never delete the server-rendered one.
     const setCanonical = (url: string | undefined) => {
+      if (!url) return;
       let el = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-      if (url) {
-        if (!el) {
-          el = document.createElement('link');
-          el.setAttribute('rel', 'canonical');
-          document.head.appendChild(el);
-        }
-        el.setAttribute('href', url);
-      } else if (el) {
-        el.remove();
+      if (!el) {
+        el = document.createElement('link');
+        el.setAttribute('rel', 'canonical');
+        document.head.appendChild(el);
       }
+      el.setAttribute('href', url);
     };
 
-    setMeta('description', tabOverride?.meta_description || pageContent?.seo?.meta_description);
-    setMeta('keywords', tabOverride?.meta_keywords || pageContent?.seo?.meta_keywords);
-    setCanonical(pageContent?.seo?.canonical_url);
+    const description = tabOverride?.meta_description || pageContent?.seo?.meta_description;
+    const keywords = tabOverride?.meta_keywords || pageContent?.seo?.meta_keywords;
+
+    // Canonical: explicit override > page-level setting > current URL for non-overview tabs.
+    // For overview tabs with no explicit canonical, leave the server-rendered tag alone.
+    const canonical =
+      tabOverride?.canonical_url ||
+      pageContent?.seo?.canonical_url ||
+      (!isOverview && typeof window !== 'undefined'
+        ? `https://bharatmock.com${window.location.pathname}`
+        : undefined);
+
+    if (description) setMeta('description', description);
+    if (keywords) setMeta('keywords', keywords);
+    setCanonical(canonical);
   }, [currentTabDescriptor?.id, currentTabDescriptor?.label, heroTitle, pageContent]);
 
   const breadcrumbs = useMemo(() => {

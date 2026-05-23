@@ -259,8 +259,8 @@ export default function AdminSubscriptionsPage() {
         discount_value: Number(promoForm.discount_value) || 0,
         max_redemptions: promoForm.max_redemptions ? Number(promoForm.max_redemptions) : null,
         min_amount_cents: promoForm.min_amount_cents ? Number(promoForm.min_amount_cents) : null,
-        start_at: promoForm.start_at ? setDateAtMidnight(promoForm.start_at).toISOString() : null,
-        end_at: promoForm.end_at ? setDateAtMidnight(promoForm.end_at).toISOString() : null,
+        start_at: promoForm.start_at ? setDateAtMidnight(promoForm.start_at)!.toISOString() : null,
+        end_at: promoForm.end_at ? setDateAtMidnight(promoForm.end_at)!.toISOString() : null,
         auto_renew_only: promoForm.auto_renew_only,
         plan_ids: promoForm.plan_ids
       };
@@ -274,7 +274,7 @@ export default function AdminSubscriptionsPage() {
         await subscriptionAdminService.updatePromocode(activePromoId, payload);
         toast({ title: 'Promo updated', description: `${payload.code} saved successfully.` });
       } else {
-        await subscriptionAdminService.createPromocode(payload as Required<typeof payload>);
+        await subscriptionAdminService.createPromocode(payload as any);
         toast({ title: 'Promo created', description: `${payload.code} is ready to use.` });
       }
 

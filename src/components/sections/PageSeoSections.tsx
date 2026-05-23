@@ -40,6 +40,7 @@ interface PageSeoSectionsProps {
   whySubtitle?: string;
   whyContent?: React.ReactNode;
   seoContent?: React.ReactNode;
+  showFaq?: boolean;
 }
 
 export function PageSeoSections({
@@ -52,6 +53,7 @@ export function PageSeoSections({
   whySubtitle = "Whether you attempt a live mock or a rapid-fire quiz, the Bharat Mock ecosystem goes beyond scores. Each pillar below highlights the key advantages that help you prepare smarter.",
   whyContent,
   seoContent,
+  showFaq = true,
 }: PageSeoSectionsProps) {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'MostAsked'>('All');
@@ -149,7 +151,7 @@ export function PageSeoSections({
       {seoContent && <div className="mt-10">{seoContent}</div>}
 
       {/* FAQ */}
-      <section className="py-10">
+      {showFaq && <section className="py-10">
         <div>
           <h2 className="font-display text-4xl font-bold text-foreground mb-8 text-center">{faqTitle}</h2>
           <p className="text-center text-muted-foreground mb-8">{faqSubtitle}</p>
@@ -171,28 +173,37 @@ export function PageSeoSections({
           </div>
 
           <div className="space-y-4">
-            {activeFaqs.map((item, index) => (
-              <div key={item.q} className="bg-card border border-border rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
-                >
-                  <h3 className="font-medium text-foreground text-base">{index + 1}. {item.q}</h3>
-                  {expandedFaq === index
-                    ? <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    : <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                  }
-                </button>
-                {expandedFaq === index && (
-                  <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                    <p className="text-slate-700">{item.a}</p>
+            {activeFaqs.map((item, index) => {
+              const isOpen = expandedFaq === index;
+              return (
+                <div key={item.q} className="bg-card border border-border rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedFaq(isOpen ? null : index)}
+                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
+                    aria-expanded={isOpen}
+                  >
+                    <h3 className="font-medium text-foreground text-base">{index + 1}. {item.q}</h3>
+                    {isOpen
+                      ? <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      : <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    }
+                  </button>
+                  {/* Answer stays in DOM (for Google indexing); CSS hides it visually when collapsed */}
+                  <div
+                    className="border-t border-border overflow-hidden transition-[max-height] duration-300 ease-in-out"
+                    style={{ maxHeight: isOpen ? '1000px' : '0px' }}
+                    aria-hidden={!isOpen}
+                  >
+                    <div className="px-6 py-4 bg-muted/30">
+                      <p className="text-slate-700">{item.a}</p>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </div>
-      </section>
+      </section>}
     </>
   );
 }

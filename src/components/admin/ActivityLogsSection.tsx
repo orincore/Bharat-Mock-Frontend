@@ -189,9 +189,9 @@ export default function ActivityLogsSection({ onViewAll }: ActivityLogsSectionPr
                     </p>
                   )}
 
-                  {log.details?.path && (
+                  {log.details?.path != null && (
                     <p className="text-xs text-muted-foreground font-mono">
-                      {String(log.details.method)} {String(log.details.path)}
+                      {String(log.details?.method ?? '')} {String(log.details?.path ?? '')}
                     </p>
                   )}
                 </div>

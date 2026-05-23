@@ -14,9 +14,9 @@ export interface PageMediaItem {
 
 const authFetch = async (path: string, options: RequestInit = {}) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...(options.headers as Record<string, string> || {})
   };
 
   if (token) {
@@ -45,7 +45,7 @@ const authFetch = async (path: string, options: RequestInit = {}) => {
 
 const authFetchForm = async (path: string, formData: FormData) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  const headers: HeadersInit = {};
+  const headers: Record<string, string> = {};
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -103,7 +103,7 @@ export const subcategoryAdminService = {
     }
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -144,7 +144,7 @@ export const subcategoryAdminService = {
     }
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }

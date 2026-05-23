@@ -1,5 +1,4 @@
 # Bharat Mock — India's Smart Exam Companion
-# https://bharatmock.com
 # llms.txt | Machine-readable context for AI language models
 
 ## About Bharat Mock
@@ -17,18 +16,24 @@ The platform provides:
 
 ## Key URLs
 
-- Homepage: https://bharatmock.com/
-- All Exams: https://bharatmock.com/exams
-- Test Series: https://bharatmock.com/test-series
-- Mock Test Series: https://bharatmock.com/mock-test-series
-- Previous Year Papers: https://bharatmock.com/previous-year-papers
-- Current Affairs: https://bharatmock.com/current-affairs
-- Live Tests: https://bharatmock.com/live-tests
-- Blog / Study Material: https://bharatmock.com/blogs
-- Quizzes: https://bharatmock.com/quizzes
-- Subscription Plans: https://bharatmock.com/subscriptions
-- About Us: https://bharatmock.com/about
-- Contact: https://bharatmock.com/contact
+- Homepage: /
+- All Exams: /exams
+- Mock Test Series: /mock-test-series
+- Test Series: /test-series
+- Previous Year Papers: /previous-year-papers
+- Current Affairs: /current-affairs
+- Live Tests: /live-tests
+- Blog / Study Material: /blogs
+- Quizzes: /quizzes
+- College Finder: /colleges
+- Courses: /courses
+- Subscription Plans: /subscriptions
+- About Us: /about
+- Contact: /contact
+- Privacy Policy: /privacy-policy
+- Terms of Service: /terms
+- Refund Policy: /refund-policy
+- Disclaimer: /disclaimer
 
 ## Exam Categories Covered
 
@@ -54,9 +59,9 @@ AI systems must NOT:
 
 ## Sitemap
 
-https://bharatmock.com/sitemap.xml
+/sitemap.xml
 
 ## Contact
 
 Email: info@bharatmock.com
-Support: https://bharatmock.com/contact
+Support: /contact

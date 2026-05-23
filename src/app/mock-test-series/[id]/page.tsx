@@ -94,9 +94,10 @@ export default function ExamDetailPage() {
     );
   }
 
-  const isUpcoming = exam.status === 'upcoming';
-  const isOngoing = exam.status === 'ongoing';
-  const isCompleted = exam.status === 'completed';
+  const isAnytime = exam.status === 'anytime' || exam.allow_anytime || exam.exam_type === 'past_paper' || exam.exam_type === 'short_quiz';
+  const isUpcoming = exam.status === 'upcoming' && !isAnytime;
+  const isOngoing = exam.status === 'ongoing' || isAnytime;
+  const isCompleted = exam.status === 'completed' && !isAnytime;
   const overviewText = `Prepare for ${exam.category} with ${exam.total_questions} questions and ${exam.total_marks} marks spread across ${exam.duration} minutes.`;
   const accessLabel = exam.is_free ? 'Free for all learners' : 'Included with Premium subscription';
 
@@ -159,13 +160,13 @@ export default function ExamDetailPage() {
                   <div className="flex items-center justify-between text-background">
                     <span className="text-sm">Start Date</span>
                     <span className="font-semibold">
-                      {new Date(exam.start_date).toLocaleDateString()}
+                      {exam.start_date ? new Date(exam.start_date).toLocaleDateString() : "TBD"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-background">
                     <span className="text-sm">End Date</span>
                     <span className="font-semibold">
-                      {new Date(exam.end_date).toLocaleDateString()}
+                      {exam.end_date ? new Date(exam.end_date).toLocaleDateString() : "TBD"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-background">

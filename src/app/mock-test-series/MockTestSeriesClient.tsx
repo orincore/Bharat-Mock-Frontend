@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Filter, BookOpen, Clock, Award, ChevronRight, Flame, Star, StarOff, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Filter, BookOpen, Clock, Award, ChevronRight, Flame, Star, StarOff, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -47,6 +47,7 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
   const [bannersLoading, setBannersLoading] = useState(true);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
+  const [testimonialsPaused, setTestimonialsPaused] = useState(false);
   const [categories, setCategories] = useState<Category[]>(initialData.categories);
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialData.subcategories);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
@@ -60,8 +61,6 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
   const testimonialsScrollRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
-  const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [pageReady, setPageReady] = useState(initialData.testSeries.length > 0);
 
@@ -125,6 +124,42 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
       setTestimonialsLoading(false);
     }
   };
+
+  // Auto-scroll testimonials
+  useEffect(() => {
+    if (testimonialsLoading || testimonials.length === 0) return;
+
+    const scrollContainer = testimonialsScrollRef.current;
+    if (!scrollContainer) return;
+
+    const scrollSpeed = 2;
+    const interval = 50;
+    let intervalId: number;
+
+    const timeoutId = window.setTimeout(() => {
+      intervalId = window.setInterval(() => {
+        if (!testimonialsPaused && scrollContainer) {
+          const currentScroll = scrollContainer.scrollLeft;
+          const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+          
+          if (maxScroll > 0) {
+            const newScroll = currentScroll + scrollSpeed;
+            
+            if (newScroll >= maxScroll) {
+              scrollContainer.scrollLeft = 0;
+            } else {
+              scrollContainer.scrollLeft = newScroll;
+            }
+          }
+        }
+      }, interval);
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
+  }, [testimonialsLoading, testimonials, testimonialsPaused]);
 
 
   const fetchNewTestSeries = async () => {
@@ -352,37 +387,13 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
     return originalWords.length > limit ? `${limited}…` : limited;
   };
 
-  const allFaqs = [
-    { q: 'Why are mock tests important for competitive exams?', a: 'A mock test is an exam you take that simulates a similar pattern, level and duration of the real exam. It can be an SSC mock test, a bank exam mock test or any other mock test; it will help improve speed, accuracy, and boost exam confidence.' },
-    { q: 'How many mock tests should I attempt before my exam?', a: 'Take at least 15-20 mock tests prior to the exam. It can also help you perform better by familiarising yourself with the exam format.' },
-    { q: 'Are the mock tests based on the latest exam pattern?', a: 'Yes, all mock tests are updated as per the latest pattern and syllabus, so you can practise the latest questions.' },
-    { q: 'Will I get solutions after each mock test?', a: 'Yes, you gain access to detailed solutions and explanations for each test, to learn from your errors and improve your accuracy.' },
-    { q: 'Is there a bank mock test for all major exams?', a: 'Yes, mock tests are available for IBPS PO, Clerk, SBI PO, SBI Clerk, RBI Assistant and others, which are as per the actual exam difficulty level.' },
-    { q: 'Is there a railway mock test available?', a: 'Yes, you can find railway mock tests for RRB NTPC, Group D, ALP, JE, RPF and other exams as per the latest pattern.' },
-    { q: 'Can I attempt the railway mock test in Hindi?', a: 'Yes, a railway mock test in Hindi is available (as well as English), so you can select the language before attempting the test.' },
-    { q: 'Are mock tests available in police exam format?', a: 'Yes, you can attempt mock tests on the basis of police test question papers for GK, Reasoning, Maths and Current Affairs as per the syllabus.' },
-    { q: 'Can I attempt mock tests on mobile?', a: 'Yes, mock tests can be done on a mobile phone, tablet, or laptop without installing any app.' },
-    { q: 'Can I re-attempt mock tests?', a: 'Yes, you can attempt mock tests in practice mode again and again to analyse the progress and improve your weak areas.' },
-  ];
-
-  const paymentFaqs = [
-    { q: 'Are all mock tests free on this platform?', a: 'Unfortunately, only some mock tests are available for free. Full mock tests are covered by a plan that offers access to all exams.' },
-    { q: 'Why are most mock tests paid?', a: 'Our mock tests are developed by experts, regularly updated, with solutions and analysis. This quality preparation system is sustained by paid plans.' },
-    { q: 'How do I purchase a mock test plan?', a: 'Visit the Plans section, select your exam plan and make the payment. You can access your plan immediately after payment.' },
-    { q: 'What payment methods are accepted?', a: 'You can choose to pay with UPI, Credit & Debit card, Net banking or using wallets - Paytm or PhonePe.' },
-    { q: 'Can I share my account with others?', a: 'No, each account is for individual use only. Sharing may lead to suspension without refund.' },
-    { q: 'How long is the paid plan valid?', a: 'The plan you select will determine the duration, which is clearly stated before purchasing. Always check before payment.' },
-    { q: 'Does the plan auto-renew?', a: 'There is an option for auto-renewal. You can TURN-ON the auto-renewal option.' },
-    { q: 'Can I use my plan on mobile and laptop?', a: 'Yes, you can use any device. All you need to do is log in to the same account.' },
-  ];
-
-  const scrollLeft = (ref: React.RefObject<HTMLDivElement>) => {
+  const scrollLeft = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
       ref.current.scrollBy({ left: -300, behavior: 'smooth' });
     }
   };
 
-  const scrollRight = (ref: React.RefObject<HTMLDivElement>) => {
+  const scrollRight = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
       ref.current.scrollBy({ left: 300, behavior: 'smooth' });
     }
@@ -642,7 +653,7 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
         </section>
       )}
 
-      <div className="container-main py-8">
+      <div className="container-main pt-8 pb-0">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
           <aside className="hidden lg:block lg:w-60 xl:w-64 flex-shrink-0">
@@ -1016,7 +1027,7 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
                     <p className="text-slate-600">New testimonials will appear here as admins publish them.</p>
                   </div>
                 ) : (
-                  <div className="relative group">
+                  <div className="relative group" onMouseEnter={() => setTestimonialsPaused(true)} onMouseLeave={() => setTestimonialsPaused(false)}>
                     <button
                       onClick={() => scrollLeft(testimonialsScrollRef)}
                       className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
@@ -1026,7 +1037,7 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
                     </button>
                     <div
                       ref={testimonialsScrollRef}
-                      className="flex gap-6 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 snap-x snap-mandatory hide-scrollbar scroll-smooth"
+                      className="flex gap-6 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 hide-scrollbar"
                     >
                       {testimonials.map((item) => (
                         <div key={item.id} className="flex-shrink-0 w-[17rem] sm:w-[22rem] max-w-[85vw] snap-start">
@@ -1186,8 +1197,8 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
                   <li><strong>Police & Defence Exams:</strong> Police Bharti, Constable, SI, Army, CAPF, and other defence exams.</li>
                   <li><strong>State-Level Exams:</strong> CET, Patwari, State Public Service Commission (PSC), Gram Sevak, Talathi, and more.</li>
                 </ul>
-                <p className="text-slate-100 text-base leading-relaxed">You will get subject-wise tests, full mock tests, and previous year question papers to enhance your speed, accuracy, and confidence.</p>
-                <p className="text-slate-100 text-base leading-relaxed">The best part is, you can either take a quick 20-minute sectional quiz or attempt a full 3-hour mock test based on your schedule.</p>
+                <p className="text-slate-100 text-base leading-relaxed">You will get subject-wise tests, full mock tests, and <Link href="/previous-year-papers" className="text-blue-200 hover:text-white hover:underline">previous year question papers</Link> to enhance your speed, accuracy, and confidence.</p>
+                <p className="text-slate-100 text-base leading-relaxed">The best part is, you can either take a quick 20-minute <Link href="/quizzes" className="text-blue-200 hover:text-white hover:underline">sectional quiz</Link> or attempt a full 3-hour mock test based on your schedule.</p>
               </div>
 
               <div className="space-y-4">
@@ -1259,60 +1270,6 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
         </div>
       )}
 
-      {/* FAQ Section - Hide when searching */}
-      {!debouncedSearch && (
-        <section className="container-main mt-16 mb-12">
-          <div>
-            <h2 className="font-display text-4xl font-bold text-foreground mb-8 text-center">
-              FAQ's
-            </h2>
-
-            {/* FAQ Tabs */}
-            <div className="flex gap-2 mb-8 border-b border-border">
-              {(['All', 'Payments'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => { setExpandedFaq(null); setActiveFaqTab(tab); }}
-                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${activeFaqTab === tab
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                >
-                  {tab === 'All' ? 'All FAQ' : 'Payment FAQ'}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              {(activeFaqTab === 'All' ? allFaqs : paymentFaqs).map((item, index) => (
-                <div
-                  key={item.q}
-                  className="bg-card border border-border rounded-lg overflow-hidden"
-                >
-                  <button
-                    onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
-                  >
-                    <h3 className="font-medium text-foreground text-base">
-                      {index + 1}. {item.q}
-                    </h3>
-                    {expandedFaq === index ? (
-                      <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    )}
-                  </button>
-                  {expandedFaq === index && (
-                    <div className="px-6 py-4 bg-muted/30 border-t border-border">
-                      <p className="text-slate-700">{item.a}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
     </div>
   );
 }

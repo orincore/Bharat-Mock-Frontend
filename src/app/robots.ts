@@ -29,6 +29,7 @@ export default function robots(): MetadataRoute.Robots {
           '/auth/',
           '/profile/',
           '/onboarding/',
+          '/results/',
           '/exams/*/attempt/',
           '/forgot-password',
           '/reset-password',

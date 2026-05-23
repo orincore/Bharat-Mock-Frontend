@@ -33,6 +33,9 @@ lerna-debug.log*
 # Vercel
 .vercel
 
+# Package manager lock files from other managers
+bun.lockb
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

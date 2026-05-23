@@ -1,4 +1,5 @@
 'use client';
+// FIXME: evaluate replacing react-quill with TipTap for native SSR support
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

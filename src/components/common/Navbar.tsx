@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { GraduationCap, Menu, X, User, LogOut, FileText, ChevronDown } from 'lucide-react';
+import { GraduationCap, Menu, X, User, LogOut, FileText, ChevronDown, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -93,6 +93,7 @@ export function Navbar() {
   const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [googleTranslateLang, setGoogleTranslateLang] = useState('');
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
   const { categories, subcategories } = useAppData();
@@ -101,6 +102,36 @@ export function Navbar() {
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  const googleLangs = [
+    { code: 'en', label: 'English' },
+    { code: 'hi', label: 'Hindi' },
+    { code: 'bn', label: 'Bengali' },
+    { code: 'te', label: 'Telugu' },
+    { code: 'mr', label: 'Marathi' },
+    { code: 'ta', label: 'Tamil' },
+    { code: 'gu', label: 'Gujarati' },
+    { code: 'kn', label: 'Kannada' },
+    { code: 'ml', label: 'Malayalam' },
+    { code: 'pa', label: 'Punjabi' },
+    { code: 'or', label: 'Odia' },
+    { code: 'as', label: 'Assamese' },
+  ];
+
+  const toggleGoogleTranslate = (targetLang: string) => {
+    const isClearing = targetLang === 'off' || targetLang === 'en' || !targetLang;
+    const newLang = isClearing ? '' : targetLang;
+
+    const clearCookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+    document.cookie = clearCookie;
+    if (!isClearing) {
+      document.cookie = `googtrans=/en/${newLang}; path=/`;
+    }
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 150);
+  };
 
   const navLinks: NavigationItem[] = STATIC_NAV_LINKS;
 
@@ -396,18 +427,42 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            suppressHydrationWarning
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </button>
+          {/* Mobile Menu Button & Translate */}
+          <div className="md:hidden flex items-center gap-2">
+            <div className="flex h-9 items-center gap-1 bg-blue-50/80 rounded-lg px-2 border border-blue-100 shadow-sm active:bg-blue-100 transition-colors">
+              <Languages className="h-4 w-4 text-blue-600 shrink-0" />
+              <select
+                value={googleTranslateLang || 'en'}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'en') {
+                    setGoogleTranslateLang('');
+                    toggleGoogleTranslate('en');
+                  } else {
+                    setGoogleTranslateLang(val);
+                    toggleGoogleTranslate(val);
+                  }
+                }}
+                className={`bg-transparent text-[11px] font-black uppercase tracking-tight focus:outline-none cursor-pointer max-w-[60px] notranslate ${googleTranslateLang ? 'text-blue-700' : 'text-slate-600'
+                  }`}
+              >
+                {googleLangs.map(lang => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              suppressHydrationWarning
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

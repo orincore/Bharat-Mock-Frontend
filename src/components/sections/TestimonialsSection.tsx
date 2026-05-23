@@ -22,7 +22,7 @@ const limitWords = (value: string, limit = 90) => {
 
 const formatTestimonialContent = (content: string) => limitWords(content || "", 90);
 
-const scrollByOffset = (ref: React.RefObject<HTMLDivElement>, offset: number) => {
+const scrollByOffset = (ref: React.RefObject<HTMLDivElement | null>, offset: number) => {
   if (ref.current) {
     ref.current.scrollBy({ left: offset, behavior: "smooth" });
   }
@@ -38,6 +38,7 @@ export function TestimonialsSection({
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     const fetchTestimonials = async () => {
@@ -55,6 +56,44 @@ export function TestimonialsSection({
 
     fetchTestimonials();
   }, [limit]);
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (loading || testimonials.length === 0) return;
+
+    const scrollContainer = scrollRef.current;
+    if (!scrollContainer) return;
+
+    const scrollSpeed = 2; // pixels per tick
+    const interval = 50; // ms between ticks (20fps)
+    let intervalId: number;
+
+    // Start scrolling after a short delay to ensure DOM is fully rendered
+    const timeoutId = window.setTimeout(() => {
+      intervalId = window.setInterval(() => {
+        if (!isPaused && scrollContainer) {
+          const currentScroll = scrollContainer.scrollLeft;
+          const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+          
+          // Only scroll if there's actually content to scroll
+          if (maxScroll > 0) {
+            const newScroll = currentScroll + scrollSpeed;
+            
+            if (newScroll >= maxScroll) {
+              scrollContainer.scrollLeft = 0; // Loop back to start
+            } else {
+              scrollContainer.scrollLeft = newScroll;
+            }
+          }
+        }
+      }, interval);
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
+  }, [loading, testimonials, isPaused]);
 
   const sectionContent = useMemo(() => {
     if (loading) {
@@ -79,7 +118,7 @@ export function TestimonialsSection({
     }
 
     return (
-      <div className="relative group">
+      <div className="relative group" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
         <button
           onClick={() => scrollByOffset(scrollRef, -320)}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
@@ -89,7 +128,7 @@ export function TestimonialsSection({
         </button>
         <div
           ref={scrollRef}
-          className="flex gap-4 sm:gap-6 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 snap-x snap-mandatory hide-scrollbar scroll-smooth"
+          className="flex gap-4 sm:gap-6 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 hide-scrollbar"
         >
           {testimonials.map((item) => (
             <div key={item.id} className="flex-shrink-0 w-[17rem] sm:w-[22rem] max-w-[85vw] snap-start">
