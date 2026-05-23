@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Megaphone, X } from 'lucide-react';
@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 // Hardcoded Flash Offer prices
 const FLASH_OFFER_NORMAL_PRICE = 499; // ₹499
 const FLASH_OFFER_SALE_PRICE = 99; // ₹99
+const DISMISSED_KEY = 'flash_offer_banner_dismissed';
 
 const formatPrice = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -19,9 +20,14 @@ const formatPrice = (amount: number) => {
 };
 
 export function SubscriptionPromoBanner() {
-  const [visible, setVisible] = useState<boolean>(true);
+  const [visible, setVisible] = useState<boolean>(false);
   const { user } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem(DISMISSED_KEY);
+    if (!dismissed) setVisible(true);
+  }, []);
 
   const priceStack = (
     <span className="inline-flex items-baseline gap-1.5">
@@ -35,6 +41,7 @@ export function SubscriptionPromoBanner() {
   );
 
   const handleClose = () => {
+    localStorage.setItem(DISMISSED_KEY, '1');
     setVisible(false);
   };
 

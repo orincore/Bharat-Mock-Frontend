@@ -31,12 +31,12 @@ declare global {
 }
 
 const FEATURED_PARTNERS = [
-  { name: 'Aaj Tak', url: 'https://logowik.com/content/uploads/images/aaj-tak1841.jpg' },
-  { name: 'The Times of India', url: 'https://twoheadmarketing.wordpress.com/wp-content/uploads/2020/07/1546517908_1bhj7d_time-of-india.jpg' },
-  { name: 'NDTV', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/NDTV_logo.svg/2560px-NDTV_logo.svg.png' },
-  { name: 'Hindustan Times', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Hindustan_Times_logo.svg/2560px-Hindustan_Times_logo.svg.png' },
-  { name: 'India Today', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/India_Today_logo.svg/2560px-India_Today_logo.svg.png' },
-  { name: 'Zee News', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Zee_News_logo.svg/2560px-Zee_News_logo.svg.png' },
+  { name: 'Startup India', url: 'https://cdn-prod.mybharats.in/events/17052955243640.png' },
+  { name: 'Medium', url: 'https://miro.medium.com/v2/resize:fit:1290/1*cbyNf_R8Ld_ZzKVv07Ezag.jpeg' },
+  { name: 'Trust Pilot', url: 'https://1000logos.net/wp-content/uploads/2022/10/Trustpilot-Logo.png' },
+  { name: 'Wikipedia', url: 'https://images.seeklogo.com/logo-png/25/2/wikipedia-logo-png_seeklogo-259331.png' },
+  { name: 'Google My Business', url: 'https://londonproofreaders.co.uk/wp-content/uploads/2025/06/google-my-business-logo-png-transparent.png' },
+  { name: 'JustDial', url: 'https://indiancompanies.in/wp-content/uploads/2021/10/About-Just-Dial-Limited-Company.png' },
 ];
 
 const formatCurrency = (amountCents: number, currency = 'INR') => {
