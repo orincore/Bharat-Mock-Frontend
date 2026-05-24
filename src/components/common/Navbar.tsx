@@ -427,30 +427,8 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button & Translate */}
+          {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
-            <div className="flex h-9 items-center gap-1 bg-blue-50/80 rounded-lg px-2 border border-blue-100 shadow-sm active:bg-blue-100 transition-colors">
-              <Languages className="h-4 w-4 text-blue-600 shrink-0" />
-              <select
-                value={googleTranslateLang || 'en'}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === 'en') {
-                    setGoogleTranslateLang('');
-                    toggleGoogleTranslate('en');
-                  } else {
-                    setGoogleTranslateLang(val);
-                    toggleGoogleTranslate(val);
-                  }
-                }}
-                className={`bg-transparent text-[11px] font-black uppercase tracking-tight focus:outline-none cursor-pointer max-w-[60px] notranslate ${googleTranslateLang ? 'text-blue-700' : 'text-slate-600'
-                  }`}
-              >
-                {googleLangs.map(lang => (
-                  <option key={lang.code} value={lang.code}>{lang.label}</option>
-                ))}
-              </select>
-            </div>
             <button
               className="p-2 rounded-lg hover:bg-muted transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
