@@ -7,7 +7,9 @@ const SITE_URL = 'https://bharatmock.com';
 const OG_IMAGE = `${SITE_URL}/assets/login_banner_image.jpg`;
 
 export const metadata: Metadata = {
-  title: 'Banking Exam Mock Tests 2026 — IBPS PO, SBI PO, RBI | BharatMock',
+  title: {
+    absolute: 'Banking Exam Mock Tests 2026 — IBPS PO, SBI PO, RBI | BharatMock',
+  },
   description:
     'Free mock tests for IBPS PO, SBI PO, SBI Clerk, RBI Grade B, RBI Assistant and all banking exams. Start free today.',
   alternates: { canonical: `${SITE_URL}/banking` },

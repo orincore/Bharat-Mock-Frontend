@@ -7,7 +7,9 @@ const SITE_URL = 'https://bharatmock.com';
 const OG_IMAGE = `${SITE_URL}/assets/login_banner_image.jpg`;
 
 export const metadata: Metadata = {
-  title: 'Railway Exam Mock Tests 2026 — RRB NTPC, Group D, ALP | BharatMock',
+  title: {
+    absolute: 'Railway Exam Mock Tests 2026 — RRB NTPC, Group D, ALP | BharatMock',
+  },
   description:
     'Free mock tests for RRB NTPC, RRB Group D, RRB ALP, RPF Constable and all railway exams. Start free today.',
   alternates: { canonical: `${SITE_URL}/railway` },

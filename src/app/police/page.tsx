@@ -7,7 +7,9 @@ const SITE_URL = 'https://bharatmock.com';
 const OG_IMAGE = `${SITE_URL}/assets/login_banner_image.jpg`;
 
 export const metadata: Metadata = {
-  title: 'Police Exam Mock Tests 2026 — UP Police, Delhi Police, CISF | BharatMock',
+  title: {
+    absolute: 'Police Exam Mock Tests 2026 — UP Police, Delhi Police, CISF | BharatMock',
+  },
   description:
     'Free mock tests for UP Police Constable, Delhi Police, Bihar Police, Rajasthan Police and all state police exams.',
   alternates: { canonical: `${SITE_URL}/police` },
