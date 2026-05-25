@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import LiveTestsClient from './LiveTestsClient';
+import ServerLiveTests from './ServerLiveTests';
 import { LiveTestsFAQ } from './LiveTestsFAQ';
 import type { Exam } from '@/types';
 import type { Category } from '@/lib/api/taxonomyService';
@@ -102,6 +103,10 @@ export default async function LiveTestsPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ServerLiveTests
+        exams={initialData.exams}
+        categories={initialData.categories}
       />
       <LiveTestsClient initialData={initialData} />
       <LiveTestsFAQ />

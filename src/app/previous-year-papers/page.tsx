@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import PreviousYearPapersClient from './PreviousYearPapersClient';
+import ServerPreviousYearPapers from './ServerPreviousYearPapers';
 import { PreviousYearPapersFAQ } from './PreviousYearPapersFAQ';
 import type { Exam } from '@/types';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
@@ -119,6 +120,12 @@ export default async function PreviousYearPapersPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ServerPreviousYearPapers
+        exams={initialData.exams}
+        categories={initialData.categories}
+        subcategories={initialData.subcategories}
+        total={initialData.total}
       />
       <PreviousYearPapersClient initialData={initialData} />
       <PreviousYearPapersFAQ />

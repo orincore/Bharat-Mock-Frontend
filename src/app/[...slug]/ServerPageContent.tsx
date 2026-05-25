@@ -356,7 +356,43 @@ export default async function ServerPageContent({
   const sidebarSections = (contentData.sections || []).filter((s) => s.is_sidebar);
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {/* ── Static HTML for Google indexing ─────────────────────────────── */}
+      <div className="sr-only" aria-hidden="false">
+        <h1 dangerouslySetInnerHTML={{ __html: heroTitle }} />
+        {heroSubtitle && <p dangerouslySetInnerHTML={{ __html: heroSubtitle }} />}
+
+        <section>
+          <h2>Page Information</h2>
+          <p>Category: {first}</p>
+          {isSubcategory && <p>Subcategory: {second}</p>}
+        </section>
+
+        {subcategories.length > 0 && (
+          <section>
+            <h2>Subcategories</h2>
+            <ul>
+              {subcategories.map((sub: any, i: number) => (
+                <li key={i}>{sub.name}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {contentData.sections.length > 0 && (
+          <section>
+            <h2>Content Sections</h2>
+            <ul>
+              {contentData.sections.slice(0, 10).map((section: any, i: number) => (
+                <li key={i} dangerouslySetInnerHTML={{ __html: section.title || section.section_key }} />
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+
+      {/* ── Visible UI ─────────────────────────────────────────────────────── */}
+      <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4 sm:py-6 relative overflow-hidden">
         {logoUrl && (
@@ -565,5 +601,6 @@ export default async function ServerPageContent({
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import BlogsClient from './BlogsClient';
+import ServerBlogs from './ServerBlogs';
 import type { Blog } from '@/lib/api/blogService';
 
 export const dynamic = 'force-dynamic';
@@ -99,6 +100,11 @@ export default async function BlogsPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ServerBlogs
+        articles={initialData.articles}
+        categories={initialData.categories}
+        total={initialData.total}
       />
       <BlogsClient initialData={initialData} />
     </>

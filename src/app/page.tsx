@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Index from "@/views/Index";
+import ServerHome from "@/views/ServerHome";
 import { HomepageHero, HomepageData } from "@/lib/api/homepageService";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
@@ -129,6 +130,11 @@ export default async function HomePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <ServerHome
+        hero={data?.hero ?? null}
+        data={data}
+        mostAttemptedExams={mostAttemptedExams}
       />
       <Index
         initialHero={data?.hero ?? null}

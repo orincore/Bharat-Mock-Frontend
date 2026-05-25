@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import MockTestSeriesClient from './MockTestSeriesClient';
+import ServerMockTestSeries from './ServerMockTestSeries';
 import { MockTestSeriesFAQ } from './MockTestSeriesFAQ';
 import type { TestSeries } from '@/lib/api/testSeriesService';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
@@ -119,6 +120,12 @@ export default async function MockTestSeriesPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ServerMockTestSeries
+        testSeries={initialData.testSeries}
+        categories={initialData.categories}
+        subcategories={initialData.subcategories}
+        total={initialData.total}
       />
       <MockTestSeriesClient initialData={initialData} />
       <MockTestSeriesFAQ />

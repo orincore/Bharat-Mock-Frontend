@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import QuizzesClient from './QuizzesClient';
+import ServerQuizzes from './ServerQuizzes';
 import { QuizzesFAQ } from './QuizzesFAQ';
 import type { Exam } from '@/types';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
@@ -119,6 +120,12 @@ export default async function QuizzesPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ServerQuizzes
+        exams={initialData.exams}
+        categories={initialData.categories}
+        subcategories={initialData.subcategories}
+        total={initialData.total}
       />
       <QuizzesClient initialData={initialData} />
       <QuizzesFAQ />

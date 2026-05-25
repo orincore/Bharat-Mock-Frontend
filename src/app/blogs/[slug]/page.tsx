@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import BlogDetailClient from './BlogDetailClient';
+import ServerBlogDetail from './ServerBlogDetail';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -140,6 +141,12 @@ export default async function BlogDetailPage(
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ServerBlogDetail
+        article={article}
+        sections={sections}
+        relatedArticles={relatedArticles}
+        categories={categories}
       />
       <BlogDetailClient
         article={article}
