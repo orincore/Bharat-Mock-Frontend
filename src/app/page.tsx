@@ -5,11 +5,11 @@ import { HomepageHero, HomepageData } from "@/lib/api/homepageService";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const SITE_URL = "https://bharatmock.com";
-const DEFAULT_TITLE = "BharatMock All Govt exams | Mock Test & Previous Year Papers";
+const DEFAULT_TITLE = "BharatMock | Most Trusted Platform for All Government Exams";
 const DEFAULT_DESCRIPTION =
-  "Get free online mock tests and previous year papers for all sarkari exams on BharatMock. Practice smarter and boost your exam preparation and results.";
+  "Prepare smarter for SSC, Banking, Railway & all sarkari exams with mock tests, previous year papers & detailed performance analytics.";
 const DEFAULT_KEYWORDS = "All sarkari exam, online exam test, all government exams, govt exam preparation, online exam for govt jobs, online competitive exams, government exams india";
-const DEFAULT_OG_IMAGE = "/assets/login_banner_image.jpg";
+const DEFAULT_OG_IMAGE = `${SITE_URL}/assets/login_banner_image.jpg`;
 
 async function fetchHomepageData(): Promise<HomepageData | null> {
   const controller = new AbortController();

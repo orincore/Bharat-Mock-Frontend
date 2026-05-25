@@ -296,9 +296,12 @@ export async function generateMetadata(
   // For exam pages, use exam data to generate rich metadata
   const examForMeta = firstSegmentType === 'exam' ? serverPageData?.examData ?? null : null;
 
-  const title = examForMeta?.title
+  const currentYear = new Date().getFullYear().toString();
+  const rawTitle = examForMeta?.title
     || tabOverride?.meta_title || seo?.meta_title
     || slugToTitle(slugArray[slugArray.length - 1]);
+  // Replace stale year references (2024 or earlier) with the current year
+  const title = rawTitle?.replace(/\b202[0-4]\b/g, currentYear) ?? rawTitle;
   const description = examForMeta
     ? `Practice ${examForMeta.title} on BharatMock.${
         examForMeta.total_questions ? ' ' + examForMeta.total_questions + ' questions.' : ''
@@ -324,7 +327,7 @@ export async function generateMetadata(
     ? { index: !robotsMeta.includes('noindex'), follow: !robotsMeta.includes('nofollow') }
     : undefined;
 
-  const ogImage = "/assets/login_banner_image.jpg";
+  const ogImage = `${SITE_URL}/assets/login_banner_image.jpg`;
 
   return {
     title,
