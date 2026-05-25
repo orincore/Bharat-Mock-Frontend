@@ -6,7 +6,7 @@ import type { Blog } from '@/lib/api/blogService';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Exam Preparation Blog — SSC, Banking & Railway Tips | BharatMock",
+  title: "Blogs — Exam Preparation Blog for SSC, Banking & Railway Tips | BharatMock",
   description: "Read expert tips, exam strategies, current affairs updates and study guides for SSC CGL, IBPS PO, RRB NTPC and all govt exams on BharatMock Blog.",
   alternates: {
     canonical: "https://bharatmock.com/blogs",

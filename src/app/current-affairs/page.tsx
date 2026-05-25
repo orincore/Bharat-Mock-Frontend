@@ -13,9 +13,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 export const metadata: Metadata = {
-  title: "Daily Current Affairs 2026 — GK Quizzes, Notes & Videos | BharatMock",
-  description: "Stay updated with daily current affairs for SSC, Banking, Railway & UPSC exams. Read today's GK capsules, take daily quizzes, and download monthly PDFs — all free on BharatMock.",
-  keywords: "daily current affairs, current affairs 2026, current affairs for SSC, current affairs for IBPS, GK quiz today, monthly current affairs PDF",
+  title: "Current Affairs 2026 for All Govt Exams: Latest News & Updates",
+  description: "Stay updated with daily current affairs for all government exams. Get latest news, important updates, and boost your exam preparation.",
+  keywords: "Current affairs, current affairs today, current affairs in india, current affairs in hindi, current affairs quiz, latest current affairs monthly current affairs",
   alternates: {
     canonical: `${SITE_URL}/current-affairs`,
   },

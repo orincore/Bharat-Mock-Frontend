@@ -5,9 +5,10 @@ import { HomepageHero, HomepageData } from "@/lib/api/homepageService";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const SITE_URL = "https://bharatmock.com";
-const DEFAULT_TITLE = "Free Mock Tests for SSC, Banking, Railway & Police Exams | BharatMock";
+const DEFAULT_TITLE = "BharatMock All Govt exams | Mock Test & Previous Year Papers";
 const DEFAULT_DESCRIPTION =
-  "Practice free mock tests for SSC CGL, IBPS PO, RRB NTPC, and 100+ govt exams. Live tests, previous year papers & detailed analytics. Start free today!";
+  "Get free online mock tests and previous year papers for all sarkari exams on BharatMock. Practice smarter and boost your exam preparation and results.";
+const DEFAULT_KEYWORDS = "All sarkari exam, online exam test, all government exams, govt exam preparation, online exam for govt jobs, online competitive exams, government exams india";
 const DEFAULT_OG_IMAGE = "/assets/login_banner_image.jpg";
 
 async function fetchHomepageData(): Promise<HomepageData | null> {
@@ -73,7 +74,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    keywords: "SSC CGL mock test, IBPS PO mock test, RRB NTPC mock test, free government exam mock tests, sarkari exam preparation, online exam practice",
+    keywords: DEFAULT_KEYWORDS,
     alternates: { canonical },
     robots,
     openGraph: {

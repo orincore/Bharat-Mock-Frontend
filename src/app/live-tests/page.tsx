@@ -8,9 +8,9 @@ import type { Category } from '@/lib/api/taxonomyService';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Free Live Mock Tests 2026 — SSC, Banking, Railway & Police | BharatMock",
-  description: "Attempt scheduled live mock tests with real-time leaderboards for SSC CGL, IBPS PO, RRB NTPC, UP Police and 100+ government exams. Join thousands of aspirants competing live.",
-  keywords: "live mock test, live test SSC, live test banking, online live exam, real-time mock test",
+  title: "Practice, Analyze, and Improve with Live Tests for Govt Exams",
+  description: "Take live mock tests for government exams and experience a real live exam environment while getting detailed insights to track progress, and improve accuracy.",
+  keywords: "live test, live exam, live mock test, online live quiz, ssc live test",
   alternates: {
     canonical: "https://bharatmock.com/live-tests",
   },

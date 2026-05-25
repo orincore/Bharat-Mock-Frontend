@@ -8,9 +8,9 @@ import type { Category, Subcategory } from '@/lib/api/taxonomyService';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Previous Year Question Papers — SSC, Banking, Railway & Police | BharatMock",
-  description: "Download and practice previous year question papers for SSC CGL, IBPS PO, RRB NTPC, UP Police and 100+ government exams. Understand real exam patterns and boost your score.",
-  keywords: "previous year papers, SSC CGL previous papers, IBPS PO previous papers, RRB NTPC question papers, govt exam past papers",
+  title: "Latest Previous Year Question Papers for All Government Exams",
+  description: "Practice previous year question papers for SSC, Banking, Railway & Police exams with detailed solutions to improve accuracy & understand exam patterns.",
+  keywords: "SSC previous year question paper, bank previous year question paper railway previous year question paper, bank exam previous year question paper police bharti previous year question paper, ssc exam previous year question paper",
   alternates: {
     canonical: "https://bharatmock.com/previous-year-papers",
   },

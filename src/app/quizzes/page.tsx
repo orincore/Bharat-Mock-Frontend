@@ -8,9 +8,9 @@ import type { Category, Subcategory } from '@/lib/api/taxonomyService';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Free Daily Quizzes 2026 — GK, Current Affairs & Exam Practice | BharatMock",
-  description: "Practice with free daily quizzes on GK, current affairs, reasoning and quantitative aptitude for SSC CGL, IBPS PO, RRB NTPC and all government exams. Short, targeted, and free.",
-  keywords: "daily quiz, GK quiz, current affairs quiz, aptitude quiz, SSC quiz, banking quiz, railway quiz",
+  title: "Attempt and Practice Topic Wise Quizzes for All Government Exams",
+  description: "Practice topic-wise quizzes for all government exams. Improve accuracy, strengthen concepts, and track your performance with smart practice.",
+  keywords: "SSC quiz, banking quiz, ssc english quiz banking quiz questions, Railway quiz, Police quiz",
   alternates: {
     canonical: "https://bharatmock.com/quizzes",
   },

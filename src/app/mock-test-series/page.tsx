@@ -8,9 +8,9 @@ import type { Category, Subcategory } from '@/lib/api/taxonomyService';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Free Mock Test Series 2026 — SSC, Banking, Railway & Police | BharatMock",
-  description: "Practice with 5000+ free mock tests for SSC CGL, IBPS PO, RRB NTPC, UP Police and 100+ govt exams. Topic-wise, chapter-wise & full-length test series with detailed analytics.",
-  keywords: "free mock test series, SSC CGL mock test 2026, IBPS PO mock test, RRB NTPC mock test, UP Police mock test, government exam practice tests",
+  title: "Mock Test Series with Chapter and Topic Wise Papers",
+  description: "Free online Mock Tests for SSC, Banking, Railway, Police & All Govt Exams 2026. Practice full-length, chapter-wise tests & previous year papers to boost your score.",
+  keywords: "SSC mock test, bank mock test, railway mock test, police test question paper ssc test series, online mock test for ssc, bank test series, ssc mock test in hindi,  police bharti question paper online test",
   alternates: {
     canonical: "https://bharatmock.com/mock-test-series",
   },
