@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Index from "@/views/Index";
 import { HomepageHero, HomepageData } from "@/lib/api/homepageService";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const SITE_URL = "https://bharatmock.com";
 const DEFAULT_TITLE = "Free Mock Tests for SSC, Banking, Railway & Police Exams | BharatMock";
 const DEFAULT_DESCRIPTION =

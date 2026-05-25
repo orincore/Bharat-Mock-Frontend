@@ -1,7 +1,7 @@
 import { AboutPageData } from '@/types';
 import { fallbackAboutData } from '@/lib/constants/about';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
 export async function fetchAboutPageData(): Promise<AboutPageData> {
   try {

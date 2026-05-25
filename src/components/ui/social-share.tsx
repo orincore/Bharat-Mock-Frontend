@@ -14,10 +14,10 @@ interface SocialShareProps {
   variant?: 'default' | 'compact';
 }
 
-export function SocialShare({ 
-  url, 
-  title, 
-  description = '', 
+export function SocialShare({
+  url,
+  title,
+  description = '',
   className = '',
   showLabel = true,
   size = 'md',
@@ -25,10 +25,10 @@ export function SocialShare({
 }: SocialShareProps) {
   const { toast } = useToast();
   const [isSharing, setIsSharing] = useState(false);
-  const [shareUrl, setShareUrl] = useState(url || '');
+  const [shareUrl, setShareUrl] = useState(url || (typeof window !== 'undefined' ? window.location.href : ''));
 
   useEffect(() => {
-    const raw = url || window.location.href;
+    const raw = url || (typeof window !== 'undefined' ? window.location.href : '');
     // Facebook and LinkedIn reject localhost URLs — swap in the production domain for sharing
     const normalized = raw.replace(/^https?:\/\/localhost(:\d+)?/, 'https://bharatmock.com');
     setShareUrl(normalized);
@@ -147,7 +147,7 @@ export function SocialShare({
 
   if (variant === 'compact') {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
+      <div className={`flex items-center gap-2 ${className}`} suppressHydrationWarning>
         {showLabel && <span className="text-sm font-medium text-gray-700">Share:</span>}
         <div className="flex gap-1">
           <button
@@ -156,6 +156,7 @@ export function SocialShare({
             title="Share on Facebook"
             aria-label="Share on Facebook"
             disabled={isSharing}
+            suppressHydrationWarning
           >
             <Facebook className={`${iconSize} text-white`} />
           </button>
@@ -165,6 +166,7 @@ export function SocialShare({
             title="Share on X (Twitter)"
             aria-label="Share on X (Twitter)"
             disabled={isSharing}
+            suppressHydrationWarning
           >
             <Twitter className={`${iconSize} text-white`} />
           </button>
@@ -174,6 +176,7 @@ export function SocialShare({
             title="Share on LinkedIn"
             aria-label="Share on LinkedIn"
             disabled={isSharing}
+            suppressHydrationWarning
           >
             <Linkedin className={`${iconSize} text-white`} />
           </button>
@@ -183,6 +186,7 @@ export function SocialShare({
             title="Copy link"
             aria-label="Copy link"
             disabled={isSharing}
+            suppressHydrationWarning
           >
             <Copy className={`${iconSize} text-white`} />
           </button>
@@ -192,7 +196,7 @@ export function SocialShare({
   }
 
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}>
+    <div className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`} suppressHydrationWarning>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         {showLabel && <p className="text-sm font-semibold text-gray-900">Share this article</p>}
         <div className="flex flex-wrap gap-2">
@@ -204,6 +208,7 @@ export function SocialShare({
               title="Share"
               aria-label="Share"
               disabled={isSharing}
+              suppressHydrationWarning
             >
               <Share2 className="h-4 w-4" />
               Share
@@ -218,6 +223,7 @@ export function SocialShare({
               title="Share on Facebook"
               aria-label="Share on Facebook"
               disabled={isSharing}
+              suppressHydrationWarning
             >
               <Facebook className={`${iconSize} text-white`} />
             </button>
@@ -227,6 +233,7 @@ export function SocialShare({
               title="Share on X (Twitter)"
               aria-label="Share on X (Twitter)"
               disabled={isSharing}
+              suppressHydrationWarning
             >
               <Twitter className={`${iconSize} text-white`} />
             </button>
@@ -236,6 +243,7 @@ export function SocialShare({
               title="Share on LinkedIn"
               aria-label="Share on LinkedIn"
               disabled={isSharing}
+              suppressHydrationWarning
             >
               <Linkedin className={`${iconSize} text-white`} />
             </button>
@@ -245,6 +253,7 @@ export function SocialShare({
               title="Share on WhatsApp"
               aria-label="Share on WhatsApp"
               disabled={isSharing}
+              suppressHydrationWarning
             >
               <MessageCircle className={`${iconSize} text-white`} />
             </button>
@@ -254,6 +263,7 @@ export function SocialShare({
               title="Share via Email"
               aria-label="Share via Email"
               disabled={isSharing}
+              suppressHydrationWarning
             >
               <Mail className={`${iconSize} text-white`} />
             </button>
@@ -263,6 +273,7 @@ export function SocialShare({
               title="Copy link"
               aria-label="Copy link"
               disabled={isSharing}
+              suppressHydrationWarning
             >
               <Copy className={`${iconSize} text-white`} />
             </button>

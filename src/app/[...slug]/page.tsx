@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ServerPageContent from './ServerPageContent';
+import ServerExamDetail from './ServerExamDetail';
 import DynamicPageClient from './DynamicPageClient';
 import { DynamicJsonLd } from '@/components/seo/JsonLd';
 
@@ -58,10 +59,12 @@ export interface ServerPageData {
   pageContentData?: any;
   categoryInfo?: any;
   categoryId?: string;
+  subcategories?: any[];
+  examData?: any;
 }
 
 // Type for first segment resolution
-export type FirstSegmentType = 'subcategory' | 'combined-subcategory' | 'category' | null;
+export type FirstSegmentType = 'subcategory' | 'combined-subcategory' | 'category' | 'exam' | null;
 
 interface SlugResolution {
   seo: SlugSeoResult | null;
@@ -76,7 +79,35 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 
+  const second = slugArray[1];
+
   try {
+    // 0. For 2-segment URLs: try exam path first before subcategory/category tab resolution.
+    //    This ensures /ssc-cgl-exam/full-test-03-... is detected as exam, not subcategory tab.
+    if (slugArray.length === 2 && second) {
+      try {
+        const examRes = await fetch(buildApiUrl(`/exams/path/${first.toLowerCase()}/${second.toLowerCase()}`), {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (examRes.ok) {
+          const examData = await examRes.json();
+          if (examData?.data?.id) {
+            clearTimeout(timeoutId);
+            return {
+              seo: {
+                meta_title: examData.data.title,
+                meta_description: examData.data.description ||
+                  `Practice ${examData.data.title} on BharatMock. ${examData.data.total_questions ? examData.data.total_questions + ' questions' : ''} ${examData.data.duration ? '• ' + examData.data.duration + ' mins' : ''} ${examData.data.total_marks ? '• ' + examData.data.total_marks + ' marks' : ''}`.trim(),
+              },
+              firstSegmentType: 'exam',
+              serverPageData: { examData: examData.data },
+            };
+          }
+        }
+      } catch { /* not an exam path — continue to subcategory/category resolution */ }
+    }
+
     // 1. Try subcategory first
     const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`), {
       cache: 'no-store',
@@ -161,11 +192,18 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
       if (categoryId) {
         let seo: SlugSeoResult | null = null;
         let pageContentData: any = null;
+        let subcategories: any[] = [];
         try {
-          const contentRes = await fetch(buildApiUrl(`/category-page-content/${categoryId}`), {
-            cache: 'no-store',
-            signal: controller.signal
-          });
+          const [contentRes, subRes] = await Promise.all([
+            fetch(buildApiUrl(`/category-page-content/${categoryId}`), {
+              cache: 'no-store',
+              signal: controller.signal
+            }),
+            fetch(buildApiUrl(`/taxonomy/subcategories?category_id=${categoryId}`), {
+              cache: 'no-store',
+              signal: controller.signal
+            }),
+          ]);
           if (contentRes.ok) {
             const content = await contentRes.json();
             pageContentData = content;
@@ -179,6 +217,10 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
               custom_tabs: content.customTabs || [],
             };
           }
+          if (subRes.ok) {
+            const subData = await subRes.json();
+            subcategories = subData?.data || [];
+          }
         } catch { /* SEO content fetch failed — still know it's a category */ }
         clearTimeout(timeoutId);
         return {
@@ -188,6 +230,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
             categoryInfo: catData.data,
             categoryId,
             pageContentData,
+            subcategories,
           },
         };
       }
@@ -243,16 +286,33 @@ export async function generateMetadata(
     return {};
   }
 
-  const { seo } = await fetchSeoForSlug(slugArray);
+  const { seo, firstSegmentType, serverPageData } = await fetchSeoForSlug(slugArray);
 
   const isTabPage = slugArray.length >= 2;
   const tabSlug = isTabPage ? slugArray[slugArray.length - 1] : undefined;
   const tabOverride = resolveTabSeo(tabSlug, seo);
-
-  const title = tabOverride?.meta_title || seo?.meta_title || slugToTitle(slugArray[slugArray.length - 1]);
-  const description = tabOverride?.meta_description || seo?.meta_description;
-  const keywords = tabOverride?.meta_keywords || seo?.meta_keywords;
   const slugPath = slugArray.join('/');
+
+  // For exam pages, use exam data to generate rich metadata
+  const examForMeta = firstSegmentType === 'exam' ? serverPageData?.examData ?? null : null;
+
+  const title = examForMeta?.title
+    || tabOverride?.meta_title || seo?.meta_title
+    || slugToTitle(slugArray[slugArray.length - 1]);
+  const description = examForMeta
+    ? `Practice ${examForMeta.title} on BharatMock.${
+        examForMeta.total_questions ? ' ' + examForMeta.total_questions + ' questions.' : ''
+      }${
+        examForMeta.duration ? ' ' + examForMeta.duration + ' mins.' : ''
+      }${
+        examForMeta.total_marks ? ' ' + examForMeta.total_marks + ' marks.' : ''
+      }${
+        examForMeta.category ? ' Category: ' + examForMeta.category + '.' : ''
+      }`.trim()
+    : (tabOverride?.meta_description || seo?.meta_description);
+  const keywords = examForMeta
+    ? `${examForMeta.title}, ${examForMeta.category || ''} mock test, free online test, BharatMock`
+    : (tabOverride?.meta_keywords || seo?.meta_keywords);
 
   // Always construct canonical from SITE_URL env variable
   // Ignore any hardcoded canonical URLs from the database/API
@@ -375,21 +435,52 @@ export default async function DynamicPage(
   // Determine active tab slug for tab-specific rendering
   const activeTabSlug = isTabPage ? slugArray[slugArray.length - 1] : undefined;
 
+  // For 2-segment pages where the server already resolved the type as category or subcategory,
+  // we know the second segment is a tab — render SSR (ServerPageContent) directly.
+  // Only fall back to CSR (DynamicPageClient) when type is unknown (could be an exam path).
+  const isKnownContentPage =
+    firstSegmentType === 'category' ||
+    firstSegmentType === 'subcategory' ||
+    firstSegmentType === 'combined-subcategory';
+
+  // Verify the second segment is actually a tab, not an exam slug.
+  // If it doesn't match 'overview' or any customTab, it's an exam path → use SSR exam detail.
+  const secondSegmentNorm = activeTabSlug
+    ? activeTabSlug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    : '';
+  const customTabs: Array<{ tab_key?: string; title?: string }> =
+    serverPageData?.pageContentData?.customTabs || [];
+  const isKnownTab =
+    secondSegmentNorm === 'overview' ||
+    customTabs.some((tab) => {
+      const tabNorm = (tab.tab_key || tab.title || '')
+        .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      return tabNorm === secondSegmentNorm;
+    });
+
+  const isExamPage = firstSegmentType === 'exam';
+  const useSSR = isExamPage || !isTabPage || (slugArray.length === 2 && isKnownContentPage && isKnownTab);
+
   return (
     <>
       {jsonLd && <DynamicJsonLd schema={jsonLd} />}
-      {isTabPage ? (
-        <DynamicPageClient
-          slugArray={slugArray}
-          firstSegmentType={firstSegmentType}
-          serverPageData={serverPageData}
+      {isExamPage ? (
+        <ServerExamDetail
+          urlPath={`/${slugArray.join('/')}`}
+          examData={serverPageData?.examData ?? null}
         />
-      ) : (
+      ) : useSSR ? (
         <ServerPageContent
           slugArray={slugArray}
           firstSegmentType={firstSegmentType}
           serverPageData={serverPageData}
           activeTabSlug={activeTabSlug}
+        />
+      ) : (
+        <DynamicPageClient
+          slugArray={slugArray}
+          firstSegmentType={firstSegmentType}
+          serverPageData={serverPageData}
         />
       )}
     </>

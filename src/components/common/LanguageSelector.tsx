@@ -89,12 +89,13 @@ export function LanguageSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
           className="gap-2 text-muted-foreground hover:text-foreground"
           title={isApplying ? 'Applying language...' : 'Change language'}
           disabled={isApplying}
+          suppressHydrationWarning
         >
           <Image
             src="/assets/Google_Translate_Icon.png"

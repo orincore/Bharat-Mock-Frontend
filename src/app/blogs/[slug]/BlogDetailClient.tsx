@@ -20,10 +20,23 @@ const formatDateShort = (d?: string | null) =>
 const toAnchorId = (s: string) =>
   'toc-' + s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
+const decodeHtmlEntities = (text: string): string => {
+  const entityMap: Record<string, string> = {
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+  };
+  return text.replace(/&[a-zA-Z0-9#]+;/g, (entity) => entityMap[entity] || entity);
+};
+
 const firstHeadingText = (html: string): string | null => {
   const m = html.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i);
   if (!m) return null;
-  return m[1].replace(/<[^>]+>/g, '').trim() || null;
+  return decodeHtmlEntities(m[1].replace(/<[^>]+>/g, '').trim() || '');
 };
 
 interface Props {
@@ -42,23 +55,31 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
 
   const tocItems = useMemo(() => {
     const items: { id: string; label: string; level: number }[] = [];
+    const seenLabels = new Set<string>();
     if (!Array.isArray(sections)) return items;
     
     sections.forEach((section, si) => {
       if (section?.title) {
-        items.push({ id: toAnchorId(`section-${si}`), label: section.title, level: 2 });
+        const label = decodeHtmlEntities(section.title);
+        if (!seenLabels.has(label)) {
+          seenLabels.add(label);
+          items.push({ id: toAnchorId(`section-${si}`), label, level: 2 });
+        }
       }
       if (Array.isArray(section?.blocks)) {
         section.blocks.forEach((block, bi) => {
           let label: string | null = null;
           let level = 2;
           if (block.block_type === 'heading') {
-            label = (block.content?.text || '').replace(/<[^>]+>/g, '').trim() || null;
+            label = decodeHtmlEntities((block.content?.text || '').replace(/<[^>]+>/g, '').trim() || '');
             level = parseInt(block.content?.level || '2');
           } else if (block.block_type === 'rich_text' || block.block_type === 'html') {
             label = firstHeadingText(block.content?.html || '');
           }
-          if (label) items.push({ id: toAnchorId(`block-${si}-${bi}`), label, level });
+          if (label && !seenLabels.has(label)) {
+            seenLabels.add(label);
+            items.push({ id: toAnchorId(`block-${si}-${bi}`), label, level });
+          }
         });
       }
     });

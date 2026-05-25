@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import CurrentAffairsClient from './CurrentAffairsClient';
+import ServerCurrentAffairs from './ServerCurrentAffairs';
 import { CurrentAffairsFAQ } from './CurrentAffairsFAQ';
 import type { CurrentAffairsPayload } from '@/lib/api/currentAffairsService';
 
@@ -72,6 +73,7 @@ export default async function CurrentAffairsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <ServerCurrentAffairs data={data} />
       <CurrentAffairsClient initialData={data} />
       <CurrentAffairsFAQ />
     </>

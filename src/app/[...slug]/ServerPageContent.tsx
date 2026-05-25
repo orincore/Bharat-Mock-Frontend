@@ -4,6 +4,7 @@ import { Download, ChevronRight, BookOpen, List } from 'lucide-react';
 import { PageBlockRenderer } from '@/components/PageEditor/PageBlockRenderer';
 import type { ServerPageData, FirstSegmentType } from './page';
 import TabNavigation from './TabNavigation';
+import MobileTOC from './MobileTOC';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
@@ -272,15 +273,48 @@ export default async function ServerPageContent({
     }
   }
   
-  // Fetch tab-specific content
+  // Use pre-fetched page content from the server (already fetched in page.tsx fetchSeoForSlug)
+  // Only fall back to a fresh fetch if pageContentData is missing.
   let contentData: { sections: Section[]; orphanBlocks: Block[] } = { sections: [], orphanBlocks: [] };
   let subcategories: SubcategoryItem[] = [];
-  
+
+  const rawPageContent: PageContentResponse | null = pageContent || null;
+
+  const filterContentForTab = (data: PageContentResponse): { sections: Section[]; orphanBlocks: Block[] } => {
+    if (!activeTabId || activeTabId === 'overview') {
+      return {
+        sections: (data.sections || []).filter(
+          (s) => !s.is_sidebar && !s.category_custom_tab_id && !s.custom_tab_id && !s.testSeries_custom_tab_id
+        ),
+        orphanBlocks: data.orphanBlocks || [],
+      };
+    }
+    return {
+      sections: (data.sections || []).filter(
+        (s) =>
+          !s.is_sidebar &&
+          (s.category_custom_tab_id === activeTabId || s.custom_tab_id === activeTabId || s.testSeries_custom_tab_id === activeTabId)
+      ),
+      orphanBlocks: [],
+    };
+  };
+
   if ((firstSegmentType === 'subcategory' || firstSegmentType === 'combined-subcategory') && serverPageData?.subcategoryId) {
-    contentData = await fetchTabContent(serverPageData.subcategoryId, 'subcategory', activeTabId, customTabs);
+    if (rawPageContent) {
+      contentData = filterContentForTab(rawPageContent);
+    } else {
+      contentData = await fetchTabContent(serverPageData.subcategoryId, 'subcategory', activeTabId, customTabs);
+    }
   } else if (firstSegmentType === 'category' && serverPageData?.categoryId) {
-    contentData = await fetchTabContent(serverPageData.categoryId, 'category', activeTabId, customTabs);
-    subcategories = await fetchSubcategories(serverPageData.categoryId);
+    if (rawPageContent) {
+      contentData = filterContentForTab(rawPageContent);
+    } else {
+      contentData = await fetchTabContent(serverPageData.categoryId, 'category', activeTabId, customTabs);
+    }
+    // Use pre-fetched subcategories from page.tsx; only fall back to API if missing
+    subcategories = serverPageData.subcategories?.length
+      ? serverPageData.subcategories
+      : await fetchSubcategories(serverPageData.categoryId);
   }
   
   // Get page info
@@ -434,6 +468,11 @@ export default async function ServerPageContent({
                     })}
                   </div>
                 </div>
+              )}
+
+              {/* Mobile TOC — floating button visible on mobile/tablet */}
+              {tableOfContents.length > 0 && (
+                <MobileTOC tableOfContents={tableOfContents} />
               )}
 
               {/* Orphan Blocks */}

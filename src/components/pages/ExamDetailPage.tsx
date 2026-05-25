@@ -17,20 +17,24 @@ import { formatExamSummary } from '@/lib/utils/examSummary';
 
 interface ExamDetailPageProps {
   urlPath: string;
+  initialExamData?: Exam | null;
 }
 
-export function ExamDetailPage({ urlPath }: ExamDetailPageProps) {
+export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps) {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
 
-  const [exam, setExam] = useState<Exam | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [exam, setExam] = useState<Exam | null>(initialExamData ?? null);
+  const [isLoading, setIsLoading] = useState(!initialExamData);
   const [error, setError] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi' | null>(null);
   const [languageSelected, setLanguageSelected] = useState(false);
   const [resumeAttempts, setResumeAttempts] = useState<ExamHistoryEntry[]>([]);
 
   useEffect(() => {
+    // If server pre-fetched the exam, skip the initial fetch.
+    // Re-fetch only when auth changes (to enrich with user-specific data like resume attempts).
+    if (initialExamData && !isAuthenticated) return;
     fetchExamDetails();
   }, [urlPath, isAuthenticated]);
 

@@ -206,6 +206,7 @@ export function Navbar() {
                 >
                   <button
                     className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    suppressHydrationWarning
                   >
                     Exams
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isExploreOpen ? 'rotate-180' : ''}`} />
@@ -312,6 +313,7 @@ export function Navbar() {
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
+                    suppressHydrationWarning
                   >
                     {item.label}
                   </Link>

@@ -1102,58 +1102,58 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className="container-main">
-          <div className="flex items-center py-4" style={{ gap: "8px" }}>
+          <div className="flex items-center">
             {/* Left scroll arrow */}
             <button
               type="button"
               aria-label="Scroll tabs left"
-              className="tab-scroll-arrow flex-shrink-0 items-center justify-center w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors shadow-sm"
+              className="shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors mr-2"
               onClick={() => tabScrollRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
 
-            <div ref={tabScrollRef} className="flex-1 overflow-x-auto hide-scrollbar">
-              <div className="flex items-center space-x-6">
-                {tabItems.map((tab) => {
-                  const tabDescriptor = tabDescriptors.find((t) => t.id === tab.id);
-                  const tabHref = tabDescriptor?.slug === 'overview' || !tabDescriptor?.slug
-                    ? `/${basePath}`
-                    : `/${basePath}/${tabDescriptor.slug}`;
-                  return (
-                    <a
-                      key={tab.id}
-                      href={tabHref}
-                      onClick={(e) => {
-                        if (e.metaKey || e.ctrlKey) return; // let browser open new tab
-                        e.preventDefault();
-                        setActiveTab(tab.id);
-                      }}
-                      className={`whitespace-nowrap text-sm font-medium transition-colors ${
-                        activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-gray-700 hover:text-blue-600'
-                      }`}
-                    >
-                      {tab.label}
-                    </a>
-                  );
-                })}
-              </div>
+            <div ref={tabScrollRef} className="flex-1 flex items-center gap-1 overflow-x-auto py-3" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {tabItems.map((tab) => {
+                const tabDescriptor = tabDescriptors.find((t) => t.id === tab.id);
+                const tabHref = tabDescriptor?.slug === 'overview' || !tabDescriptor?.slug
+                  ? `/${basePath}`
+                  : `/${basePath}/${tabDescriptor.slug}`;
+                return (
+                  <a
+                    key={tab.id}
+                    href={tabHref}
+                    onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey) return;
+                      e.preventDefault();
+                      setActiveTab(tab.id);
+                    }}
+                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </a>
+                );
+              })}
             </div>
 
             {/* Right scroll arrow */}
             <button
               type="button"
               aria-label="Scroll tabs right"
-              className="tab-scroll-arrow flex-shrink-0 items-center justify-center w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors shadow-sm"
+              className="shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors ml-2"
               onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 text-gray-600" />
             </button>
 
             {/* Mobile "More" button */}
             <button
               type="button"
-              className="md:hidden whitespace-nowrap text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 flex-shrink-0"
+              className="md:hidden whitespace-nowrap text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 flex-shrink-0 ml-2"
               onClick={() => setIsTabListOpen(true)}
             >
               More
@@ -1188,13 +1188,10 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                   </div>
                 ))}
 
-                {/* Mobile TOC — rendered inline at the position set in admin */}
-                {tableOfContents.length > 0 && (() => {
-                  const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
-                  return tocPos === 0 ? (
-                    <MobileTOC key="toc-mobile" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
-                  ) : null;
-                })()}
+                {/* Single MobileTOC instance — always rendered when TOC has entries; fixed-position floating button is unaffected by scroll position */}
+                {tableOfContents.length > 0 && (
+                  <MobileTOC key="toc-mobile" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
+                )}
 
                 {visibleSections.length === 0 && (!pageContent?.orphanBlocks || pageContent.orphanBlocks.length === 0) && !isSpecialTab ? (
                   <div className="bg-white rounded-lg border border-dashed border-gray-300 p-10 text-center text-gray-500">
@@ -1205,9 +1202,6 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                     {visibleSections.map((section, sectionIndex) => {
                       const sectionAnchor = buildSectionAnchor(section);
                       const renderReservedBefore = isSpecialTab && sectionIndex === reservedPosition;
-                      // Insert mobile TOC after section at index (tocPos - 1)
-                      const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
-                      const renderTocAfter = tableOfContents.length > 0 && tocPos > 0 && sectionIndex === tocPos - 1;
                       const reservedContent = activeTab === 'mock-tests' ? (
                         <div key="reserved-area" className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                           {/* Header removed for SEO deduplication */}
@@ -1365,19 +1359,11 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                               ))}
                             </div>
                           </section>
-                          {renderTocAfter && (
-                            <MobileTOC key="toc-mobile" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
-                          )}
+                          {/* MobileTOC floating button is rendered once above — no inline duplicate needed */}
                         </React.Fragment>
                       );
                     })}
-                    {/* TOC at end: when tocPos >= sections count */}
-                    {tableOfContents.length > 0 && (() => {
-                      const tocPos = pageContent?.tocOrder?.[activeTab] ?? 0;
-                      return tocPos > 0 && tocPos >= visibleSections.length ? (
-                        <MobileTOC key="toc-mobile-end" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
-                      ) : null;
-                    })()}
+                    {/* MobileTOC floating button is rendered once above — no end duplicate needed */}
 
                     {isSpecialTab && reservedPosition === visibleSections.length && (
                       activeTab === 'mock-tests' ? (

@@ -1,7 +1,7 @@
 import { ContactInfo } from '@/types';
 import { fallbackContactInfo } from '@/lib/constants/contact';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
 export async function fetchContactInfoServer(): Promise<ContactInfo> {
   try {

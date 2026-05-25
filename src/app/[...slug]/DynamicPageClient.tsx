@@ -15,7 +15,7 @@ const buildApiUrl = (path: string) => {
   return apiBase ? `${apiBase}${p}` : `/api/v1${p}`;
 };
 
-type ResolvedType = 'subcategory' | 'combined-subcategory' | 'category' | null;
+type ResolvedType = 'subcategory' | 'combined-subcategory' | 'category' | 'exam' | null;
 
 function SlugResolver({
   slug,
@@ -128,7 +128,15 @@ function TwoSegmentResolver({
 }) {
   // If the server resolved the first segment AND the second segment is a known tab,
   // we can render immediately without any client-side API calls.
-  const isKnownTab = KNOWN_TAB_SLUGS.has(second.toLowerCase());
+  const normalizeSlug = (value: string) =>
+    value.toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const secondNorm = normalizeSlug(second);
+  const serverCustomTabs: Array<{ id: string; title: string; tab_key: string }> =
+    serverPageData?.pageContentData?.customTabs || [];
+  const isCustomTab = serverCustomTabs.some(
+    (tab) => normalizeSlug(tab.tab_key || tab.title || '') === secondNorm
+  );
+  const isKnownTab = KNOWN_TAB_SLUGS.has(second.toLowerCase()) || isCustomTab;
   const immediateResolved: TwoSegmentResolved | null =
     firstSegmentType && isKnownTab
       ? firstSegmentType === 'subcategory'

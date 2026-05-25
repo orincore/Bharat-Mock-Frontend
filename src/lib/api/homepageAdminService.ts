@@ -1,6 +1,6 @@
 import { HomepageHero, HomepageBanner } from './homepageService';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:5000/api/v1';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
 const getAuthToken = () => {
   if (typeof window === 'undefined') return null;
