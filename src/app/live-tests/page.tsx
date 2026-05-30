@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import LiveTestsClient from './LiveTestsClient';
-import ServerLiveTests from './ServerLiveTests';
 import { LiveTestsFAQ } from './LiveTestsFAQ';
 import type { Exam } from '@/types';
 import type { Category } from '@/lib/api/taxonomyService';
@@ -15,7 +14,7 @@ export const metadata: Metadata = {
     canonical: "https://bharatmock.com/live-tests",
   },
   openGraph: {
-    title: "Free Live Mock Tests 2026 | BharatMock",
+    title: "Free Live Mock Tests 2026",
     description: "Attempt scheduled live mock tests with real-time leaderboards for 100+ government exams. Join the competition.",
     url: "https://bharatmock.com/live-tests",
     type: "website",
@@ -24,7 +23,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Free Live Mock Tests 2026 | BharatMock",
+    title: "Free Live Mock Tests 2026",
     description: "Scheduled live mock tests with real-time leaderboards for SSC, Banking, Railway & Police exams.",
     images: ["/assets/login_banner_image.jpg"],
   },
@@ -38,39 +37,42 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 async function fetchInitialData() {
   try {
-    const [examsRes, categoriesRes] = await Promise.all([
-      fetch(`${API_BASE}/exams?status=upcoming&exam_type=all&limit=100`, {
-        cache: 'no-store',
-      }),
-      fetch(`${API_BASE}/taxonomy/categories`, {
-        cache: 'no-store',
-      }),
+    const [examsRes, categoriesRes, bannersRes] = await Promise.all([
+      fetch(`${API_BASE}/exams?status=upcoming&exam_type=all&limit=100`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/taxonomy/categories`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/page-banners/live_tests_hero`, { cache: 'no-store' }),
     ]);
 
-    const [examsData, categoriesData] = await Promise.all([
+    const [examsData, categoriesData, bannersData] = await Promise.all([
       examsRes.ok ? examsRes.json() : { data: [] },
       categoriesRes.ok ? categoriesRes.json() : { data: [] },
+      bannersRes.ok ? bannersRes.json() : undefined,  // undefined = failed → client will fetch
     ]);
 
     const rawExams: Exam[] = Array.isArray(examsData?.data) ? examsData.data : [];
-    // Keep only scheduled (windowed) exams — exclude anytime/open exams
     const exams = rawExams.filter((exam) => !exam.allow_anytime && exam.status !== 'anytime');
 
-    const rawCategories: Category[] = Array.isArray(categoriesData?.data)
-      ? categoriesData.data
-      : [];
+    const rawCategories: Category[] = Array.isArray(categoriesData?.data) ? categoriesData.data : [];
     const categories = rawCategories
       .filter((c) => c.is_active !== false)
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 
-    return { exams, categories };
+    // null = server says no banner; undefined = fetch failed → client will try
+    let initialBanner: import('@/lib/api/pageBannersService').PageBanner | null | undefined = undefined;
+    if (bannersData !== undefined) {
+      const banners = Array.isArray(bannersData) ? bannersData : (bannersData?.data ?? []);
+      initialBanner = banners.find((b: any) => b.is_active) || banners[0] || null;
+    }
+
+    return { exams, categories, initialBanner };
   } catch {
-    return { exams: [], categories: [] };
+    return { exams: [], categories: [], initialBanner: undefined };
   }
 }
 
 export default async function LiveTestsPage() {
-  const initialData = await fetchInitialData();
+  const { exams, categories, initialBanner } = await fetchInitialData();
+  const initialData = { exams, categories };
 
   // Generate JSON-LD structured data
   const jsonLd = {
@@ -104,11 +106,7 @@ export default async function LiveTestsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ServerLiveTests
-        exams={initialData.exams}
-        categories={initialData.categories}
-      />
-      <LiveTestsClient initialData={initialData} />
+      <LiveTestsClient initialData={initialData} initialBanner={initialBanner} />
       <LiveTestsFAQ />
     </>
   );

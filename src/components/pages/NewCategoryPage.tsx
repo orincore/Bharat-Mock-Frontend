@@ -535,10 +535,9 @@ export default function NewCategoryPage({
     const isOverview = !tabId || tabId === 'overview';
     const tabOverride = tabId ? pageContent?.tabSeo?.[tabId] : undefined;
 
-    // --- Title (apply root-layout template suffix if missing) ---
-    const TITLE_SUFFIX = ' | Bharat Mock';
-    const applyTemplate = (base: string) =>
-      base.includes(TITLE_SUFFIX) ? base : `${base}${TITLE_SUFFIX}`;
+    // --- Title (do not auto-append site suffix) ---
+    const TITLE_SUFFIX = '';
+    const applyTemplate = (base: string) => base;
 
     if (tabOverride?.meta_title) {
       document.title = applyTemplate(tabOverride.meta_title);
@@ -684,96 +683,80 @@ export default function NewCategoryPage({
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4 sm:py-6 relative overflow-hidden">
         {category?.logo_url && (
-          <div className="absolute right-4 sm:right-12 lg:right-24 top-1/2 -translate-y-1/2 pointer-events-none select-none z-0">
+          <div className="sm:hidden absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none select-none z-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={category.logo_url}
               alt=""
-              className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 object-contain opacity-20"
+              className="w-24 h-24 sm:w-32 sm:h-32 object-contain opacity-20"
             />
           </div>
         )}
         <div className="container-main relative z-10">
-          <div className="text-left flex items-center gap-5">
-            {category?.logo_url && (
-              <div className="flex-shrink-0 hidden sm:block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={category.logo_url}
-                  alt={heroTitle || ''}
-                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-xl bg-white/10 p-2 border border-white/20"
-                />
-              </div>
-            )}
-            <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-3">
-                {(currentTabDescriptor && pageContent?.tabHeadings?.[currentTabDescriptor.id])
-                  ? pageContent.tabHeadings[currentTabDescriptor.id]
-                  : (currentTabDescriptor && currentTabDescriptor.id !== "overview" ? currentTabDescriptor.label : heroTitle)}
-              </h1>
-              {heroSubtitle && (
-                <p className="text-lg md:text-xl text-blue-100 mb-4 max-w-3xl">
-                  {heroSubtitle}
-                </p>
-              )}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-3 mb-3 text-sm text-blue-100/80">
-                  {(pageContent?.seo?.author_name || pageContent?.seo?.updated_at) && (
-                    <>
-                      {pageContent.seo.author_name && (
-                        <span className="flex items-center gap-1.5">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                          {pageContent.seo.author_name}
-                        </span>
-                      )}
-                      {pageContent.seo.author_name && pageContent.seo.updated_at && <span className="text-blue-200/40">·</span>}
-                      {pageContent.seo.updated_at && (
-                        <span className="flex items-center gap-1.5">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                          Updated {new Date(pageContent.seo.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-                      )}
-                    </>
-                  )}
-                  {/* Download PDF button - inline on mobile */}
-                  {activeTab === "overview" && (
-                    <button
-                      onClick={handleDownloadOverviewPdf}
-                      disabled={downloadingPdf}
-                      className="inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 sm:hidden"
-                    >
-                      <Download className="w-3.5 h-3.5 mr-1.5" />
-                      {downloadingPdf ? "Generating..." : "PDF"}
-                    </button>
-                  )}
+          <div className="flex items-start justify-between gap-3">
+            {/* Left: logo + text */}
+            <div className="flex items-center gap-5 min-w-0">
+              {category?.logo_url && (
+                <div className="flex-shrink-0 hidden sm:block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={category.logo_url}
+                    alt={heroTitle || ''}
+                    className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-xl bg-white/10 p-2 border border-white/20"
+                  />
                 </div>
+              )}
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-2">
+                  {(currentTabDescriptor && pageContent?.tabHeadings?.[currentTabDescriptor.id])
+                    ? pageContent.tabHeadings[currentTabDescriptor.id]
+                    : (currentTabDescriptor && currentTabDescriptor.id !== "overview" ? currentTabDescriptor.label : heroTitle)}
+                </h1>
+                {heroSubtitle && (
+                  <p className="text-base md:text-lg text-blue-100 mb-3 max-w-3xl">
+                    {heroSubtitle}
+                  </p>
+                )}
+                {(pageContent?.seo?.author_name || pageContent?.seo?.updated_at) && (
+                  <div className="flex flex-wrap items-center gap-3 mb-2 text-sm text-blue-100/80">
+                    {pageContent.seo.author_name && (
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        {pageContent.seo.author_name}
+                      </span>
+                    )}
+                    {pageContent.seo.author_name && pageContent.seo.updated_at && <span className="text-blue-200/40">·</span>}
+                    {pageContent.seo.updated_at && (
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        Updated {new Date(pageContent.seo.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <nav className="flex flex-wrap items-center gap-2 text-sm text-blue-100/80">
                   {breadcrumbs.map((crumb, index) => (
                     <React.Fragment key={`${crumb.label}-${index}`}>
-                      {index > 0 && (
-                        <span className="text-blue-200/60">/</span>
-                      )}
-                      <Link href={crumb.href} className="hover:underline">
-                        {crumb.label}
-                      </Link>
+                      {index > 0 && <span className="text-blue-200/60">/</span>}
+                      <Link href={crumb.href} className="hover:underline">{crumb.label}</Link>
                     </React.Fragment>
                   ))}
                 </nav>
               </div>
-              {/* Download PDF button - desktop */}
-              {activeTab === "overview" && (
-                <button
-                  onClick={handleDownloadOverviewPdf}
-                  disabled={downloadingPdf}
-                  className="hidden sm:inline-flex items-center px-4 py-2 rounded-full border text-sm font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  {downloadingPdf ? "Generating..." : "Download PDF"}
-                </button>
-              )}
             </div>
-            </div>
+
+            {/* Right: Download PDF button */}
+            {activeTab === "overview" && (
+              <button
+                onClick={handleDownloadOverviewPdf}
+                disabled={downloadingPdf}
+                className="flex-shrink-0 mt-1 inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 rounded-full border text-xs sm:text-sm font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">{downloadingPdf ? "Generating..." : "Download PDF"}</span>
+                <span className="sm:hidden">{downloadingPdf ? "..." : "PDF"}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -948,8 +931,8 @@ export default function NewCategoryPage({
           </div>
 
           {/* Sidebar */}
-          <aside className="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2">
-            <div className="space-y-4 lg:mt-8">
+          <aside className="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2 lg:sticky lg:top-20">
+            <div className="space-y-4 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto hide-scrollbar">
               {tableOfContents.length > 0 && (
                 <div className="hidden lg:block bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">

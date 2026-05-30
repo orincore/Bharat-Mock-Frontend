@@ -14,7 +14,7 @@ export async function generateMetadata(
   const { slug } = await params;
   try {
     const article = await blogService.getBlogBySlug(slug);
-    if (!article) return { title: 'Current Affairs | BharatMock' };
+    if (!article) return { title: 'Current Affairs' };
     const canonicalUrl = `${SITE_URL}/current-affairs/${slug}`;
     const title = article.meta_title || article.title;
     const description = article.meta_description || article.excerpt;
@@ -42,7 +42,7 @@ export async function generateMetadata(
       },
     };
   } catch {
-    return { title: 'Current Affairs | BharatMock' };
+    return { title: 'Current Affairs' };
   }
 }
 

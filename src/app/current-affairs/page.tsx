@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import CurrentAffairsClient from './CurrentAffairsClient';
-import ServerCurrentAffairs from './ServerCurrentAffairs';
 import { CurrentAffairsFAQ } from './CurrentAffairsFAQ';
 import type { CurrentAffairsPayload } from '@/lib/api/currentAffairsService';
 
@@ -20,7 +19,7 @@ export const metadata: Metadata = {
     canonical: `${SITE_URL}/current-affairs`,
   },
   openGraph: {
-    title: "Daily Current Affairs 2026 | BharatMock",
+    title: "Daily Current Affairs 2026",
     description: "Daily GK capsules, quizzes, notes and video explainers for SSC, Banking, Railway & UPSC exam preparation.",
     url: `${SITE_URL}/current-affairs`,
     type: "website",
@@ -29,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Daily Current Affairs 2026 | BharatMock",
+    title: "Daily Current Affairs 2026",
     description: "Daily GK capsules, quizzes, notes and video explainers for competitive exam preparation.",
     images: [`${SITE_URL}/assets/login_banner_image.jpg`],
   },
@@ -73,7 +72,6 @@ export default async function CurrentAffairsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ServerCurrentAffairs data={data} />
       <CurrentAffairsClient initialData={data} />
       <CurrentAffairsFAQ />
     </>

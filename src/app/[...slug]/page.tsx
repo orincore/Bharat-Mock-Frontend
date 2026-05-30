@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import ServerPageContent from './ServerPageContent';
 import ServerExamDetail from './ServerExamDetail';
 import DynamicPageClient from './DynamicPageClient';
@@ -47,6 +47,8 @@ interface SlugSeoResult {
   meta_keywords?: string;
   canonical_url?: string;
   robots_meta?: string;
+  // string = admin entered JSON-LD directly; Record = internal JSONB config (toc_order, tab_seo, etc.)
+  structured_data?: string | Record<string, any>;
   tab_seo?: Record<string, TabSeoEntry>;
   custom_tabs?: CustomTabEntry[];
 }
@@ -133,6 +135,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
               meta_keywords: content.seo?.meta_keywords,
               canonical_url: content.seo?.canonical_url,
               robots_meta: content.seo?.robots_meta,
+              structured_data: content.seo?.structured_data,
               tab_seo: content.tabSeo || {},
               custom_tabs: content.customTabs || [],
             };
@@ -213,6 +216,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
               meta_keywords: content.seo?.meta_keywords,
               canonical_url: content.seo?.canonical_url,
               robots_meta: content.seo?.robots_meta,
+              structured_data: content.seo?.structured_data,
               tab_seo: content.tabSeo || {},
               custom_tabs: content.customTabs || [],
             };
@@ -283,6 +287,11 @@ export async function generateMetadata(
   const slugArray = Array.isArray(slug) ? slug : [slug];
 
   if (slugArray.length > 0 && STATIC_PREFIXES.has(slugArray[0].toLowerCase())) {
+    return {};
+  }
+
+  // /xxx/overview redirects to /xxx — return empty metadata so Next.js doesn't generate duplicate tags
+  if (slugArray.length === 2 && slugArray[1].toLowerCase() === 'overview') {
     return {};
   }
 
@@ -368,6 +377,11 @@ export default async function DynamicPage(
     notFound();
   }
 
+  // /xxx/overview is identical to /xxx — redirect to the canonical URL to avoid duplicate pages
+  if (slugArray.length === 2 && slugArray[1].toLowerCase() === 'overview') {
+    redirect(`/${slugArray[0]}`);
+  }
+
   // Verify if the slug exists to prevent showing "Category not found" on random URLs
   // fetchSeoForSlug also determines the first-segment type (subcategory / category / etc.)
   // which is passed to the client to skip the client-side slug-resolver spinner.
@@ -408,8 +422,74 @@ export default async function DynamicPage(
     })),
   ];
 
-  // Course schema for exam pages, WebPage for tab sub-pages
-  const jsonLd = isTabPage
+  // Prefer admin-provided JSON-LD over generated schema.
+  // Only tab-level structured_data is always a plain JSON-LD string entered by the admin.
+  // Page-level structured_data may be the internal JSONB config object (toc_order, tab_seo, …)
+  // — we only use it as JSON-LD when it's a non-empty string.
+  const parseAdminSchema = (
+    raw?: string | Record<string, any>
+  ): Record<string, any> | Record<string, any>[] | null => {
+    if (!raw) return null;
+
+    // ── Object (admin editor parsed it before saving) ────────────────────────
+    if (typeof raw === 'object') {
+      if (!('@context' in raw || '@type' in raw)) return null; // internal config
+      // Strip internal config keys that may have been merged in (tab_seo, toc_order, tab_headings)
+      const { tab_seo: _ts, tab_headings: _th, toc_order: _to, ...schema } = raw as any;
+      return schema;
+    }
+
+    // ── String: three attempts ────────────────────────────────────────────────
+
+    // 1. Direct JSON parse
+    try { return JSON.parse(raw); } catch { /* fall through */ }
+
+    // 2. Strip control characters (literal newlines inside string values → invalid JSON)
+    try {
+      // eslint-disable-next-line no-control-regex
+      return JSON.parse(raw.replace(/[\x00-\x1F\x7F]+/g, ' '));
+    } catch { /* fall through */ }
+
+    // 3. Extract from pasted <script type="application/ld+json"> HTML tags
+    const scriptRe = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+    const extracted: Record<string, any>[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = scriptRe.exec(raw)) !== null) {
+      const content = match[1].trim();
+      try {
+        extracted.push(JSON.parse(content));
+      } catch {
+        try {
+          // eslint-disable-next-line no-control-regex
+          extracted.push(JSON.parse(content.replace(/[\x00-\x1F\x7F]+/g, ' ')));
+        } catch { /* skip this block */ }
+      }
+    }
+    if (extracted.length === 1) return extracted[0];
+    if (extracted.length > 1) return extracted;
+
+    return null;
+  };
+
+  // Resolve schemas in priority order, using null-coalescing so we only fall through
+  // when parseAdminSchema returns null (invalid/internal config, not just falsy raw value).
+  let adminSchema: Record<string, any> | Record<string, any>[] | null = null;
+
+  if (isTabPage) {
+    // Tab pages: per-tab schema → page-level schema → generate
+    adminSchema = parseAdminSchema(tabOverrideForSchema?.structured_data)
+      ?? parseAdminSchema(seo?.structured_data);
+  } else {
+    // Main pages: page-level schema → overview tab schema (default tab) → generate
+    adminSchema = parseAdminSchema(seo?.structured_data);
+    if (!adminSchema) {
+      const overviewTabSeo = resolveTabSeo('overview', seo);
+      adminSchema = parseAdminSchema(overviewTabSeo?.structured_data) ?? null;
+    }
+  }
+
+  // Fall back to generated schema when admin hasn't configured one
+  const generatedJsonLd = isTabPage
     ? {
         '@context': 'https://schema.org',
         '@type': 'WebPage',
@@ -434,6 +514,8 @@ export default async function DynamicPage(
         inLanguage: ['en', 'hi'],
         breadcrumb: { '@type': 'BreadcrumbList', itemListElement: breadcrumbItems },
       };
+
+  const jsonLd = adminSchema ?? generatedJsonLd;
 
   // Determine active tab slug for tab-specific rendering
   const activeTabSlug = isTabPage ? slugArray[slugArray.length - 1] : undefined;

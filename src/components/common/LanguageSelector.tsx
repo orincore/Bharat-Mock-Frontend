@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
+import Image from '@/components/common/Image';
 import { ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,

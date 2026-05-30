@@ -39,17 +39,23 @@ interface InitialData {
   totalPages: number;
 }
 
-export default function PreviousYearPapersClient({ initialData }: { initialData: InitialData }) {
+interface SSRData {
+  initialDifficulties?: Difficulty[];
+  initialSections?: PaperSection[];
+  initialTopics?: PaperTopic[];
+}
+
+export default function PreviousYearPapersClient({ initialData, initialDifficulties, initialSections, initialTopics }: { initialData: InitialData } & SSRData) {
   const [exams, setExams] = useState<ExamWithDerivedYear[]>(initialData.exams.map(e => ({ ...e, derivedYear: deriveYear(e) })));
   const [categories, setCategories] = useState<Category[]>(initialData.categories);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialData.subcategories);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
-  const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>([]);
+  const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>(initialDifficulties ?? []);
   const [selectedDifficultyId, setSelectedDifficultyId] = useState<string>('');
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [difficultiesLoading, setDifficultiesLoading] = useState(true);
+  const [difficultiesLoading, setDifficultiesLoading] = useState(initialDifficulties === undefined);
   const [isLoading, setIsLoading] = useState(false);
   const isInitialMount = useRef(true);
   const [error, setError] = useState('');
@@ -58,9 +64,13 @@ export default function PreviousYearPapersClient({ initialData }: { initialData:
   const [selectedYear, setSelectedYear] = useState<string>('');
 
   // Paper sections and topics
-  const [paperSections, setPaperSections] = useState<PaperSection[]>([]);
-  const [paperTopics, setPaperTopics] = useState<PaperTopic[]>([]);
-  const [sectionsLoading, setSectionsLoading] = useState(true);
+  const [paperSections, setPaperSections] = useState<PaperSection[]>(
+    (initialSections ?? []).filter(s => s.is_active !== false)
+  );
+  const [paperTopics, setPaperTopics] = useState<PaperTopic[]>(
+    (initialTopics ?? []).filter(t => t.is_active !== false)
+  );
+  const [sectionsLoading, setSectionsLoading] = useState(initialSections === undefined);
   const [activeSectionId, setActiveSectionId] = useState<string>('');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
   const [sectionCounts, setSectionCounts] = useState<Record<string, number>>({});
@@ -94,9 +104,9 @@ export default function PreviousYearPapersClient({ initialData }: { initialData:
   };
 
   useEffect(() => {
-    fetchDifficulties();
-    fetchPaperSections();
-  }, []);
+    if (initialDifficulties === undefined) fetchDifficulties();
+    if (initialSections === undefined) fetchPaperSections();
+  }, [initialDifficulties, initialSections]);
 
   useEffect(() => {
     // Skip first render — initial data fetched server-side

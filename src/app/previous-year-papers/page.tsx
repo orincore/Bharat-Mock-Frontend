@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import PreviousYearPapersClient from './PreviousYearPapersClient';
-import ServerPreviousYearPapers from './ServerPreviousYearPapers';
 import { PreviousYearPapersFAQ } from './PreviousYearPapersFAQ';
 import type { Exam } from '@/types';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
@@ -15,7 +14,7 @@ export const metadata: Metadata = {
     canonical: "https://bharatmock.com/previous-year-papers",
   },
   openGraph: {
-    title: "Previous Year Question Papers | BharatMock",
+    title: "Previous Year Question Papers",
     description: "Practice previous year question papers for 100+ government exams including SSC, Banking, Railway and Police.",
     url: "https://bharatmock.com/previous-year-papers",
     type: "website",
@@ -24,7 +23,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Previous Year Question Papers | BharatMock",
+    title: "Previous Year Question Papers",
     description: "Practice previous year papers for SSC, Banking, Railway & Police exams. Understand real exam patterns.",
     images: ["/assets/login_banner_image.jpg"],
   },
@@ -38,22 +37,22 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 async function fetchInitialData() {
   try {
-    const [examsRes, categoriesRes, subcategoriesRes] = await Promise.all([
-      fetch(`${API_BASE}/exams?exam_type=past_paper&page=1&limit=30`, {
-        cache: 'no-store',
-      }),
-      fetch(`${API_BASE}/taxonomy/categories`, {
-        cache: 'no-store',
-      }),
-      fetch(`${API_BASE}/taxonomy/subcategories`, {
-        cache: 'no-store',
-      }),
+    const [examsRes, categoriesRes, subcategoriesRes, difficultiesRes, sectionsRes, topicsRes] = await Promise.all([
+      fetch(`${API_BASE}/exams?exam_type=past_paper&page=1&limit=30`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/taxonomy/categories`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/taxonomy/subcategories`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/taxonomy/difficulties`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/paper-sections`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/paper-sections/topics`, { cache: 'no-store' }),
     ]);
 
-    const [examsData, categoriesData, subcategoriesData] = await Promise.all([
+    const [examsData, categoriesData, subcategoriesData, difficultiesData, sectionsData, topicsData] = await Promise.all([
       examsRes.ok ? examsRes.json() : { data: [], total: 0, totalPages: 0 },
       categoriesRes.ok ? categoriesRes.json() : { data: [] },
       subcategoriesRes.ok ? subcategoriesRes.json() : { data: [] },
+      difficultiesRes.ok ? difficultiesRes.json() : undefined,
+      sectionsRes.ok ? sectionsRes.json() : undefined,
+      topicsRes.ok ? topicsRes.json() : undefined,
     ]);
 
     const rawExams: Exam[] = Array.isArray(examsData?.data) ? examsData.data : [];
@@ -74,10 +73,15 @@ async function fetchInitialData() {
       Array.isArray(subcategoriesData?.data) ? subcategoriesData.data : []
     ).filter((s: Subcategory) => s.name);
 
+    const toArr = (val: any) => val === undefined ? undefined : (Array.isArray(val?.data) ? val.data : (Array.isArray(val) ? val : []));
+
     return {
       exams,
       categories,
       subcategories,
+      difficulties: toArr(difficultiesData),
+      sections: toArr(sectionsData),
+      topics: toArr(topicsData),
       total: examsData?.total ?? 0,
       totalPages: examsData?.totalPages ?? 1,
     };
@@ -87,7 +91,7 @@ async function fetchInitialData() {
 }
 
 export default async function PreviousYearPapersPage() {
-  const initialData = await fetchInitialData();
+  const { difficulties, sections, topics, ...initialData } = await fetchInitialData();
 
   // Generate JSON-LD structured data
   const jsonLd = {
@@ -121,13 +125,7 @@ export default async function PreviousYearPapersPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ServerPreviousYearPapers
-        exams={initialData.exams}
-        categories={initialData.categories}
-        subcategories={initialData.subcategories}
-        total={initialData.total}
-      />
-      <PreviousYearPapersClient initialData={initialData} />
+      <PreviousYearPapersClient initialData={initialData} initialDifficulties={difficulties} initialSections={sections} initialTopics={topics} />
       <PreviousYearPapersFAQ />
     </>
   );

@@ -1,6 +1,22 @@
 {
   "extends": ["next/core-web-vitals"],
   "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "next/image",
+            "message": "Import '@/components/common/Image' instead of 'next/image' so images get default alt text from their section title."
+          }
+        ]
+      }
+    ]
+  }
+}
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
     "react/no-unescaped-entities": "off",
     "@next/next/no-img-element": "off",
     "react-hooks/exhaustive-deps": "off"

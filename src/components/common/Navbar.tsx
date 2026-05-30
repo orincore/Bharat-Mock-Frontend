@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from '@/components/common/Image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { GraduationCap, Menu, X, User, LogOut, FileText, ChevronDown, Languages } from 'lucide-react';
@@ -420,10 +420,10 @@ export function Navbar() {
             ) : (
               <>
                 <Button asChild variant="ghost">
-                  <Link href="/login">Log in</Link>
+                  <Link href={`/login?next=${encodeURIComponent(pathname || '/')}`}>Log in</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/register">Sign up</Link>
+                  <Link href={`/register?next=${encodeURIComponent(pathname || '/')}`}>Sign up</Link>
                 </Button>
               </>
             )}
@@ -572,7 +572,7 @@ export function Navbar() {
               ) : (
                 <>
                   <Link
-                    href="/login"
+                    href={`/login?next=${encodeURIComponent(pathname || '/')}`}
                     className="block px-4 py-3 text-center rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -580,7 +580,7 @@ export function Navbar() {
                   </Link>
                   <Button asChild className="w-full">
                     <Link
-                      href="/register"
+                      href={`/register?next=${encodeURIComponent(pathname || '/')}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Sign up

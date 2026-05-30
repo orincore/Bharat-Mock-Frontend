@@ -13,6 +13,10 @@ export interface SEOProps {
   keywords?: string[];
 }
 
+function sanitizeTitle(title: string) {
+  return title.replace(/^\s*BharatMock\s*\|\s*/i, '').trim();
+}
+
 export function buildMetadata({
   title,
   description,
@@ -21,7 +25,10 @@ export function buildMetadata({
   noIndex = false,
   keywords = [],
 }: SEOProps): Metadata {
-  const fullTitle = `${title} | ${SITE_NAME}`;
+  const normalizedTitle = sanitizeTitle(title);
+  const fullTitle = normalizedTitle.endsWith(` | ${SITE_NAME}`)
+    ? normalizedTitle
+    : `${normalizedTitle} | ${SITE_NAME}`;
   const canonicalUrl = canonical.startsWith('http') ? canonical : `${SITE_URL}${canonical}`;
 
   return {
@@ -34,16 +41,16 @@ export function buildMetadata({
       canonical: canonicalUrl,
     },
     openGraph: {
-      title,
+      title: normalizedTitle,
       description,
       url: canonicalUrl,
       siteName: SITE_NAME,
       type: 'website',
-      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: normalizedTitle }],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: normalizedTitle,
       description,
       images: [ogImage],
       site: '@BharatMock',

@@ -89,6 +89,11 @@ export default function TestSeriesSidebarAdmin() {
   const [editingName, setEditingName] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
+  // Custom Slug Edit State
+  const [editingSlugId, setEditingSlugId] = useState<string | null>(null);
+  const [slugInput, setSlugInput] = useState('');
+  const [slugSaving, setSlugSaving] = useState(false);
+
   // Icon Management State
   const [selectedSeries, setSelectedSeries] = useState<TestSeriesWithDetails | null>(null);
   const [iconUploading, setIconUploading] = useState<{ logo: boolean; thumbnail: boolean }>({ logo: false, thumbnail: false });
@@ -565,6 +570,57 @@ export default function TestSeriesSidebarAdmin() {
     }
   };
 
+  // Custom Slug Functions
+  // Mirrors the backend slugify so the admin sees the exact URL that will be saved.
+  const slugifyPreview = (text: string) =>
+    text
+      .toString()
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-')
+      .substring(0, 180);
+
+  const startEditingSlug = (series: TestSeriesWithDetails) => {
+    setEditingSlugId(series.id);
+    setSlugInput(series.slug || '');
+  };
+
+  const cancelEditingSlug = () => {
+    setEditingSlugId(null);
+    setSlugInput('');
+  };
+
+  const saveSlug = async (seriesId: string) => {
+    const cleaned = slugifyPreview(slugInput);
+    if (!cleaned) {
+      toast({ title: 'Invalid slug', description: 'Slug must contain at least one letter or number.', variant: 'destructive' });
+      return;
+    }
+
+    const current = testSeries.find(s => s.id === seriesId);
+    if (current && cleaned === current.slug) {
+      cancelEditingSlug();
+      return;
+    }
+
+    setSlugSaving(true);
+    try {
+      const updated = await testSeriesService.updateTestSeries(seriesId, { slug: cleaned });
+      const newSlug = updated?.slug || cleaned;
+      setTestSeries(prev => prev.map(s => s.id === seriesId ? { ...s, slug: newSlug } : s));
+      toast({ title: 'Slug updated', description: `Public URL is now /test-series/${newSlug}` });
+      cancelEditingSlug();
+    } catch (error: any) {
+      toast({ title: 'Failed to update slug', description: error?.message || 'Could not update slug', variant: 'destructive' });
+    } finally {
+      setSlugSaving(false);
+    }
+  };
+
   const handleDeleteSeries = async (seriesId: string, title: string) => {
     if (!confirm(`Delete test series "${title}"? This cannot be undone.`)) return;
     try {
@@ -840,6 +896,53 @@ export default function TestSeriesSidebarAdmin() {
                             <p className="text-sm text-muted-foreground">
                               {series.sections?.length || 0} sections • {series.exams?.length || 0} exams
                             </p>
+
+                            {/* Custom slug / public URL */}
+                            {editingSlugId === series.id ? (
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-mono text-slate-400">/test-series/</span>
+                                <Input
+                                  value={slugInput}
+                                  onChange={e => setSlugInput(e.target.value)}
+                                  className="h-7 text-xs w-56 font-mono"
+                                  placeholder="custom-slug"
+                                  onKeyDown={e => { if (e.key === 'Enter') saveSlug(series.id); if (e.key === 'Escape') cancelEditingSlug(); }}
+                                  autoFocus
+                                />
+                                <Button size="sm" onClick={() => saveSlug(series.id)} disabled={slugSaving} className="h-7 px-2">
+                                  {slugSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={cancelEditingSlug} className="h-7 px-2" disabled={slugSaving}>×</Button>
+                                {slugInput.trim() && slugifyPreview(slugInput) !== slugInput.trim() && (
+                                  <span className="text-[11px] text-slate-400">
+                                    Saves as <code className="text-slate-500">{slugifyPreview(slugInput) || '—'}</code>
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="mt-1 flex items-center gap-1.5">
+                                <Link2 className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                <code className="text-xs text-slate-500">/test-series/{series.slug || '—'}</code>
+                                <button
+                                  onClick={() => startEditingSlug(series)}
+                                  className="text-slate-400 hover:text-blue-600 transition-colors"
+                                  title="Edit custom slug"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </button>
+                                {series.slug && (
+                                  <a
+                                    href={`/test-series/${series.slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-slate-400 hover:text-blue-600 transition-colors"
+                                    title="Open public page"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

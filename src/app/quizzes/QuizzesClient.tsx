@@ -24,17 +24,17 @@ interface InitialData {
   totalPages: number;
 }
 
-export default function QuizzesClient({ initialData }: { initialData: InitialData }) {
+export default function QuizzesClient({ initialData, initialDifficulties }: { initialData: InitialData; initialDifficulties?: Difficulty[] }) {
   const [exams, setExams] = useState<Exam[]>(initialData.exams);
   const [categories, setCategories] = useState<Category[]>(initialData.categories);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialData.subcategories);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
-  const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>([]);
+  const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>(initialDifficulties ?? []);
   const [selectedDifficultyId, setSelectedDifficultyId] = useState('');
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [difficultiesLoading, setDifficultiesLoading] = useState(true);
+  const [difficultiesLoading, setDifficultiesLoading] = useState(initialDifficulties === undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -60,8 +60,8 @@ export default function QuizzesClient({ initialData }: { initialData: InitialDat
   });
 
   useEffect(() => {
-    fetchDifficulties();
-  }, []);
+    if (initialDifficulties === undefined) fetchDifficulties();
+  }, [initialDifficulties]);
 
   useEffect(() => {
     // Skip first render — initial data already loaded server-side

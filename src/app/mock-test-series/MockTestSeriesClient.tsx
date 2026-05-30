@@ -32,21 +32,28 @@ interface InitialData {
   totalPages: number;
 }
 
-function ExamsPageContent({ initialData }: { initialData: InitialData }) {
+interface SSRExtras {
+  initialPopularTests?: PopularTest[];
+  initialNewTestSeries?: PopularTest[];
+  initialBanners?: PageBanner[];
+  initialTestimonials?: Testimonial[];
+}
+
+function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeries, initialBanners, initialTestimonials }: { initialData: InitialData } & SSRExtras) {
   const searchParams = useSearchParams();
   const urlCategory = searchParams?.get('category') || '';
   const urlSubcategory = searchParams?.get('subcategory') || '';
   const urlSearch = searchParams?.get('search') || '';
   const { user, isAuthenticated } = useAuth();
   const [testSeries, setTestSeries] = useState<TestSeries[]>(initialData.testSeries);
-  const [popularTests, setPopularTests] = useState<PopularTest[]>([]);
-  const [popularTestsLoading, setPopularTestsLoading] = useState(true);
-  const [newTestSeries, setNewTestSeries] = useState<PopularTest[]>([]);
-  const [newTestSeriesLoading, setNewTestSeriesLoading] = useState(true);
-  const [banners, setBanners] = useState<PageBanner[]>([]);
-  const [bannersLoading, setBannersLoading] = useState(true);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [testimonialsLoading, setTestimonialsLoading] = useState(true);
+  const [popularTests, setPopularTests] = useState<PopularTest[]>(initialPopularTests ?? []);
+  const [popularTestsLoading, setPopularTestsLoading] = useState(initialPopularTests === undefined);
+  const [newTestSeries, setNewTestSeries] = useState<PopularTest[]>(initialNewTestSeries ?? []);
+  const [newTestSeriesLoading, setNewTestSeriesLoading] = useState(initialNewTestSeries === undefined);
+  const [banners, setBanners] = useState<PageBanner[]>(initialBanners ?? []);
+  const [bannersLoading, setBannersLoading] = useState(initialBanners === undefined);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(initialTestimonials ?? []);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(initialTestimonials === undefined);
   const [testimonialsPaused, setTestimonialsPaused] = useState(false);
   const [categories, setCategories] = useState<Category[]>(initialData.categories);
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialData.subcategories);
@@ -95,11 +102,12 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
   });
 
   useEffect(() => {
-    fetchPopularTests();
-    fetchNewTestSeries();
-    fetchBanners();
-    fetchTestimonials();
-  }, []);
+    // Only fetch client-side when server didn't provide the data (undefined = server failed)
+    if (initialPopularTests === undefined) fetchPopularTests();
+    if (initialNewTestSeries === undefined) fetchNewTestSeries();
+    if (initialBanners === undefined) fetchBanners();
+    if (initialTestimonials === undefined) fetchTestimonials();
+  }, [initialPopularTests, initialNewTestSeries, initialBanners, initialTestimonials]);
 
   const fetchPopularTests = async () => {
     setPopularTestsLoading(true);
@@ -1274,10 +1282,10 @@ function ExamsPageContent({ initialData }: { initialData: InitialData }) {
   );
 }
 
-export default function MockTestSeriesClient({ initialData }: { initialData: InitialData }) {
+export default function MockTestSeriesClient({ initialData, ...ssrExtras }: { initialData: InitialData } & SSRExtras) {
   return (
     <Suspense fallback={<div className="min-h-screen bg-muted/30 animate-pulse" />}>
-      <ExamsPageContent initialData={initialData} />
+      <ExamsPageContent initialData={initialData} {...ssrExtras} />
     </Suspense>
   );
 }

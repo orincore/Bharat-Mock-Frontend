@@ -36,6 +36,7 @@ export default function AuthorPage() {
   const [editingBio, setEditingBio] = useState(false);
   const [bioValue, setBioValue] = useState('');
   const [savingBio, setSavingBio] = useState(false);
+  const [bioExpanded, setBioExpanded] = useState(false);
 
   const isOwnProfile = currentUser?.id === id;
   const canEdit = isOwnProfile && CAN_EDIT_ROLES.includes(currentUser?.role || '');
@@ -169,15 +170,28 @@ export default function AuthorPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start gap-2">
-                    <p className="text-xs md:text-sm text-blue-100 max-w-xl leading-relaxed line-clamp-3 md:line-clamp-none">
-                      {author.bio || (canEdit ? 'No bio yet. Click edit to add one.' : 'No bio available.')}
-                    </p>
+                  <div className="flex flex-col sm:flex-row items-start gap-2">
+                    <div className="flex-1 max-w-xl">
+                      <p className={`text-xs md:text-sm text-blue-100 leading-relaxed ${bioExpanded ? '' : 'line-clamp-3'}`}>
+                        {author.bio || (canEdit ? 'No bio yet. Click edit to add one.' : 'No bio available.')}
+                      </p>
+                      {(author.bio && author.bio.length > 220) && (
+                        <button
+                          onClick={() => setBioExpanded(v => !v)}
+                          className="mt-2 text-xs text-white/80 hover:text-white font-medium"
+                          aria-expanded={bioExpanded}
+                        >
+                          {bioExpanded ? 'Show less' : 'Read more'}
+                        </button>
+                      )}
+                    </div>
                     {canEdit && (
-                      <button onClick={() => setEditingBio(true)}
-                        className="flex-shrink-0 flex items-center gap-1 text-xs text-white/70 hover:text-white transition mt-0.5">
-                        <Edit2 className="h-3.5 w-3.5" />Edit
-                      </button>
+                      <div className="flex-shrink-0">
+                        <button onClick={() => setEditingBio(true)}
+                          className="flex items-center gap-1 text-xs text-white/70 hover:text-white transition mt-0.5">
+                          <Edit2 className="h-3.5 w-3.5" />Edit
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

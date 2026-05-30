@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import Image from '@/components/common/Image';
 import { CheckCircle2, Crown, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ export function AuthReminderDialog() {
     setVariant(nextVariant);
     setOpen(true);
   };
+
+  const pathname = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/';
 
   // Guest login reminder after delay
   useEffect(() => {
@@ -369,12 +372,12 @@ export function AuthReminderDialog() {
       </DialogHeader>
 
       <div className="space-y-3">
-        <Link href="/login" className="block" onClick={handleActionClick}>
+        <Link href={`/login?next=${encodeURIComponent(pathname)}`} className="block" onClick={handleActionClick}>
           <Button className="w-full" size="lg">
             Log in
           </Button>
         </Link>
-        <Link href="/register" className="block" onClick={handleActionClick}>
+        <Link href={`/register?next=${encodeURIComponent(pathname)}`} className="block" onClick={handleActionClick}>
           <Button className="w-full" size="lg" variant="secondary">
             Sign up for free
           </Button>

@@ -6,7 +6,7 @@ import { fallbackPrivacyPolicy } from '@/lib/constants/privacy';
 import { PrivacyPolicyData, PrivacyPolicyListItem, PrivacyPolicySection } from '@/types';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Bharat Mock',
+  title: 'Privacy Policy',
   description:
     'Learn how Bharat Mock collects, uses, protects, and shares your information across mock tests, personalized insights, and exam preparation tools.'
 };

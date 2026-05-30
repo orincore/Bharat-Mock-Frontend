@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Download, ChevronRight, BookOpen, List } from 'lucide-react';
+import { ChevronRight, BookOpen, List } from 'lucide-react';
 import { PageBlockRenderer } from '@/components/PageEditor/PageBlockRenderer';
 import type { ServerPageData, FirstSegmentType } from './page';
 import TabNavigation from './TabNavigation';
 import MobileTOC from './MobileTOC';
+import DownloadPdfButton from './DownloadPdfButton';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
@@ -392,65 +393,62 @@ export default async function ServerPageContent({
       </div>
 
       {/* ── Visible UI ─────────────────────────────────────────────────────── */}
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4 sm:py-6 relative overflow-hidden">
+        {/* Decorative logo — mobile only; hidden once the left logo appears at sm */}
         {logoUrl && (
-          <div className="absolute right-4 sm:right-12 lg:right-24 top-1/2 -translate-y-1/2 pointer-events-none select-none z-0">
+          <div className="sm:hidden absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none select-none z-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logoUrl}
               alt=""
-              className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 object-contain opacity-20"
+              className="w-24 h-24 object-contain opacity-20"
             />
           </div>
         )}
         <div className="container-main relative z-10">
-          <div className="text-left flex items-center gap-5">
-            {logoUrl && (
-              <div className="flex-shrink-0 hidden sm:block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={logoUrl}
-                  alt={heroTitle || ''}
-                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-xl bg-white/10 p-2 border border-white/20"
-                />
-              </div>
-            )}
-            <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-3">
-                {heroTitle}
-              </h1>
-              {heroSubtitle && (
-                <p className="text-lg md:text-xl text-blue-100 mb-4 max-w-3xl">
-                  {heroSubtitle}
-                </p>
-              )}
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-3 mb-3 text-sm text-blue-100/80">
-                    {/* Author info would go here */}
-                  </div>
-                  <nav className="flex flex-wrap items-center gap-2 text-sm text-blue-100/80">
-                    {breadcrumbs.map((crumb, index) => (
-                      <span key={`${crumb.label}-${index}`} className="flex items-center gap-2">
-                        {index > 0 && <span className="text-blue-200/60">/</span>}
-                        <Link href={crumb.href} className="hover:underline">
-                          {crumb.label}
-                        </Link>
-                      </span>
-                    ))}
-                  </nav>
+          <div className="flex items-start justify-between gap-3">
+            {/* Left: logo + text */}
+            <div className="flex items-center gap-5 min-w-0 flex-1">
+              {logoUrl && (
+                <div className="flex-shrink-0 hidden sm:block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={logoUrl}
+                    alt={heroTitle || ''}
+                    className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-xl bg-white/10 p-2 border border-white/20"
+                  />
                 </div>
-                {/* Download PDF button - desktop */}
-                {(!activeTabId || activeTabId === 'overview') && (
-                  <button className="hidden sm:inline-flex items-center px-4 py-2 rounded-full border text-sm font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </button>
+              )}
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-2">
+                  {heroTitle}
+                </h1>
+                {heroSubtitle && (
+                  <p className="text-base md:text-lg text-blue-100 mb-3 max-w-3xl">
+                    {heroSubtitle}
+                  </p>
                 )}
+                <nav className="flex flex-wrap items-center gap-2 text-sm text-blue-100/80">
+                  {breadcrumbs.map((crumb, index) => (
+                    <span key={`${crumb.label}-${index}`} className="flex items-center gap-2">
+                      {index > 0 && <span className="text-blue-200/60">/</span>}
+                      <Link href={crumb.href} className="hover:underline">
+                        {crumb.label}
+                      </Link>
+                    </span>
+                  ))}
+                </nav>
               </div>
             </div>
+            {/* Download PDF — category pages only */}
+            {!isSubcategory && (!activeTabId || activeTabId === 'overview') && (
+              <DownloadPdfButton
+                filename={heroTitle || first}
+                contentId="page-pdf-content"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -465,17 +463,17 @@ export default async function ServerPageContent({
       )}
 
       {/* Content */}
-      <div className="container-main pb-4 lg:pb-6 pt-4">
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-          <div className="flex-1 min-w-0 w-full order-2 lg:order-1">
+      <div className="container-main pb-4 lg:pb-6">
+        <div className={`flex flex-col lg:flex-row items-start ${!isSubcategory ? 'gap-8' : 'lg:gap-8'}`}>
+          <div id="page-pdf-content" className="flex-1 min-w-0 w-full order-2 lg:order-1">
             <div className="space-y-8 sm:space-y-10">
               {/* Subcategories - only on overview tab for categories */}
               {!isSubcategory && (!activeTabId || activeTabId === 'overview') && subcategories.length > 0 && (
-                <div className="mb-8 sm:mb-10">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <div className="mb-8 sm:mb-10 mt-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-gray-500">Exam Categories</p>
-                      <div className="text-2xl font-bold text-gray-900">Pick your exact exam category</div>
+                      <p className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1">Exam Categories</p>
+                      <h2 className="text-2xl font-bold text-gray-900">Pick your exact exam category</h2>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -553,11 +551,11 @@ export default async function ServerPageContent({
           </div>
 
           {/* Sidebar */}
-          <aside className="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2">
-            <div className="space-y-4 lg:mt-8">
+          <aside className="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2 lg:sticky lg:top-20">
+            <div className="space-y-4 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto hide-scrollbar">
               {/* Table of Contents */}
               {tableOfContents.length > 0 && (
-                <div className="hidden lg:block bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <div className="hidden lg:block bg-white rounded-2xl p-5 border border-gray-100 shadow-sm mt-6">
                   <div className="flex items-center gap-2 mb-4">
                     <List className="w-4 h-4 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">Table of Contents</h3>

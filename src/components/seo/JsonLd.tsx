@@ -121,7 +121,7 @@ export function CourseJsonLd({
   );
 }
 
-export function DynamicJsonLd({ schema }: { schema: Record<string, any> }) {
+export function DynamicJsonLd({ schema }: { schema: Record<string, any> | Record<string, any>[] }) {
   return (
     <script
       type="application/ld+json"

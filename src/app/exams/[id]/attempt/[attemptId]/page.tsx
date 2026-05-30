@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
+import Image from '@/components/common/Image';
 import {
   AlertCircle, Clock, ChevronLeft, ChevronRight, Flag,
   CheckCircle2, Circle, AlertTriangle, FileText, X, CheckCheck, List, Pause,

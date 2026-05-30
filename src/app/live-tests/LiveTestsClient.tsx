@@ -205,7 +205,7 @@ interface InitialData {
   categories: Category[];
 }
 
-export default function LiveTestsClient({ initialData }: { initialData: InitialData }) {
+export default function LiveTestsClient({ initialData, initialBanner }: { initialData: InitialData; initialBanner?: PageBanner | null }) {
   const [exams, setExams] = useState<Exam[]>(initialData.exams);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -217,9 +217,10 @@ export default function LiveTestsClient({ initialData }: { initialData: InitialD
   const isInitialMount = useRef(true);
   const [heroSearch, setHeroSearch] = useState('');
   const [activeCalendarExam, setActiveCalendarExam] = useState<Exam | null>(null);
-  const [heroBanner, setHeroBanner] = useState<PageBanner | null>(null);
-  const [bannerLoading, setBannerLoading] = useState(true);
-  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  const [heroBanner, setHeroBanner] = useState<PageBanner | null>(initialBanner ?? null);
+  // undefined = server failed (will fetch client-side); null = server says no banner; object = use it
+  const [bannerLoading, setBannerLoading] = useState(initialBanner === undefined);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(initialBanner === null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
@@ -300,23 +301,23 @@ export default function LiveTestsClient({ initialData }: { initialData: InitialD
   }, [mobileFiltersOpen]);
 
   useEffect(() => {
+    // Skip if banner was provided server-side
+    if (initialBanner !== undefined) return;
     const fetchHeroBanner = async () => {
       setBannerLoading(true);
       try {
         const banners = await pageBannersService.getBanners(HERO_BANNER_IDENTIFIER);
         const active = banners.find((banner) => banner.is_active) || banners[0] || null;
         setHeroBanner(active ?? null);
-        if (!active) setHeroImageLoaded(true); // no image to wait for
-      } catch (err) {
-        console.error('Failed to load live tests hero banner', err);
-        setHeroImageLoaded(true); // show hero even if banner fails
+        if (!active) setHeroImageLoaded(true);
+      } catch {
+        setHeroImageLoaded(true);
       } finally {
         setBannerLoading(false);
       }
     };
-
     fetchHeroBanner();
-  }, []);
+  }, [initialBanner]);
 
   const fetchScheduledExams = useCallback(async () => {
     const requestId = ++activeRequestRef.current;
@@ -450,33 +451,8 @@ export default function LiveTestsClient({ initialData }: { initialData: InitialD
       <section className="relative gradient-hero py-6 md:py-10">
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
         <div className="container-main">
-          {/* Skeleton hero — shown until banner image loads */}
-          {!heroImageLoaded && (
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="space-y-4">
-                <Skeleton className="h-4 w-40 bg-white/20" />
-                <Skeleton className="h-4 w-32 bg-white/20" />
-                <Skeleton className="h-10 w-3/4 bg-white/20" />
-                <Skeleton className="h-10 w-2/3 bg-white/20" />
-                <Skeleton className="h-6 w-full bg-white/20" />
-                <Skeleton className="h-6 w-5/6 bg-white/20" />
-                <div className="flex gap-3 pt-2">
-                  <Skeleton className="h-11 flex-1 bg-white/20" />
-                  <Skeleton className="h-11 w-36 bg-white/20" />
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Skeleton className="h-64 w-full rounded-3xl bg-white/20" />
-                <Skeleton className="h-20 w-full rounded-2xl bg-white/20" />
-              </div>
-            </div>
-          )}
-
-          {/* Real hero — fades in once image loaded */}
-          <div
-            className="grid lg:grid-cols-2 gap-12 items-center"
-            style={{ opacity: heroImageLoaded ? 1 : 0, transition: 'opacity 0.4s ease', position: heroImageLoaded ? 'static' : 'absolute', pointerEvents: heroImageLoaded ? 'auto' : 'none' }}
-          >
+          {/* Hero — text always visible; only the right-side image fades in */}
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <Breadcrumbs
                 items={[HomeBreadcrumb(), { label: 'Live Tests' }]}
@@ -507,7 +483,10 @@ export default function LiveTestsClient({ initialData }: { initialData: InitialD
             </div>
 
             <div>
-              <div className="bg-background rounded-3xl shadow-2xl border border-border/40 overflow-hidden">
+              <div
+                className="bg-background rounded-3xl shadow-2xl border border-border/40 overflow-hidden"
+                style={{ opacity: heroImageLoaded ? 1 : 0.4, transition: 'opacity 0.4s ease' }}
+              >
                 <div className="relative bg-slate-100" suppressHydrationWarning>
                   {heroBanner ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -522,7 +501,7 @@ export default function LiveTestsClient({ initialData }: { initialData: InitialD
                     <div className="border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
                       No live tests banner uploaded yet.
                     </div>
-                  ) : null}
+                  ) : <div className="h-48 bg-slate-100" />}
                 </div>
               </div>
               <div className="mt-6 bg-secondary text-secondary-foreground rounded-2xl p-3 shadow-md">

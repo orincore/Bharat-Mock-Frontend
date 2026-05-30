@@ -6,7 +6,7 @@ import { fallbackDisclaimer } from '@/lib/constants/disclaimer';
 import { DisclaimerData, DisclaimerPoint, PrivacyPolicyListItem } from '@/types';
 
 export const metadata: Metadata = {
-  title: 'Disclaimer | Bharat Mock',
+  title: 'Disclaimer',
   description:
     'Review Bharat Mock’s Disclaimer covering liability limitations, accuracy of information, fair use, and professional advice boundaries.'
 };

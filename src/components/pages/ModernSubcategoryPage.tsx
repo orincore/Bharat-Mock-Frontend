@@ -608,10 +608,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     const isOverview = !tabId || tabId === 'overview';
     const tabOverride = tabId ? pageContent?.tabSeo?.[tabId] : undefined;
 
-    // --- Title (apply root-layout template suffix if missing) ---
-    const TITLE_SUFFIX = ' | Bharat Mock';
-    const applyTemplate = (base: string) =>
-      base.includes(TITLE_SUFFIX) ? base : `${base}${TITLE_SUFFIX}`;
+    // --- Title (do not auto-append site suffix) ---
+    const TITLE_SUFFIX = '';
+    const applyTemplate = (base: string) => base;
 
     if (tabOverride?.meta_title) {
       document.title = applyTemplate(tabOverride.meta_title);
@@ -1038,14 +1037,14 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   return (
     <div className="min-h-screen bg-gray-50">
 
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4 sm:py-8 lg:py-12 relative overflow-hidden">
         {subcategoryInfo?.logo_url && (
-          <div className="absolute right-4 sm:right-12 lg:right-24 top-1/2 -translate-y-1/2 pointer-events-none select-none">
+          <div className="sm:hidden absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none select-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={subcategoryInfo.logo_url}
               alt=""
-              className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 object-contain opacity-15"
+              className="w-24 h-24 sm:w-32 sm:h-32 object-contain opacity-15"
             />
           </div>
         )}
@@ -1100,9 +1099,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         </div>
       </div>
 
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+      <div className="bg-white sticky top-0 z-40 shadow-sm">
         <div className="container-main">
-          <div className="flex items-center">
+          <div className="flex items-center py-3 border-b border-gray-200">
             {/* Left scroll arrow */}
             <button
               type="button"
@@ -1113,7 +1112,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
 
-            <div ref={tabScrollRef} className="flex-1 flex items-center gap-1 overflow-x-auto py-3" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div ref={tabScrollRef} className="flex-1 flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {tabItems.map((tab) => {
                 const tabDescriptor = tabDescriptors.find((t) => t.id === tab.id);
                 const tabHref = tabDescriptor?.slug === 'overview' || !tabDescriptor?.slug
@@ -1162,7 +1161,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         </div>
       </div>
 
-      <div className="container-main py-10">
+      <div className="bg-white">
+        <div className="container-main pb-6">
         {isFilterTab && (hasYearFilters || hasTierFilters) && (
           <div className="mb-6 lg:hidden">
             <button
@@ -1583,7 +1583,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
           <aside className="lg:col-span-1">
             {(sidebarSections.length > 0 || hasYearFilters || tableOfContents.length > 0) && (
-              <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto">
+              <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto hide-scrollbar">
                 {tableOfContents.length > 0 && (
                   <section className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200 bg-gray-50">
@@ -1630,6 +1630,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               </div>
             )}
           </aside>
+        </div>
         </div>
       </div>
 

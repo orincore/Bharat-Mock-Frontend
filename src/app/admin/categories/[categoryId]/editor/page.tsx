@@ -2,13 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { 
-  ArrowLeft, 
-  Save, 
-  Eye, 
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  Save,
+  Eye,
   RefreshCw,
   Settings,
-  Loader2
+  Loader2,
+  Plus,
+  Pencil,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  ListOrdered,
+  Type,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { BlockEditor } from '@/components/PageEditor/BlockEditor';
 import { Button } from '@/components/ui/button';
@@ -649,220 +659,240 @@ export default function AdminCategoryEditorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push(`/admin/categories/${categoryId}`)}
-                className="flex items-center"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-              <div className="border-l border-gray-300 h-6" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  {categoryInfo?.name || 'Category Page Editor'}
-                </h1>
-                <p className="text-sm text-gray-600">
-                  /{categoryInfo?.slug || 'category'}
-                </p>
+    <div className="fixed inset-0 z-[100] bg-gray-50 flex overflow-hidden">
+
+      {/* ── MAIN EDITOR COLUMN ── */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden" style={{ marginRight: '264px' }}>
+
+        {/* Slim top bar */}
+        <div className="bg-white border-b border-gray-200 h-11 flex items-center px-4 gap-3 sticky top-0 z-10 shadow-sm">
+          <Link href="/admin" className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="w-7 h-7 rounded-md border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {categoryInfo?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={categoryInfo.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
+            ) : (
+              <ImageIcon className="w-3.5 h-3.5 text-gray-400" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-800 truncate leading-none">
+              {categoryInfo?.name || 'Category Editor'}
+              <span className="ml-1.5 text-xs font-normal text-gray-400">· /{categoryInfo?.slug || '…'}</span>
+            </p>
+          </div>
+          <span className="text-[11px] text-gray-500 border border-gray-200 rounded-full px-2.5 py-0.5 bg-gray-50 whitespace-nowrap flex-shrink-0">
+            {tabOptions.find(t => t.id === activeTabId)?.title || 'Overview'}
+          </span>
+        </div>
+
+        {/* Block Editor */}
+        <BlockEditor
+          key={activeTabId}
+          sections={sectionsForActiveTab}
+          onSave={() => handleSave()}
+          onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
+          tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
+          mediaUploadConfig={mediaUploadConfig}
+          onTocOrderClick={() => setShowTocPanel(true)}
+          availableTabs={tabOptions.map(t => ({ id: t.id, label: t.title }))}
+        />
+      </div>
+
+      {/* ── RIGHT SIDEBAR ── */}
+      <aside className="fixed right-0 top-0 bottom-0 bg-white border-l border-gray-200 flex flex-col z-[110] overflow-hidden shadow-xl" style={{ width: '264px' }}>
+
+        {/* Identity */}
+        <div className="px-4 py-3 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+              {categoryInfo?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={categoryInfo.logo_url} alt="" className="w-full h-full object-contain p-1" />
+              ) : (
+                <ImageIcon className="w-5 h-5 text-gray-300" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-gray-900 truncate leading-tight">{categoryInfo?.name || '—'}</p>
+              <p className="text-[11px] text-gray-400 font-mono truncate mt-0.5">/{categoryInfo?.slug || '…'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin">
+
+          {/* Primary actions */}
+          <div className="px-4 py-3.5 border-b border-gray-100 space-y-2">
+            <button
+              onClick={() => handleSave()}
+              disabled={saving}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
+                saving ? 'bg-blue-400 text-white cursor-not-allowed opacity-70' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+              }`}
+            >
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Saving…</> : <><Save className="w-4 h-4" />Save Changes</>}
+            </button>
+            <div className="flex gap-2">
+              <button onClick={handlePreview} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 hover:text-gray-800 transition-colors">
+                <Eye className="w-3.5 h-3.5" />Preview
+              </button>
+              <button onClick={handleRefresh} disabled={loading} title="Reload from server" className="flex items-center justify-center px-3 py-2 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 hover:text-gray-800 transition-colors disabled:opacity-40">
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Page Tabs */}
+          <div className="px-4 py-3.5 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Page Tabs</p>
+              <button onClick={handleCreateTab} className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md px-2.5 py-1 transition-colors">
+                <Plus className="w-3 h-3" />Add Tab
+              </button>
+            </div>
+            <div className="space-y-0.5">
+              {tabOptions.map((tab) => {
+                const isActive = activeTabId === tab.id;
+                const linkedCustomTab = customTabs.find(ct => ct.id === tab.id);
+                return (
+                  <div key={tab.id} className={`group flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer transition-all ${isActive ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-gray-50'}`} onClick={() => setActiveTabId(tab.id)}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-0.5 ${isActive ? 'bg-blue-500' : 'bg-gray-300 group-hover:bg-gray-400'}`} />
+                    <span className={`flex-1 text-sm truncate ${isActive ? 'font-semibold text-blue-700' : 'font-medium text-gray-700'}`}>{tab.title}</span>
+                    {tab.id !== 'overview' && (
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => handleMoveTab(tab.id, 'left')} className="p-1 rounded hover:bg-white text-gray-400 hover:text-gray-600 transition-colors"><ChevronLeft className="w-3 h-3" /></button>
+                        <button onClick={() => handleMoveTab(tab.id, 'right')} className="p-1 rounded hover:bg-white text-gray-400 hover:text-gray-600 transition-colors"><ChevronRight className="w-3 h-3" /></button>
+                        {linkedCustomTab && (
+                          <>
+                            <button onClick={() => handleRenameTab(linkedCustomTab)} className="p-1 rounded hover:bg-white text-gray-400 hover:text-gray-600 transition-colors" title="Rename"><Pencil className="w-3 h-3" /></button>
+                            <button onClick={() => handleDeleteTab(linkedCustomTab)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Delete"><Trash2 className="w-3 h-3" /></button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tools */}
+          <div className="px-4 py-3.5 border-b border-gray-100">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Tools</p>
+            <div className="space-y-0.5">
+              {([
+                { label: 'SEO Settings', icon: Search, accent: 'text-blue-500', bg: 'hover:bg-blue-50', onClick: () => setShowSEOPanel(true) },
+                { label: 'Tab Headings', icon: Type, accent: 'text-purple-500', bg: 'hover:bg-purple-50', onClick: () => setShowTabHeadingsPanel(true) },
+                { label: 'TOC Order', icon: ListOrdered, accent: 'text-orange-500', bg: 'hover:bg-orange-50', onClick: () => setShowTocPanel(true) },
+              ] as const).map(({ label, icon: Icon, accent, bg, onClick }) => (
+                <button key={label} onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 border border-transparent hover:border-gray-100 ${bg} transition-all duration-100`}>
+                  <Icon className={`w-4 h-4 ${accent} flex-shrink-0`} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Page Info */}
+          <div className="px-4 py-3.5">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Page Info</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">Sections</span>
+                <span className="font-medium text-gray-700">{sectionsForActiveTab.length}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">Tabs</span>
+                <span className="font-medium text-gray-700">{tabOptions.length}</span>
               </div>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowSEOPanel(true)}>
-                <Settings className="w-4 h-4 mr-2" />
-                SEO Settings
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTocPanel(true)}
-                className="border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100"
-              >
-                TOC Order
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTabHeadingsPanel(true)}
-                className="border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100"
-              >
-                Tab Headings
-              </Button>
-              <Button variant="outline" size="sm" onClick={handlePreview}>
-                <Eye className="w-4 h-4 mr-2" />
-                Preview
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => handleSave()}
-                disabled={saving}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
         </div>
-      </div>
 
-      {/* Tabs Manager */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Page Tabs</h2>
-              <p className="text-sm text-gray-500">Organize sections across Overview and custom tabs.</p>
-            </div>
-            <Button size="sm" onClick={handleCreateTab} variant="secondary">+ Add Custom Tab</Button>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {tabOptions.map((tab) => {
-              const isActive = activeTabId === tab.id;
-              return (
-                <div key={tab.id} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-700'}`}>
-                  <button
-                    onClick={() => setActiveTabId(tab.id)}
-                    className="font-semibold text-sm"
-                  >
-                    {tab.title}
-                  </button>
-                  {tab.id !== 'overview' && (
-                    <div className="flex items-center gap-1 text-xs">
-                      <button onClick={() => handleMoveTab(tab.id, 'left')} className="px-1 text-gray-500 hover:text-gray-800">◀</button>
-                      <button onClick={() => handleMoveTab(tab.id, 'right')} className="px-1 text-gray-500 hover:text-gray-800">▶</button>
-                      <button onClick={() => handleRenameTab(tab as CustomTab)} className="px-1 text-gray-500 hover:text-gray-800">Edit</button>
-                      <button onClick={() => handleDeleteTab(tab as CustomTab)} className="px-1 text-red-500 hover:text-red-700">Delete</button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0 bg-gray-50/70">
+          <Link href="/admin" className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />Back to Admin
+          </Link>
         </div>
-      </div>
+      </aside>
 
-      {/* Block Editor */}
-      <BlockEditor
-        key={activeTabId}
-        sections={sectionsForActiveTab}
-        onSave={() => handleSave()}
-        onSectionsChange={(next) => updateSectionsForActiveTab(next as Section[])}
-        tabLabel={tabOptions.find((tab) => tab.id === activeTabId)?.title}
-        mediaUploadConfig={mediaUploadConfig}
-        onTocOrderClick={() => setShowTocPanel(true)}
-        availableTabs={tabOptions.map(t => ({ id: t.id, label: t.title }))}
-      />
-
-      {/* TOC Order Panel */}
+      {/* TOC Order Modal */}
       {showTocPanel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowTocPanel(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-100">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold">TOC Mobile Position</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Set the CSS <code>order</code> of the Table of Contents on mobile per tab. Lower = appears earlier. Default is 0 (top).
-                </p>
+                <h2 className="text-base font-bold text-gray-900">TOC Mobile Position</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Set CSS <code className="bg-gray-100 px-1 rounded">order</code> per tab. Lower = appears earlier.</p>
               </div>
-              <button onClick={() => setShowTocPanel(false)} className="text-gray-500 hover:text-gray-700 ml-4">✕</button>
+              <button onClick={() => setShowTocPanel(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 -mr-1 -mt-1 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-3">
               {tabOptions.map(tab => (
                 <div key={tab.id} className="flex items-center justify-between gap-4">
                   <label className="text-sm font-medium text-gray-700 flex-1">{tab.title}</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={tocOrder[tab.id] ?? ''}
-                    onChange={e => setTocOrder(prev => ({
-                      ...prev,
-                      [tab.id]: e.target.value === '' ? '' : parseInt(e.target.value, 10)
-                    }))}
-                    placeholder="0"
-                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  />
+                  <input type="number" min={0} value={tocOrder[tab.id] ?? ''} onChange={e => setTocOrder(prev => ({ ...prev, [tab.id]: e.target.value === '' ? '' : parseInt(e.target.value, 10) }))} placeholder="0" className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-400" />
                 </div>
               ))}
             </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setShowTocPanel(false)}>Cancel</Button>
-              <Button onClick={handleSaveTocOrder} className="bg-blue-600 hover:bg-blue-700 text-white">Save Positions</Button>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button onClick={() => setShowTocPanel(false)} className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={handleSaveTocOrder} className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors">Save Positions</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab Headings Panel */}
+      {/* Tab Headings Modal */}
       {showTabHeadingsPanel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowTabHeadingsPanel(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] border border-gray-100">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between flex-shrink-0">
               <div>
-                <h2 className="text-xl font-bold">Tab Headings</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Set a custom heading shown at the top of each tab's content. Leave blank to use the tab label.
-                </p>
+                <h2 className="text-base font-bold text-gray-900">Tab Headings</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Custom heading shown at top of each tab. Leave blank to use tab label.</p>
               </div>
-              <button onClick={() => setShowTabHeadingsPanel(false)} className="text-gray-500 hover:text-gray-700 ml-4">✕</button>
+              <button onClick={() => setShowTabHeadingsPanel(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 -mr-1 -mt-1 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               {tabOptions.map(tab => (
                 <div key={tab.id} className="space-y-1">
                   <label className="text-sm font-medium text-gray-700">{tab.title}</label>
-                  <input
-                    type="text"
-                    value={tabHeadings[tab.id] || ''}
-                    onChange={e => setTabHeadings(prev => ({ ...prev, [tab.id]: e.target.value }))}
-                    placeholder={`e.g. ${tab.title} for ${categoryInfo?.name || 'Category'}`}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
-                  />
+                  <input type="text" value={tabHeadings[tab.id] || ''} onChange={e => setTabHeadings(prev => ({ ...prev, [tab.id]: e.target.value }))} placeholder={`e.g. ${tab.title} for ${categoryInfo?.name || 'Category'}`} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-400 transition-colors" />
                 </div>
               ))}
             </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setShowTabHeadingsPanel(false)}>Cancel</Button>
-              <Button onClick={handleSaveTabHeadings} className="bg-purple-600 hover:bg-purple-700 text-white">Save Headings</Button>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
+              <button onClick={() => setShowTabHeadingsPanel(false)} className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={handleSaveTabHeadings} className="px-5 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-sm transition-colors">Save Headings</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* SEO Settings Panel */}
+      {/* SEO Settings Modal */}
       {showSEOPanel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowSEOPanel(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100 hide-scrollbar">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">SEO Settings</h2>
-                <p className="text-sm text-gray-500">Optimize metadata for Google Search and social platforms.</p>
+                <h2 className="text-base font-bold text-gray-900">SEO Settings</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Optimize metadata for Google Search and social platforms.</p>
               </div>
-              <button
-                onClick={() => setShowSEOPanel(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-              >
-                ×
+              <button onClick={() => setShowSEOPanel(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
@@ -1043,17 +1073,14 @@ export default function AdminCategoryEditorPage() {
               </section>
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-2 sticky bottom-0 bg-white">
-              <Button variant="outline" onClick={() => setShowSEOPanel(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveSEO} className="bg-blue-600 hover:bg-blue-700 text-white">
-                Save SEO Settings
-              </Button>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 sticky bottom-0 bg-white rounded-b-2xl">
+              <button onClick={() => setShowSEOPanel(false)} className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={handleSaveSEO} className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors">Save SEO Settings</button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

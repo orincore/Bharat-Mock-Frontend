@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Play, Sparkles, BookOpen, CalendarDays, ArrowRight, Video, Layers, ShieldCheck, Loader2 } from 'lucide-react';
+import { Play, Sparkles, BookOpen, CalendarDays, ArrowRight, Video, Layers, ShieldCheck } from 'lucide-react';
 import { currentAffairsService, CurrentAffairsPayload, CurrentAffairsQuizLink, CurrentAffairsVideo, CurrentAffairsNoteSummary } from '@/lib/api/currentAffairsService';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -21,26 +21,14 @@ const getTagValue = (value?: string | null) => (value || '').toLowerCase() || 'u
 
 export default function CurrentAffairsClient({ initialData }: { initialData?: CurrentAffairsPayload | null }) {
   const [data, setData] = useState<CurrentAffairsPayload | null>(initialData ?? null);
-  const [loading, setLoading] = useState(!initialData);
-  const [error, setError] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
 
   useEffect(() => {
     if (initialData) return;
-    const fetchData = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const payload = await currentAffairsService.getPageData();
-        setData(payload);
-      } catch (err: any) {
-        console.error('Failed to load current affairs data', err);
-        setError(err.message || 'Failed to load current affairs data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    // Fallback: fetch client-side only when page.tsx server fetch failed
+    currentAffairsService.getPageData()
+      .then((payload) => setData(payload))
+      .catch((err) => console.error('Failed to load current affairs data', err));
   }, [initialData]);
 
   const dynamicFilters = useMemo(() => {
@@ -80,26 +68,7 @@ export default function CurrentAffairsClient({ initialData }: { initialData?: Cu
     ];
   }, [data]);
 
-  if (loading) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
-        <p className="text-destructive font-medium">{error}</p>
-        <Button onClick={() => window.location.reload()}>Retry loading</Button>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  const { settings } = data;
+  const settings = data?.settings;
 
   return (
     <div className="bg-muted/20">
@@ -112,7 +81,7 @@ export default function CurrentAffairsClient({ initialData }: { initialData?: Cu
             className="mb-6"
           />
           <div className="max-w-3xl space-y-4">
-            {settings.heroBadge && (
+            {settings?.heroBadge && (
               <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-1 rounded-full text-xs font-semibold tracking-[0.3em] uppercase">
                 <Sparkles className="w-4 h-4" />
                 {settings.heroBadge}
@@ -120,10 +89,10 @@ export default function CurrentAffairsClient({ initialData }: { initialData?: Cu
             )}
             <p className="uppercase text-sm tracking-[0.4em] text-white/70">Daily GK Capsules</p>
             <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight">
-              {settings.heroTitle || 'Stay Updated with Daily Current Affairs'}
+              {settings?.heroTitle || 'Stay Updated with Daily Current Affairs'}
             </h1>
             <p className="text-lg text-white/80">
-              {settings.heroDescription || 'Get daily current affairs updates to boost knowledge and better exam preparation'}
+              {settings?.heroDescription || 'Get daily current affairs updates to boost knowledge and better exam preparation'}
             </p>
           </div>
         </div>

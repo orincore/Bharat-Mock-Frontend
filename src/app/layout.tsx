@@ -32,20 +32,21 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://bharatmock.com"),
   title: {
-    default: "Bharat Mock — India's Smart Exam Companion",
-    template: "%s | Bharat Mock",
+    default: "BharatMock — India's Smart Exam Companion",
+    // Do not auto-append the site name to page titles; titles should be explicit.
+    template: "%s",
   },
-  authors: [{ name: "Bharat Mock" }],
+  authors: [{ name: "BharatMock" }],
   robots: { index: true, follow: true },
   icons: {
     icon: [{ url: "/favicon.jpg", type: "image/jpeg" }],
     apple: [{ url: "/favicon.jpg" }],
   },
   openGraph: {
-    title: "Bharat Mock — India's Smart Exam Companion",
+    title: "BharatMock — India's Smart Exam Companion",
     type: "website",
     url: "https://bharatmock.com",
-    siteName: "Bharat Mock",
+    siteName: "BharatMock",
     images: [{ url: "/assets/login_banner_image.jpg", width: 800, height: 534 }],
   },
   twitter: {

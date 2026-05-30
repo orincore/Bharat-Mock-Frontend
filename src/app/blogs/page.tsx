@@ -1,18 +1,17 @@
 import type { Metadata } from 'next';
 import BlogsClient from './BlogsClient';
-import ServerBlogs from './ServerBlogs';
 import type { Blog } from '@/lib/api/blogService';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Blogs — Exam Preparation Blog for SSC, Banking & Railway Tips | BharatMock",
+  title: "Blogs — Exam Preparation Blog for SSC, Banking & Railway Tips",
   description: "Read expert tips, exam strategies, current affairs updates and study guides for SSC CGL, IBPS PO, RRB NTPC and all govt exams on BharatMock Blog.",
   alternates: {
     canonical: "https://bharatmock.com/blogs",
   },
   openGraph: {
-    title: "Exam Preparation Blog | BharatMock",
+    title: "Exam Preparation Blog",
     description: "Read expert tips, exam strategies, current affairs updates and study guides for SSC CGL, IBPS PO, RRB NTPC and all govt exams on BharatMock Blog.",
     url: "https://bharatmock.com/blogs",
     type: "website",
@@ -21,7 +20,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Exam Preparation Blog | BharatMock",
+    title: "Exam Preparation Blog",
     description: "Read expert tips, exam strategies, current affairs updates and study guides for SSC CGL, IBPS PO, RRB NTPC and all govt exams.",
     images: ["/assets/login_banner_image.jpg"],
   },
@@ -100,11 +99,6 @@ export default async function BlogsPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <ServerBlogs
-        articles={initialData.articles}
-        categories={initialData.categories}
-        total={initialData.total}
       />
       <BlogsClient initialData={initialData} />
     </>

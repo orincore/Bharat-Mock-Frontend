@@ -6,7 +6,7 @@ import { fallbackRefundPolicy } from '../../lib/constants/refund';
 import { RefundPolicyData, RefundPolicyListItem, RefundPolicySection } from '@/types';
 
 export const metadata: Metadata = {
-  title: 'Refund Policy | Bharat Mock',
+  title: 'Refund Policy',
   description:
     'Learn about Bharat Mock refund policy for digital educational content, eligibility criteria, and how to request refunds for courses and test series.'
 };

@@ -14,7 +14,7 @@ const humanizeSlug = (slug: string) =>
 
 export default function Head({ params }: HeadProps) {
   const readableTitle = humanizeSlug(params.slug);
-  const title = `${readableTitle} Test Series | Bharat Mock`; 
+  const title = `${readableTitle} Test Series`;
   const description =
     `${readableTitle} full-length mock tests with analytics, 1,000+ word prep guides, and FAQ support. Prepare smarter with Bharat Mock's adaptive test series platform.`;
 
@@ -24,7 +24,7 @@ export default function Head({ params }: HeadProps) {
     'mock tests',
     'practice papers',
     'exam preparation',
-    'Bharat Mock'
+    'BharatMock'
   ].join(', ');
 
   const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bharatmock.com'}/mock-test-series/${params.slug}`;
@@ -61,7 +61,7 @@ export default function Head({ params }: HeadProps) {
       <meta property="og:description" content={description} />
       <meta property="og:type" content="article" />
       <meta property="og:url" content={url} />
-      <meta property="og:site_name" content="Bharat Mock" />
+      <meta property="og:site_name" content="BharatMock" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
@@ -76,11 +76,11 @@ export default function Head({ params }: HeadProps) {
             mainEntityOfPage: url,
             author: {
               '@type': 'Organization',
-              name: 'Bharat Mock'
+              name: 'BharatMock'
             },
             publisher: {
               '@type': 'Organization',
-              name: 'Bharat Mock'
+              name: 'BharatMock'
             }
           })
         }}

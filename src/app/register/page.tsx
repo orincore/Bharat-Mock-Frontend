@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, Phone, Eye, EyeOff, UserPlus, ShieldCheck, RefreshCw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,11 +35,13 @@ const COUNTRY_CODES = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextParam = searchParams?.get('next') || '/';
   const { register, isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) router.replace('/');
-  }, [isAuthenticated, authLoading, router]);
+    if (!authLoading && isAuthenticated) router.replace(nextParam);
+  }, [isAuthenticated, authLoading, router, nextParam]);
 
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [formData, setFormData] = useState({
@@ -178,7 +180,7 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       await register(formData.email, formData.password, formData.name);
-      router.replace('/');
+      router.replace(nextParam);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
       setIsLoading(false);

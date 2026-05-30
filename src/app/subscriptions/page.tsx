@@ -7,22 +7,22 @@ import type { Category } from '@/lib/api/taxonomyService';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Premium Subscriptions — Unlimited Mock Tests & Analytics | BharatMock',
+  title: 'Premium Subscriptions — Unlimited Mock Tests & Analytics',
   description: 'Unlock BharatMock Premium to access unlimited mock tests, in-depth performance analytics, expert-crafted study plans, and live exam simulations. Choose a plan and start preparing smarter.',
   alternates: {
     canonical: 'https://bharatmock.com/subscriptions',
   },
   openGraph: {
-    title: 'BharatMock Premium Subscriptions',
+    title: 'Premium Subscriptions — Unlimited Mock Tests & Analytics',
     description: 'Unlimited mock tests, analytics, and live exam simulations for all government exams.',
     url: 'https://bharatmock.com/subscriptions',
     type: 'website',
     siteName: 'BharatMock',
-    images: [{ url: '/assets/login_banner_image.jpg', width: 1200, height: 630, alt: 'BharatMock Premium' }],
+    images: [{ url: '/assets/login_banner_image.jpg', width: 1200, height: 630, alt: 'Premium Subscriptions' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BharatMock Premium Subscriptions',
+    title: 'Premium Subscriptions — Unlimited Mock Tests & Analytics',
     description: 'Unlimited mock tests, analytics, and live exam simulations for all government exams.',
     images: ['/assets/login_banner_image.jpg'],
     site: '@BharatMock',

@@ -5,7 +5,7 @@ import { COMPANY } from '@/lib/constants/company';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | Bharat Mock',
+  title: 'Terms of Service',
   description: 'Understand the rules that govern Bharat Mock mock tests, paid plans, acceptable use, dispute resolution, and your responsibilities as a learner.',
   alternates: {
     canonical: `${SITE_URL}/terms`,

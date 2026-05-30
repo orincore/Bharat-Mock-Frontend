@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import QuizzesClient from './QuizzesClient';
-import ServerQuizzes from './ServerQuizzes';
 import { QuizzesFAQ } from './QuizzesFAQ';
 import type { Exam } from '@/types';
 import type { Category, Subcategory } from '@/lib/api/taxonomyService';
@@ -15,7 +14,7 @@ export const metadata: Metadata = {
     canonical: "https://bharatmock.com/quizzes",
   },
   openGraph: {
-    title: "Free Daily Quizzes 2026 | BharatMock",
+    title: "Free Daily Quizzes 2026",
     description: "Short daily quizzes on GK, current affairs and aptitude for SSC, Banking, Railway & Police exam preparation.",
     url: "https://bharatmock.com/quizzes",
     type: "website",
@@ -24,7 +23,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Free Daily Quizzes 2026 | BharatMock",
+    title: "Free Daily Quizzes 2026",
     description: "Practice daily GK and aptitude quizzes for government exam preparation. Free and targeted.",
     images: ["/assets/login_banner_image.jpg"],
   },
@@ -38,22 +37,18 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
 async function fetchInitialData() {
   try {
-    const [examsRes, categoriesRes, subcategoriesRes] = await Promise.all([
-      fetch(`${API_BASE}/exams?exam_type=short_quiz&page=1&limit=12`, {
-        cache: 'no-store',
-      }),
-      fetch(`${API_BASE}/taxonomy/categories`, {
-        cache: 'no-store',
-      }),
-      fetch(`${API_BASE}/taxonomy/subcategories`, {
-        cache: 'no-store',
-      }),
+    const [examsRes, categoriesRes, subcategoriesRes, difficultiesRes] = await Promise.all([
+      fetch(`${API_BASE}/exams?exam_type=short_quiz&page=1&limit=12`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/taxonomy/categories`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/taxonomy/subcategories`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/taxonomy/difficulties`, { cache: 'no-store' }),
     ]);
 
-    const [examsData, categoriesData, subcategoriesData] = await Promise.all([
+    const [examsData, categoriesData, subcategoriesData, difficultiesData] = await Promise.all([
       examsRes.ok ? examsRes.json() : { data: [], pagination: { total: 0, totalPages: 0 } },
       categoriesRes.ok ? categoriesRes.json() : { data: [] },
       subcategoriesRes.ok ? subcategoriesRes.json() : { data: [] },
+      difficultiesRes.ok ? difficultiesRes.json() : undefined,
     ]);
 
     const rawExams: Exam[] = Array.isArray(examsData?.data) ? examsData.data : [];
@@ -74,10 +69,16 @@ async function fetchInitialData() {
       Array.isArray(subcategoriesData?.data) ? subcategoriesData.data : []
     ).filter((s: Subcategory) => s.name);
 
+    // undefined if fetch failed → client will fetch its own difficulties
+    const difficulties = difficultiesData === undefined
+      ? undefined
+      : (Array.isArray(difficultiesData?.data) ? difficultiesData.data : (Array.isArray(difficultiesData) ? difficultiesData : []));
+
     return {
       exams,
       categories,
       subcategories,
+      difficulties,
       total: examsData?.pagination?.total ?? 0,
       totalPages: examsData?.pagination?.totalPages ?? 1,
     };
@@ -87,7 +88,7 @@ async function fetchInitialData() {
 }
 
 export default async function QuizzesPage() {
-  const initialData = await fetchInitialData();
+  const { difficulties, ...initialData } = await fetchInitialData();
 
   // Generate JSON-LD structured data
   const jsonLd = {
@@ -121,13 +122,7 @@ export default async function QuizzesPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ServerQuizzes
-        exams={initialData.exams}
-        categories={initialData.categories}
-        subcategories={initialData.subcategories}
-        total={initialData.total}
-      />
-      <QuizzesClient initialData={initialData} />
+      <QuizzesClient initialData={initialData} initialDifficulties={difficulties} />
       <QuizzesFAQ />
     </>
   );

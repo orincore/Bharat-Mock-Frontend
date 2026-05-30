@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from '@/components/common/Image';
 import { getExamUrl } from '@/lib/utils/examUrl';
 import { 
   ArrowRight, ArrowUpRight, Award, BookOpen, CheckCircle, Sparkles, Users, 
@@ -37,7 +37,9 @@ function GetStartedButton() {
   // Server: always /mock-test-series (stable across SSR and hydration).
   // Client + authenticated: /mock-test-series.
   // Client + guest: /register.
-  const href = !mounted || isAuthenticated ? '/mock-test-series' : '/register';
+  const href = !mounted || isAuthenticated
+    ? '/mock-test-series'
+    : `/register?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
   return (
     <Link href={href}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,15 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextParam = searchParams?.get('next') || '/';
   const { login, isAuthenticated, isLoading: authLoading, isDeleted, user } = useAuth();
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && !isDeleted && !user?.is_blocked) {
-      router.replace('/');
+      router.replace(nextParam);
     }
-  }, [isAuthenticated, authLoading, isDeleted, user, router]);
+  }, [isAuthenticated, authLoading, isDeleted, user, router, nextParam]);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -44,7 +46,7 @@ export default function LoginPage() {
       await login(formData.email, formData.password);
       // Gates (blocked/deleted) handle rendering — only push if truly authenticated
       if (!isDeleted && !user?.is_blocked) {
-        router.push('/');
+        router.push(nextParam);
       }
     } catch (err: any) {
       setError(err.message || 'Invalid email or password. Please try again.');
@@ -197,7 +199,7 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-4">
-                <Link href="/register">
+                <Link href={`/register?next=${encodeURIComponent(nextParam)}`}>
                   <Button variant="outline" className="w-full" size="lg">
                     Create Account
                   </Button>

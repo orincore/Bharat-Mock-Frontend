@@ -249,29 +249,37 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     striped = false,
     headerBgColor = '#2563eb',
     headerTextColor = '#ffffff',
-    borderColor = '#d1d5db',
+    borderColor = '#e5e7eb',
     cellLinks = {},
     cellColors = {},
     headerColors = {}
   } = content;
 
-  const borderStyle = { borderColor };
+  if (!rows.length && !headers.length) return null;
 
   return (
-    <div className="overflow-x-auto mb-4">
-      <table className="w-full min-w-[1000px] border-collapse" style={{ border: `1px solid ${borderColor}` }}>
+    <div className="overflow-x-auto mb-5 rounded-xl border shadow-sm" style={{ borderColor }}>
+      <table className="w-full border-collapse text-sm">
+
         {hasHeader && headers.length > 0 && (
           <thead>
             <tr>
               {headers.map((header: string, index: number) => {
                 const hColor = (headerColors as Record<string, { bg?: string; text?: string }>)[String(index)] || {};
-                const thStyle = {
-                  ...borderStyle,
-                  backgroundColor: hColor.bg || headerBgColor,
-                  color: hColor.text || headerTextColor,
-                };
+                const bg = hColor.bg || headerBgColor;
+                const fg = hColor.text || headerTextColor;
+                const isLastCol = index === headers.length - 1;
                 return (
-                  <th key={index} className="px-4 py-3 text-left font-semibold whitespace-nowrap text-base" style={thStyle}>
+                  <th
+                    key={index}
+                    className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide select-none"
+                    style={{
+                      backgroundColor: bg,
+                      color: fg,
+                      borderBottom: `2px solid ${borderColor}`,
+                      ...(!isLastCol ? { borderRight: `1px solid ${borderColor}` } : {}),
+                    }}
+                  >
                     <span dangerouslySetInnerHTML={{ __html: header }} />
                   </th>
                 );
@@ -279,40 +287,54 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
             </tr>
           </thead>
         )}
-        <tbody>
-          {rows.map((row: string[], rowIndex: number) => (
-            <tr key={rowIndex} className={striped && rowIndex % 2 === 1 ? 'bg-muted/50' : 'bg-background'}>
-              {row.map((cell: string, cellIndex: number) => {
-                const cellKey = `${rowIndex}-${cellIndex}`;
-                const cellLinkData = cellLinks[cellKey];
-                const cellLink = typeof cellLinkData === 'object' ? cellLinkData.url : cellLinkData;
-                const cellLinkTarget = typeof cellLinkData === 'object' ? cellLinkData.target : '_blank';
-                const cellColor = cellColors[cellKey] || { bg: '', text: '' };
-                const cellStyle = {
-                  ...borderStyle,
-                  ...(cellColor.bg && { backgroundColor: cellColor.bg }),
-                  ...(cellColor.text && { color: cellColor.text })
-                };
 
-                return (
-                  <td key={cellIndex} className="px-4 py-3 text-foreground text-base whitespace-nowrap" style={cellStyle}>
-                    {cellLink ? (
-                      <a
-                        href={cellLink}
-                        className="text-primary hover:underline"
-                        target={cellLinkTarget}
-                        rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
-                        dangerouslySetInnerHTML={{ __html: cell }}
-                      />
-                    ) : (
-                      <span dangerouslySetInnerHTML={{ __html: cell }} />
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+        <tbody>
+          {rows.map((row: string[], rowIndex: number) => {
+            const isEvenStripe = striped && rowIndex % 2 === 1;
+            const isLast = rowIndex === rows.length - 1;
+            return (
+              <tr
+                key={rowIndex}
+                className="transition-colors duration-100 hover:bg-blue-50/40"
+                style={{ backgroundColor: isEvenStripe ? '#f9fafb' : 'transparent' }}
+              >
+                {row.map((cell: string, cellIndex: number) => {
+                  const cellKey = `${rowIndex}-${cellIndex}`;
+                  const cellLinkData = cellLinks[cellKey];
+                  const cellLink = typeof cellLinkData === 'object' ? cellLinkData.url : cellLinkData;
+                  const cellLinkTarget = typeof cellLinkData === 'object' ? cellLinkData.target : '_blank';
+                  const cellColor = (cellColors[cellKey] || {}) as { bg?: string; text?: string };
+                  const isLastCol = cellIndex === row.length - 1;
+                  return (
+                    <td
+                      key={cellIndex}
+                      className="px-4 py-2.5 align-top leading-relaxed text-gray-700"
+                      style={{
+                        ...(cellColor.bg ? { backgroundColor: cellColor.bg } : {}),
+                        ...(cellColor.text ? { color: cellColor.text } : {}),
+                        ...(!isLast ? { borderBottom: `1px solid ${borderColor}` } : {}),
+                        ...(!isLastCol ? { borderRight: `1px solid ${borderColor}` } : {}),
+                      }}
+                    >
+                      {cellLink ? (
+                        <a
+                          href={cellLink}
+                          className="text-blue-600 hover:text-blue-800 underline underline-offset-2 decoration-blue-300 hover:decoration-blue-600 font-medium transition-colors"
+                          target={cellLinkTarget}
+                          rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
+                          dangerouslySetInnerHTML={{ __html: cell }}
+                        />
+                      ) : (
+                        <span className="rich-text-content" dangerouslySetInnerHTML={{ __html: cell }} />
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
+
       </table>
     </div>
   );

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from '@/components/common/Image';
 import { Mail, Phone } from 'lucide-react';
 import {
   FaFacebook,

@@ -780,11 +780,11 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
               {!authLoading && !isAuthenticated && (
                 <p className="text-sm text-gray-600 text-center">
                   You need to be logged in to subscribe.{' '}
-                  <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium underline">
+                  <Link href={`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`} className="text-blue-600 hover:text-blue-700 font-medium underline">
                     Sign in
                   </Link>
                   {' '}or{' '}
-                  <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium underline">
+                  <Link href={`/register?next=${encodeURIComponent(window.location.pathname + window.location.search)}`} className="text-blue-600 hover:text-blue-700 font-medium underline">
                     create an account
                   </Link>
                 </p>

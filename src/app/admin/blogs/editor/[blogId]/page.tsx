@@ -8,21 +8,17 @@ import {
   Loader2,
   Save,
   Upload,
-  ChevronLeft,
-  Blocks,
   Search,
   X,
-  User
+  User,
+  Eye,
+  Image as ImageIcon,
+  CheckCircle2,
 } from "lucide-react";
 
 import { BlockEditor, BlockEditorMediaUploadConfig } from "@/components/PageEditor/BlockEditor";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 
-import { Badge } from "@/components/ui/badge";
 import { blogAdminService, BlogPayload } from "@/lib/api/blogAdminService";
 import { BlogSection } from "@/lib/api/blogService";
 
@@ -94,6 +90,7 @@ export default function AdminBlogEditorPage() {
   const [saving, setSaving] = useState(false);
   const [sectionsSaving, setSectionsSaving] = useState(false);
   const [uploadingFeaturedImage, setUploadingFeaturedImage] = useState(false);
+  const [showSEOPanel, setShowSEOPanel] = useState(false);
   const [localBlogId, setLocalBlogId] = useState<string | undefined>(!isNew ? blogId : undefined);
   const featuredImageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -391,397 +388,323 @@ export default function AdminBlogEditorPage() {
   const statusLabel = formState.status === "published" ? "Published" : formState.status === "pending" ? "Pending Review" : "Draft";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push("/admin/blogs")}> 
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Link href="/admin" className="inline-flex items-center gap-2 text-blue-600">
-                  <ArrowLeft className="w-4 h-4" /> Dashboard
-                </Link>
-                <span>/</span>
-                <Link href="/admin/blogs" className="text-blue-600">Blogs</Link>
-                <span>/</span>
-                <span>{isNew ? "New Blog" : formState.title || "Editing"}</span>
-              </div>
-              <h1 className="mt-2 text-2xl font-bold text-gray-900">
-                {isNew ? "Create Blog" : `Edit: ${formState.title || "Untitled"}`}
-              </h1>
-              <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                <span>Current status:</span>
-                <Badge className="capitalize">{statusLabel}</Badge>
-              </div>
-            </div>
+    <div className="fixed inset-0 z-[100] bg-gray-50 flex overflow-hidden">
+
+      {/* ── MAIN EDITOR COLUMN ── */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden" style={{ marginRight: '264px' }}>
+
+        {/* Slim top bar */}
+        <div className="bg-white border-b border-gray-200 h-11 flex items-center px-4 gap-3 sticky top-0 z-10 shadow-sm">
+          <Link href="/admin/blogs" className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="w-7 h-7 rounded-md border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {formState.featured_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={formState.featured_image_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon className="w-3.5 h-3.5 text-gray-400" />
+            )}
           </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => handleSave('draft')}
-              disabled={saving || sectionsSaving}
-            >
-              Save Draft
-            </Button>
-            <Button
-              onClick={() => handleSave('published')}
-              disabled={saving || sectionsSaving}
-            >
-              {(saving || sectionsSaving) ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" /> {formState.status === 'published' ? 'Update' : 'Publish'}
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm uppercase text-gray-500 font-semibold">Blog Details</p>
-              <h2 className="text-xl font-bold text-gray-900">Metadata</h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700" htmlFor="blog-title">Title</label>
-              <Input
-                id="blog-title"
-                placeholder="Enter blog title"
-                value={formState.title}
-                onChange={(e) => handleFormChange("title", e.target.value)}
-              />
-              <p className="text-xs text-gray-500">Visible on the blog and used for SEO.</p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700" htmlFor="blog-slug">Slug (optional)</label>
-              <Input
-                id="blog-slug"
-                placeholder="auto-generated-if-empty"
-                value={formState.slug}
-                onChange={(e) => handleFormChange("slug", e.target.value)}
-              />
-              <p className="text-xs text-gray-500">Used for the URL, lowercase letters, numbers, and hyphens.</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700">Excerpt</label>
-            <Textarea rows={3} value={formState.excerpt} onChange={(e) => handleFormChange("excerpt", e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Tags</label>
-              <Input
-                placeholder="Comma separated tags"
-                value={formState.tags}
-                onChange={(e) => handleFormChange("tags", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Featured Image URL</label>
-              <Input
-                value={formState.featured_image_url}
-                onChange={(e) => handleFormChange("featured_image_url", e.target.value)}
-              />
-              <div className="mt-2 flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => featuredImageInputRef.current?.click()}
-                  disabled={uploadingFeaturedImage}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  {uploadingFeaturedImage ? "Uploading..." : "Upload Image"}
-                </Button>
-                <p className="text-xs text-gray-500">JPEG, PNG, WebP up to 150MB.</p>
-              </div>
-              <input
-                ref={featuredImageInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) void handleUploadFeaturedImage(file);
-                }}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Canonical URL</label>
-              <Input value={formState.canonical_url} onChange={(e) => handleFormChange("canonical_url", e.target.value)} />
-            </div>
-
-            {/* Author picker */}
-            <div ref={authorWrapperRef} className="relative space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Author</label>
-              {formState.author_id ? (
-                <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 bg-gray-50">
-                  <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span className="text-sm font-medium text-gray-900 flex-1 truncate">{formState.author_name || formState.author_id}</span>
-                  <button type="button" onClick={() => setFormState(prev => ({ ...prev, author_id: '', author_name: '' }))}
-                    className="text-gray-400 hover:text-gray-600 transition flex-shrink-0">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Search by name or email..."
-                    value={authorSearch}
-                    onChange={(e) => handleAuthorSearch(e.target.value)}
-                    onFocus={() => { if (authorSearch.trim() && authorResults.length > 0) setShowAuthorDropdown(true); }}
-                    className="pl-9"
-                    autoComplete="off"
-                  />
-                </div>
-              )}
-              {showAuthorDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
-                  {authorSearchLoading ? (
-                    <div className="flex items-center justify-center gap-2 py-3 text-sm text-gray-500">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Searching...
-                    </div>
-                  ) : authorResults.length === 0 ? (
-                    <div className="py-3 text-center text-sm text-gray-500">No users found</div>
-                  ) : (
-                    <ul>
-                      {authorResults.map(u => (
-                        <li key={u.id}>
-                          <button type="button" onClick={() => selectAuthor(u)}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition text-left">
-                            {u.avatar_url
-                              ? <img src={u.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                              : <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">{u.name?.[0] || '?'}</div>
-                            }
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 truncate">{u.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{u.email} · <span className="capitalize">{u.role}</span></p>
-                            </div>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-              <p className="text-xs text-gray-500">Leave empty to use the logged-in user as author.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
-              <div>
-                <p className="font-semibold text-gray-900">Publish Status</p>
-                <p className="text-sm text-gray-500">Toggle to quickly publish or revert to draft.</p>
-              </div>
-              <Switch
-                checked={formState.status === "published"}
-                onCheckedChange={(checked) => applyStatus(checked ? "published" : "draft")}
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
-              <div>
-                <p className="font-semibold text-gray-900">Featured</p>
-                <p className="text-sm text-gray-500">Highlight in hero</p>
-              </div>
-              <Switch
-                checked={formState.is_featured}
-                onCheckedChange={(checked) => handleFormChange("is_featured", checked)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-gray-200 p-4 space-y-4">
-              <div>
-                <p className="text-sm uppercase text-gray-500 font-semibold">Publishing Surface</p>
-                <h3 className="text-lg font-semibold text-gray-900">Where should this appear?</h3>
-                <p className="text-sm text-gray-500">
-                  Choose whether this stays a regular blog article or also shows up in Current Affairs notes.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={formState.isCurrentAffairsNote ? "outline" : "default"}
-                  onClick={() => handleFormChange("isCurrentAffairsNote", false)}
-                >
-                  Blog Post
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={formState.isCurrentAffairsNote ? "default" : "outline"}
-                  onClick={() => handleFormChange("isCurrentAffairsNote", true)}
-                >
-                  Current Affairs Note
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2 rounded-xl border border-gray-200 p-4">
-              {formState.isCurrentAffairsNote ? (
-                <>
-                  <label className="text-sm font-medium text-gray-700" htmlFor="current-affairs-tag">
-                    Current Affairs Tag (optional)
-                  </label>
-                  <Input
-                    id="current-affairs-tag"
-                    placeholder="e.g., Daily Digest, Budget 2026"
-                    value={formState.currentAffairsTag}
-                    onChange={(e) => handleFormChange("currentAffairsTag", e.target.value)}
-                  />
-                  <p className="text-xs text-gray-500">
-                    This label is shown on the Current Affairs page to highlight the type of note.
-                  </p>
-                </>
-              ) : (
-                <div className="text-sm text-gray-500">
-                  Enable “Current Affairs Note” to select a tag and surface this article in the notes list.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <Blocks className="w-5 h-5 text-blue-600" />
-            <div>
-              <p className="text-sm uppercase text-gray-500 font-semibold">SEO</p>
-              <h2 className="text-xl font-bold text-gray-900">Search Metatags</h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Meta Title</label>
-              <Input value={formState.meta_title} onChange={(e) => handleFormChange("meta_title", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Meta Description</label>
-              <Textarea rows={3} value={formState.meta_description} onChange={(e) => handleFormChange("meta_description", e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700">Meta Keywords</label>
-            <Input value={formState.meta_keywords} onChange={(e) => handleFormChange("meta_keywords", e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">OG Title</label>
-              <Input value={formState.og_title} onChange={(e) => handleFormChange("og_title", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">OG Description</label>
-              <Textarea rows={3} value={formState.og_description} onChange={(e) => handleFormChange("og_description", e.target.value)} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">OG Image URL</label>
-              <Input value={formState.og_image_url} onChange={(e) => handleFormChange("og_image_url", e.target.value)} />
-            </div>
-            <div className="border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500">bharatmock.com › blogs</p>
-              <p className="text-base font-semibold text-blue-700">
-                {formState.meta_title || formState.title || "Meta title preview"}
-              </p>
-              <p className="text-sm text-gray-600">
-                {formState.meta_description || formState.excerpt || "Meta description preview"}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Canonical URL</label>
-              <Input
-                type="url"
-                placeholder="https://bharatmock.com/blogs/..."
-                value={formState.canonical_url}
-                onChange={(e) => handleFormChange("canonical_url", e.target.value)}
-              />
-              <p className="mt-1 text-xs text-gray-500">Helps avoid duplicate-content penalties.</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Robots Meta Tag</label>
-              <select
-                value={formState.robots_meta}
-                onChange={(e) => handleFormChange("robots_meta", e.target.value)}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="index,follow">Index, Follow</option>
-                <option value="noindex,follow">No Index, Follow</option>
-                <option value="index,nofollow">Index, No Follow</option>
-                <option value="noindex,nofollow">No Index, No Follow</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700">Structured Data / Schema (JSON-LD notes)</label>
-            <Textarea
-              rows={3}
-              placeholder='e.g. {"@type": "Article", "headline": "..."} or notes for schema markup'
-              value={formState.structured_data}
-              onChange={(e) => handleFormChange("structured_data", e.target.value)}
-            />
-            <p className="mt-1 text-xs text-gray-500">Optional JSON-LD schema or notes for structured data markup.</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm uppercase text-gray-500 font-semibold">Content Builder</p>
-              <h2 className="text-xl font-semibold text-gray-900">Block Editor</h2>
-            </div>
-            <p className="text-sm text-gray-500">
-              {sectionsLoading ? "Loading sections..." : `${sections.length} sections`}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-800 truncate leading-none">
+              {formState.title || (isNew ? 'New Blog Post' : 'Untitled')}
+              {formState.slug && <span className="ml-1.5 text-xs font-normal text-gray-400">· /blogs/{formState.slug}</span>}
             </p>
           </div>
-
-          {sectionsLoading ? (
-            <div className="flex items-center justify-center py-12 text-gray-500">
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Loading content...
-            </div>
-          ) : (
-            <BlockEditor
-              sections={sections as any}
-              onSave={(updated) => {
-                void updated;
-                handleSave(formState.status);
-              }}
-
-              mediaUploadConfig={mediaUploadConfig}
-              onSectionsChange={(next) => setSections(next as BlogSection[])}
-            />
-          )}
-
-          {sectionsSaving && (
-            <p className="text-sm text-gray-500 mt-2">Saving content...</p>
-          )}
+          <span className={`text-[11px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 flex-shrink-0 ${
+            formState.status === 'published' ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' :
+            formState.status === 'pending' ? 'text-amber-700 bg-amber-50 border border-amber-200' :
+            'text-gray-500 bg-gray-100 border border-gray-200'
+          }`}>
+            {statusLabel}
+          </span>
         </div>
+
+        {/* Block Editor */}
+        {sectionsLoading ? (
+          <div className="flex items-center justify-center flex-1 text-gray-500">
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Loading content…
+          </div>
+        ) : (
+          <BlockEditor
+            sections={sections as any}
+            onSave={(updated) => { void updated; handleSave(formState.status); }}
+            mediaUploadConfig={mediaUploadConfig}
+            onSectionsChange={(next) => setSections(next as BlogSection[])}
+          />
+        )}
       </div>
+
+      {/* ── RIGHT SIDEBAR ── */}
+      <aside className="fixed right-0 top-0 bottom-0 bg-white border-l border-gray-200 flex flex-col z-[110] overflow-hidden shadow-xl" style={{ width: '264px' }}>
+
+        {/* Identity */}
+        <div className="px-4 py-3 border-b border-gray-100 flex-shrink-0">
+          <p className="text-sm font-bold text-gray-900 truncate leading-tight">{formState.title || (isNew ? 'New Blog Post' : '—')}</p>
+          <p className="text-[11px] text-gray-400 font-mono truncate mt-0.5">
+            {formState.slug ? `/blogs/${formState.slug}` : (isNew ? 'slug auto-generated' : '…')}
+          </p>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin">
+
+          {/* Save actions */}
+          <div className="px-4 py-3.5 border-b border-gray-100 space-y-2">
+            <button
+              onClick={() => handleSave('published')}
+              disabled={saving || sectionsSaving}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
+                (saving || sectionsSaving) ? 'bg-blue-400 text-white cursor-not-allowed opacity-70' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+              }`}
+            >
+              {(saving || sectionsSaving) ? <><Loader2 className="w-4 h-4 animate-spin" />Saving…</> : <><Save className="w-4 h-4" />{formState.status === 'published' ? 'Update' : 'Publish'}</>}
+            </button>
+            <button
+              onClick={() => handleSave('draft')}
+              disabled={saving || sectionsSaving}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-colors disabled:opacity-40"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />Save Draft
+            </button>
+          </div>
+
+          {/* Post Details */}
+          <div className="px-4 py-3.5 border-b border-gray-100 space-y-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Post Details</p>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Title</label>
+              <input type="text" value={formState.title} onChange={(e) => handleFormChange("title", e.target.value)} placeholder="Enter blog title" className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Slug</label>
+              <input type="text" value={formState.slug} onChange={(e) => handleFormChange("slug", e.target.value)} placeholder="auto-generated-if-empty" className="w-full px-2 py-1.5 text-xs font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Excerpt</label>
+              <textarea rows={3} value={formState.excerpt} onChange={(e) => handleFormChange("excerpt", e.target.value)} placeholder="Short description…" className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 transition-colors resize-none" />
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2">
+              <div>
+                <p className="text-xs font-semibold text-gray-900">Published</p>
+                <p className="text-[10px] text-gray-500">Make visible publicly</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => applyStatus(formState.status === 'published' ? 'draft' : 'published')}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${formState.status === 'published' ? 'bg-blue-600' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${formState.status === 'published' ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2">
+              <div>
+                <p className="text-xs font-semibold text-gray-900">Featured</p>
+                <p className="text-[10px] text-gray-500">Highlight in hero</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleFormChange("is_featured", !formState.is_featured)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${formState.is_featured ? 'bg-blue-600' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${formState.is_featured ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Content Type */}
+          <div className="px-4 py-3.5 border-b border-gray-100 space-y-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Content Type</p>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-semibold">
+              <button type="button" onClick={() => handleFormChange("isCurrentAffairsNote", false)} className={`flex-1 px-2 py-1.5 transition-colors ${!formState.isCurrentAffairsNote ? 'bg-gray-800 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>Blog Post</button>
+              <button type="button" onClick={() => handleFormChange("isCurrentAffairsNote", true)} className={`flex-1 px-2 py-1.5 transition-colors ${formState.isCurrentAffairsNote ? 'bg-gray-800 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>Current Affairs</button>
+            </div>
+            {formState.isCurrentAffairsNote && (
+              <input type="text" placeholder="e.g. Daily Digest, Budget 2026" value={formState.currentAffairsTag} onChange={(e) => handleFormChange("currentAffairsTag", e.target.value)} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-300 transition-colors" />
+            )}
+          </div>
+
+          {/* Author */}
+          <div ref={authorWrapperRef} className="px-4 py-3.5 border-b border-gray-100 space-y-2 relative">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Author</p>
+            {formState.author_id ? (
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-2.5 py-2 bg-gray-50">
+                <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span className="text-xs font-medium text-gray-900 flex-1 truncate">{formState.author_name || formState.author_id}</span>
+                <button type="button" onClick={() => setFormState(prev => ({ ...prev, author_id: '', author_name: '' }))} className="text-gray-400 hover:text-gray-600 flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input placeholder="Search by name or email…" value={authorSearch} onChange={(e) => handleAuthorSearch(e.target.value)} onFocus={() => { if (authorSearch.trim() && authorResults.length > 0) setShowAuthorDropdown(true); }} className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-300 transition-colors" autoComplete="off" />
+              </div>
+            )}
+            {showAuthorDropdown && (
+              <div className="absolute left-4 right-4 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden hide-scrollbar max-h-48 overflow-y-auto">
+                {authorSearchLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-3 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" />Searching…</div>
+                ) : authorResults.length === 0 ? (
+                  <div className="py-3 text-center text-xs text-gray-500">No users found</div>
+                ) : (
+                  <ul>{authorResults.map(u => (
+                    <li key={u.id}>
+                      <button type="button" onClick={() => selectAuthor(u)} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition text-left">
+                        {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" /> : <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0">{u.name?.[0] || '?'}</div>}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-900 truncate">{u.name}</p>
+                          <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
+                        </div>
+                      </button>
+                    </li>
+                  ))}</ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Media & Tags */}
+          <div className="px-4 py-3.5 border-b border-gray-100 space-y-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Media &amp; Tags</p>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Tags</label>
+              <input type="text" placeholder="Comma separated tags" value={formState.tags} onChange={(e) => handleFormChange("tags", e.target.value)} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-300 transition-colors" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Featured Image</label>
+              {formState.featured_image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={formState.featured_image_url} alt="" className="w-full h-24 object-cover rounded-lg border border-gray-200 mb-1.5" />
+              )}
+              <input type="text" value={formState.featured_image_url} onChange={(e) => handleFormChange("featured_image_url", e.target.value)} placeholder="Paste image URL" className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-300 transition-colors" />
+              <button type="button" onClick={() => featuredImageInputRef.current?.click()} disabled={uploadingFeaturedImage} className="mt-1 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-colors disabled:opacity-40">
+                <Upload className="w-3.5 h-3.5" />{uploadingFeaturedImage ? 'Uploading…' : 'Upload Image'}
+              </button>
+              <input ref={featuredImageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleUploadFeaturedImage(file); }} />
+            </div>
+          </div>
+
+          {/* Tools */}
+          <div className="px-4 py-3.5 border-b border-gray-100">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Tools</p>
+            <div className="space-y-0.5">
+              <button onClick={() => setShowSEOPanel(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 border border-transparent hover:border-gray-100 hover:bg-blue-50 transition-all duration-100">
+                <Search className="w-4 h-4 text-blue-500 flex-shrink-0" />SEO Settings
+              </button>
+              {formState.slug && (
+                <a href={`/blogs/${formState.slug}`} target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 border border-transparent hover:border-gray-100 hover:bg-gray-50 transition-all duration-100">
+                  <Eye className="w-4 h-4 text-gray-500 flex-shrink-0" />Preview Post
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Page Info */}
+          <div className="px-4 py-3.5">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Post Info</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">Sections</span>
+                <span className="font-medium text-gray-700">{sections.length}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">Status</span>
+                <span className={`font-semibold capitalize ${formState.status === 'published' ? 'text-emerald-600' : 'text-gray-500'}`}>{statusLabel}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0 bg-gray-50/70">
+          <Link href="/admin/blogs" className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />Back to Blogs
+          </Link>
+        </div>
+      </aside>
+
+      {/* SEO Settings Modal */}
+      {showSEOPanel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowSEOPanel(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100 hide-scrollbar">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">SEO Settings</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Optimize metadata for Google Search and social platforms.</p>
+              </div>
+              <button onClick={() => setShowSEOPanel(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Meta Title</label>
+                  <input type="text" value={formState.meta_title} onChange={(e) => handleFormChange("meta_title", e.target.value)} placeholder="Enter a compelling meta title" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Meta Keywords</label>
+                  <input type="text" value={formState.meta_keywords} onChange={(e) => handleFormChange("meta_keywords", e.target.value)} placeholder="keyword1, keyword2" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Meta Description</label>
+                <textarea rows={3} value={formState.meta_description} onChange={(e) => handleFormChange("meta_description", e.target.value)} placeholder="Explain the page content" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none" />
+              </div>
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/60">
+                <p className="text-[10px] uppercase font-semibold text-gray-500 mb-2">Search Preview</p>
+                <p className="text-xs text-gray-500">bharatmock.com › blogs</p>
+                <p className="text-sm font-semibold text-blue-700 leading-tight">{formState.meta_title || formState.title || 'Meta title preview'}</p>
+                <p className="text-xs text-gray-600 mt-0.5">{formState.meta_description || formState.excerpt || 'Meta description preview'}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">OG Title</label>
+                  <input type="text" value={formState.og_title} onChange={(e) => handleFormChange("og_title", e.target.value)} placeholder="Title for social sharing" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">OG Image URL</label>
+                  <input type="url" value={formState.og_image_url} onChange={(e) => handleFormChange("og_image_url", e.target.value)} placeholder="https://…/og-image.jpg" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">OG Description</label>
+                <textarea rows={2} value={formState.og_description} onChange={(e) => handleFormChange("og_description", e.target.value)} placeholder="Short description for social sharing" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Canonical URL</label>
+                  <input type="url" value={formState.canonical_url} onChange={(e) => handleFormChange("canonical_url", e.target.value)} placeholder="https://bharatmock.com/blogs/…" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Robots Meta</label>
+                  <select value={formState.robots_meta} onChange={(e) => handleFormChange("robots_meta", e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white">
+                    <option value="index,follow">Index, Follow</option>
+                    <option value="noindex,follow">No Index, Follow</option>
+                    <option value="index,nofollow">Index, No Follow</option>
+                    <option value="noindex,nofollow">No Index, No Follow</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Structured Data / JSON-LD notes</label>
+                <textarea rows={2} value={formState.structured_data} onChange={(e) => handleFormChange("structured_data", e.target.value)} placeholder='{"@type": "Article", "headline": "…"}' className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 sticky bottom-0 bg-white rounded-b-2xl">
+              <button onClick={() => setShowSEOPanel(false)} className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Close</button>
+              <button onClick={() => { handleSave(formState.status); setShowSEOPanel(false); }} className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
