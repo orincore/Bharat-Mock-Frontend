@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, Phone, Eye, EyeOff, UserPlus, ShieldCheck, RefreshCw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,8 +35,16 @@ const COUNTRY_CODES = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const nextParam = searchParams?.get('next') || '/';
+  const [nextParam, setNextParam] = useState<string>('/');
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      setNextParam(params.get('next') || '/');
+    } catch {
+      setNextParam('/');
+    }
+  }, []);
   const { register, isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {

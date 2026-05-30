@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,15 +10,16 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const nextParam = searchParams?.get('next') || '/';
+  const [nextHref, setNextHref] = useState('/register');
   const { login, isAuthenticated, isLoading: authLoading, isDeleted, user } = useAuth();
 
   useEffect(() => {
+    const nextParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') || '/' : '/';
+    setNextHref(`/register?next=${encodeURIComponent(nextParam)}`);
     if (!authLoading && isAuthenticated && !isDeleted && !user?.is_blocked) {
       router.replace(nextParam);
     }
-  }, [isAuthenticated, authLoading, isDeleted, user, router, nextParam]);
+  }, [isAuthenticated, authLoading, isDeleted, user, router]);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -46,6 +47,7 @@ export default function LoginPage() {
       await login(formData.email, formData.password);
       // Gates (blocked/deleted) handle rendering — only push if truly authenticated
       if (!isDeleted && !user?.is_blocked) {
+        const nextParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') || '/' : '/';
         router.push(nextParam);
       }
     } catch (err: any) {
@@ -199,7 +201,7 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-4">
-                <Link href={`/register?next=${encodeURIComponent(nextParam)}`}>
+                <Link href={nextHref}>
                   <Button variant="outline" className="w-full" size="lg">
                     Create Account
                   </Button>

@@ -16,8 +16,8 @@ async function fetchHomepageData(): Promise<HomepageData | null> {
 
   try {
     const response = await fetch(`${API_BASE_URL}/homepage/data`, {
-      cache: 'no-store',
-      next: { revalidate: 0 },
+      // Use ISR to allow static rendering and periodic updates
+      next: { revalidate: 3600 },
       signal: controller.signal
     });
     clearTimeout(id);
@@ -39,7 +39,7 @@ async function fetchMostAttemptedExams(): Promise<any[]> {
   try {
     const response = await fetch(
       `${API_BASE_URL}/exams?limit=8&sortBy=attempts&sortOrder=desc&exam_type=mock_test`,
-      { cache: 'no-store', signal: AbortSignal.timeout(5000) }
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(5000) }
     );
     if (!response.ok) return [];
     const payload = await response.json();
