@@ -259,7 +259,9 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
 
   return (
     <div className="overflow-x-auto mb-5 rounded-xl border shadow-sm" style={{ borderColor }}>
-      <table className="w-full border-collapse text-sm">
+      {/* min-w-full (not w-full) lets the table grow past a narrow viewport so the
+          wrapper scrolls horizontally instead of crushing columns on mobile */}
+      <table className="min-w-full border-collapse text-sm">
 
         {hasHeader && headers.length > 0 && (
           <thead>
@@ -272,7 +274,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                 return (
                   <th
                     key={index}
-                    className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide select-none"
+                    className="min-w-[7rem] px-4 py-2.5 text-left text-xs font-semibold tracking-wide select-none"
                     style={{
                       backgroundColor: bg,
                       color: fg,
@@ -308,7 +310,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                   return (
                     <td
                       key={cellIndex}
-                      className="px-4 py-2.5 align-top leading-relaxed text-gray-700"
+                      className="min-w-[7rem] px-4 py-2.5 align-top leading-relaxed text-gray-700"
                       style={{
                         ...(cellColor.bg ? { backgroundColor: cellColor.bg } : {}),
                         ...(cellColor.text ? { color: cellColor.text } : {}),

@@ -222,10 +222,11 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
             </div>
           </main>
 
-          {/* Sidebar */}
-          <aside className="hidden lg:block space-y-4">
+          {/* Sidebar — stacks below the article on mobile, beside it on desktop */}
+          <aside className="space-y-4">
+            {/* TOC is desktop-only here; mobile has the floating Contents drawer below */}
             {tocItems.length > 0 && (
-              <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="hidden lg:block bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30 flex items-center gap-2">
                   <List className="h-4 w-4 text-primary" />
                   <h3 className="font-bold text-sm uppercase tracking-wide text-foreground">Table of Contents</h3>
