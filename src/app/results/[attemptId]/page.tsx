@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useWithLocale } from '@/lib/locale';
 import {
   Award, Clock, CheckCircle2, XCircle, AlertCircle,
   TrendingUp, Target, BarChart3, ArrowLeft, Trophy, Users, ClipboardList, RotateCcw
@@ -107,6 +108,7 @@ interface ReviewQuestion {
 export default function ResultPage() {
   const params = useParams();
   const router = useRouter();
+  const withLocale = useWithLocale();
   const attemptId = params?.attemptId as string;
 
   const [result, setResult] = useState<ResultData | null>(null);
@@ -264,7 +266,12 @@ export default function ResultPage() {
     setIsReattempting(true);
     try {
       const nextAttempt = await examService.startExam(result.exam_id, (result.language === 'hi' ? 'hi' : 'en'));
-      router.push(`/exams/${result.exam_id}/attempt/${nextAttempt.attemptId}?lang=${nextAttempt.language || result.language || 'en'}`);
+      // Full page load (not router.push) + clear googtrans so the site-wide Google
+      // Translate widget's observer is torn down — the exam attempt must render its
+      // original content and use only our API-based translation.
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
+      window.location.assign(`/exams/${result.exam_id}/attempt/${nextAttempt.attemptId}?lang=${nextAttempt.language || result.language || 'en'}`);
     } catch (err: any) {
       setError(err.message || 'Failed to start a new attempt');
     } finally {
@@ -414,7 +421,7 @@ export default function ResultPage() {
       <div className="container-main max-w-6xl space-y-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <Link href="/mock-test-series">
+            <Link href={withLocale('/mock-test-series')}>
               <Button variant="ghost" size="sm" className="-ml-3 mb-2">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Exams
@@ -438,7 +445,7 @@ export default function ResultPage() {
                 try {
                   const destination = examDetailUrl || (await buildExamDetailUrl(result.exam_id, result.exam)) || `/exams/${result.exam_id}`;
                   setExamDetailUrl(destination);
-                  router.push(destination);
+                  router.push(withLocale(destination));
                 } finally {
                   setExamUrlLoading(false);
                 }
@@ -840,7 +847,7 @@ export default function ResultPage() {
         </div>
 
         <div className="flex gap-4 mt-6">
-          <Button onClick={() => router.push('/mock-test-series')} className="flex-1">
+          <Button onClick={() => router.push(withLocale('/mock-test-series'))} className="flex-1">
             Browse More Exams
           </Button>
           <Button

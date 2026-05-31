@@ -218,8 +218,13 @@ const ParagraphBlock: React.FC<{ content: any; settings?: any }> = ({ content })
 
   if (isDraftContent(processedText)) return null;
 
+  // Rendered as a <div>, NOT <p>: the CMS rich-text content can contain block-level
+  // tags (<div>, nested <p>, lists, tables). A <p> cannot legally contain those, so
+  // the browser re-parents them on parse — the resulting DOM no longer matches the
+  // server HTML and React throws a hydration error (#418). A <div> accepts any flow
+  // content, so server and client DOM stay identical. Styling/SEO are unaffected.
   return (
-    <p
+    <div
       className={`text-${alignment} mb-3 text-foreground font-normal leading-relaxed rich-text-content`}
       style={{ fontSize }}
       dangerouslySetInnerHTML={{ __html: processedText }}

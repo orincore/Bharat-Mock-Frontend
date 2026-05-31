@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useWithLocale } from "@/lib/locale";
 import { ArrowLeft, Award, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingPage } from "@/components/common/LoadingStates";
@@ -93,6 +94,7 @@ interface ReviewQuestion {
 export default function ReviewPage() {
   const params = useParams();
   const router = useRouter();
+  const withLocale = useWithLocale();
   const attemptId = params?.attemptId as string;
 
   const [result, setResult] = useState<ResultSummary | null>(null);
@@ -234,7 +236,7 @@ export default function ReviewPage() {
         <div className="max-w-md text-center">
           <p className="text-lg font-semibold mb-2">Review unavailable</p>
           <p className="text-muted-foreground mb-6">{error || "Exam not found"}</p>
-          <Button onClick={() => router.push(`/results/${attemptId}`)}>Back to result</Button>
+          <Button onClick={() => router.push(withLocale(`/results/${attemptId}`))}>Back to result</Button>
         </div>
       </div>
     );
@@ -246,7 +248,7 @@ export default function ReviewPage() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div>
-              <Link href={`/results/${attemptId}`} className="text-sm text-muted-foreground flex items-center gap-2">
+              <Link href={withLocale(`/results/${attemptId}`)} className="text-sm text-muted-foreground flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" /> Back to summary
               </Link>
               <h1 className="font-display text-3xl font-bold text-foreground mt-2">
@@ -383,7 +385,7 @@ export default function ReviewPage() {
         </div>
 
         <div className="flex gap-4">
-          <Button onClick={() => router.push(`/results/${attemptId}`)} className="flex-1">
+          <Button onClick={() => router.push(withLocale(`/results/${attemptId}`))} className="flex-1">
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to Result Summary
           </Button>
           <Button variant="outline" onClick={() => router.push(`/exams/${result.exam_id}`)} className="flex-1">

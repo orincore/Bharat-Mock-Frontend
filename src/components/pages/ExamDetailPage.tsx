@@ -142,6 +142,19 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
     setLanguageSelected(Boolean(lang));
   };
 
+  // Navigate to the exam attempt via a FULL page load (not router.push).
+  // The site-wide Google Translate widget installs a MutationObserver that keeps
+  // re-translating content across SPA navigation; a hard load tears it down so the
+  // exam renders its original text and relies solely on our API-based translation.
+  // We also clear the googtrans cookie so the fresh load starts untranslated.
+  const goToAttempt = (url: string) => {
+    if (typeof document !== 'undefined') {
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
+    }
+    window.location.assign(url);
+  };
+
   const handleStartExam = async () => {
     if (!isAuthenticated) {
       router.push('/login');
@@ -156,7 +169,7 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
 
       const attempt = await examService.startExam(targetExamId, selectedLanguage || 'en');
       const langParam = selectedLanguage || 'en';
-      router.push(`/exams/${targetExamId}/attempt/${attempt.attemptId}?lang=${langParam}`);
+      goToAttempt(`/exams/${targetExamId}/attempt/${attempt.attemptId}?lang=${langParam}`);
     } catch (err: any) {
       setError(err.message || 'Failed to start exam');
     }
@@ -165,7 +178,7 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
   const handleResumeExam = (attempt: ExamHistoryEntry) => {
     if (!exam) return;
     const langParam = attempt.language || selectedLanguage || 'en';
-    router.push(`/exams/${exam.id}/attempt/${attempt.attemptId}?lang=${langParam}`);
+    goToAttempt(`/exams/${exam.id}/attempt/${attempt.attemptId}?lang=${langParam}`);
   };
 
   if (isLoading) {

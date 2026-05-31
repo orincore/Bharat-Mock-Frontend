@@ -85,8 +85,27 @@ export function GoogleTranslate() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Exam attempt page uses direct API translation — widget must not interfere
-    if (WIDGET_EXCLUDED.some((seg) => pathname.includes(seg))) return;
+    // Exam attempt page uses direct API translation — the global widget must not
+    // translate it. A bare `return` isn't enough: when the user navigates here from a
+    // Hindi page (client-side), the widget instance is already translating and keeps
+    // going. So actively force it back to English — clear the cookie AND reset the
+    // selector (the widget won't revert from a cookie change alone once translated).
+    if (WIDGET_EXCLUDED.some((seg) => pathname.includes(seg))) {
+      document.cookie = "googtrans=;path=/;expires=Thu, 01 Jan 1970 00:00:00 UTC";
+      document.cookie = `googtrans=;path=/;domain=${window.location.hostname};expires=Thu, 01 Jan 1970 00:00:00 UTC`;
+      const revertToEnglish = (tries = 0) => {
+        const select = document.querySelector(".goog-te-combo") as HTMLSelectElement | null;
+        if (select && select.value && select.value !== "en") {
+          select.value = "en";
+          select.dispatchEvent(new Event("change"));
+        } else if (tries < 25 && document.body.className.includes("translated")) {
+          // Widget/translation still settling — keep trying until the page is restored.
+          setTimeout(() => revertToEnglish(tries + 1), 200);
+        }
+      };
+      revertToEnglish();
+      return;
+    }
 
     const lang = getLang(pathname);
 

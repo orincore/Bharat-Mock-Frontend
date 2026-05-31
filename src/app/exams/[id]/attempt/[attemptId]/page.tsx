@@ -223,16 +223,10 @@ function ExamAttemptContent() {
   const [isTranslating, setIsTranslating] = useState(false);
   const autoTranslateTriggered = useRef(false);
 
-  // Sync dropdown with global language selection (NEXT_LOCALE cookie set by LanguageSelector)
-  useEffect(() => {
-    if (googleTranslateLang) return; // already set via URL param
-    const match = document.cookie.match(/NEXT_LOCALE=([a-z]{2})/);
-    const cookieLang = match ? match[1] : 'en';
-    if (cookieLang && cookieLang !== 'en') {
-      setGoogleTranslateLang(cookieLang);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // The exam attempt always starts in English regardless of the site-wide language
+  // (NEXT_LOCALE cookie). We intentionally do NOT carry the global Hindi preference
+  // into the exam — the learner can switch via the in-exam dropdown, and that choice
+  // is preserved through the `trans`/`hi` URL params (autoTranslateLang above).
 
   const requestedLanguage = searchParams?.get('lang') || 'en';
   const hasLangInUrl = searchParams?.has('lang');
@@ -287,36 +281,41 @@ function ExamAttemptContent() {
       .goog-te-banner-frame, iframe.goog-te-banner-frame { display: none !important; }
       .skiptranslate.goog-te-banner-frame { display: none !important; }
       .goog-text-highlight { background: none !important; box-shadow: none !important; }
+      /* Hide ALL Google Translate UI chrome — the floating gadget/icon and the
+         hover tooltip/balloon that offers to "translate again". We drive translation
+         ourselves; the widget's own UI must never appear. */
+      .goog-te-gadget, .goog-te-gadget-icon, .goog-te-gadget-simple,
+      .goog-te-menu-value, .goog-logo-link, .goog-te-balloon-frame,
+      #goog-gt-tt, .goog-tooltip, .goog-tooltip:hover, .goog-te-spinner-pos {
+        display: none !important;
+      }
+      /* Google Translate inserts a font-size shift on <body>; keep it neutral. */
+      body { font-size: inherit !important; }
     `;
     document.head.appendChild(style);
     return () => { document.getElementById(styleId)?.remove(); };
   }, []);
 
-  // Load GT widget once on mount
+  // This page does NOT use the Google Translate browser widget — exam content is
+  // translated via our own API method (toggleGoogleTranslate → txCache). We only make
+  // sure the GLOBAL widget isn't translating this page: clear the googtrans cookie and,
+  // if we arrived from an already-translated (Hindi) page via SPA navigation, force the
+  // widget's selector back to English so the exam shows its original English content.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
-    // Set cookie from URL params (?hi or ?trans) so GT auto-translates on load
-    if (autoTranslateLang && autoTranslateLang !== 'en') {
-      document.cookie = `googtrans=/en/${autoTranslateLang}; path=/`;
-    }
-    
-    (window as any).googleTranslateElementInit = () => {
-      new (window as any).google.translate.TranslateElement(
-        { pageLanguage: 'en', autoDisplay: true },
-        'google_translate_element'
-      );
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
+    const revertToEnglish = (tries = 0) => {
+      const combo = document.querySelector('.goog-te-combo') as HTMLSelectElement | null;
+      if (combo && combo.value && combo.value !== 'en') {
+        combo.value = 'en';
+        combo.dispatchEvent(new Event('change'));
+      } else if (tries < 25 && document.body.className.includes('translated')) {
+        setTimeout(() => revertToEnglish(tries + 1), 200);
+      }
     };
-    if (!document.getElementById('gt-script')) {
-      const s = document.createElement('script');
-      s.id = 'gt-script';
-      s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-      s.async = true;
-      document.body.appendChild(s);
-    } else if ((window as any).google?.translate?.TranslateElement) {
-      (window as any).googleTranslateElementInit();
-    }
-  }, [autoTranslateLang]);
+    revertToEnglish();
+  }, []);
 
   const googleLangs = [
     { code: 'en', label: 'English' },
@@ -577,10 +576,31 @@ function ExamAttemptContent() {
         setSections(sectionsData);
         setQuestions(allQuestions);
 
-        // Cache data for fast reload (translations)
+        // Cache data for fast reload — BEST EFFORT ONLY. Large exams (100+ questions
+        // with explanations) can exceed the sessionStorage quota; a failed cache write
+        // must never break exam loading (the exam is already rendered from the network
+        // data set above). On quota errors, drop stale caches from other attempts and
+        // retry once, then silently skip.
         if (typeof window !== 'undefined') {
-          sessionStorage.setItem(`exam_${examId}`, JSON.stringify(examData));
-          sessionStorage.setItem(`sections_${attemptId}`, JSON.stringify(sectionsData));
+          const cacheWrite = (key: string, value: string) => {
+            try {
+              sessionStorage.setItem(key, value);
+            } catch {
+              try {
+                for (let i = sessionStorage.length - 1; i >= 0; i--) {
+                  const k = sessionStorage.key(i);
+                  if (k && k !== key && (k.startsWith('exam_') || k.startsWith('sections_'))) {
+                    sessionStorage.removeItem(k);
+                  }
+                }
+                sessionStorage.setItem(key, value);
+              } catch {
+                /* still too large — skip caching */
+              }
+            }
+          };
+          cacheWrite(`exam_${examId}`, JSON.stringify(examData));
+          cacheWrite(`sections_${attemptId}`, JSON.stringify(sectionsData));
         }
 
         // Correct initialization of answer state for the start question from nested sections
@@ -855,13 +875,16 @@ function ExamAttemptContent() {
       // Force kill translator and hard-redirect
       document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
-      window.location.href = `/results/${attemptId}`;
+      // If the learner took the exam in Hindi (native Hindi content or live translation),
+      // show the Hindi-locale results page; otherwise the normal one.
+      const completedInHindi = selectedLanguage === 'hi' || googleTranslateLang === 'hi';
+      window.location.href = `${completedInHindi ? '/hi' : ''}/results/${attemptId}`;
     } catch (error: any) {
       setError('Failed to auto-submit exam');
       setIsSubmitting(false);
       setShowSubmissionModal(false);
     }
-  }, [attemptId, isSubmitting, markedForReview, router, saveAnswer, selectedAnswer]);
+  }, [attemptId, isSubmitting, markedForReview, router, saveAnswer, selectedAnswer, selectedLanguage, googleTranslateLang]);
 
   const handleSubmitExam = useCallback(async () => {
     if (isSubmitting) return;
@@ -875,13 +898,16 @@ function ExamAttemptContent() {
       // Force kill translator and hard-redirect
       document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
-      window.location.href = `/results/${attemptId}`;
+      // If the learner took the exam in Hindi (native Hindi content or live translation),
+      // show the Hindi-locale results page; otherwise the normal one.
+      const completedInHindi = selectedLanguage === 'hi' || googleTranslateLang === 'hi';
+      window.location.href = `${completedInHindi ? '/hi' : ''}/results/${attemptId}`;
     } catch (error: any) {
       setError(error.message || 'Failed to submit exam');
       setIsSubmitting(false);
       setShowSubmissionModal(false);
     }
-  }, [attemptId, isSubmitting, router]);
+  }, [attemptId, isSubmitting, router, selectedLanguage, googleTranslateLang]);
 
   const handlePauseExam = async () => {
     try {
@@ -1474,7 +1500,15 @@ function ExamAttemptContent() {
     try {
       // ── Layer 1: DB / Redis via backend ───────────────────────────────────
       const dbData = await fetchExamTranslations(examId, newLang);
-      if (dbData?.questions?.length) {
+      // Guard against polluted cache: older builds saved the English originals as
+      // "translations" when the API failed silently. For Hindi, require the cached
+      // text to actually contain Devanagari; otherwise treat it as a miss and
+      // re-translate via the Cloud API below (which then re-saves correct text).
+      const dbHasUsableText =
+        !!dbData?.questions?.length &&
+        (newLang !== 'hi' ||
+          dbData.questions.some((q: any) => /[ऀ-ॿ]/.test(q.text_translated || '')));
+      if (dbHasUsableText) {
         applyTranslationsToState(dbData.questions, dbData.sections);
         return;
       }
@@ -1543,8 +1577,6 @@ function ExamAttemptContent() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden select-none relative bg-[#f8fafc]">
-      {/* Google Translate widget container — must be in flow (not display:none) so GT can render select.goog-te-combo */}
-      <div id="google_translate_element" style={{ position: 'fixed', bottom: 0, left: 0, width: '100px', height: '40px', overflow: 'hidden', opacity: 0, pointerEvents: 'none', zIndex: -1 }} />
         {isLoading && isFastLoad && (
           <div className="fixed inset-0 z-[100] bg-white/20 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
             <div className="bg-white/90 p-4 rounded-xl shadow-lg border border-primary/20 flex items-center gap-3 animate-in fade-in zoom-in duration-300">
