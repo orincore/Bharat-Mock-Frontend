@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const GOOGLE_API_KEY = process.env.GOOGLE_CLOUD_TRANSLATION_API_KEY;
+const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
 const BATCH_SIZE = 100; // Google allows max 128 strings per request
 
 async function translateBatch(batch: string[], target: string): Promise<string[]> {
@@ -25,8 +25,8 @@ async function translateBatch(batch: string[], target: string): Promise<string[]
 
 export async function POST(req: NextRequest) {
   if (!GOOGLE_API_KEY) {
-    console.error('[translate] GOOGLE_CLOUD_TRANSLATION_API_KEY is not set');
-    return NextResponse.json({ error: 'Translation not configured — add GOOGLE_CLOUD_TRANSLATION_API_KEY to .env.local' }, { status: 503 });
+    console.error('[translate] NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY is not set');
+    return NextResponse.json({ error: 'Translation not configured — add NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY to .env.local' }, { status: 503 });
   }
 
   let texts: string[], target: string;

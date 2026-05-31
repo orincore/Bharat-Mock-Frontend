@@ -11,7 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isDeleted: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, phone: string) => Promise<void>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   completePasswordReset: (token: string, newPassword: string) => Promise<void>;
@@ -199,10 +199,10 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
     }
   };
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (email: string, password: string, name: string, phone: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.register(email, password, name);
+      const response = await authService.register(email, password, name, phone);
       const normalized = normalizeUser(response.data.user);
       setUser(normalized);
       persistUser(normalized);

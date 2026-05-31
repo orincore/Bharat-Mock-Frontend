@@ -112,6 +112,8 @@ export default function RegisterPage() {
   const validateForm = () => {
     if (!formData.name.trim()) { setError('Name is required'); return false; }
     if (!/\S+@\S+\.\S+/.test(formData.email)) { setError('Enter a valid email address'); return false; }
+    if (!formData.phone.trim()) { setError('Phone number is required'); return false; }
+    if (formData.phone.length < 7) { setError('Enter a valid phone number'); return false; }
     if (formData.password.length < 6) { setError('Password must be at least 6 characters'); return false; }
     if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return false; }
     if (!acceptTerms) { setError('You must accept the Terms of Service and Privacy Policy'); return false; }
@@ -187,7 +189,8 @@ export default function RegisterPage() {
   const handleRegister = async () => {
     setIsLoading(true);
     try {
-      await register(formData.email, formData.password, formData.name);
+      const fullPhone = `${countryCode.code}${formData.phone}`;
+      await register(formData.email, formData.password, formData.name, fullPhone);
       router.replace(nextParam);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -262,7 +265,7 @@ export default function RegisterPage() {
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
-                  Phone Number <span className="text-muted-foreground">(Optional)</span>
+                  Phone Number <span className="text-destructive">*</span>
                 </label>
                 <div className="flex gap-2">
                   {/* Country code selector */}
@@ -312,7 +315,7 @@ export default function RegisterPage() {
                   <div className="relative flex-1">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                      id="phone" name="phone" type="tel"
+                      id="phone" name="phone" type="tel" required
                       value={formData.phone}
                       onChange={e => {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 10);
