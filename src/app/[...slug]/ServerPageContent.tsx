@@ -422,12 +422,14 @@ export default async function ServerPageContent({
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      {customTabs.length > 0 && (
-        <TabNavigation 
-          customTabs={customTabs} 
-          activeTabId={activeTabId} 
-          first={first} 
+      {/* Tab Navigation — subcategory pages always show it (for the reserved
+          Mock Tests / Previous Papers tabs); category pages only when custom tabs exist. */}
+      {(customTabs.length > 0 || isSubcategory) && (
+        <TabNavigation
+          customTabs={customTabs}
+          activeTabId={activeTabId}
+          first={first}
+          showReservedTabs={isSubcategory}
         />
       )}
 
