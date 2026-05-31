@@ -85,6 +85,15 @@ export const authService = {
   },
 
   logout(): void {
+    // Best-effort: tell the backend to bust this user's cached profile + app-init so
+    // the DB isn't hit on the next load and no stale session data is served.
+    // Fired BEFORE clearing the token (the request captures the auth header
+    // synchronously), and never awaited/thrown — local logout must always succeed.
+    try {
+      void apiClient.post('/auth/logout', {}, true).catch(() => {});
+    } catch {
+      /* ignore — logout proceeds regardless */
+    }
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('auth_user');
