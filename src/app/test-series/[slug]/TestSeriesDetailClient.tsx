@@ -9,7 +9,6 @@ import {
   Users,
   Award,
   Calendar,
-  Search,
   Share2,
   Globe,
   BookOpen,
@@ -25,7 +24,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
 import { testSeriesService, TestSeries } from '@/lib/api/testSeriesService';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { StandardExamCard } from '@/components/exam/StandardExamCard';
@@ -600,85 +598,12 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
         </div>
       </div>
 
-      {/* Global Tab Bar */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div className="container-main">
-          <div className="flex items-center py-4 gap-2">
-            <button
-              onClick={() => tabScrollRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
-              className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-blue-600 hover:border-blue-400 shadow-sm"
-              suppressHydrationWarning
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div ref={tabScrollRef} className="flex-1 overflow-x-auto hide-scrollbar">
-              <div className="flex items-center space-x-6">
-                <button
-                  onClick={() => setGlobalTab('overview')}
-                  className={`whitespace-nowrap text-sm font-medium transition-colors ${globalTab === 'overview'
-                    ? "text-blue-600 border-b-2 border-blue-600 pb-1"
-                    : "text-slate-700 hover:text-blue-600"
-                    }`}
-                  suppressHydrationWarning
-                >
-                  Overview
-                </button>
-                {customTabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setGlobalTab(tab.id)}
-                    className={`whitespace-nowrap text-sm font-medium transition-colors ${globalTab === tab.id
-                      ? "text-blue-600 border-b-2 border-blue-600 pb-1"
-                      : "text-slate-700 hover:text-blue-600"
-                      }`}
-                  >
-                    {tab.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
-              className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-blue-600 hover:border-blue-400 shadow-sm"
-              suppressHydrationWarning
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Test Series Content */}
       <div className="container-main py-6 overflow-hidden">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_260px] items-start">
           <div className="space-y-5 min-w-0 w-full overflow-hidden">
             {globalTab === 'overview' ? (
               <>
-
-                <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3 min-w-0 overflow-hidden">
-                  <div className="flex items-center gap-3 text-sm text-slate-500 w-full lg:flex-1 min-w-0">
-                    <Search className="h-4 w-4 text-slate-400 shrink-0" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search Tests"
-                      className="border-0 focus-visible:ring-0 text-base w-full min-w-0"
-                      suppressHydrationWarning
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2 sm:gap-3 text-xs font-semibold text-slate-600 w-full lg:w-auto">
-                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-600">
-                      <Layers className="h-3.5 w-3.5" /> {sectionFilters.length} Sections
-                    </span>
-                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">
-                      <BookOpen className="h-3.5 w-3.5" /> {normalizedEntries.length} Tests
-                    </span>
-                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-600">
-                      <Globe className="h-3.5 w-3.5" /> {availableLanguages.join(', ')}
-                    </span>
-                  </div>
-                </div>
-
                 {/* Section/Topic Tabs & Listings */}
                 <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5 min-w-0 overflow-hidden">
                   {/* Sections — inline arrows on desktop */}
@@ -864,7 +789,7 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
             />
           )}
 
-          <aside className="space-y-5 sticky top-20">
+          <aside className="space-y-5 self-start">
             {/* Desktop TOC — sidebar */}
             {getSectionsForTab(globalTab).length > 0 && (
               <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm p-5">

@@ -461,7 +461,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                   {heroSection.settings.badge_text || heroSection.subtitle || 'Premium Learning'}
                 </Badge>
               )}
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight whitespace-nowrap">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight break-words">
                 {heroSection?.title || 'Level up with Bharat Mock Premium'}
               </h1>
               <p className="text-xl text-blue-100 leading-relaxed">

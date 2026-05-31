@@ -386,9 +386,22 @@ export default function BlogsClient({ initialData }: { initialData: InitialData 
             {/* Hero grid — only show when not filtered/searched */}
             {hero && (
               <section>
-                {/* Mobile: just the hero card */}
+                {/* Mobile: show the full featured image (no crop/zoom) with text below */}
                 <div className="lg:hidden">
-                  <HeroCard article={hero} />
+                  <Link href={`/blogs/${hero.slug}`} className="group block rounded-xl overflow-hidden border border-border bg-card hover:shadow-md transition">
+                    {hero.featured_image_url ? (
+                      <img src={hero.featured_image_url} alt={hero.title} className="w-full h-auto" />
+                    ) : (
+                      <div className="aspect-video bg-gradient-to-br from-primary/80 to-indigo-700" />
+                    )}
+                    <div className="p-4">
+                      <CategoryBadge label={hero.category} />
+                      <h2 className="mt-2 font-display text-lg font-bold leading-snug line-clamp-3 group-hover:text-primary transition">
+                        {hero.title}
+                      </h2>
+                      <p className="mt-1 text-xs text-muted-foreground">{hero.author?.name && <span>{hero.author.name} · </span>}{formatDate(hero.published_at)}</p>
+                    </div>
+                  </Link>
                 </div>
                 {/* Desktop: hero + right grid */}
                 <div className="hidden lg:grid grid-cols-[3fr_2fr] gap-4 h-[420px]">

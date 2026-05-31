@@ -229,7 +229,7 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
               <div className="hidden lg:block bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30 flex items-center gap-2">
                   <List className="h-4 w-4 text-primary" />
-                  <h3 className="font-bold text-sm uppercase tracking-wide text-foreground">Table of Contents</h3>
+                  <p className="font-bold text-sm uppercase tracking-wide text-foreground">Table of Contents</p>
                 </div>
                 <TocNav />
               </div>
@@ -238,7 +238,7 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
-                  <h3 className="font-bold text-sm uppercase tracking-wide text-foreground">Latest Posts</h3>
+                  <p className="font-bold text-sm uppercase tracking-wide text-foreground">Latest Posts</p>
                 </div>
                 <div className="p-3 space-y-2">
                   {latestBlogs.map(blog => (
@@ -247,7 +247,7 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
                         ? <img src={blog.featured_image_url} alt={blog.title} className="w-14 h-12 rounded object-cover flex-shrink-0 border border-border" />
                         : <div className="w-14 h-12 rounded bg-primary/10 flex-shrink-0 border border-border" />}
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-semibold text-foreground line-clamp-2 group-hover:text-primary transition leading-snug">{blog.title}</h4>
+                        <p className="text-xs font-semibold text-foreground line-clamp-2 group-hover:text-primary transition leading-snug">{blog.title}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDateShort(blog.published_at)}</p>
                       </div>
                     </Link>
@@ -259,7 +259,7 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary" />
-                  <h3 className="font-bold text-sm uppercase tracking-wide text-foreground">Categories</h3>
+                  <p className="font-bold text-sm uppercase tracking-wide text-foreground">Categories</p>
                 </div>
                 <div className="p-2 space-y-0.5">
                   {categories.map((cat, i) => (
@@ -272,7 +272,7 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
               </div>
             )}
             <div className="bg-gradient-to-br from-primary to-indigo-700 rounded-lg p-4 text-white">
-              <div className="flex items-center gap-2 mb-1.5"><Mail className="h-4 w-4" /><h3 className="font-bold text-sm uppercase tracking-wide">Newsletter</h3></div>
+              <div className="flex items-center gap-2 mb-1.5"><Mail className="h-4 w-4" /><p className="font-bold text-sm uppercase tracking-wide">Newsletter</p></div>
               <p className="text-xs text-white/80 mb-3">Get latest exam updates, tips, and exclusive content in your inbox.</p>
               <form onSubmit={handleNewsletterSubmit} className="space-y-2">
                 <Input type="email" placeholder="Your email address" value={email} onChange={e => setEmail(e.target.value)} required className="bg-white/15 border-white/30 text-white placeholder:text-white/50 text-sm" />
@@ -305,7 +305,7 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
               </div>
             )}
             <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-lg p-4 text-white text-center">
-              <h3 className="font-bold mb-1">Premium Mock Tests</h3>
+              <p className="font-bold mb-1">Premium Mock Tests</p>
               <p className="text-xs text-orange-100 mb-3">1000+ mock tests with detailed analytics and solutions.</p>
               <Button asChild className="w-full bg-white text-orange-600 hover:bg-orange-50 font-semibold text-sm">
                 <Link href="/subscriptions">Explore Plans</Link>
