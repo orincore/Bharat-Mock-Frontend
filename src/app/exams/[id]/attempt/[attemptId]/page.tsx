@@ -1112,23 +1112,46 @@ function ExamAttemptContent() {
 
   const getLocalizedSectionName = (section?: SectionWithQuestions) => {
     if (!section) return '';
-    if (selectedLanguage === 'hi' && section.name_hi) {
-      return section.name_hi;
+    // When English is selected, always return English name
+    if (selectedLanguage === 'en') {
+      return section.name || '';
     }
-    return section.name;
+    // When Hindi is selected, return Hindi name if available, otherwise fallback to English
+    if (selectedLanguage === 'hi') {
+      return section.name_hi || section.name || '';
+    }
+    return section.name || '';
   };
 
   const getLocalizedQuestionText = (question?: QuestionWithStatus) => {
     if (!question) return '';
-    if (selectedLanguage === 'hi' && question.text_hi) {
+    
+    // Debug: Check what data we have
+    if (selectedLanguage === 'en' && !question.text && question.text_hi) {
+      // English is selected but only Hindi content exists
+      // Return Hindi as fallback
       return question.text_hi;
+    }
+    
+    // When English is selected, always return English text
+    if (selectedLanguage === 'en') {
+      return question.text || '';
+    }
+    // When Hindi is selected, return Hindi text if available, otherwise fallback to English
+    if (selectedLanguage === 'hi') {
+      return question.text_hi || question.text || '';
     }
     return question.text || '';
   };
 
   const getLocalizedOptionText = (option: any) => {
-    if (selectedLanguage === 'hi' && option.option_text_hi) {
-      return option.option_text_hi;
+    // When English is selected, always return English text
+    if (selectedLanguage === 'en') {
+      return option.option_text || option.text || '';
+    }
+    // When Hindi is selected, return Hindi text if available, otherwise fallback to English
+    if (selectedLanguage === 'hi') {
+      return option.option_text_hi || option.option_text || option.text || '';
     }
     return option.option_text || option.text || '';
   };
@@ -1255,8 +1278,7 @@ function ExamAttemptContent() {
                         value={selectedLanguage}
                         onChange={(e) => {
                           const val = e.target.value as 'en' | 'hi';
-                          setSelectedLanguage(val);
-                          setLanguageSelectionMade(true);
+                          handleLanguageSelect(val);
                         }}
                       >
                         <option value="en">English</option>
@@ -1665,7 +1687,7 @@ function ExamAttemptContent() {
               </div>
 
               {/* SCROLLABLE question + options only */}
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto" key={`question-container-${selectedLanguage}`}>
                 <div className="px-4 md:px-6 py-4 md:py-5">
                   <div className="bg-white md:bg-card border-0 md:border border-slate-200 md:border-border rounded-none md:rounded-xl p-4 sm:p-5 md:p-6 shadow-sm min-h-[300px]">
                     {/* Question header row */}
@@ -1684,6 +1706,7 @@ function ExamAttemptContent() {
                         </div>
                       </div>
                       <MathRenderer
+                        key={`question-${currentQuestion?.id}-${selectedLanguage}`}
                         html={getLocalizedQuestionText(currentQuestion)}
                         className={`rich-text-content exam-question-text leading-relaxed text-[14px] md:text-[15px] font-normal text-slate-800 ${currentSection?.name?.toLowerCase().includes('english') ? 'notranslate' : ''}`}
                       />
@@ -1729,6 +1752,7 @@ function ExamAttemptContent() {
                                 />
                               )}
                               <MathRenderer
+                                key={`option-${option.id}-${selectedLanguage}`}
                                 html={getLocalizedOptionText(option)}
                                 className={`exam-option-text rich-text-content text-[13px] md:text-[14px] font-normal leading-relaxed ${isSelected ? 'text-slate-900' : 'text-slate-700'
                                   } ${currentSection?.name?.toLowerCase().includes('english') ? 'notranslate' : ''}`}

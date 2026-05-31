@@ -168,9 +168,10 @@ export default function ExamFormPage() {
   );
   const hasUnsavedChangesRef = useRef(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
+  // Show all sections regardless of language - the language toggle just changes which fields are displayed
   const sectionsForDisplay = useMemo(
-    () => sections.filter(section => section.language === selectedLanguage),
-    [sections, selectedLanguage]
+    () => sections,
+    [sections]
   );
 
   const examId = persistedExamId;
@@ -1175,15 +1176,15 @@ export default function ExamFormPage() {
   };
 
   const addSection = () => {
-    const languageSections = sections.filter(section => section.language === selectedLanguage);
     const newSection: Section = {
       id: `section-${Date.now()}`,
-      name: `Section ${languageSections.length + 1}`,
+      name: `Section ${sections.length + 1}`,
+      name_hi: '',
       total_questions: 0,
       marks_per_question: 1,
       duration: 0,
       section_order: sections.length + 1,
-      language: selectedLanguage,
+      language: 'en', // Default to English, but both languages can be edited
       questions: [],
       expanded: true
     };
@@ -1203,14 +1204,13 @@ export default function ExamFormPage() {
   const moveSectionUp = async (sectionIndex: number) => {
     if (sectionIndex === 0) return;
     
-    const currentSections = [...sectionsForDisplay];
+    const currentSections = [...sections];
     const [movedSection] = currentSections.splice(sectionIndex, 1);
     currentSections.splice(sectionIndex - 1, 0, movedSection);
     
-    // Rebuild full sections array preserving other-language sections, with new order
-    const otherSections = sections.filter(s => s.language !== selectedLanguage);
-    const reorderedDisplay = currentSections.map((s, idx) => ({ ...s, section_order: idx + 1 }));
-    setSections([...otherSections, ...reorderedDisplay]);
+    // Update section order
+    const reorderedSections = currentSections.map((s, idx) => ({ ...s, section_order: idx + 1 }));
+    setSections(reorderedSections);
     setHasUnsavedChanges(true);
     markUnsavedChanges();
 
@@ -1235,16 +1235,15 @@ export default function ExamFormPage() {
   };
 
   const moveSectionDown = async (sectionIndex: number) => {
-    if (sectionIndex === sectionsForDisplay.length - 1) return;
+    if (sectionIndex === sections.length - 1) return;
     
-    const currentSections = [...sectionsForDisplay];
+    const currentSections = [...sections];
     const [movedSection] = currentSections.splice(sectionIndex, 1);
     currentSections.splice(sectionIndex + 1, 0, movedSection);
     
-    // Rebuild full sections array preserving other-language sections, with new order
-    const otherSections = sections.filter(s => s.language !== selectedLanguage);
-    const reorderedDisplay = currentSections.map((s, idx) => ({ ...s, section_order: idx + 1 }));
-    setSections([...otherSections, ...reorderedDisplay]);
+    // Update section order
+    const reorderedSections = currentSections.map((s, idx) => ({ ...s, section_order: idx + 1 }));
+    setSections(reorderedSections);
     setHasUnsavedChanges(true);
     markUnsavedChanges();
 
@@ -3772,7 +3771,7 @@ export default function ExamFormPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => moveSectionDown(sectionIndex)}
-                          disabled={sectionIndex === sectionsForDisplay.length - 1}
+                          disabled={sectionIndex === sections.length - 1}
                           className="h-8 w-8 p-0"
                           title="Move section down"
                         >
