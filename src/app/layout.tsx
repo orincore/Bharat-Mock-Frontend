@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getLocale } from "next-intl/server";
 import "../index.css";
 import { Providers } from "./providers";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
@@ -8,7 +10,6 @@ import { ServiceWorkerRegistration } from "@/components/common/ServiceWorkerRegi
 import { WebVitals } from "@/components/common/WebVitals";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
 
-// Only load the two fonts actually used in tailwind.config.ts
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
@@ -33,7 +34,6 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://bharatmock.com"),
   title: {
     default: "BharatMock — India's Smart Exam Companion",
-    // Do not auto-append the site name to page titles; titles should be explicit.
     template: "%s",
   },
   authors: [{ name: "BharatMock" }],
@@ -56,9 +56,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakartaSans.variable}`}>
+    <html lang={locale} suppressHydrationWarning className={`${inter.variable} ${plusJakartaSans.variable}`}>
       <head>
         {/* Google Tag Manager */}
         <Script
@@ -68,33 +71,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-PSWFF7GC');`,
           }}
         />
-        {/* End Google Tag Manager */}
         {/* Preconnect to critical third-party origins */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://media.bharatmock.com" />
         <link rel="preconnect" href="https://api.bharatmock.com" />
-        {/* Preconnect to R2 bucket for fast image loads */}
         <link rel="preconnect" href="https://pub-bharatmock.r2.dev" crossOrigin="anonymous" />
-
-        {/* DNS prefetch for non-critical origins */}
-        <link rel="dns-prefetch" href="https://translate.google.com" />
-        <link rel="dns-prefetch" href="https://translate.googleapis.com" />
         <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
-
       </head>
       <body className={inter.className} suppressHydrationWarning>
         {/* Google Tag Manager (noscript) */}
         <noscript dangerouslySetInnerHTML={{ __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PSWFF7GC" height="0" width="0" style="display:none;visibility:hidden"></iframe>` }} />
-        {/* End Google Tag Manager (noscript) */}
         <OrganizationJsonLd />
         <WebSiteJsonLd />
-        <Providers>
-          {children}
-          <ScrollToTopButton />
-          <ServiceWorkerRegistration />
-          <WebVitals />
-        </Providers>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <Providers>
+            {children}
+            <ScrollToTopButton />
+            <ServiceWorkerRegistration />
+            <WebVitals />
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

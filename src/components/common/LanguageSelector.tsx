@@ -1,90 +1,81 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import Image from '@/components/common/Image';
-import { ChevronDown } from 'lucide-react';
+import { useTransition, useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { usePathname } from "next/navigation";
+import { ChevronDown, Languages } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/dropdown-menu";
 
-type Language = {
-  code: string;
-  name: string;
-  nativeName: string;
-};
+const LANGUAGES = [
+  { code: "en", label: "English", native: "English" },
+  { code: "hi", label: "Hindi", native: "हिंदी" },
+] as const;
 
-const languages: Language[] = [
-  { code: 'en', name: 'English', nativeName: 'English' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
-  { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
-];
+const YEAR = 60 * 60 * 24 * 365;
+
+function setLocaleCookie(locale: string) {
+  document.cookie = `NEXT_LOCALE=${locale};path=/;max-age=${YEAR};SameSite=Lax`;
+}
+
+function setGoogTransCookie(locale: string) {
+  // Clear first, then set — both path variants needed for Google Translate
+  document.cookie = `googtrans=;path=/;expires=Thu, 01 Jan 1970 00:00:00 UTC`;
+  document.cookie = `googtrans=;path=/;domain=${window.location.hostname};expires=Thu, 01 Jan 1970 00:00:00 UTC`;
+  if (locale !== "en") {
+    document.cookie = `googtrans=/en/${locale};path=/;max-age=${YEAR};SameSite=Lax`;
+    document.cookie = `googtrans=/en/${locale};path=/;domain=${window.location.hostname};max-age=${YEAR};SameSite=Lax`;
+  }
+}
 
 export function LanguageSelector() {
-  const [currentLang, setCurrentLang] = useState<string>('en');
-  const [isApplying, setIsApplying] = useState<boolean>(false);
+  const localeFromIntl = useLocale();
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+  const [cookieLocale, setCookieLocale] = useState<string | null>(null);
 
-  const getRootDomain = useCallback(() => {
-    const { hostname } = window.location;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return hostname;
-    }
-    const parts = hostname.split('.');
-    if (parts.length <= 2) {
-      return hostname;
-    }
-    return parts.slice(parts.length - 2).join('.');
-  }, []);
-
-  const setGoogleTranslateCookie = useCallback((langCode: string) => {
-    const cookieValue = `/auto/${langCode}`;
-    const rootDomain = getRootDomain();
-    const expires = new Date();
-    expires.setDate(expires.getDate() + 7);
-
-    // Base cookie
-    document.cookie = `googtrans=${cookieValue};expires=${expires.toUTCString()};path=/`;
-
-    // Domain-specific cookie
-    document.cookie = `googtrans=${cookieValue};expires=${expires.toUTCString()};path=/;domain=${rootDomain}`;
-  }, [getRootDomain]);
-
-  const getGoogleTranslateCookie = useCallback(() => {
-    const match = document.cookie.match(/googtrans=([^;]+)/);
-    if (match && match[1]) {
-      const parts = match[1].split('/');
-      return parts[2] || 'en';
-    }
-    return 'en';
-  }, []);
-
+  // Read NEXT_LOCALE cookie once on mount. The root layout never unmounts during
+  // client-side navigation, so this state persists across pages — the dropdown
+  // stays in sync even after navigating away from /hi/... to /banking etc.
   useEffect(() => {
-    const savedLang = localStorage.getItem('preferred_language');
-    if (savedLang) {
-      setCurrentLang(savedLang);
-    } else {
-      const cookieLang = getGoogleTranslateCookie();
-      setCurrentLang(cookieLang);
-    }
-  }, [getGoogleTranslateCookie]);
+    const match = document.cookie.match(/NEXT_LOCALE=([a-z]{2})/);
+    if (match) setCookieLocale(match[1]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const changeLanguage = (langCode: string) => {
-    if (isApplying) return;
-    setIsApplying(true);
-    setGoogleTranslateCookie(langCode);
-    setCurrentLang(langCode);
-    localStorage.setItem('preferred_language', langCode);
+  // Priority: URL prefix > browser cookie > next-intl context
+  const localeFromUrl = pathname === '/hi' || pathname.startsWith('/hi/')
+    ? 'hi'
+    : pathname === '/en' || pathname.startsWith('/en/')
+    ? 'en'
+    : null;
 
-    // Give Google Translate script a moment to pick up cookie, then reload
-    setTimeout(() => {
-      window.location.reload();
-    }, 200);
+  const locale = localeFromUrl ?? cookieLocale ?? localeFromIntl;
+  const current = LANGUAGES.find((l) => l.code === locale) ?? LANGUAGES[0];
+
+  const changeLanguage = (code: string) => {
+    if (code === locale) return;
+    setLocaleCookie(code);
+    setGoogTransCookie(code);
+
+    startTransition(() => {
+      // Strip any existing locale prefix from the current path
+      const stripped = pathname.replace(/^\/(hi|en)(\/|$)/, '/').replace(/\/$/, '') || '/';
+
+      if (code === 'hi') {
+        // Navigate to /hi/... so middleware sets the locale header
+        const target = stripped === '/' ? '/hi' : `/hi${stripped}`;
+        window.location.href = target;
+      } else {
+        // Navigate to the plain URL — cookie is already set to 'en'
+        window.location.href = stripped;
+      }
+    });
   };
-
-  const currentLanguage = languages.find(lang => lang.code === currentLang) || languages[0];
 
   return (
     <DropdownMenu>
@@ -92,36 +83,26 @@ export function LanguageSelector() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 text-muted-foreground hover:text-foreground"
-          title={isApplying ? 'Applying language...' : 'Change language'}
-          disabled={isApplying}
-          suppressHydrationWarning
+          className="gap-1.5 text-muted-foreground hover:text-foreground"
+          disabled={isPending}
+          title="Change language"
         >
-          <Image
-            src="/assets/Google_Translate_Icon.png"
-            alt="Translate"
-            width={16}
-            height={16}
-            className="h-4 w-4"
-            priority
-          />
-          <span className="hidden sm:inline">{currentLanguage.nativeName}</span>
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <Languages className="h-4 w-4" />
+          <span className="hidden sm:inline text-sm font-medium">{current.native}</span>
+          <ChevronDown className="h-3.5 w-3.5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44 bg-card text-foreground border border-border shadow-lg">
-        {languages.map((lang) => (
+      <DropdownMenuContent align="end" className="w-40 bg-card border border-border shadow-lg">
+        {LANGUAGES.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
             onClick={() => changeLanguage(lang.code)}
-            className={`cursor-pointer ${
-              currentLang === lang.code ? 'bg-primary/10 text-primary' : ''
+            className={`cursor-pointer flex flex-col items-start gap-0.5 ${
+              locale === lang.code ? "bg-primary/10 text-primary" : ""
             }`}
           >
-            <div className="flex flex-col">
-              <span className="font-medium">{lang.nativeName}</span>
-              <span className="text-xs text-muted-foreground">{lang.name}</span>
-            </div>
+            <span className="font-medium">{lang.native}</span>
+            <span className="text-xs text-muted-foreground">{lang.label}</span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

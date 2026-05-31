@@ -52,25 +52,63 @@ const formatCurrency = (amountCents: number, currency = 'INR') => {
 
 const whyChooseFeatures = [
   {
+    icon: TrendingUp,
+    title: 'Scheduled live exams',
+    description: 'Live competitive exams with instant rankings and results'
+  },
+  {
     icon: BookOpen,
-    title: 'Guided Learning',
-    description: 'Through Better Prepared Mock Tests and Qualified Professors Insights'
+    title: 'Previous year papers',
+    description: 'Practice real previous year question papers in actual exam format'
   },
   {
     icon: Target,
-    title: 'Free Mock Tests',
-    description: 'Your Expert Learning Guides to the Best Exam and Content Based Material with Test Quality Mix'
+    title: 'Daily current affairs',
+    description: 'Daily important news updates for government exam preparation'
   },
   {
-    icon: Users,
-    title: 'Faculty Members',
-    description: 'We have Team of Highly Experienced and Exam and More Certified Professors to Guides for Best Career'
-  },
-  {
-    icon: Award,
-    title: 'Expert Designed Prep',
-    description: 'Study plans curated by exam experts so every mock, note, and quiz follows the actual syllabus pattern'
+    icon: GraduationCap,
+    title: 'Chapter-wise practice',
+    description: 'Practice weak subjects section by section with detailed questions'
   }
+];
+
+const STATIC_FAQS = [
+  {
+    id: 'faq-1',
+    title: 'Q1. What is the difference between Free, Super, and Premium plans?',
+    content: 'Free offers limited tests and current affairs. Super unlocks unlimited mocks, papers, and live exams. Premium includes everything plus AIR, leaderboards, bilingual tests, and priority support.',
+  },
+  {
+    id: 'faq-2',
+    title: 'Q2. How do I upgrade from Free to a paid plan?',
+    content: 'Click on "Get Started" or "Get Premium" for your preferred plan. Complete the secure payment process, and your account will be upgraded instantly after successful payment.',
+  },
+  {
+    id: 'faq-3',
+    title: 'Q3. When does my subscription start?',
+    content: 'Your subscription starts immediately after successful payment. The validity period begins from the purchase date itself.',
+  },
+  {
+    id: 'faq-4',
+    title: 'Q4. Can I upgrade from Super to Premium anytime?',
+    content: 'Yes, you can upgrade anytime during your active subscription. Your remaining Super plan validity will be adjusted during the upgrade process.',
+  },
+  {
+    id: 'faq-5',
+    title: 'Q5. What payment methods are accepted?',
+    content: 'You can pay using UPI apps like GPay, PhonePe, and Paytm, along with debit cards, credit cards, and net banking from major Indian banks.',
+  },
+  {
+    id: 'faq-7',
+    title: 'Q7. Will my subscription renew automatically?',
+    content: 'No, subscriptions do not auto-renew. Once your plan expires, your account automatically shifts back to the Free plan.',
+  },
+  {
+    id: 'faq-8',
+    title: 'Q8. Can I share my subscription with others?',
+    content: 'No, each subscription is valid for one user only. Sharing accounts or simultaneous multiple-device access may lead to account restrictions.',
+  },
 ];
 
 const loadRazorpayScript = () =>
@@ -208,7 +246,10 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
     }
 
     if (!isAuthenticated) {
-      router.push(`/login?redirect=/subscriptions`);
+      const returnTo = typeof window !== 'undefined'
+        ? window.location.pathname + window.location.search
+        : '/subscriptions';
+      router.push(`/login?next=${encodeURIComponent(returnTo)}`);
       return;
     }
 
@@ -310,6 +351,33 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
       plan.sale_price_cents !== undefined &&
       plan.sale_price_cents < plan.normal_price_cents;
   };
+
+  const getStaticFeaturesForPlan = (plan: SubscriptionPlan): string[] => {
+    const slug = (plan.slug || plan.name || '').toLowerCase();
+    if (slug.includes('free') || slug.includes('basic')) {
+      return [
+        'No Live Test',
+        'Limited Mock Test',
+        'Limited Previous Year Papers',
+        'Limited Current Affairs & Quizzes',
+      ];
+    }
+    if (slug.includes('super') || slug.includes('elite') || slug.includes('gold')) {
+      return [
+        'Unlimited Live Tests',
+        'Unlimited Mock tests',
+        'Unlimited Previous Year Papers',
+        'Unlimited Current Affairs & Quizzes',
+        'Priority Support & Huge Discount',
+      ];
+    }
+    return [
+      'Unlimited Live Tests',
+      'Unlimited Mock tests',
+      'Unlimited Previous Year Papers',
+      'Unlimited Current Affairs & Quizzes',
+    ];
+  };
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [expandedCurriculum, setExpandedCurriculum] = useState<string | null>(null);
 
@@ -393,7 +461,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                   {heroSection.settings.badge_text || heroSection.subtitle || 'Premium Learning'}
                 </Badge>
               )}
-              <h1 className="text-5xl md:text-6xl font-bold leading-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight whitespace-nowrap">
                 {heroSection?.title || 'Level up with Bharat Mock Premium'}
               </h1>
               <p className="text-xl text-blue-100 leading-relaxed">
@@ -522,8 +590,57 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
         </section>
 
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {/* ── Hardcoded Free plan ── */}
+          <Card className="relative border-2 border-gray-200">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between mb-4">
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  Free
+                  {!user?.is_premium && isAuthenticated && (
+                    <Badge variant="outline" className="text-xs border-green-200 bg-green-50 text-green-700">
+                      Active
+                    </Badge>
+                  )}
+                </CardTitle>
+              </div>
+              <CardDescription className="text-base">Get started at no cost</CardDescription>
+              <div className="mt-6 pt-6 border-t">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-gray-900">₹0</span>
+                  <span className="text-gray-500">/ forever</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pb-6">
+              {['No Live Test', 'Limited Mock Test', 'Limited Previous Year Papers', 'Limited Current Affairs & Quizzes'].map((feature) => (
+                <div key={feature} className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-600">{feature}</span>
+                </div>
+              ))}
+            </CardContent>
+            <CardFooter className="pt-0">
+              {isAuthenticated ? (
+                <Button className="w-full h-12 text-base font-semibold" variant="outline" disabled>
+                  <Award className="h-5 w-5 mr-2" />
+                  {!user?.is_premium ? 'Current Plan' : 'Free Plan'}
+                </Button>
+              ) : (
+                <Link
+                  href={`/register?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/subscriptions')}`}
+                  className="w-full"
+                >
+                  <Button className="w-full h-12 text-base font-semibold" variant="outline">
+                    Get Started Free
+                  </Button>
+                </Link>
+              )}
+            </CardFooter>
+          </Card>
+
+          {/* ── API plans ── */}
           {loadingPlans ? (
-            Array.from({ length: 3 }).map((_, idx) => (
+            Array.from({ length: 2 }).map((_, idx) => (
               <Card key={idx} className="animate-pulse">
                 <CardHeader>
                   <CardTitle className="h-6 bg-muted rounded" />
@@ -536,13 +653,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                 </CardContent>
               </Card>
             ))
-          ) : plans.length === 0 ? (
-            <Card className="lg:col-span-3">
-              <CardContent className="py-12 text-center text-muted-foreground">
-                No subscription plans are available right now. Please check back soon.
-              </CardContent>
-            </Card>
-          ) : (
+          ) : plans.length === 0 ? null : (
             plans.map((plan) => {
               const isSelected = plan.id === selectedPlanId;
               const isCurrentPlan = plan.id === currentPlanId && Boolean(user?.is_premium);
@@ -620,7 +731,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3 pb-6">
-                    {(plan.features && plan.features.length > 0 ? plan.features : perks.slice(0, 3)).map((feature) => (
+                    {(plan.features && plan.features.length > 0 ? plan.features : getStaticFeaturesForPlan(plan)).map((feature) => (
                       <div key={`${plan.id}-${feature}`} className="flex items-start gap-3">
                         <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                         <span className="text-gray-700">{feature}</span>
@@ -945,10 +1056,10 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                 <Shield className="h-4 w-4" /> Trusted by toppers
               </span>
               <h2 className="font-display text-3xl md:text-4xl font-bold text-slate-900">
-                {(whyUsSection?.title && whyUsSection.title.trim().length > 0) ? whyUsSection.title : 'Why students pick '}<span className="text-primary">{(whyUsSection?.title && whyUsSection.title.trim().length > 0) ? '' : 'BharatMock'}</span>
+                {whyUsSection?.title?.trim() || 'What BharatMock offers'}
               </h2>
               <p className="text-slate-600">
-                {whyUsSection?.subtitle || 'Simple, reliable prep blocks— curated tests, instant analytics, and fast revision loops.'}
+                {whyUsSection?.subtitle || 'Everything you need to crack government exams'}
               </p>
             </div>
 
@@ -1008,49 +1119,52 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
           description="Real feedback from toppers and serious contenders—curated from app reviews and our student community—to show how premium subscriptions translate into real selection stories."
         />
 
-        {faqSection && faqSection.blocks && faqSection.blocks.length > 0 && (
-          <section className="py-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                {faqSection.title || 'Frequently Asked Questions'}
-              </h2>
-              {faqSection.subtitle && (
-                <p className="text-gray-600 text-lg max-w-3xl mx-auto">{faqSection.subtitle}</p>
-              )}
-            </div>
-            <div className="max-w-3xl mx-auto space-y-3">
-              {faqSection.blocks.map((block) => {
-                const isOpen = expandedFaq === block.id;
-                return (
-                  <div key={block.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <button
-                      onClick={() => setExpandedFaq(isOpen ? null : block.id)}
-                      className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
-                      aria-expanded={isOpen}
-                    >
-                      <h3 className="font-semibold text-gray-900 pr-4">{block.title}</h3>
-                      {isOpen ? (
-                        <ChevronUp className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                      )}
-                    </button>
-                    {/* Answer is always in the DOM so Google can read it; visibility controlled by max-height */}
-                    <div
-                      className="border-t border-gray-200 bg-gray-50 overflow-hidden transition-[max-height] duration-300 ease-in-out"
-                      style={{ maxHeight: isOpen ? '1000px' : '0px' }}
-                      aria-hidden={!isOpen}
-                    >
-                      {block.content && (
-                        <p className="px-5 py-4 text-sm text-slate-700 leading-relaxed">{block.content}</p>
-                      )}
+        {(() => {
+          const faqBlocks = (faqSection?.blocks && faqSection.blocks.length > 0)
+            ? faqSection.blocks
+            : STATIC_FAQS;
+          const faqTitle = faqSection?.title || 'Frequently Asked Questions';
+          const faqSubtitle = faqSection?.subtitle || 'Everything you need to know about plans, payments, and access.';
+          return (
+            <section className="py-6">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">{faqTitle}</h2>
+                <p className="text-gray-600 text-lg max-w-3xl mx-auto">{faqSubtitle}</p>
+              </div>
+              <div className="max-w-3xl mx-auto space-y-3">
+                {faqBlocks.map((block) => {
+                  const isOpen = expandedFaq === block.id;
+                  return (
+                    <div key={block.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <button
+                        onClick={() => setExpandedFaq(isOpen ? null : block.id)}
+                        className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
+                        aria-expanded={isOpen}
+                      >
+                        <h3 className="font-semibold text-gray-900 pr-4">{block.title}</h3>
+                        {isOpen ? (
+                          <ChevronUp className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        )}
+                      </button>
+                      {/* Answer always in DOM for Google; visibility via max-height */}
+                      <div
+                        className="border-t border-gray-200 bg-gray-50 overflow-hidden transition-[max-height] duration-300 ease-in-out"
+                        style={{ maxHeight: isOpen ? '1000px' : '0px' }}
+                        aria-hidden={!isOpen}
+                      >
+                        {block.content && (
+                          <p className="px-5 py-4 text-sm text-slate-700 leading-relaxed">{block.content}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
 
       </div>
     </div>

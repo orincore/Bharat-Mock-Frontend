@@ -284,7 +284,13 @@ export async function generateMetadata(
   { params }: { params: Promise<{ slug: string[] }> }
 ): Promise<Metadata> {
   const { slug } = await params;
-  const slugArray = Array.isArray(slug) ? slug : [slug];
+  const rawSlug = Array.isArray(slug) ? slug : [slug];
+
+  // Strip locale prefix if the root catch-all received a locale-prefixed slug
+  const LOCALE_PREFIXES = new Set(['hi', 'en']);
+  const slugArray = rawSlug.length > 1 && LOCALE_PREFIXES.has(rawSlug[0].toLowerCase())
+    ? rawSlug.slice(1)
+    : rawSlug;
 
   if (slugArray.length > 0 && STATIC_PREFIXES.has(slugArray[0].toLowerCase())) {
     return {};
@@ -365,7 +371,15 @@ export default async function DynamicPage(
   { params }: { params: Promise<{ slug: string[] }> }
 ) {
   const { slug } = await params;
-  const slugArray = Array.isArray(slug) ? slug : [slug];
+  const rawSlug = Array.isArray(slug) ? slug : [slug];
+
+  // If Next.js routing passed a locale-prefixed slug (e.g. ['hi', 'ssc']) because
+  // the locale-specific route didn't take priority, strip the prefix so we resolve
+  // the actual path correctly.
+  const LOCALE_PREFIXES = new Set(['hi', 'en']);
+  const slugArray = rawSlug.length > 1 && LOCALE_PREFIXES.has(rawSlug[0].toLowerCase())
+    ? rawSlug.slice(1)
+    : rawSlug;
 
   // Prevent catch-all from handling system paths
   if (slugArray.length > 0 && (slugArray[0].startsWith('_') || slugArray[0].startsWith('.'))) {

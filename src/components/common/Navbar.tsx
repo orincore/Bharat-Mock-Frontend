@@ -17,6 +17,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppData } from '@/context/AppDataContext';
 import { LanguageSelector } from './LanguageSelector';
+import { useTranslations } from 'next-intl';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,15 +37,15 @@ type NavigationItem = {
 
 const renderNavLabel = (item: NavigationItem) => item.label;
 
-const STATIC_NAV_LINKS: NavigationItem[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Mock Tests', href: '/mock-test-series' },
-  { label: 'Live Tests', href: '/live-tests' },
-  { label: 'Quizzes', href: '/quizzes' },
-  { label: 'Current Affairs', href: '/current-affairs' },
-  { label: 'Prev. Papers', href: '/previous-year-papers' },
-  { label: 'Blogs', href: '/blogs' }
-];
+const NAV_LINK_KEYS = [
+  { key: 'home', href: '/' },
+  { key: 'mockTests', href: '/mock-test-series' },
+  { key: 'prevPapers', href: '/previous-year-papers' },
+  { key: 'liveTests', href: '/live-tests' },
+  { key: 'quizzes', href: '/quizzes' },
+  { key: 'currentAffairs', href: '/current-affairs' },
+  { key: 'blogs', href: '/blogs' },
+] as const;
 
 type RoleTheme = {
   label: string;
@@ -87,13 +88,13 @@ const ROLE_THEMES: Record<'admin' | 'editor' | 'author', RoleTheme> = {
 const DEFAULT_AVATAR_CLASS = 'border-primary/60 bg-primary/10 text-primary-foreground';
 
 export function Navbar() {
+  const t = useTranslations('nav');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isExploreOpen, setIsExploreOpen] = useState(false);
   const [isMobileExamsOpen, setIsMobileExamsOpen] = useState(false);
   const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-  const [googleTranslateLang, setGoogleTranslateLang] = useState('');
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
   const { categories, subcategories } = useAppData();
@@ -103,44 +104,31 @@ export function Navbar() {
     setHasMounted(true);
   }, []);
 
-  const googleLangs = [
-    { code: 'en', label: 'English' },
-    { code: 'hi', label: 'Hindi' },
-    { code: 'bn', label: 'Bengali' },
-    { code: 'te', label: 'Telugu' },
-    { code: 'mr', label: 'Marathi' },
-    { code: 'ta', label: 'Tamil' },
-    { code: 'gu', label: 'Gujarati' },
-    { code: 'kn', label: 'Kannada' },
-    { code: 'ml', label: 'Malayalam' },
-    { code: 'pa', label: 'Punjabi' },
-    { code: 'or', label: 'Odia' },
-    { code: 'as', label: 'Assamese' },
-  ];
+  // When on a /hi/... page, prefix all links with /hi/ so the user stays
+  // within the Hindi URL space as they navigate.
+  const localePrefix = (pathname === '/hi' || pathname.startsWith('/hi/')) ? '/hi'
+    : (pathname === '/en' || pathname.startsWith('/en/')) ? '/en'
+    : '';
 
-  const toggleGoogleTranslate = (targetLang: string) => {
-    const isClearing = targetLang === 'off' || targetLang === 'en' || !targetLang;
-    const newLang = isClearing ? '' : targetLang;
-
-    const clearCookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
-    document.cookie = clearCookie;
-    if (!isClearing) {
-      document.cookie = `googtrans=/en/${newLang}; path=/`;
-    }
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 150);
+  const localise = (href: string) => {
+    if (!localePrefix) return href;
+    if (href === '/') return localePrefix;
+    return `${localePrefix}${href}`;
   };
 
-  const navLinks: NavigationItem[] = STATIC_NAV_LINKS;
+  const navLinks: NavigationItem[] = useMemo(
+    () => NAV_LINK_KEYS.map(({ key, href }) => ({ label: t(key), href: localise(href) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, localePrefix]
+  );
 
   const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
+    const bare = href.replace(/^\/(hi|en)/, '') || '/';
+    if (bare === '/') return pathname === '/' || pathname === localePrefix;
+    return pathname.startsWith(bare) || pathname.startsWith(`${localePrefix}${bare}`);
   };
 
-  const desktopNavItems = useMemo(() => navLinks, []);
+  const desktopNavItems = navLinks;
 
   const categoriesWithSubcategories = useMemo(() => {
     return categories.map(category => ({
@@ -224,7 +212,7 @@ export function Navbar() {
                               className="relative"
                             >
                               <Link
-                                href={`/${category.slug}`}
+                                href={localise(`/${category.slug}`)}
                                 className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b border-border/30 last:border-b-0 ${
                                   hoveredCategoryId === category.id
                                     ? 'bg-primary/10 text-primary'
@@ -265,7 +253,7 @@ export function Navbar() {
                                 {currentCategorySubcategories.map(sub => (
                                   <Link
                                     key={sub.id}
-                                    href={`/${sub.slug}`}
+                                    href={localise(`/${sub.slug}`)}
                                     className="inline-flex items-center gap-2 rounded-2xl border border-border px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors bg-white"
                                     onClick={() => {
                                       setIsExploreOpen(false);
@@ -466,7 +454,7 @@ export function Navbar() {
                       {categoriesWithSubcategories.map((category) => (
                         <div key={category.id} className="space-y-2">
                           <Link
-                            href={`/${category.slug}`}
+                            href={localise(`/${category.slug}`)}
                             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors"
                             onClick={() => {
                               setIsMobileMenuOpen(false);
@@ -490,7 +478,7 @@ export function Navbar() {
                               {category.subcategories.map(sub => (
                                 <Link
                                   key={sub.id}
-                                  href={`/${sub.slug}`}
+                                  href={localise(`/${sub.slug}`)}
                                   className="text-xs px-3 py-1.5 rounded-full border border-border text-gray-600 hover:text-primary hover:border-primary/40"
                                   onClick={() => {
                                     setIsMobileMenuOpen(false);

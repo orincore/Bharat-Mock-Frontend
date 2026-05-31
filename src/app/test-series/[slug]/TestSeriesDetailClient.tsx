@@ -523,7 +523,7 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
 
           <div className="flex flex-col gap-4 items-start">
             <div className="w-full bg-white rounded-2xl border border-blue-100 shadow-sm p-5">
-              <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-start">
                 <div className="shrink-0">
                   {testSeries.category?.logo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -538,7 +538,7 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
                     </div>
                   )}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 w-full min-w-0">
                   <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-blue-600 uppercase tracking-wide">
                     {testSeries.category?.name && <span>{testSeries.category.name}</span>}
                     {testSeries.difficulty?.name && (
@@ -548,7 +548,7 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
                       </span>
                     )}
                   </div>
-                  <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mt-1">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mt-1 break-words">
                     {testSeries.title}
                   </h1>
                   {testSeries.description && (
@@ -650,23 +650,23 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
 
       {/* Test Series Content */}
       <div className="container-main py-6 overflow-hidden">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] items-start">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_260px] items-start">
           <div className="space-y-5 min-w-0 w-full overflow-hidden">
             {globalTab === 'overview' ? (
               <>
 
-                <div className="flex flex-col lg:flex-row gap-4 items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3 min-w-0 overflow-hidden">
-                  <div className="flex items-center gap-3 text-sm text-slate-500">
-                    <Search className="h-4 w-4 text-slate-400" />
+                <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-3 min-w-0 overflow-hidden">
+                  <div className="flex items-center gap-3 text-sm text-slate-500 w-full lg:flex-1 min-w-0">
+                    <Search className="h-4 w-4 text-slate-400 shrink-0" />
                     <Input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search Tests"
-                      className="border-0 focus-visible:ring-0 text-base"
+                      className="border-0 focus-visible:ring-0 text-base w-full min-w-0"
                       suppressHydrationWarning
                     />
                   </div>
-                  <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
+                  <div className="flex flex-wrap gap-2 sm:gap-3 text-xs font-semibold text-slate-600 w-full lg:w-auto">
                     <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-600">
                       <Layers className="h-3.5 w-3.5" /> {sectionFilters.length} Sections
                     </span>

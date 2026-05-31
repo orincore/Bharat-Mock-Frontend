@@ -16,6 +16,8 @@ import { Exam, Question, Section } from '@/types';
 import { MathRenderer } from '@/components/common/MathRenderer';
 import { getOptimizedImageUrl } from '@/lib/utils/imageUrl';
 import { useAuth } from '@/context/AuthContext';
+import { translateTexts } from '@/lib/translate';
+import { fetchExamTranslations, saveExamTranslations } from '@/lib/examTranslationService';
 
 type QuestionStatus = 'not-visited' | 'not-answered' | 'answered' | 'marked' | 'answered-marked';
 
@@ -215,6 +217,22 @@ function ExamAttemptContent() {
   const autoTranslateLang = urlHiParam ? 'hi' : urlTransLang;
   const [googleTranslateLang, setGoogleTranslateLang] = useState(autoTranslateLang);
   const googleTranslateActive = Boolean(googleTranslateLang);
+  // Translated question content keyed by question uid/id
+  const [txCache, setTxCache] = useState<Record<string, { text: string; options: Record<string, string> }>>({});
+  const [txSectionNames, setTxSectionNames] = useState<Record<string, string>>({});
+  const [isTranslating, setIsTranslating] = useState(false);
+  const autoTranslateTriggered = useRef(false);
+
+  // Sync dropdown with global language selection (NEXT_LOCALE cookie set by LanguageSelector)
+  useEffect(() => {
+    if (googleTranslateLang) return; // already set via URL param
+    const match = document.cookie.match(/NEXT_LOCALE=([a-z]{2})/);
+    const cookieLang = match ? match[1] : 'en';
+    if (cookieLang && cookieLang !== 'en') {
+      setGoogleTranslateLang(cookieLang);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const requestedLanguage = searchParams?.get('lang') || 'en';
   const hasLangInUrl = searchParams?.has('lang');
@@ -302,15 +320,7 @@ function ExamAttemptContent() {
 
   const googleLangs = [
     { code: 'en', label: 'English' },
-    { code: 'hi', label: 'Hindi' },
-    { code: 'bn', label: 'Bengali' },
-    { code: 'te', label: 'Telugu' },
-    { code: 'mr', label: 'Marathi' },
-    { code: 'ta', label: 'Tamil' },
-    { code: 'gu', label: 'Gujarati' },
-    { code: 'kn', label: 'Kannada' },
-    { code: 'pa', label: 'Punjabi' },
-    { code: 'or', label: 'Odia' }
+    { code: 'hi', label: 'हिंदी' },
   ];
 
   const [selectedAnswer, setSelectedAnswer] = useState<string | string[] | null>(null);
@@ -506,7 +516,8 @@ function ExamAttemptContent() {
           resumeData = [];
         }
 
-        setResumeAttempts(resumeData || []);
+        const resumeList = resumeData || [];
+        setResumeAttempts(resumeList);
 
         if (!examData) {
           throw new Error('Exam not found');
@@ -515,7 +526,12 @@ function ExamAttemptContent() {
         setExam(examData);
         // Always prefer cached timer so paused/resumed exams don't reset
         const savedTimer = sessionStorage.getItem(`timer_${attemptId}`);
-        setInitialTime(savedTimer ? parseInt(savedTimer) : (examData.duration || 0) * 60);
+        // Prefer sessionStorage (same tab), then server-persisted time_remaining, then full duration
+        const serverTimeRemaining = resumeList.find((a: any) => a.id === attemptId)?.time_remaining;
+        const resolvedTime = savedTimer
+          ? parseInt(savedTimer)
+          : serverTimeRemaining ?? (examData.duration || 0) * 60;
+        setInitialTime(resolvedTime);
 
 
 
@@ -726,12 +742,16 @@ function ExamAttemptContent() {
     const answer = selectedAnswerRef.current;
     const marked = markedForReviewRef.current;
     const timeTaken = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
+    // Read remaining seconds from sessionStorage so the server can restore it on resume
+    const storedTimer = sessionStorage.getItem(`timer_${attemptId}`);
+    const timeRemaining = storedTimer ? parseInt(storedTimer) : undefined;
     try {
       isSavingRef.current = true;
       await examService.saveAnswer(attemptId, targetQuestion.id, {
         answer,
         markedForReview: marked,
         timeTaken,
+        timeRemaining,
       });
     } catch {
       // silent — don't disrupt the user
@@ -912,14 +932,13 @@ function ExamAttemptContent() {
 
     const { filteredSections, filteredQuestions } = filterContentByLanguage(lang, allSections, allQuestions);
 
-    if (filteredSections.length === 0) {
-      setError('Selected language is not available for this exam.');
-      return;
-    }
+    // If no native translated content, fall back to all questions (API translation handles it)
+    const useSections = filteredSections.length > 0 ? filteredSections : allSections;
+    const useQuestions = filteredQuestions.length > 0 ? filteredQuestions : allQuestions;
 
     setSelectedLanguage(lang);
-    setSections(filteredSections);
-    setQuestions(filteredQuestions);
+    setSections(useSections);
+    setQuestions(useQuestions);
     setLanguageSelectionMade(true);
   }, [allSections, allQuestions, filterContentByLanguage, exam?.supports_hindi]);
 
@@ -1018,6 +1037,16 @@ function ExamAttemptContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestionIndex, currentSectionIndex, showInstructions]);
 
+  // Auto-translate when page loads with ?trans=hi already in URL (or questions load after lang was selected)
+  useEffect(() => {
+    if (!googleTranslateLang || autoTranslateTriggered.current) return;
+    const sourceQuestions = allQuestions.length > 0 ? allQuestions : questions;
+    if (sourceQuestions.length === 0) return;
+    autoTranslateTriggered.current = true;
+    toggleGoogleTranslate(googleTranslateLang);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleTranslateLang, allQuestions.length, questions.length]);
+
   if (isLoading) {
     return <LoadingPage message="Preparing your exam..." />;
   }
@@ -1110,25 +1139,36 @@ function ExamAttemptContent() {
     setShowInstructions(false);
   };
 
+  const isEnglishSection = (sectionId?: string | null): boolean => {
+    if (!sectionId) return false;
+    const section = sections.find(s => s.id === sectionId) || allSections.find(s => s.id === sectionId);
+    return Boolean(section?.name?.toLowerCase().includes('english'));
+  };
+
   const getLocalizedSectionName = (section?: SectionWithQuestions) => {
     if (!section) return '';
-    if (selectedLanguage === 'hi' && section.name_hi) {
-      return section.name_hi;
-    }
+    if (selectedLanguage === 'hi' && section.name_hi) return section.name_hi;
+    if (googleTranslateActive && txSectionNames[section.id]) return txSectionNames[section.id];
     return section.name;
   };
 
   const getLocalizedQuestionText = (question?: QuestionWithStatus) => {
     if (!question) return '';
-    if (selectedLanguage === 'hi' && question.text_hi) {
-      return question.text_hi;
+    if (selectedLanguage === 'hi' && question.text_hi) return question.text_hi;
+    // Never translate questions in English-language sections
+    if (googleTranslateActive && !isEnglishSection(question.section_id)) {
+      const cached = txCache[question.id]?.text;
+      if (cached) return cached;
     }
     return question.text || '';
   };
 
-  const getLocalizedOptionText = (option: any) => {
-    if (selectedLanguage === 'hi' && option.option_text_hi) {
-      return option.option_text_hi;
+  const getLocalizedOptionText = (option: any, question?: QuestionWithStatus) => {
+    if (selectedLanguage === 'hi' && option.option_text_hi) return option.option_text_hi;
+    // Never translate options in English-language sections
+    if (googleTranslateActive && question && option.id && !isEnglishSection(question.section_id)) {
+      const cached = txCache[question.id]?.options[option.id];
+      if (cached) return cached;
     }
     return option.option_text || option.text || '';
   };
@@ -1147,7 +1187,7 @@ function ExamAttemptContent() {
             <div className="md:hidden flex h-8 items-center gap-1 bg-blue-50/80 rounded-lg px-2 border border-blue-100 shadow-sm active:bg-blue-100 transition-colors">
               <Languages className="h-3.5 w-3.5 text-blue-600 shrink-0" />
               <select
-                value={googleTranslateLang || (selectedLanguage === 'hi' ? 'hi' : 'en')}
+                value={googleTranslateLang || 'en'}
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val === selectedLanguage) {
@@ -1255,12 +1295,15 @@ function ExamAttemptContent() {
                         value={selectedLanguage}
                         onChange={(e) => {
                           const val = e.target.value as 'en' | 'hi';
-                          setSelectedLanguage(val);
-                          setLanguageSelectionMade(true);
+                          handleLanguageSelect(val);
+                          // For non-native exams, also activate question translation via API
+                          if (!supportsHindi) {
+                            toggleGoogleTranslate(val);
+                          }
                         }}
                       >
                         <option value="en">English</option>
-                        {supportsHindi && <option value="hi">Hindi</option>}
+                        <option value="hi">हिंदी (Hindi)</option>
                       </select>
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                         <List className="h-4 w-4" />
@@ -1300,6 +1343,31 @@ function ExamAttemptContent() {
             </div>
           </div>
         </main>
+
+        {/* Resume banner — shown when a previous in-progress attempt exists for this same attemptId */}
+        {resumeAttempts.some((a: any) => a.id === attemptId) && (() => {
+          const prev = resumeAttempts.find((a: any) => a.id === attemptId);
+          const mins = prev?.time_remaining != null ? Math.floor(prev.time_remaining / 60) : null;
+          const secs = prev?.time_remaining != null ? prev.time_remaining % 60 : null;
+          return (
+            <div className="mx-4 mb-2 mt-1 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm">
+              <div>
+                <p className="font-bold text-amber-800">You have an unfinished attempt</p>
+                <p className="text-amber-700 text-xs mt-0.5">
+                  {prev?.answered_count || 0} questions answered
+                  {mins != null && ` · ${mins}m ${secs}s remaining`}
+                  {prev?.language === 'hi' ? ' · Hindi' : ' · English'}
+                </p>
+              </div>
+              <Button
+                onClick={handleStartExamFlow}
+                className="h-9 px-5 text-[13px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shrink-0"
+              >
+                Resume
+              </Button>
+            </div>
+          );
+        })()}
 
         {/* Sticky Footer - Precision Action Buttons */}
         <footer className="h-14 md:h-16 bg-white border-t border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 shadow-lg z-20">
@@ -1364,37 +1432,114 @@ function ExamAttemptContent() {
     'not-visited': 'bg-muted border-border text-muted-foreground'
   } as const;
 
-  const toggleGoogleTranslate = (targetLang: string) => {
+  function applyTranslationsToState(
+    translatedQuestions: { id: string; text_translated: string; options: { id: string; text_translated: string }[] }[],
+    translatedSections: { id: string; name_translated: string }[]
+  ) {
+    setTxCache(prev => {
+      const next = { ...prev };
+      for (const q of translatedQuestions) {
+        if (!next[q.id]) next[q.id] = { text: '', options: {} };
+        next[q.id].text = q.text_translated;
+        for (const o of q.options) {
+          next[q.id].options[o.id] = o.text_translated;
+        }
+      }
+      return next;
+    });
+    setTxSectionNames(prev => {
+      const next = { ...prev };
+      for (const s of translatedSections) next[s.id] = s.name_translated;
+      return next;
+    });
+  }
+
+  async function toggleGoogleTranslate(targetLang: string) {
     const isClearing = targetLang === 'off' || targetLang === 'en' || !targetLang;
     const newLang = isClearing ? '' : targetLang;
+    setGoogleTranslateLang(newLang);
 
-    // Persist exam state so fast-reload restores without re-fetching
-    silentSave();
-    sessionStorage.setItem(`exam_${examId}`, JSON.stringify(exam));
-    sessionStorage.setItem(`sections_${attemptId}`, JSON.stringify(sections));
-    sessionStorage.setItem('wasFullScreen', isFullScreen.toString());
-    // Preserve current timer value so it continues from where it left off after reload
-    const currentTimerVal = sessionStorage.getItem(`timer_${attemptId}`);
-    if (!currentTimerVal && initialTime > 0) {
-      sessionStorage.setItem(`timer_${attemptId}`, initialTime.toString());
+    if (isClearing || !newLang) return;
+
+    // Prevent concurrent calls — second call while first is in-flight does nothing
+    if (isTranslating) return;
+
+    // Already fully translated for this language — nothing to do
+    const sourceQuestions = allQuestions.length > 0 ? allQuestions : questions;
+    const sourceSections = allSections.length > 0 ? allSections : sections;
+    const needsTranslation = sourceQuestions.some(q => q.id && !txCache[q.id]);
+    if (!needsTranslation) return;
+
+    setIsTranslating(true);
+    try {
+      // ── Layer 1: DB / Redis via backend ───────────────────────────────────
+      const dbData = await fetchExamTranslations(examId, newLang);
+      if (dbData?.questions?.length) {
+        applyTranslationsToState(dbData.questions, dbData.sections);
+        return;
+      }
+
+      // ── Layer 2: Google Cloud Translation API ─────────────────────────────
+      type Task =
+        | { kind: 'qtext'; qKey: string; value: string }
+        | { kind: 'option'; qKey: string; optionId: string; value: string }
+        | { kind: 'section'; sId: string; value: string };
+
+      const tasks: Task[] = [];
+      const questionsToTranslate = sourceQuestions.filter(q =>
+        q.id && !txCache[q.id] && !(selectedLanguage === 'hi' && q.text_hi) &&
+        !isEnglishSection(q.section_id)
+      );
+      const sectionsToTranslate = sourceSections.filter(s =>
+        s.id && !txSectionNames[s.id] && !(selectedLanguage === 'hi' && s.name_hi)
+      );
+
+      for (const q of questionsToTranslate) {
+        if (q.text) tasks.push({ kind: 'qtext', qKey: q.id, value: q.text });
+        for (const opt of q.options || []) {
+          const optId = opt.id;
+          const optText = opt.option_text || opt.text || '';
+          if (optId && optText) tasks.push({ kind: 'option', qKey: q.id, optionId: optId, value: optText });
+        }
+      }
+      for (const s of sectionsToTranslate) {
+        if (s.name) tasks.push({ kind: 'section', sId: s.id, value: s.name });
+      }
+
+      if (!tasks.length) return;
+
+      const translated = await translateTexts(tasks.map(t => t.value), newLang);
+
+      // Build structured result
+      const questionMap: Record<string, { id: string; text_translated: string; options: { id: string; text_translated: string }[] }> = {};
+      const sectionResults: { id: string; name_translated: string }[] = [];
+
+      tasks.forEach((task, i) => {
+        if (task.kind === 'qtext') {
+          if (!questionMap[task.qKey]) questionMap[task.qKey] = { id: task.qKey, text_translated: '', options: [] };
+          questionMap[task.qKey].text_translated = translated[i];
+        } else if (task.kind === 'option') {
+          if (!questionMap[task.qKey]) questionMap[task.qKey] = { id: task.qKey, text_translated: '', options: [] };
+          questionMap[task.qKey].options.push({ id: task.optionId, text_translated: translated[i] });
+        } else if (task.kind === 'section') {
+          sectionResults.push({ id: task.sId, name_translated: translated[i] });
+        }
+      });
+
+      const questionResults = Object.values(questionMap);
+
+      // Apply to UI immediately
+      applyTranslationsToState(questionResults, sectionResults);
+
+      // ── Layer 3: Save to DB (fire-and-forget) so next user gets DB hit ────
+      saveExamTranslations(examId, newLang, { questions: questionResults, sections: sectionResults });
+
+    } catch (err) {
+      console.error('[translate] Failed:', err);
+    } finally {
+      setIsTranslating(false);
     }
-
-    // Set googtrans cookie — path=/ only, NO domain= (domain= breaks on localhost)
-    const clearCookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
-    document.cookie = clearCookie;
-    if (!isClearing) {
-      document.cookie = `googtrans=/en/${newLang}; path=/`;
-    }
-
-    const params = new URLSearchParams(window.location.search);
-    params.set('fast', 'true');
-    if (!isClearing) params.set('trans', newLang);
-    else params.delete('trans');
-
-    setTimeout(() => {
-      window.location.replace(window.location.pathname + '?' + params.toString());
-    }, 150);
-  };
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden select-none relative bg-[#f8fafc]">
@@ -1486,17 +1631,8 @@ function ExamAttemptContent() {
                   <div className="flex items-center gap-1.5 border border-slate-300 rounded-full h-9 px-3.5 bg-white hover:bg-slate-50 transition-all cursor-pointer shadow-sm">
                     <Languages className="h-3.5 w-3.5 text-slate-500 shrink-0" />
                     <select
-                      value={googleTranslateLang || (selectedLanguage === 'hi' ? 'hi' : 'en')}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === selectedLanguage) {
-                          setGoogleTranslateLang('');
-                          toggleGoogleTranslate('en');
-                        } else {
-                          setGoogleTranslateLang(val);
-                          toggleGoogleTranslate(val);
-                        }
-                      }}
+                      value={googleTranslateLang || 'en'}
+                      onChange={(e) => toggleGoogleTranslate(e.target.value)}
                       className={`appearance-none bg-transparent text-[13px] font-semibold focus:outline-none cursor-pointer notranslate ${googleTranslateLang ? 'text-blue-700' : 'text-slate-700'} pr-1`}
                     >
                       {googleLangs.map(lang => (
@@ -1553,17 +1689,8 @@ function ExamAttemptContent() {
                   <div className="flex h-8 items-center gap-1 bg-blue-50/80 rounded-lg px-2 border border-blue-100 shadow-sm active:bg-blue-100 transition-colors shrink-0">
                     <Languages className="h-3.5 w-3.5 text-blue-600 shrink-0" />
                     <select
-                      value={googleTranslateLang || (selectedLanguage === 'hi' ? 'hi' : 'en')}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === selectedLanguage) {
-                          setGoogleTranslateLang('');
-                          toggleGoogleTranslate('en');
-                        } else {
-                          setGoogleTranslateLang(val);
-                          toggleGoogleTranslate(val);
-                        }
-                      }}
+                      value={googleTranslateLang || 'en'}
+                      onChange={(e) => toggleGoogleTranslate(e.target.value)}
                       className={`bg-transparent text-[11px] font-black uppercase tracking-tight focus:outline-none cursor-pointer max-w-[60px] notranslate ${googleTranslateLang ? 'text-blue-700' : 'text-slate-600'
                         }`}
                     >
@@ -1729,7 +1856,7 @@ function ExamAttemptContent() {
                                 />
                               )}
                               <MathRenderer
-                                html={getLocalizedOptionText(option)}
+                                html={getLocalizedOptionText(option, currentQuestion)}
                                 className={`exam-option-text rich-text-content text-[13px] md:text-[14px] font-normal leading-relaxed ${isSelected ? 'text-slate-900' : 'text-slate-700'
                                   } ${currentSection?.name?.toLowerCase().includes('english') ? 'notranslate' : ''}`}
                               />

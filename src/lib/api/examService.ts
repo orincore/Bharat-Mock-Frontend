@@ -217,6 +217,7 @@ export const examService = {
       answer: string | string[] | null;
       markedForReview: boolean;
       timeTaken: number;
+      timeRemaining?: number;
     }
   ): Promise<void> {
     await apiClient.post(

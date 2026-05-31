@@ -18,8 +18,10 @@ function AuthCallbackContent() {
       localStorage.setItem('refresh_token', refresh);
       // Clear any stale cached user so AuthProvider fetches fresh profile
       localStorage.removeItem('auth_user');
-      // Hard navigate so AuthProvider re-initializes cleanly with the new token
-      window.location.href = '/';
+      // Redirect to the page the user was on before OAuth, falling back to home
+      const redirect = sessionStorage.getItem('auth_redirect') || '/';
+      sessionStorage.removeItem('auth_redirect');
+      window.location.href = redirect;
     } else {
       router.replace('/login?error=auth_failed');
     }

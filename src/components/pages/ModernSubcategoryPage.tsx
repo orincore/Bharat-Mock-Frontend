@@ -1680,7 +1680,7 @@ const DefaultModernPage = ({ title, subtitle }: { title: string; subtitle: strin
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">{title}</h1>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 leading-tight mb-4">{subtitle}</h1>
+          {subtitle && <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 leading-tight mb-4">{subtitle}</p>}
           <p className="text-blue-100">Content is being configured. Please check back soon.</p>
         </div>
       </div>

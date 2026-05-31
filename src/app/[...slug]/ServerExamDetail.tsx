@@ -26,31 +26,5 @@ export default function ServerExamDetail({ urlPath, examData }: ServerExamDetail
   const summary = formatExamSummaryText(examData);
   const syllabusTopics: string[] = Array.isArray(examData.syllabus) ? examData.syllabus : [];
 
-  return (
-    <>
-      {/* ── Static HTML for Google indexing ─────────────────────────────── */}
-      <div className="sr-only" aria-hidden="false">
-        <h1>{examData.title}</h1>
-        {summary && <p>{summary}</p>}
-        {examData.category && <p>Category: {examData.category}</p>}
-        {examData.status && <p>Status: {examData.status}</p>}
-        {examData.exam_type && <p>Type: {examData.exam_type}</p>}
-        {examData.total_questions && <p>Total Questions: {examData.total_questions}</p>}
-        {examData.total_marks && <p>Total Marks: {examData.total_marks}</p>}
-        {examData.duration && <p>Duration: {examData.duration} minutes</p>}
-        {examData.negative_marking && <p>Negative Marking: Yes ({examData.negative_mark_value})</p>}
-        {examData.supports_hindi && <p>Available in Hindi and English</p>}
-        {examData.is_free ? <p>This exam is free.</p> : <p>This exam requires a premium subscription.</p>}
-        {syllabusTopics.length > 0 && (
-          <section>
-            <h2>Syllabus</h2>
-            <ul>{syllabusTopics.map((topic, i) => <li key={i}>{topic}</li>)}</ul>
-          </section>
-        )}
-      </div>
-
-      {/* ── Full interactive client component — skip its own API fetch via initialExamData ── */}
-      <ExamDetailPage urlPath={urlPath} initialExamData={examData as any} />
-    </>
-  );
+  return <ExamDetailPage urlPath={urlPath} initialExamData={examData as any} />;
 }

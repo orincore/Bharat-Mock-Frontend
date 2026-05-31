@@ -1,6 +1,9 @@
+"use client";
+
 import Link from 'next/link';
 import Image from '@/components/common/Image';
 import { Mail, Phone } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   FaFacebook,
   FaInstagram,
@@ -22,38 +25,40 @@ const SOCIAL_LINKS = [
   { label: 'Twitter',   href: 'https://x.com/bharatmock',                   Icon: FaTwitter },
 ];
 
-const FOOTER_SECTIONS = [
-  {
-    title: 'Popular Exams',
-    links: [
-      { label: 'SSC',      href: '/ssc' },
-      { label: 'Banking',  href: '/banking' },
-      { label: 'Railway',  href: '/railway' },
-      { label: 'Police',   href: '/police' },
-    ],
-  },
-  {
-    title: 'Resources',
-    links: [
-      { label: 'Blogs',                href: '/blogs' },
-      { label: 'Mock Test',            href: '/mock-test-series' },
-      { label: 'Live Test',            href: '/live-tests' },
-      { label: 'Previous Year Papers', href: '/previous-year-papers' },
-    ],
-  },
-  {
-    title: 'Company',
-    links: [
-      { label: 'About Us',        href: '/about' },
-      { label: 'Contact Us',      href: '/contact' },
-      { label: 'Privacy Policy',  href: '/privacy-policy' },
-      { label: 'Terms of Service',href: '/terms' },
-      { label: 'Refund Policy',   href: '/refund-policy' },
-    ],
-  },
-];
-
 export function Footer() {
+  const t = useTranslations('footer');
+
+  const FOOTER_SECTIONS = [
+    {
+      title: t('popularExams'),
+      links: [
+        { label: 'SSC',     href: '/ssc' },
+        { label: 'Banking', href: '/banking' },
+        { label: 'Railway', href: '/railway' },
+        { label: 'Police',  href: '/police' },
+      ],
+    },
+    {
+      title: t('resources'),
+      links: [
+        { label: t('blogs'),              href: '/blogs' },
+        { label: t('mockTest'),           href: '/mock-test-series' },
+        { label: t('liveTest'),           href: '/live-tests' },
+        { label: t('previousYearPapers'), href: '/previous-year-papers' },
+      ],
+    },
+    {
+      title: t('company'),
+      links: [
+        { label: t('aboutUs'),        href: '/about' },
+        { label: t('contactUs'),      href: '/contact' },
+        { label: t('privacyPolicy'),  href: '/privacy-policy' },
+        { label: t('termsOfService'), href: '/terms' },
+        { label: t('refundPolicy'),   href: '/refund-policy' },
+      ],
+    },
+  ];
+
   return (
     <footer className="bg-foreground text-background/90">
       <div className="container-main py-6 sm:py-7">
@@ -73,7 +78,7 @@ export function Footer() {
             </Link>
 
             <p className="hidden sm:block text-background/70 mb-3 max-w-sm text-sm">
-              India's leading platform for exam preparation and personalized learning support. Join millions of students on their journey to success.
+              {t('tagline')}
             </p>
 
             <div className="space-y-2.5 text-sm sm:text-xs lg:text-sm">
@@ -123,7 +128,7 @@ export function Footer() {
                 </p>
                 <ul className="space-y-1.5 sm:space-y-2">
                   {section.links.map((link) => (
-                    <li key={link.label}>
+                    <li key={link.href}>
                       <Link
                         href={link.href}
                         className="text-background/70 hover:text-primary transition-colors text-xs sm:text-sm"
@@ -140,7 +145,7 @@ export function Footer() {
 
         <div className="mt-5 sm:mt-6 pt-4 border-t border-background/10 flex flex-col items-center text-center">
           <p className="text-background/60 text-xs sm:text-sm">
-            © {new Date().getFullYear()} Bharat Mock. All rights reserved.
+            © {new Date().getFullYear()} Bharat Mock. {t('rights')}
           </p>
         </div>
       </div>

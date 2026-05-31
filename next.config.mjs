@@ -1,3 +1,7 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -5,11 +9,11 @@ const isDev = process.env.NODE_ENV === 'development';
 
 const prodCSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com https://translate.google.com https://translate.googleapis.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://api.bharatmock.com https://media.bharatmock.com https://www.googletagmanager.com https://www.google-analytics.com",
+  "connect-src 'self' https://api.bharatmock.com https://media.bharatmock.com https://www.googletagmanager.com https://www.google-analytics.com https://translate.googleapis.com",
   "frame-src 'self' https://www.google.com https://maps.google.com https://checkout.razorpay.com",
   "object-src 'none'",
   "base-uri 'self'",
@@ -119,6 +123,7 @@ const nextConfig = {
   async rewrites() {
     return [];
   },
+
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
