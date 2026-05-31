@@ -353,9 +353,12 @@ export default async function ServerPageContent({
       return !hasGarbage;
     });
   
-  // Get sidebar sections
-  const sidebarSections = (contentData.sections || []).filter((s) => s.is_sidebar);
-  
+  // Get sidebar sections from the FULL page content — NOT contentData.sections,
+  // which is the tab-filtered set that already strips is_sidebar (so sourcing from
+  // it was always empty, hence the admin-added sidebar never appeared). Fall back to
+  // contentData only on the rare path where rawPageContent wasn't pre-fetched.
+  const sidebarSections = ((rawPageContent?.sections) || contentData.sections || []).filter((s) => s.is_sidebar);
+
   return (
     <>
       {/* ── Visible UI ─────────────────────────────────────────────────────── */}
