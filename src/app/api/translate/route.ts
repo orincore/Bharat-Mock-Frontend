@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+// Run on the Node runtime and give the function generous headroom — the first
+// (cold-start) call to Google can take a few seconds; a tight limit is what
+// produced the intermittent 502s on production.
+export const runtime = 'nodejs';
+export const maxDuration = 30;
+export const dynamic = 'force-dynamic';
+
 const BATCH_SIZE = 100; // Google allows max 128 strings per request
 
-async function translateBatch(batch: string[], target: string): Promise<string[]> {
+// Read the key at REQUEST time from a SERVER-ONLY var. We deliberately do NOT
+// reference any NEXT_PUBLIC_* name: Next.js inlines NEXT_PUBLIC_* values into the
+// client bundle wherever they're referenced, which would leak the key to browsers.
+// Keeping the only reference here (server route) guarantees it stays secret.
+function getApiKey(): string | undefined {
+  return process.env.GOOGLE_CLOUD_TRANSLATION_API_KEY;
+}
+
+async function translateBatch(batch: string[], target: string, apiKey: string): Promise<string[]> {
   const res = await fetch(
-    `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_API_KEY}`,
+    `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -15,7 +29,7 @@ async function translateBatch(batch: string[], target: string): Promise<string[]
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    console.error('[translate] Google API error:', JSON.stringify(err));
+    console.error('[translate] Google API error:', res.status, JSON.stringify(err));
     throw new Error(`Google API ${res.status}: ${JSON.stringify(err)}`);
   }
 
@@ -24,9 +38,13 @@ async function translateBatch(batch: string[], target: string): Promise<string[]
 }
 
 export async function POST(req: NextRequest) {
-  if (!GOOGLE_API_KEY) {
-    console.error('[translate] NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY is not set');
-    return NextResponse.json({ error: 'Translation not configured — add NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY to .env.local' }, { status: 503 });
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    console.error('[translate] No API key set — define GOOGLE_CLOUD_TRANSLATION_API_KEY (server-only)');
+    return NextResponse.json(
+      { error: 'Translation not configured — set GOOGLE_CLOUD_TRANSLATION_API_KEY on the server' },
+      { status: 503 }
+    );
   }
 
   let texts: string[], target: string;
@@ -46,7 +64,7 @@ export async function POST(req: NextRequest) {
       batches.push(texts.slice(i, i + BATCH_SIZE));
     }
 
-    const results = await Promise.all(batches.map(batch => translateBatch(batch, target)));
+    const results = await Promise.all(batches.map(batch => translateBatch(batch, target, apiKey)));
     const translations = results.flat();
 
     return NextResponse.json({ translations });

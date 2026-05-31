@@ -25,10 +25,69 @@ function writeCache(key: string, value: string) {
   }
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * POST to /api/translate with retries. Serverless cold starts can return a
+ * transient 502/503/504 (or a network blip) on the first hit — retrying with a
+ * short backoff lets that first call recover instead of silently failing, which
+ * is what previously forced users to refresh the page.
+ *
+ * Throws if it ultimately fails so the caller can avoid caching untranslated text.
+ */
+async function postTranslate(texts: string[], target: string): Promise<string[]> {
+  const MAX_ATTEMPTS = 3;
+  let lastErr: unknown;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts, target }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.translations as string[];
+      }
+
+      const errBody = await res.json().catch(() => ({}));
+      const err = new Error(`/api/translate ${res.status}: ${errBody.error || res.statusText}`);
+
+      // Retry transient server errors (cold start / overload); fail fast on 4xx.
+      if (res.status >= 500 && attempt < MAX_ATTEMPTS) {
+        console.warn(`[translate] attempt ${attempt} got ${res.status} — retrying…`);
+        lastErr = err;
+        await sleep(700 * attempt);
+        continue;
+      }
+      throw err;
+    } catch (e) {
+      lastErr = e;
+      // Network error — retry; otherwise (4xx thrown above) rethrow.
+      const isHttpErr = e instanceof Error && /\/api\/translate \d{3}:/.test(e.message);
+      if (!isHttpErr && attempt < MAX_ATTEMPTS) {
+        console.warn(`[translate] attempt ${attempt} network error — retrying…`, e);
+        await sleep(700 * attempt);
+        continue;
+      }
+      if (attempt >= MAX_ATTEMPTS) break;
+      throw e;
+    }
+  }
+
+  throw lastErr instanceof Error ? lastErr : new Error('Translation failed');
+}
+
 /**
  * Translate an array of HTML/plain strings to `target` language.
- * Results are cached in localStorage so the same text is never
+ * Successful results are cached in localStorage so the same text is never
  * sent to the API twice on the same device.
+ *
+ * Throws on failure (after retries) — the caller is responsible for falling back
+ * to the original text for display. We deliberately do NOT swallow the error or
+ * cache originals, so a transient failure doesn't get "stuck" as untranslated.
  */
 export async function translateTexts(
   texts: string[],
@@ -54,30 +113,13 @@ export async function translateTexts(
 
   if (uncachedTexts.length === 0) return results;
 
-  try {
-    const res = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texts: uncachedTexts, target }),
-    });
+  const translations = await postTranslate(uncachedTexts, target);
 
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      throw new Error(`/api/translate ${res.status}: ${errBody.error || res.statusText}`);
-    }
-
-    const data = await res.json();
-    const translations: string[] = data.translations;
-
-    translations.forEach((translated, idx) => {
-      const originalIndex = uncachedIndexes[idx];
-      results[originalIndex] = translated;
-      writeCache(cacheKey(texts[originalIndex], target), translated);
-    });
-  } catch {
-    // On failure, fall back to originals
-    uncachedIndexes.forEach((i) => { results[i] = texts[i]; });
-  }
+  translations.forEach((translated, idx) => {
+    const originalIndex = uncachedIndexes[idx];
+    results[originalIndex] = translated;
+    writeCache(cacheKey(texts[originalIndex], target), translated);
+  });
 
   return results;
 }
