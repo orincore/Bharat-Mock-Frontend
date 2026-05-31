@@ -86,6 +86,30 @@ class ApiClient {
   }
 
   private async executeRequest<T>(url: string, options: RequestOptions): Promise<T> {
+    const method = (options.method || 'GET').toUpperCase();
+    // Retry transient failures (network blips, API cold-start 5xx, request timeouts)
+    // for idempotent GET requests, so a single hiccup doesn't surface to the user as
+    // "unable to load page — try again". Non-GET (POST/PUT/DELETE) are never retried.
+    const maxRetries = options.retries ?? (method === 'GET' ? 2 : 0);
+    let lastErr: any;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.executeRequestOnce<T>(url, options);
+      } catch (err: any) {
+        lastErr = err;
+        // No `.status` ⇒ network/abort (timeout) error; `.status >= 500` ⇒ transient server error.
+        const transient = !err?.status || err.status >= 500;
+        if (transient && attempt < maxRetries) {
+          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr;
+  }
+
+  private async executeRequestOnce<T>(url: string, options: RequestOptions): Promise<T> {
     const { requiresAuth, headers = {}, timeout = 10000, retries: _retries, ...rest } = options;
 
     const requestHeaders: Record<string, string> = {
