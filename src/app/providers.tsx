@@ -99,6 +99,10 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
     if (!pathname || hideChrome) return false;
     // Hide footer on exam detail/instruction pages which usually follow /[category-slug]/[exam-slug]
     const segments = pathname.split("/").filter(Boolean);
+    // Subcategory tab pages share the same 2-segment shape (/[subcategory]/[tab]) — keep the
+    // footer visible there. The reserved subcategory tabs use these fixed slugs.
+    const SUBCATEGORY_TAB_SLUGS = new Set(["mock-tests", "previous-papers"]);
+    if (segments.length === 2 && SUBCATEGORY_TAB_SLUGS.has(segments[1].toLowerCase())) return false;
     return segments.length === 2 && !segments[0].startsWith("admin") && !segments[0].startsWith("auth");
   }, [pathname, hideChrome]);
 
