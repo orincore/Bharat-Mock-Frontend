@@ -85,16 +85,32 @@ export function decodeHtmlText(value?: string | null): string {
 
 export function getCleanContentLabel(value?: string | null): string {
   if (!value) return "";
-  
+
   // First fully decode HTML entities
   let cleaned = fullyDecodeHtmlEntities(value);
-  
-  // Remove all HTML tags including those with attributes (like <strong style="...">)
+
+  // Strip inline style attributes FIRST. Editor content can carry huge Tailwind
+  // CSS-variable blobs (e.g. <strong style="--tw-scale-x: 1; …">) and the tag
+  // is sometimes malformed/unclosed, so removing the style attribute up front
+  // guarantees the blob is gone even when the tag itself can't be matched.
+  cleaned = cleaned
+    .replace(/\sstyle\s*=\s*"[^"]*"?/gi, " ")
+    .replace(/\sstyle\s*=\s*'[^']*'?/gi, " ");
+
+  // Remove style/script blocks, then any complete or partial (unclosed) HTML tags
   cleaned = cleaned
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<[^>]+>/g, " ");  // This removes ALL HTML tags
-  
+    .replace(/<[^>]+>/g, " ")   // complete tags
+    .replace(/<[^>]*$/g, " ");  // trailing unclosed tag start
+
+  // Strip any residual CSS leftovers from malformed markup so they never show as text
+  cleaned = cleaned
+    .replace(/--[\w-]+\s*:\s*[^;]*;?/gi, " ") // CSS custom-property declarations
+    .replace(/--[\w-]+/gi, " ")               // stray custom-property names
+    .replace(/#[0-9a-fA-F]{3,8}\b/g, " ")      // stray hex colors
+    .replace(/\b\d+px\b/gi, " ");              // stray px values
+
   // Clean up whitespace
   return cleaned
     .replace(/\s+/g, " ")

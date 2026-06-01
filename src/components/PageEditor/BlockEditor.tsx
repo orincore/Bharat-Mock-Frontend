@@ -3578,6 +3578,8 @@ const InlineTableEditor = ({
   const [focusedCell, setFocusedCell] = React.useState<string | null>(null);
   // Keeps the per-cell control strip visible while a native color picker is open
   const [pinnedControls, setPinnedControls] = React.useState<string | null>(null);
+  // Text-color swatch popover (applies foreColor to the selected text inside a cell)
+  const [textColorOpen, setTextColorOpen] = React.useState(false);
   // Saved selection range — restored before applying toolbar commands so they
   // work even though the toolbar lives outside the table's scroll container
   const savedRangeRef = React.useRef<Range | null>(null);
@@ -3649,6 +3651,35 @@ const InlineTableEditor = ({
         {fmtBtn('italic', 'I', 'Italic', 'italic')}
         {fmtBtn('underline', 'U', 'Underline', 'underline')}
         {fmtBtn('strikeThrough', 'S̶', 'Strikethrough')}
+
+        {/* Text color — applies to the selected text. Uses the same selection-preserving
+            pattern as fmtBtn (onMouseDown + preventDefault + restoreSelection) so the
+            cell never loses focus/selection when picking a color. */}
+        <div className="relative">
+          <button type="button" title="Text color"
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); setTextColorOpen((v) => !v); }}
+            className="w-6 h-6 flex items-center justify-center rounded text-xs font-bold hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-colors"
+            style={{ color: TEXT_COLOR_OPTIONS[1].value }}>
+            A
+          </button>
+          {textColorOpen && (
+            <div className="absolute z-30 top-full left-0 mt-1 p-1.5 bg-white border border-gray-200 rounded-lg shadow-xl flex items-center gap-1"
+              onMouseDown={(e) => e.preventDefault()}>
+              {TEXT_COLOR_OPTIONS.map((opt) => (
+                <button key={opt.value} type="button" title={opt.label}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    restoreSelection();
+                    document.execCommand('styleWithCSS', false, 'true');
+                    document.execCommand('foreColor', false, opt.value);
+                    setTextColorOpen(false);
+                  }}
+                  className="w-5 h-5 rounded-full border border-gray-300 hover:scale-110 transition-transform flex-shrink-0"
+                  style={{ backgroundColor: opt.value }} />
+              ))}
+            </div>
+          )}
+        </div>
         <div className="w-px h-4 bg-gray-200 mx-1" />
 
         {/* Align group */}
