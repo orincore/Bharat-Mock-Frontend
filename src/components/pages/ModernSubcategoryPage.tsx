@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
+import { isBlockEmpty } from "@/lib/utils/blockContent";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
 import { getCleanContentLabel } from "@/lib/utils";
@@ -969,7 +970,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     });
   };
 
-  const sidebarSections = getSidebarSectionsForTab(activeTab);
+  const sidebarSections = getSidebarSectionsForTab(activeTab)
+    .map((section) => ({ ...section, blocks: (section.blocks || []).filter((b) => !isBlockEmpty(b)) }))
+    .filter((section) => Array.isArray(section.blocks) && section.blocks.length > 0);
 
   const getSectionsForTab = (tabId: string) => {
     if (tabId === 'overview') {
@@ -993,9 +996,18 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return 0;
   };
 
-  const visibleSections = getSectionsForTab(activeTab);
+  const rawVisibleSections = getSectionsForTab(activeTab);
   const tabItems = tabDescriptors.map(({ id, label }) => ({ id, label }));
   const isSpecialTab = activeTab === 'mock-tests' || activeTab === 'previous-papers';
+  // For normal content tabs, drop blank blocks and any section that ends up with no
+  // renderable content so the public page never shows an empty card. Special tabs keep
+  // their sections — they host reserved exam/paper cards not stored as content blocks.
+  const visibleSections = isSpecialTab
+    ? rawVisibleSections
+    : rawVisibleSections
+        .map((section) => ({ ...section, blocks: (section.blocks || []).filter((b) => !isBlockEmpty(b)) }))
+        .filter((section) => Array.isArray(section.blocks) && section.blocks.length > 0);
+  const renderableOrphanBlocks = (pageContent?.orphanBlocks || []).filter((b) => !isBlockEmpty(b));
   const isContentTab = currentTabDescriptor?.type === 'content' || isSpecialTab;
   const reservedPosition = getReservedPosition(activeTab);
   const tableOfContents = useMemo<TableOfContentsEntry[]>(() => {
@@ -1182,7 +1194,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           <div className="lg:col-span-3">
             {isContentTab && (
               <>
-                {pageContent?.orphanBlocks?.map((block) => (
+                {renderableOrphanBlocks.map((block) => (
                   <div key={block.id} className="mb-6">
                     <PageBlockRenderer block={block} />
                   </div>
@@ -1193,7 +1205,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                   <MobileTOC key="toc-mobile" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
                 )}
 
-                {visibleSections.length === 0 && (!pageContent?.orphanBlocks || pageContent.orphanBlocks.length === 0) && !isSpecialTab ? (
+                {visibleSections.length === 0 && renderableOrphanBlocks.length === 0 && !isSpecialTab ? (
                   <div className="bg-white rounded-lg border border-dashed border-gray-300 p-10 text-center text-gray-500">
                     No Content Yet! Come again later...
                   </div>

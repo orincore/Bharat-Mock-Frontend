@@ -409,10 +409,18 @@ export default function AdminCategoryEditorPage() {
         return;
       }
 
+      // Renumber each section's blocks by their on-screen array position so the public
+      // page (which orders blocks by display_order) renders them in the exact same
+      // sequence shown in the editor. Deleting then adding blocks could otherwise leave
+      // duplicate display_order values, making the public block order non-deterministic.
+      // Section display_order is left untouched — it's maintained per-tab by moveSection.
       const bulkPayload = {
         sections: updatedSections.map((section) => ({
           ...section,
-          blocks: section.blocks || []
+          blocks: (section.blocks || []).map((block, blockIndex) => ({
+            ...block,
+            display_order: blockIndex
+          }))
         }))
       };
 

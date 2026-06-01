@@ -6,6 +6,7 @@ import type { ServerPageData, FirstSegmentType } from './page';
 import TabNavigation from './TabNavigation';
 import MobileTOC from './MobileTOC';
 import DownloadPdfButton from './DownloadPdfButton';
+import { isBlockEmpty } from '@/lib/utils/blockContent';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
@@ -317,7 +318,16 @@ export default async function ServerPageContent({
       ? serverPageData.subcategories
       : await fetchSubcategories(serverPageData.categoryId);
   }
-  
+
+  // Drop blank blocks, then any section left with no renderable content, so the
+  // public page never renders an empty card for a section that has no real content.
+  contentData = {
+    sections: contentData.sections
+      .map((section) => ({ ...section, blocks: (section.blocks || []).filter((b) => !isBlockEmpty(b)) }))
+      .filter((section) => section.blocks.length > 0),
+    orphanBlocks: (contentData.orphanBlocks || []).filter((b) => !isBlockEmpty(b)),
+  };
+
   // Get page info
   const isSubcategory = firstSegmentType === 'subcategory' || firstSegmentType === 'combined-subcategory';
   const pageInfo = isSubcategory 
@@ -363,7 +373,10 @@ export default async function ServerPageContent({
   // which is the tab-filtered set that already strips is_sidebar (so sourcing from
   // it was always empty, hence the admin-added sidebar never appeared). Fall back to
   // contentData only on the rare path where rawPageContent wasn't pre-fetched.
-  const sidebarSections = ((rawPageContent?.sections) || contentData.sections || []).filter((s) => s.is_sidebar);
+  const sidebarSections = ((rawPageContent?.sections) || contentData.sections || [])
+    .filter((s) => s.is_sidebar)
+    .map((section) => ({ ...section, blocks: (section.blocks || []).filter((b) => !isBlockEmpty(b)) }))
+    .filter((section) => section.blocks.length > 0);
 
   return (
     <>

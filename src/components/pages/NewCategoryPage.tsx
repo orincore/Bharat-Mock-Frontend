@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
+import { isBlockEmpty } from "@/lib/utils/blockContent";
 import { getCleanContentLabel } from "@/lib/utils";
 import { Download, ChevronRight, ChevronLeft, ArrowRight, BookOpen, List, X } from "lucide-react";
 import { toast } from "sonner";
@@ -601,7 +602,9 @@ export default function NewCategoryPage({
     });
   };
 
-  const sidebarSections = getSidebarSectionsForTab(activeTab);
+  const sidebarSections = getSidebarSectionsForTab(activeTab)
+    .map((section) => ({ ...section, blocks: (section.blocks || []).filter((b) => !isBlockEmpty(b)) }))
+    .filter((section) => Array.isArray(section.blocks) && section.blocks.length > 0);
 
   const getSectionsForTab = (tabId: string) => {
     if (tabId === "overview") {
@@ -619,7 +622,12 @@ export default function NewCategoryPage({
     return [];
   };
 
-  const visibleSections = getSectionsForTab(activeTab);
+  // Drop blank blocks and any section that ends up with no renderable content so the
+  // public page never shows an empty card for a section with no real content.
+  const visibleSections = getSectionsForTab(activeTab)
+    .map((section) => ({ ...section, blocks: (section.blocks || []).filter((b) => !isBlockEmpty(b)) }))
+    .filter((section) => Array.isArray(section.blocks) && section.blocks.length > 0);
+  const renderableOrphanBlocks = (pageContent?.orphanBlocks || []).filter((b) => !isBlockEmpty(b));
   const tabItems = tabDescriptors.map(({ id, label }) => ({ id, label }));
   const isContentTab = true;
 
@@ -856,7 +864,7 @@ export default function NewCategoryPage({
                   </div>
                 )}
 
-                {pageContent?.orphanBlocks?.map((block) => (
+                {renderableOrphanBlocks.map((block) => (
                   <div key={block.id} className="mb-8 sm:mb-10">
                     <PageBlockRenderer block={block} />
                   </div>
@@ -873,8 +881,7 @@ export default function NewCategoryPage({
                 })()}
 
                 {visibleSections.length === 0 &&
-                (!pageContent?.orphanBlocks ||
-                  pageContent.orphanBlocks.length === 0) ? (
+                renderableOrphanBlocks.length === 0 ? (
                   <div className="bg-white rounded-lg border border-dashed border-gray-300 p-10 text-center text-gray-500">
                     No content yet. Check back later or explore the exam
                     cards above.

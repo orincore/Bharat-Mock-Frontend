@@ -436,7 +436,16 @@ export default function AdminSubcategoryEditorPage() {
         .filter((tab) => !seenIds.has(tab.id))
         .map((tab) => ({ id: tab.id, title: tab.title, isSpecial: false } satisfies TabOption));
 
-      return [...configuredTabs, ...missingCustomTabs];
+      // Mock Tests / Previous Papers are built-in reserved tabs that must always be
+      // available for adding content, even when the saved tab config doesn't include
+      // a row for them (otherwise they silently disappear from the Page Tabs list).
+      const reservedTabs: TabOption[] = [
+        { id: 'mock-tests', title: 'Mock Tests', isSpecial: true },
+        { id: 'previous-papers', title: 'Previous Papers', isSpecial: true },
+      ];
+      const missingReservedTabs = reservedTabs.filter((tab) => !seenIds.has(tab.id));
+
+      return [...configuredTabs, ...missingCustomTabs, ...missingReservedTabs];
     }
 
     return [
@@ -707,12 +716,17 @@ export default function AdminSubcategoryEditorPage() {
       const originalIds = new Set(originalSections.map((section) => section.id).filter(Boolean));
       const deletedSectionIds = Array.from(originalIds).filter((id) => !currentIds.has(id));
 
+      // Renumber each section's blocks by their on-screen array position so the public
+      // page (which orders blocks by display_order) renders them in the exact same
+      // sequence shown in the editor. Deleting then adding blocks could otherwise leave
+      // duplicate display_order values, making the public block order non-deterministic.
+      // Section display_order is left untouched — it's maintained per-tab by moveSection.
       const syncPayload = {
         sections: updatedSections.map((section) => ({
           ...section,
-          blocks: (section.blocks || []).map((block, idx) => ({
+          blocks: (section.blocks || []).map((block, blockIndex) => ({
             ...block,
-            display_order: block.display_order ?? idx
+            display_order: blockIndex
           })),
           display_order: section.display_order ?? 0,
           is_sidebar: section.is_sidebar ?? false,
