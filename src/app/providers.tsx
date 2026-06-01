@@ -11,7 +11,7 @@ import { AppDataProvider, useAppData } from "@/context/AppDataContext";
 import { Navbar } from "@/components/common/Navbar";
 import { GoogleTranslate } from "@/components/common/GoogleTranslate";
 import { apolloClient } from "@/lib/graphql/client";
-import { useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Ban, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -25,6 +25,22 @@ const AuthReminderDialog = dynamic(
 const SubscriptionPromoBanner = dynamic(
   () => import("@/components/common/SubscriptionPromoBanner").then((m) => ({ default: m.SubscriptionPromoBanner }))
 );
+
+// Lets specific pages (e.g. subcategory/category tab pages) keep the footer visible even when
+// the global path heuristic in InnerProviders would otherwise hide it for 2-segment URLs.
+const FooterVisibilityContext = createContext<(register: boolean) => void>(() => {});
+
+/**
+ * Force the footer to stay visible for as long as the calling component is mounted.
+ * Mount/unmount safe — uses a ref-counted registration so concurrent callers don't clash.
+ */
+export function useFooterVisible() {
+  const register = useContext(FooterVisibilityContext);
+  useEffect(() => {
+    register(true);
+    return () => register(false);
+  }, [register]);
+}
 
 function DeletedAccountGate({ children }: { children: React.ReactNode }) {
   const { isDeleted } = useAuth();
@@ -89,6 +105,10 @@ function BlockedAccountGate({ children }: { children: React.ReactNode }) {
 function InnerProviders({ children }: { children: React.ReactNode }) {
   const { refresh: refreshAppData } = useAppData();
   const pathname = usePathname();
+  const [forceFooterVisibleCount, setForceFooterVisibleCount] = useState(0);
+  const registerFooterVisible = useCallback((register: boolean) => {
+    setForceFooterVisibleCount((count) => Math.max(0, count + (register ? 1 : -1)));
+  }, []);
   const hideChrome = useMemo(() => {
     if (!pathname) return false;
     // Exactly like dedicated exam attempt views
@@ -99,37 +119,40 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
     if (!pathname || hideChrome) return false;
     // Hide footer on exam detail/instruction pages which usually follow /[category-slug]/[exam-slug]
     const segments = pathname.split("/").filter(Boolean);
-    // Subcategory tab pages share the same 2-segment shape (/[subcategory]/[tab]) — keep the
-    // footer visible there. The reserved subcategory tabs use these fixed slugs.
-    const SUBCATEGORY_TAB_SLUGS = new Set(["mock-tests", "previous-papers"]);
-    if (segments.length === 2 && SUBCATEGORY_TAB_SLUGS.has(segments[1].toLowerCase())) return false;
     return segments.length === 2 && !segments[0].startsWith("admin") && !segments[0].startsWith("auth");
   }, [pathname, hideChrome]);
+
+  // Subcategory/category tab pages share the same 2-segment shape as exam-detail pages
+  // (/[slug]/[tab]) — including custom tabs with arbitrary slugs — so the path heuristic
+  // above wrongly hides their footer. Those pages opt the footer back in via useFooterVisible().
+  const footerForcedVisible = forceFooterVisibleCount > 0;
 
   return (
     <AuthProvider onAuthChange={refreshAppData}>
       <ExamProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <GoogleTranslate />
-          <div className="flex flex-col min-h-screen">
-            {!hideChrome && (
-              <div className="sticky top-0 z-50">
-                <Navbar />
-              </div>
-            )}
-            {!hideChrome && <SubscriptionPromoBanner />}
-            <main className={`flex-grow ${hideChrome ? "min-h-screen bg-background" : ""}`}>
-              <DeletedAccountGate>
-                <BlockedAccountGate>
-                  {children}
-                </BlockedAccountGate>
-              </DeletedAccountGate>
-            </main>
-            {!hideChrome && !hideFooterOnly && <Footer />}
-          </div>
-          <AuthReminderDialog />
+          <FooterVisibilityContext.Provider value={registerFooterVisible}>
+            <Toaster />
+            <Sonner />
+            <GoogleTranslate />
+            <div className="flex flex-col min-h-screen">
+              {!hideChrome && (
+                <div className="sticky top-0 z-50">
+                  <Navbar />
+                </div>
+              )}
+              {!hideChrome && <SubscriptionPromoBanner />}
+              <main className={`flex-grow ${hideChrome ? "min-h-screen bg-background" : ""}`}>
+                <DeletedAccountGate>
+                  <BlockedAccountGate>
+                    {children}
+                  </BlockedAccountGate>
+                </DeletedAccountGate>
+              </main>
+              {!hideChrome && (!hideFooterOnly || footerForcedVisible) && <Footer />}
+            </div>
+            <AuthReminderDialog />
+          </FooterVisibilityContext.Provider>
         </TooltipProvider>
       </ExamProvider>
     </AuthProvider>

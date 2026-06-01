@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import ServerPageContent from './ServerPageContent';
 import ServerExamDetail from './ServerExamDetail';
 import DynamicPageClient from './DynamicPageClient';
+import FooterVisible from './FooterVisible';
 import { DynamicJsonLd } from '@/components/seo/JsonLd';
 
 export const dynamic = 'force-dynamic';
@@ -563,6 +564,7 @@ export default async function DynamicPage(
   return (
     <>
       {jsonLd && <DynamicJsonLd schema={jsonLd} />}
+      {!isExamPage && <FooterVisible />}
       {isExamPage ? (
         <ServerExamDetail
           urlPath={`/${slugArray.join('/')}`}

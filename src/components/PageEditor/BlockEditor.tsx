@@ -2560,6 +2560,62 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
     </button>
   );
 
+  // Per-selection text color for header/cell content. Every interaction uses
+  // onMouseDown + preventDefault so the contentEditable keeps its text selection
+  // (a native <input type="color"> steals focus and collapses the selection, which
+  // is why changing color used to do nothing on the highlighted text).
+  const ColorButton = () => {
+    const [open, setOpen] = useState(false);
+    const wrapRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (!open) return;
+      const onDocMouseDown = (e: MouseEvent) => {
+        if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+      };
+      document.addEventListener('mousedown', onDocMouseDown);
+      return () => document.removeEventListener('mousedown', onDocMouseDown);
+    }, [open]);
+
+    const applyColor = (color: string) => {
+      // Emit inline-style spans (instead of deprecated <font>) for the active selection.
+      document.execCommand('styleWithCSS', false, 'true');
+      document.execCommand('foreColor', false, color);
+      setOpen(false);
+    };
+
+    return (
+      <div className="relative" ref={wrapRef}>
+        <button
+          type="button"
+          title="Text color"
+          onMouseDown={(e) => { e.preventDefault(); setOpen((v) => !v); }}
+          className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded hover:bg-gray-100 bg-white leading-none"
+          style={{ color: TEXT_COLOR_OPTIONS[1].value }}
+        >
+          A
+        </button>
+        {open && (
+          <div
+            className="absolute z-50 top-full left-0 mt-1 p-1.5 bg-white border border-gray-200 rounded-lg shadow-xl flex items-center gap-1"
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {TEXT_COLOR_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                title={opt.label}
+                onMouseDown={(e) => { e.preventDefault(); applyColor(opt.value); }}
+                className="w-5 h-5 rounded-full border border-gray-300 hover:scale-110 transition-transform flex-shrink-0"
+                style={{ backgroundColor: opt.value }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Normalize pasted content to remove font-size and other styling irregularities
   const handleCellPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
     const html = event.clipboardData?.getData('text/html');
@@ -2642,6 +2698,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
               <div className="flex-1 flex flex-col gap-1">
                 <div className="flex items-center gap-1">
                   <BoldButton />
+                  <ColorButton />
                   <span className="text-xs text-gray-400">Ctrl+B to bold</span>
                 </div>
                 <div
@@ -2702,6 +2759,7 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
                     <div key={colIndex} className="flex flex-col gap-1">
                       <div className="flex items-center gap-1">
                         <BoldButton />
+                        <ColorButton />
                         {cellLink && (
                           <span className="text-xs text-blue-600 font-medium">🔗</span>
                         )}

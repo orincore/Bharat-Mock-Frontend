@@ -8,7 +8,6 @@ import { Providers } from "./providers";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { ServiceWorkerRegistration } from "@/components/common/ServiceWorkerRegistration";
 import { WebVitals } from "@/components/common/WebVitals";
-import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -82,8 +81,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={inter.className} suppressHydrationWarning>
         {/* Google Tag Manager (noscript) */}
         <noscript dangerouslySetInnerHTML={{ __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PSWFF7GC" height="0" width="0" style="display:none;visibility:hidden"></iframe>` }} />
-        <OrganizationJsonLd />
-        <WebSiteJsonLd />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>
             {children}
