@@ -327,6 +327,12 @@ export default async function ServerPageContent({
   const heroTitle = pageInfo?.name || first;
   const heroSubtitle = pageInfo?.description || '';
   const logoUrl = pageInfo?.logo_url;
+
+  // Admin-configured per-tab hero heading (keyed by tab id / 'overview').
+  // Mirrors ModernSubcategoryPage so the SSR hero shows the same heading the
+  // admin set instead of falling back to the bare subcategory/category name.
+  const headingKey = activeTabId || 'overview';
+  const heroHeading = rawPageContent?.tabHeadings?.[headingKey] || heroTitle;
   
   // Build breadcrumbs
   const breadcrumbs = [{ label: 'Home', href: '/' }];
@@ -392,7 +398,7 @@ export default async function ServerPageContent({
               )}
               <div className="min-w-0">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-2">
-                  {heroTitle}
+                  {heroHeading}
                 </h1>
                 {heroSubtitle && (
                   <p className="text-base md:text-lg text-blue-100 mb-3 max-w-3xl">

@@ -33,8 +33,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
   : '';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
-
 async function fetchInitialData() {
   try {
     const [examsRes, categoriesRes, bannersRes] = await Promise.all([
@@ -75,36 +73,146 @@ export default async function LiveTestsPage() {
   const initialData = { exams, categories };
 
   // Generate JSON-LD structured data
-  const jsonLd = {
+  const collectionPageSchema = {
     '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    name: 'Live Tests - Bharat Mock',
-    description: 'Join live mock tests with real-time competition and live leaderboards. SSC, Banking, Railways, UPSC and more.',
-    url: `${SITE_URL}/live-tests`,
-    breadcrumb: {
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        {
-          '@type': 'ListItem',
-          position: 1,
-          name: 'Home',
-          item: SITE_URL,
-        },
-        {
-          '@type': 'ListItem',
-          position: 2,
-          name: 'Live Tests',
-          item: `${SITE_URL}/live-tests`,
-        },
-      ],
+    '@type': 'CollectionPage',
+    name: 'Live Tests',
+    url: 'https://bharatmock.com/live-tests',
+    description:
+      'BharatMock Live Test offers real exam-like mock tests, performance analysis, and smart practice for SSC, Banking, Railway, police, & other competitive exams.',
+    publisher: {
+      '@type': 'Organization',
+      name: 'BharatMock',
     },
+  };
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://bharatmock.com/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Live Tests',
+        item: 'https://bharatmock.com/live-tests',
+      },
+    ],
+  };
+
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Can I retake a Live Test after it has ended?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes, you can attempt Live Tests again in practice mode after the live window closes. This enables you to rework and compare your two attempts and measure progress over time.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What is the difference between a Live Test and a Normal Mock Test?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: "You can take a regular mock test at your own pace anytime. A Live Test is scheduled, has real-time competition with other aspirants and a live leaderboard that keeps updating as you attempt. It's the real exam-day adrenaline that a solo mock simply can't give you.",
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What exams are covered under Bharat Mock Live Tests?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Our mock tests are available for SSC, Banking, Railways, UPSC, State PSC, CTET, Defence, Insurance and many more exams.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Are Live Tests available in Hindi and English both?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. The Live Tests are bilingual so that students from all the regions of India can attempt the tests easily in their own preferred language.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What if I miss a scheduled Live Test?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Certain tests may be re-attempted at a later date. But you will not be included in the live leaderboard. It is best to take the test during the live window for a competitive experience.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Do live tests follow the real exam pattern?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes, Live tests are based on the exam format, so you can get an experience of the actual exam.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I stop a live test once it starts?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes, you can pause or exit a live test, but the timer continues running. It is advised to complete the test in one sitting for accurate results.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I give paid Live Tests on both mobile and laptop?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes, your plan works on all devices. Just log in with your account to take tests anywhere.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is it possible to share my Bharat Mock account after purchasing a plan?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'No. Accounts are not shareable. If you share your account, you may be blocked from accessing your account.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How to buy a paid Live Test plan on Bharat Mock?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Sign in to your account, go to the Plans or Subscription page, choose your plan and pay the amount. You can access your account immediately with a successful payment.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is it possible to upgrade my plan later?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes, you can upgrade anytime. It will be calculated based on your plan and validity.',
+        },
+      },
+    ],
   };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionPageSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
       <LiveTestsClient initialData={initialData} initialBanner={initialBanner} />
       <LiveTestsFAQ />

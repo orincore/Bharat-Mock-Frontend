@@ -93,26 +93,40 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const websiteSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  url: SITE_URL,
-  name: "BharatMock",
-  description: DEFAULT_DESCRIPTION,
-  potentialAction: {
-    "@type": "SearchAction",
-    target: `${SITE_URL}/mock-test-series?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
-  },
-};
-
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "BharatMock",
-  url: SITE_URL,
-  logo: `${SITE_URL}/logo.png`,
-  sameAs: [],
+  url: "https://bharatmock.com/",
+  logo: "https://bharatmock.com/logo.png",
+  description:
+    "India's trusted platform for government exam preparation, mock tests, quizzes, previous year papers, and current affairs.",
+  email: "info@bharatmock.com",
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: "+91-8806727785",
+    contactType: "customer support",
+    availableLanguage: ["English", "Hindi"],
+  },
+  sameAs: [
+    "https://x.com/bharatmock",
+    "https://www.instagram.com/bharatmock",
+    "https://www.youtube.com/@bharatmock",
+    "https://www.facebook.com/bharatmock",
+    "https://linkedin.com/company/bharatmock",
+  ],
+};
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "BharatMock",
+  url: "https://bharatmock.com/",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://bharatmock.com/search?q={search_term_string}",
+    "query-input": "required name=search_term_string",
+  },
 };
 
 export default async function HomePage() {
@@ -125,11 +139,11 @@ export default async function HomePage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
       <Index
         initialHero={data?.hero ?? null}
