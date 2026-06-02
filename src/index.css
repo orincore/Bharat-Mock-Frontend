@@ -211,6 +211,22 @@ body.translated-rtl {
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
+
+  /* Default link styling - applies to all links automatically */
+  a {
+    color: #2563eb !important;
+    text-decoration: underline !important;
+    cursor: pointer;
+  }
+
+  a:hover {
+    color: #1d4ed8 !important;
+    text-decoration: underline !important;
+  }
+
+  a:visited {
+    color: #7c3aed !important;
+  }
 }
 
 @layer components {
