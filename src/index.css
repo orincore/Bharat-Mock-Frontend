@@ -227,6 +227,53 @@ body.translated-rtl {
   a:visited {
     color: #7c3aed !important;
   }
+
+  /* Exception: Remove link styling from buttons inside links, but preserve button's own text color */
+  a.inline-flex,
+  a.inline-flex *,
+  a > button,
+  a > button *,
+  a button,
+  a button *,
+  button a,
+  button a *,
+  a[class*="inline-flex"],
+  a[class*="inline-flex"] * {
+    text-decoration: none !important;
+  }
+
+  a.inline-flex:hover,
+  a.inline-flex:hover *,
+  a.inline-flex:visited,
+  a.inline-flex:visited *,
+  a.inline-flex:active,
+  a.inline-flex:active *,
+  a.inline-flex:focus,
+  a.inline-flex:focus *,
+  a:hover button,
+  a:hover button *,
+  a:visited button,
+  a:visited button *,
+  a:active button,
+  a:active button *,
+  a:focus button,
+  a:focus button *,
+  a[class*="inline-flex"]:hover,
+  a[class*="inline-flex"]:hover *,
+  a[class*="inline-flex"]:visited,
+  a[class*="inline-flex"]:visited * {
+    text-decoration: none !important;
+  }
+
+  /* Special rule: Only force white color for buttons with gradient backgrounds (CTA buttons) */
+  a button[class*="gradient"],
+  a button[class*="gradient"] *,
+  button[class*="gradient"] a,
+  button[class*="gradient"] a *,
+  a button[class*="bg-gradient"],
+  a button[class*="bg-gradient"] * {
+    color: white !important;
+  }
 }
 
 @layer components {
