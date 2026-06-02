@@ -299,6 +299,8 @@ export async function generateMetadata(
   const currentYear = new Date().getFullYear().toString();
   const rawTitle = examForMeta?.title
     || tabOverride?.meta_title || seo?.meta_title
+    || (serverPageData?.categoryInfo?.name ? `${serverPageData.categoryInfo.name} - Mock Tests & Exam Preparation` : null)
+    || (serverPageData?.subcategoryInfo?.name ? `${serverPageData.subcategoryInfo.name} - Mock Tests & Study Material` : null)
     || slugToTitle(slugArray[slugArray.length - 1]);
   // Replace stale year references (2024 or earlier) with the current year
   const title = rawTitle?.replace(/\b202[0-4]\b/g, currentYear) ?? rawTitle;
@@ -312,10 +314,22 @@ export async function generateMetadata(
       }${
         examForMeta.category ? ' Category: ' + examForMeta.category + '.' : ''
       }`.trim()
-    : (tabOverride?.meta_description || seo?.meta_description);
+    : (tabOverride?.meta_description || seo?.meta_description
+      || (serverPageData?.categoryInfo?.name 
+          ? `Free ${serverPageData.categoryInfo.name} mock tests, previous year papers, and study material. Practice online tests for ${serverPageData.categoryInfo.name} exam preparation on BharatMock.`
+          : null)
+      || (serverPageData?.subcategoryInfo?.name
+          ? `Prepare for ${serverPageData.subcategoryInfo.name} with free mock tests and previous year papers on BharatMock. Practice online tests and improve your exam scores.`
+          : null));
   const keywords = examForMeta
     ? `${examForMeta.title}, ${examForMeta.category || ''} mock test, free online test, BharatMock`
-    : (tabOverride?.meta_keywords || seo?.meta_keywords);
+    : (tabOverride?.meta_keywords || seo?.meta_keywords
+      || (serverPageData?.categoryInfo?.name
+          ? `${serverPageData.categoryInfo.name} mock tests, ${serverPageData.categoryInfo.name} previous year papers, ${serverPageData.categoryInfo.name} exam preparation, free online tests`
+          : null)
+      || (serverPageData?.subcategoryInfo?.name
+          ? `${serverPageData.subcategoryInfo.name} mock tests, ${serverPageData.subcategoryInfo.name} exam, online test, practice papers`
+          : null));
 
   // Always construct canonical from SITE_URL env variable
   // Ignore any hardcoded canonical URLs from the database/API
