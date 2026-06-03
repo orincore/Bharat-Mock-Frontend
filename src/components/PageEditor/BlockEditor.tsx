@@ -607,7 +607,7 @@ const trimRichTextBoundaryNodes = (parent: HTMLElement) => {
   while (parent.firstChild) {
     const first = parent.firstChild;
     if (first.nodeType === Node.TEXT_NODE) {
-      const text = first.textContent?.replace(/[\s\u00A0\u200B]+/g, ' ') || '';
+      const text = first.textContent?.replace(/\u00a0/g, ' ') || '';
       if (!text.trim()) {
         parent.removeChild(first);
         continue;
@@ -622,7 +622,7 @@ const trimRichTextBoundaryNodes = (parent: HTMLElement) => {
   while (parent.lastChild) {
     const last = parent.lastChild;
     if (last.nodeType === Node.TEXT_NODE) {
-      const text = last.textContent?.replace(/[\s\u00A0\u200B]+/g, ' ') || '';
+      const text = last.textContent?.replace(/\u00a0/g, ' ') || '';
       if (!text.trim()) {
         parent.removeChild(last);
         continue;
@@ -2616,23 +2616,55 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
     );
   };
 
-  // Normalize pasted content to remove font-size and other styling irregularities
+  // Convert any HTML fragment to plain text.
+  const stripHtml = (html: string): string => {
+    if (!html) return '';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return (tmp.textContent || '').replace(/\u00a0/g, ' ');
+  };
+
+  // Paste as PLAIN TEXT only. Content copied from Word, Google Docs or other sites
+  // carries inline styles, background fills, embedded icons/images and nested tables
+  // that wreck the cell layout (see the broken "You May Also Like" table). Strip
+  // everything to text — use the B / A buttons to (re)apply bold or color by hand.
   const handleCellPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    const html = event.clipboardData?.getData('text/html');
-    if (html) {
-      event.preventDefault();
-      const tmp = document.createElement('div');
-      tmp.innerHTML = DOMPurify.sanitize(html, {
-        USE_PROFILES: { html: true },
-        ADD_TAGS: ['font', 'b', 'strong', 'i', 'em', 'u', 'sub', 'sup', 'code'],
-        ADD_ATTR: ['style', 'class', 'color', 'face', 'size']
-      });
-      document.execCommand('insertHTML', false, tmp.innerHTML);
+    event.preventDefault();
+    let text = event.clipboardData?.getData('text/plain') || '';
+    if (!text) {
+      // Some sources only put HTML on the clipboard — derive text from it.
+      text = stripHtml(event.clipboardData?.getData('text/html') || '');
     }
+    document.execCommand('insertText', false, text.replace(/\u00a0/g, ' '));
+  };
+
+  // Strip all formatting (bold, color, backgrounds, stray markup) from every header
+  // and cell, leaving plain text. Fixes tables already polluted by past pastes.
+  const clearAllFormatting = () => {
+    if (!window.confirm('Remove all bold, colour and other formatting from every cell? The text is kept.')) return;
+    update({
+      headers: headers.map(stripHtml),
+      rows: rows.map((row) => row.map(stripHtml)),
+    });
   };
 
   return (
     <div className="space-y-4">
+      {/* Paste behaviour + reset */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-xs text-gray-500">
+          Pasted content is inserted as plain text. Use <span className="font-bold">B</span> / <span className="font-bold">A</span> to apply bold or colour.
+        </p>
+        <button
+          type="button"
+          onClick={clearAllFormatting}
+          title="Strip bold, colour, backgrounds and stray markup from every cell — keeps the text"
+          className="px-3 py-1.5 text-xs font-semibold text-gray-700 border border-gray-300 rounded hover:bg-gray-100 whitespace-nowrap"
+        >
+          Clear formatting
+        </button>
+      </div>
+
       {/* Color Options */}
       <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
         <div>
@@ -3428,13 +3460,11 @@ const InlineTableEditor = ({
       let newHeaders = [];
       let newRows = [];
 
-      const sanitizeCell = (cell: any) => {
-        return DOMPurify.sanitize(cell.innerHTML || '', {
-          USE_PROFILES: { html: true },
-          ADD_TAGS: ['font', 'b', 'strong', 'i', 'em', 'u', 'sub', 'sup'],
-          ADD_ATTR: ['style', 'class', 'color', 'face', 'size']
-        });
-      };
+      // Plain text only — a pasted table from Word/Docs/Excel/another site brings
+      // inline styles, colours, background fills and embedded icons/images that wreck
+      // the layout. Keep just the cell text; formatting is applied via the toolbar.
+      const sanitizeCell = (cell: any) =>
+        (cell.textContent || '').replace(/\u00a0/g, ' ').trim();
 
       if (hasHeader) {
         newHeaders = Array.from(trs[0].querySelectorAll('th, td')).map(sanitizeCell);
@@ -3601,22 +3631,25 @@ const InlineTableEditor = ({
 
   // Strip margin/padding inline styles from block elements so pasted content
   // from Word/Google Docs doesn't add phantom top space inside cells
-  const cleanPastedHtml = (html: string): string => {
-    if (typeof document === 'undefined') return html;
+  // Convert any HTML fragment to plain text (drops tags, styles, icons/images).
+  const stripHtml = (html: string): string => {
+    if (typeof document === 'undefined') return html || '';
     const tmp = document.createElement('div');
-    tmp.innerHTML = DOMPurify.sanitize(html, {
-      USE_PROFILES: { html: true },
-      ADD_TAGS: ['font', 'b', 'strong', 'i', 'em', 'u', 'sub', 'sup'],
-      ADD_ATTR: ['style', 'class', 'color', 'face', 'size'],
+    tmp.innerHTML = html || '';
+    return (tmp.textContent || '').replace(/\u00a0/g, ' ');
+  };
+
+  // Reset content formatting: strip bold/colour/markup/icons from every header and
+  // cell down to plain text, and drop per-cell/per-header colour overrides. Fixes
+  // tables already polluted by past pastes (e.g. the broken "You May Also Like" block).
+  const clearAllFormatting = () => {
+    if (!window.confirm('Reset formatting? Removes bold, colours, background fills, icons/images and stray markup from every cell — the text is kept.')) return;
+    update({
+      headers: headers.map(stripHtml),
+      rows: rows.map((row) => row.map(stripHtml)),
+      cellColors: {},
+      headerColors: {},
     });
-    tmp.querySelectorAll('p,div,h1,h2,h3,h4,h5,h6,li,blockquote').forEach(el => {
-      const e = el as HTMLElement;
-      e.style.marginTop = '0';
-      e.style.marginBottom = '0';
-      e.style.paddingTop = '0';
-      e.style.paddingBottom = '0';
-    });
-    return tmp.innerHTML;
   };
 
   React.useEffect(() => {
@@ -3726,6 +3759,12 @@ const InlineTableEditor = ({
           className="px-2 py-0.5 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 rounded border border-blue-200 hover:border-blue-400 transition-colors">
           + Row
         </button>
+        <div className="w-px h-4 bg-gray-200 mx-1" />
+        <button type="button" onClick={clearAllFormatting}
+          title="Strip bold, colours, backgrounds, icons/images and stray markup from every cell — keeps the text"
+          className="px-2 py-0.5 text-[10px] font-semibold text-gray-600 hover:bg-gray-100 rounded border border-gray-300 hover:border-gray-400 transition-colors">
+          Clear formatting
+        </button>
 
         {/* Active cell indicator */}
         {focusedCell && (
@@ -3761,9 +3800,13 @@ const InlineTableEditor = ({
                         onKeyUp={saveSelection}
                         onMouseUp={saveSelection}
                         onPaste={(e) => {
+                          // A full pasted table repopulates the grid (still as plain text);
+                          // anything else is inserted as plain text into the focused cell.
                           if (handleTablePaste(e)) return;
-                          const html = e.clipboardData?.getData('text/html');
-                          if (html) { e.preventDefault(); document.execCommand('insertHTML', false, cleanPastedHtml(html)); }
+                          e.preventDefault();
+                          let text = e.clipboardData?.getData('text/plain') || '';
+                          if (!text) text = stripHtml(e.clipboardData?.getData('text/html') || '');
+                          document.execCommand('insertText', false, text.replace(/\u00a0/g, ' '));
                         }}
                         onKeyDown={(e) => { if (e.ctrlKey || e.metaKey) { if (e.key === 'b') { e.preventDefault(); document.execCommand('bold'); } if (e.key === 'i') { e.preventDefault(); document.execCommand('italic'); } if (e.key === 'u') { e.preventDefault(); document.execCommand('underline'); } } }}
                       />
@@ -3821,9 +3864,13 @@ const InlineTableEditor = ({
                         onKeyUp={saveSelection}
                         onMouseUp={saveSelection}
                         onPaste={(e) => {
+                          // A full pasted table repopulates the grid (still as plain text);
+                          // anything else is inserted as plain text into the focused cell.
                           if (handleTablePaste(e)) return;
-                          const html = e.clipboardData?.getData('text/html');
-                          if (html) { e.preventDefault(); document.execCommand('insertHTML', false, cleanPastedHtml(html)); }
+                          e.preventDefault();
+                          let text = e.clipboardData?.getData('text/plain') || '';
+                          if (!text) text = stripHtml(e.clipboardData?.getData('text/html') || '');
+                          document.execCommand('insertText', false, text.replace(/\u00a0/g, ' '));
                         }}
                         onKeyDown={(e) => { if (e.ctrlKey || e.metaKey) { if (e.key === 'b') { e.preventDefault(); document.execCommand('bold'); } if (e.key === 'i') { e.preventDefault(); document.execCommand('italic'); } if (e.key === 'u') { e.preventDefault(); document.execCommand('underline'); } } }}
                       />
