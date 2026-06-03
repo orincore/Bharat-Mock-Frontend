@@ -247,8 +247,19 @@ body.translated-rtl {
     box-shadow: var(--shadow-glow);
   }
 
+  /* Used on the sticky navbar. `backdrop-filter` on a sticky/fixed element triggers a
+     compositing bug on many Android GPUs (Adreno/Mali): the area behind the bar fails to
+     invalidate while content scrolls under it, smearing the page into ghost/paint-trails
+     and stalling the compositor (page becomes unoperational). So we only enable the glass
+     blur on devices with a fine pointer (desktop/mouse) and fall back to a near-opaque
+     solid bar — which is indistinguishable on a navbar — on touch devices. */
   .glass-effect {
-    @apply backdrop-blur-md bg-white/80 dark:bg-black/50;
+    @apply bg-white/90 dark:bg-black/70;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .glass-effect {
+      @apply backdrop-blur-md bg-white/80 dark:bg-black/50;
+    }
   }
 }
 

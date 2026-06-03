@@ -447,9 +447,11 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
         </div>
       </div>
 
-      {/* Sticky Bottom CTA Bar - Visible on all devices when exam is startable */}
+      {/* Sticky Bottom CTA Bar - Visible on all devices when exam is startable.
+          No backdrop-filter: a fixed bar over scrolling content triggers an Android GPU
+          compositing/ghosting bug; bg-white/95 is opaque enough without it. */}
       {(showAttemptCta || requiresUnlock) && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 md:py-4 px-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 border-t border-slate-200 py-3 md:py-4 px-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] animate-in slide-in-from-bottom duration-300">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
             <div className="hidden md:flex flex-col">
               <h4 className="text-sm font-bold text-slate-900 truncate max-w-[250px]">{exam.title}</h4>
