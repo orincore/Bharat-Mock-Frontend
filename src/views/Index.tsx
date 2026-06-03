@@ -538,9 +538,13 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
             {impactStats.map((stat) => (
               <div
                 key={stat.label}
-                className={`flex items-center gap-3 rounded-2xl border border-white/70 bg-gradient-to-br ${stat.gradient} p-4 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg`}
+                /* [transform:translateZ(0)] gives each card its own clean compositor layer and
+                   [contain:paint] clips its painting to its box — together they stop the Android
+                   Chrome paint-trail/ghosting these gradient cards exhibited on scroll. Borders/
+                   icon bg are opaque (no translucency) for the same reason. */
+                className={`flex items-center gap-3 rounded-2xl border border-black/5 bg-gradient-to-br ${stat.gradient} p-4 shadow-md transition-shadow hover:shadow-lg [transform:translateZ(0)] [contain:paint]`}
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/85 text-primary">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-primary">
                   <stat.icon className="h-6 w-6" />
                 </div>
                 <div className="text-left">
