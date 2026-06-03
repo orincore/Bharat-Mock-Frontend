@@ -305,7 +305,10 @@ export async function generateMetadata(
   const { seo, firstSegmentType, serverPageData } = await fetchSeoForSlug(slugArray);
 
   const isTabPage = slugArray.length >= 2;
-  const tabSlug = isTabPage ? slugArray[slugArray.length - 1] : undefined;
+  // The "overview" tab IS the main 1-segment page (/slug), so its tab SEO must be
+  // resolved here too — otherwise overview-tab meta_title/description (where admins
+  // commonly enter the primary page SEO) is silently dropped on the main page.
+  const tabSlug = isTabPage ? slugArray[slugArray.length - 1] : 'overview';
   const tabOverride = resolveTabSeo(tabSlug, seo);
   const slugPath = slugArray.join('/');
 
@@ -406,7 +409,9 @@ export default async function DynamicPage(
   }
 
   const isTabPage = slugArray.length >= 2;
-  const tabSlugForSchema = isTabPage ? slugArray[slugArray.length - 1] : undefined;
+  // Resolve the overview tab SEO on the main page (see generateMetadata above) so the
+  // page title, description and breadcrumb match the metadata.
+  const tabSlugForSchema = isTabPage ? slugArray[slugArray.length - 1] : 'overview';
   const tabOverrideForSchema = resolveTabSeo(tabSlugForSchema, seo);
   
   const slugPath = slugArray.join('/');
@@ -422,14 +427,17 @@ export default async function DynamicPage(
     || seo?.meta_description
     || `Practice ${slugToTitle(slugArray[0])} mock tests, previous year papers and study material on BharatMock.`;
 
-  // Build full breadcrumb — use page-level meta_title for first segment label
+  // Build full breadcrumb — first-segment label prefers page-level meta_title, then the
+  // overview tab title (the subcategory's canonical name when only tab SEO is configured).
+  const overviewSeo = resolveTabSeo('overview', seo);
+  const firstSegmentLabel = seo?.meta_title || overviewSeo?.meta_title;
   const breadcrumbItems = [
     { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
     ...slugArray.map((segment, i) => ({
       '@type': 'ListItem',
       position: i + 2,
-      name: i === 0 && seo?.meta_title
-        ? seo.meta_title
+      name: i === 0 && firstSegmentLabel
+        ? firstSegmentLabel
         : (i === slugArray.length - 1 && tabOverrideForSchema?.meta_title)
           ? tabOverrideForSchema.meta_title
           : slugToTitle(segment),
