@@ -125,7 +125,14 @@ const nextConfig = {
   },
 
   async rewrites() {
-    return [];
+    return [
+      // Domain-verification file: served from public/ as a .txt but the verifier
+      // fetches the extensionless path. Rewrite keeps the clean URL.
+      {
+        source: '/665e21249c884b708a565afab6ed711e',
+        destination: '/665e21249c884b708a565afab6ed711e.txt',
+      },
+    ];
   },
 
 };

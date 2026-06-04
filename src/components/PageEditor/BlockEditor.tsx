@@ -92,6 +92,7 @@ import {
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { BlockRenderer, getBlockIcon } from './BlockRenderer';
+import { sanitizeTableCellHtml, TABLE_CELL_RESET } from './tableCellHtml';
 
 interface Block {
   id: string;
@@ -1527,6 +1528,245 @@ const INLINE_EDITABLE_BLOCKS = new Set([
   'card'
 ]);
 
+// Re-focus the contentEditable that owns a saved range and re-apply the range.
+// Without focusing the host first, document.execCommand() targets nothing once the
+// pointer has left the highlighted text — which is why colour/format "did not stick
+// after focus was lost". Returns the editable element (or null).
+const focusRangeEditable = (range: Range | null): HTMLElement | null => {
+  const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+  if (!sel || !range) return null;
+  const node = range.startContainer;
+  const host = (node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement)
+    ?.closest('[contenteditable="true"]') as HTMLElement | null;
+  host?.focus({ preventScroll: true });
+  try {
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } catch {
+    /* range nodes may have been replaced by a re-render — ignore */
+  }
+  return host;
+};
+
+const CtxBtn: React.FC<{ title: string; onApply: () => void; className?: string; children: React.ReactNode }> = ({
+  title,
+  onApply,
+  className = '',
+  children,
+}) => (
+  <button
+    type="button"
+    title={title}
+    // onMouseDown + preventDefault keeps the contentEditable's selection alive
+    onMouseDown={(e) => { e.preventDefault(); onApply(); }}
+    className={`w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-sm text-gray-700 transition-colors ${className}`}
+  >
+    {children}
+  </button>
+);
+
+// Highest practical stacking value so the menu sits above every dialog/overlay.
+const CTX_MENU_Z = 2147483646;
+
+// ── Global right-click formatting menu ──────────────────────────────────────
+// Right-click any highlighted text inside an editor block (rich text, table cell,
+// heading, section title …) to open an inline formatting menu. Works for every
+// block because it keys off `[contenteditable="true"]` + a live text selection.
+const RichTextContextMenu: React.FC = () => {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [placed, setPlaced] = useState(false); // false until measured & clamped on-screen
+  const [submenu, setSubmenu] = useState<null | 'color' | 'highlight'>(null);
+  const savedRange = useRef<Range | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const closeMenu = useCallback(() => {
+    setMenu(null);
+    setPlaced(false);
+    setSubmenu(null);
+  }, []);
+
+  useEffect(() => {
+    const onContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const editable = target?.closest?.('[contenteditable="true"]') as HTMLElement | null;
+      const sel = window.getSelection();
+      // No editable text selected → leave the browser's native menu alone.
+      if (!editable || !sel || sel.rangeCount === 0 || sel.isCollapsed || !sel.toString().trim()) {
+        return;
+      }
+      e.preventDefault();
+      savedRange.current = sel.getRangeAt(0).cloneRange();
+      setSubmenu(null);
+      setPlaced(false);
+      setMenu({ x: e.clientX, y: e.clientY });
+    };
+    document.addEventListener('contextmenu', onContextMenu);
+    return () => document.removeEventListener('contextmenu', onContextMenu);
+  }, []);
+
+  // Measure the rendered menu and clamp it fully inside the viewport. Runs before
+  // paint so a menu opened near a screen edge/corner never spills off-screen.
+  React.useLayoutEffect(() => {
+    if (!menu || placed || !menuRef.current) return;
+    const r = menuRef.current.getBoundingClientRect();
+    const pad = 8;
+    const x = Math.max(pad, Math.min(menu.x, window.innerWidth - r.width - pad));
+    const y = Math.max(pad, Math.min(menu.y, window.innerHeight - r.height - pad));
+    if (x !== menu.x || y !== menu.y) setMenu({ x, y });
+    setPlaced(true);
+  }, [menu, placed]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) closeMenu();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeMenu(); };
+    const onScroll = () => closeMenu();
+    const onResize = () => closeMenu();
+    document.addEventListener('mousedown', onDown, true);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    return () => {
+      document.removeEventListener('mousedown', onDown, true);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [menu, closeMenu]);
+
+  const exec = (cmd: string, value?: string) => {
+    focusRangeEditable(savedRange.current);
+    try {
+      if (cmd === 'foreColor' || cmd === 'hiliteColor' || cmd === 'backColor') {
+        document.execCommand('styleWithCSS', false, 'true');
+      }
+      document.execCommand(cmd, false, value);
+    } catch {
+      /* ignore unsupported command */
+    }
+    // Re-capture the (possibly shifted) selection so commands can be chained.
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) savedRange.current = sel.getRangeAt(0).cloneRange();
+  };
+
+  const addLink = () => {
+    const url = window.prompt('Link URL:', 'https://');
+    if (url && url.trim()) exec('createLink', url.trim());
+  };
+
+  const copySelection = () => {
+    const text = savedRange.current?.toString() || window.getSelection()?.toString() || '';
+    if (text) navigator.clipboard?.writeText(text).catch(() => { /* ignore */ });
+  };
+
+  if (!menu) return null;
+
+  // Open submenus toward whichever side/edge has room so swatches stay on-screen.
+  const openLeft = menu.x > window.innerWidth - 260;
+  const openUp = menu.y > window.innerHeight - 170;
+  const swatchPanelCls = `absolute ${openUp ? 'bottom-full mb-1' : 'top-full mt-1'} ${openLeft ? 'right-0' : 'left-0'} p-1.5 bg-white border border-gray-200 rounded-lg shadow-xl flex items-center gap-1`;
+  const swatchPanelStyle = { zIndex: CTX_MENU_Z + 1 } as React.CSSProperties;
+  const divider = <div className="w-px h-5 bg-gray-200 mx-0.5" />;
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed flex flex-wrap items-center gap-0.5 p-1 bg-white border border-gray-200 rounded-lg shadow-2xl"
+      style={{ left: menu.x, top: menu.y, zIndex: CTX_MENU_Z, maxWidth: 'min(96vw, 640px)', visibility: placed ? 'visible' : 'hidden' }}
+      onMouseDown={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {/* Inline emphasis */}
+      <CtxBtn title="Bold (Ctrl+B)" onApply={() => exec('bold')}><b>B</b></CtxBtn>
+      <CtxBtn title="Italic (Ctrl+I)" onApply={() => exec('italic')}><i>I</i></CtxBtn>
+      <CtxBtn title="Underline (Ctrl+U)" onApply={() => exec('underline')}><u>U</u></CtxBtn>
+      <CtxBtn title="Strikethrough" onApply={() => exec('strikeThrough')}><s>S</s></CtxBtn>
+      <CtxBtn title="Superscript" onApply={() => exec('superscript')}>x<sup className="text-[8px]">2</sup></CtxBtn>
+      <CtxBtn title="Subscript" onApply={() => exec('subscript')}>x<sub className="text-[8px]">2</sub></CtxBtn>
+
+      {divider}
+
+      {/* Text colour */}
+      <div className="relative">
+        <CtxBtn title="Text colour" onApply={() => setSubmenu((v) => (v === 'color' ? null : 'color'))}>
+          <span style={{ color: '#1d4ed8' }} className="font-bold">A</span>
+        </CtxBtn>
+        {submenu === 'color' && (
+          <div className={swatchPanelCls} style={swatchPanelStyle} onMouseDown={(e) => e.preventDefault()}>
+            {TEXT_COLOR_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                title={opt.label}
+                onMouseDown={(e) => { e.preventDefault(); exec('foreColor', opt.value); setSubmenu(null); }}
+                className="w-5 h-5 rounded-full border border-gray-300 hover:scale-110 transition-transform flex-shrink-0"
+                style={{ backgroundColor: opt.value }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Highlight colour */}
+      <div className="relative">
+        <CtxBtn title="Highlight" onApply={() => setSubmenu((v) => (v === 'highlight' ? null : 'highlight'))}>
+          <span className="px-1 rounded text-gray-800" style={{ backgroundColor: '#fde68a' }}>H</span>
+        </CtxBtn>
+        {submenu === 'highlight' && (
+          <div className={swatchPanelCls} style={swatchPanelStyle} onMouseDown={(e) => e.preventDefault()}>
+            {HIGHLIGHT_COLOR_OPTIONS.map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                title={opt.label}
+                onMouseDown={(e) => { e.preventDefault(); exec('hiliteColor', opt.value || 'transparent'); setSubmenu(null); }}
+                className="w-5 h-5 rounded-full border border-gray-300 hover:scale-110 transition-transform flex-shrink-0 flex items-center justify-center text-[10px] text-gray-400"
+                style={{ backgroundColor: opt.value || '#ffffff' }}
+              >
+                {opt.value ? '' : '∅'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {divider}
+
+      {/* Block format */}
+      <CtxBtn title="Heading 1" onApply={() => exec('formatBlock', 'h1')}><span className="text-xs font-bold">H1</span></CtxBtn>
+      <CtxBtn title="Heading 2" onApply={() => exec('formatBlock', 'h2')}><span className="text-xs font-bold">H2</span></CtxBtn>
+      <CtxBtn title="Heading 3" onApply={() => exec('formatBlock', 'h3')}><span className="text-xs font-bold">H3</span></CtxBtn>
+      <CtxBtn title="Normal text" onApply={() => exec('formatBlock', 'p')}><span className="text-xs">¶</span></CtxBtn>
+      <CtxBtn title="Quote" onApply={() => exec('formatBlock', 'blockquote')}>❝</CtxBtn>
+
+      {divider}
+
+      {/* Lists & indent */}
+      <CtxBtn title="Bulleted list" onApply={() => exec('insertUnorderedList')}>•</CtxBtn>
+      <CtxBtn title="Numbered list" onApply={() => exec('insertOrderedList')}><span className="text-xs">1.</span></CtxBtn>
+      <CtxBtn title="Decrease indent" onApply={() => exec('outdent')}>⇤</CtxBtn>
+      <CtxBtn title="Increase indent" onApply={() => exec('indent')}>⇥</CtxBtn>
+
+      {divider}
+
+      {/* Alignment */}
+      <CtxBtn title="Align left" onApply={() => exec('justifyLeft')}>⬅</CtxBtn>
+      <CtxBtn title="Align centre" onApply={() => exec('justifyCenter')}>⬌</CtxBtn>
+      <CtxBtn title="Align right" onApply={() => exec('justifyRight')}>➡</CtxBtn>
+      <CtxBtn title="Justify" onApply={() => exec('justifyFull')}>☰</CtxBtn>
+
+      {divider}
+
+      {/* Actions */}
+      <CtxBtn title="Add link" onApply={addLink}>🔗</CtxBtn>
+      <CtxBtn title="Copy" onApply={copySelection}>⎘</CtxBtn>
+      <CtxBtn title="Clear formatting" className="text-red-500" onApply={() => exec('removeFormat')}>✕</CtxBtn>
+    </div>
+  );
+};
+
 export const BlockEditor: React.FC<BlockEditorProps> = ({
   sections: initialSections,
   onSave,
@@ -1845,6 +2085,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
   return (
     <div className="flex bg-[#f8f9fa]" style={{ height: '100%', minHeight: 0 }}>
+
+      {/* Right-click formatting menu — works on any selected text in any block */}
+      <RichTextContextMenu />
 
       {/* ── LEFT OUTLINE SIDEBAR ─────────────────────────────────── */}
       <div className="w-44 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
@@ -2736,9 +2979,9 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
                 <div
                   contentEditable
                   suppressContentEditableWarning
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className={`w-full border border-gray-300 rounded px-3 py-2 text-sm leading-snug min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${TABLE_CELL_RESET}`}
                   dangerouslySetInnerHTML={{ __html: header }}
-                  onBlur={(e) => handleHeaderChange(index, e.currentTarget.innerHTML)}
+                  onBlur={(e) => handleHeaderChange(index, sanitizeTableCellHtml(e.currentTarget.innerHTML))}
                   onPaste={handleCellPaste}
                   onKeyDown={(e) => {
                     if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
@@ -2799,9 +3042,9 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
                       <div
                         contentEditable
                         suppressContentEditableWarning
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[56px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className={`w-full border border-gray-300 rounded px-3 py-2 text-sm leading-snug min-h-[56px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${TABLE_CELL_RESET}`}
                         dangerouslySetInnerHTML={{ __html: row[colIndex] || '' }}
-                        onBlur={(e) => handleCellChange(rowIndex, colIndex, e.currentTarget.innerHTML)}
+                        onBlur={(e) => handleCellChange(rowIndex, colIndex, sanitizeTableCellHtml(e.currentTarget.innerHTML))}
                         onPaste={handleCellPaste}
                         onKeyDown={(e) => {
                           if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
@@ -3463,8 +3706,11 @@ const InlineTableEditor = ({
       // Plain text only — a pasted table from Word/Docs/Excel/another site brings
       // inline styles, colours, background fills and embedded icons/images that wreck
       // the layout. Keep just the cell text; formatting is applied via the toolbar.
+      // Keep bold/colour and intentional line breaks (e.g. "Tier 1" / "Tier 2"),
+      // but strip inline font-size, block margins and embedded media that wreck
+      // the cell layout \u2014 block margins are why a pasted header spanned two lines.
       const sanitizeCell = (cell: any) =>
-        (cell.textContent || '').replace(/\u00a0/g, ' ').trim();
+        sanitizeTableCellHtml((cell.innerHTML || '').replace(/\u00a0/g, ' '), { stripAlign: true });
 
       if (hasHeader) {
         newHeaders = Array.from(trs[0].querySelectorAll('th, td')).map(sanitizeCell);
@@ -3621,12 +3867,11 @@ const InlineTableEditor = ({
     }
   };
 
+  // Re-focus the cell that owns the saved range before re-applying it, otherwise
+  // execCommand (bold/colour/align) targets nothing once the pointer moved to the
+  // toolbar — the reason colour "did not change once focus left the highlighted text".
   const restoreSelection = () => {
-    const sel = window.getSelection();
-    if (sel && savedRangeRef.current) {
-      sel.removeAllRanges();
-      sel.addRange(savedRangeRef.current);
-    }
+    focusRangeEditable(savedRangeRef.current);
   };
 
   // Strip margin/padding inline styles from block elements so pasted content
@@ -3791,11 +4036,11 @@ const InlineTableEditor = ({
                       <div
                         contentEditable
                         suppressContentEditableWarning
-                        className="px-3 py-2 text-xs font-semibold min-w-[90px] min-h-[32px] focus:outline-none focus:brightness-110"
+                        className={`px-3 py-2 text-xs font-semibold leading-snug text-center min-w-[90px] min-h-[32px] focus:outline-none focus:brightness-110 ${TABLE_CELL_RESET}`}
                         style={{ color: hText, backgroundColor: hBg }}
                         dangerouslySetInnerHTML={{ __html: header }}
                         onFocus={() => setFocusedCell(`h-${index}`)}
-                        onBlur={(e) => { setFocusedCell(null); handleHeaderChange(index, e.currentTarget.innerHTML); }}
+                        onBlur={(e) => { setFocusedCell(null); handleHeaderChange(index, sanitizeTableCellHtml(e.currentTarget.innerHTML)); }}
                         onSelect={saveSelection}
                         onKeyUp={saveSelection}
                         onMouseUp={saveSelection}
@@ -3855,11 +4100,11 @@ const InlineTableEditor = ({
                       <div
                         contentEditable
                         suppressContentEditableWarning
-                        className="px-3 py-2 text-xs min-h-[32px] min-w-[90px] focus:outline-none"
+                        className={`px-3 py-2 text-xs leading-snug text-center min-h-[32px] min-w-[90px] focus:outline-none ${TABLE_CELL_RESET}`}
                         style={{ color: cellColor.text || '#111827', backgroundColor: cellColor.bg || 'transparent' }}
                         dangerouslySetInnerHTML={{ __html: cell }}
                         onFocus={() => setFocusedCell(cellKey)}
-                        onBlur={(e) => { setFocusedCell(null); handleCellChange(rowIndex, cellIndex, e.currentTarget.innerHTML); }}
+                        onBlur={(e) => { setFocusedCell(null); handleCellChange(rowIndex, cellIndex, sanitizeTableCellHtml(e.currentTarget.innerHTML)); }}
                         onSelect={saveSelection}
                         onKeyUp={saveSelection}
                         onMouseUp={saveSelection}

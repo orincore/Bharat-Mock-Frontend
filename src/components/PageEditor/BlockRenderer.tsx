@@ -21,6 +21,7 @@ const isDraftContent = (html: string) => {
 };
 import dynamic from 'next/dynamic';
 import { AutoExamCardsBlock } from './AutoExamCardsBlock';
+import { TABLE_CELL_RESET } from './tableCellHtml';
 
 // Dynamically import recharts — it's ~200KB and only needed for chart blocks
 // Cast to `any` to avoid next/dynamic's strict ComponentType check against
@@ -279,7 +280,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                 return (
                   <th
                     key={index}
-                    className="min-w-[7rem] px-4 py-2.5 text-left text-xs font-semibold tracking-wide select-none"
+                    className={`min-w-[7rem] px-4 py-3 text-center text-base font-bold tracking-wide select-none align-top leading-snug ${TABLE_CELL_RESET}`}
                     style={{
                       backgroundColor: bg,
                       color: fg,
@@ -315,7 +316,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                   return (
                     <td
                       key={cellIndex}
-                      className="min-w-[7rem] px-4 py-2.5 align-top leading-relaxed text-gray-700"
+                      className={`min-w-[7rem] px-4 py-2.5 align-top text-center leading-relaxed text-gray-700 ${TABLE_CELL_RESET}`}
                       style={{
                         ...(cellColor.bg ? { backgroundColor: cellColor.bg } : {}),
                         ...(cellColor.text ? { color: cellColor.text } : {}),
@@ -559,7 +560,7 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content })
               <thead style={{ backgroundColor: headerBgColor, color: headerTextColor }}>
                 <tr>
                   {headers.map((h: string, i: number) => (
-                    <th key={i} className="px-4 py-2 text-left font-semibold" style={borderStyle}>{h}</th>
+                    <th key={i} className="px-4 py-2 text-center font-semibold" style={borderStyle}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -580,7 +581,7 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content })
                     };
                     
                     return (
-                      <td key={ci} className="px-4 py-2 text-foreground rich-text-content" style={cellStyle}>
+                      <td key={ci} className={`px-4 py-2 align-top text-center text-foreground rich-text-content ${TABLE_CELL_RESET}`} style={cellStyle}>
                         {cellLink ? (
                           <a
                             href={cellLink}
