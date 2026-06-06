@@ -833,12 +833,13 @@ const ExamCardsBlock: React.FC<{ content: any; settings?: any }> = ({ content })
 
     setLoading(true);
     const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
-    const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
     Promise.all(
+      // Use the public exams endpoint so attached cards resolve for every role and
+      // for anonymous visitors on the public page (the admin endpoint 403s without
+      // the exams.read permission).
       missing.map((id: string) =>
-        fetch(`${apiBase}/admin/exams/${encodeURIComponent(id)}`, { headers })
+        fetch(`${apiBase}/exams/${encodeURIComponent(id)}`)
           .then((r) => r.ok ? r.json() : null)
           .then((json) => ({ id, data: json?.data ?? null }))
           .catch(() => ({ id, data: null }))

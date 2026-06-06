@@ -17,6 +17,7 @@ import { SubscriptionPageContent } from '@/lib/api/subscriptionPageService';
 import { Category } from '@/lib/api/taxonomyService';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
 import { TestimonialsSection } from '@/components/sections/TestimonialsSection';
+import { FEATURED_PARTNERS } from '@/lib/constants/featuredPartners';
 
 interface SubscriptionsClientProps {
   initialPlans: SubscriptionPlan[];
@@ -29,15 +30,6 @@ declare global {
     Razorpay?: any;
   }
 }
-
-const FEATURED_PARTNERS = [
-  { name: 'Startup India', url: 'https://cdn-prod.mybharats.in/events/17052955243640.png' },
-  { name: 'Medium', url: 'https://miro.medium.com/v2/resize:fit:1290/1*cbyNf_R8Ld_ZzKVv07Ezag.jpeg' },
-  { name: 'Trust Pilot', url: 'https://1000logos.net/wp-content/uploads/2022/10/Trustpilot-Logo.png' },
-  { name: 'Wikipedia', url: 'https://images.seeklogo.com/logo-png/25/2/wikipedia-logo-png_seeklogo-259331.png' },
-  { name: 'Google My Business', url: 'https://londonproofreaders.co.uk/wp-content/uploads/2025/06/google-my-business-logo-png-transparent.png' },
-  { name: 'JustDial', url: 'https://indiancompanies.in/wp-content/uploads/2021/10/About-Just-Dial-Limited-Company.png' },
-];
 
 const formatCurrency = (amountCents: number, currency = 'INR') => {
   try {

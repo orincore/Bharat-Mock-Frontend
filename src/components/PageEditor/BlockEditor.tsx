@@ -94,6 +94,7 @@ import DOMPurify from 'dompurify';
 import { BlockRenderer, getBlockIcon } from './BlockRenderer';
 import { sanitizeTableCellHtml, TABLE_CELL_RESET } from './tableCellHtml';
 import { adminService } from '@/lib/api/adminService';
+import { examService } from '@/lib/api/examService';
 
 interface Block {
   id: string;
@@ -345,12 +346,31 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
   const wrapperRef = React.useRef<HTMLDivElement>(null);
 
   const searchExams = React.useCallback(async (term: string) => {
-    if (!term.trim()) { setResults([]); return; }
+    const q = term.trim();
+    if (!q) { setResults([]); return; }
     try {
       setSearching(true);
-      const response = await adminService.getExams({ search: term.trim(), limit: 50 });
-      const exams = response.data || [];
-      setResults(exams.map((e: any) => ({ id: e.id, title: e.title, category: e.category, status: e.status, exam_uid: e.exam_uid })));
+      // Query both endpoints and merge, deduped by id. Neither alone is sufficient:
+      //  - admin /admin/exams: searches title/slug/exam_uid + includes drafts, but is
+      //    gated by checkPermission('exams','read') (403s for editor/author roles).
+      //  - public /exams: no auth, but only is_published exams and search ignores exam_uid.
+      // Merging means whichever endpoint can see the exam contributes it, so the
+      // dropdown always populates regardless of role or publish state.
+      const settled = await Promise.allSettled([
+        adminService.getExams({ search: q, limit: 50 }),
+        examService.getExams({ search: q, limit: 50 }),
+      ]);
+      const seen = new Set<string>();
+      const merged: { id: string; title: string; category?: string; status?: string; exam_uid?: string }[] = [];
+      for (const r of settled) {
+        if (r.status !== 'fulfilled') continue;
+        for (const e of ((r.value as any)?.data || [])) {
+          if (!e?.id || seen.has(e.id)) continue;
+          seen.add(e.id);
+          merged.push({ id: e.id, title: e.title, category: e.category, status: e.status, exam_uid: e.exam_uid });
+        }
+      }
+      setResults(merged);
       setShowDropdown(true);
     } catch (err) {
       console.error('[ExamCardsEditor] search failed', err);
@@ -470,7 +490,9 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
             </div>
           )}
           {showDropdown && results.length > 0 && (
-            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto hide-scrollbar">
+            // Rendered inline (not absolute) so the Configure panel's overflow-hidden
+            // wrapper can't clip it — an absolute overlay was being cut off / invisible.
+            <div className="relative z-10 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto hide-scrollbar">
               {results.map((exam) => {
                 const alreadyAdded = examIds.includes(exam.id);
                 return (
@@ -499,7 +521,7 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
             </div>
           )}
           {showDropdown && !searching && query.trim() && results.length === 0 && (
-            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-sm text-gray-500">
+            <div className="relative z-10 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-sm text-gray-500">
               No exams found for &ldquo;{query}&rdquo;
             </div>
           )}
