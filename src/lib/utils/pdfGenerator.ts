@@ -927,6 +927,9 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
     );
   }
 
-  const fileName = `${exam.title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
+  // Stable filename based on exam name (+ language) so re-generating the PDF after
+  // updating the banner produces the same name instead of a new timestamped file.
+  const safeTitle = exam.title.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  const fileName = `${safeTitle}_${opts.language}.pdf`;
   doc.save(fileName);
 }
