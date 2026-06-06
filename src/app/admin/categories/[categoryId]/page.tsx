@@ -21,6 +21,7 @@ import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { categoryAdminService } from '@/lib/api/categoryAdminService';
 import { subcategoryAdminService } from '@/lib/api/subcategoryAdminService';
 import { useToast } from '@/hooks/use-toast';
+import { useAppData } from '@/context/AppDataContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -101,6 +102,7 @@ export default function AdminCategoryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { refresh: refreshAppData } = useAppData();
   const categoryId = Array.isArray(params?.categoryId) ? params?.categoryId[0] : (params?.categoryId ?? '');
 
   const [category, setCategory] = useState<Category | null>(null);
@@ -254,14 +256,19 @@ export default function AdminCategoryDetailPage() {
 
   const handleDeleteSubcategory = async () => {
     if (!subcategoryDeleteTarget) return;
+    const targetName = subcategoryDeleteTarget.name;
+    // Optimistically remove from local list immediately
+    setSubcategories(prev => prev.filter(s => s.id !== subcategoryDeleteTarget.id));
+    setSubcategoryDeleteTarget(null);
     try {
       setDeletingSubcategory(true);
       await subcategoryAdminService.deleteSubcategory(subcategoryDeleteTarget.id);
-      toast({ title: 'Subcategory deleted', description: `${subcategoryDeleteTarget.name} removed successfully.` });
-      setSubcategoryDeleteTarget(null);
-      await loadSubcategories();
+      toast({ title: 'Subcategory deleted', description: `${targetName} removed successfully.` });
+      // Sync global AppDataContext so Navbar + public pages drop the deleted subcategory
+      await Promise.all([loadSubcategories(), refreshAppData()]);
     } catch (error: any) {
       toast({ title: 'Delete failed', description: error?.message || 'Could not delete subcategory', variant: 'destructive' });
+      await loadSubcategories(); // restore on failure
     } finally {
       setDeletingSubcategory(false);
     }
@@ -299,7 +306,7 @@ export default function AdminCategoryDetailPage() {
         display_order: categoryForm.display_order || '0',
         logo: logoFile || undefined
       });
-      await loadCategory();
+      await Promise.all([loadCategory(), refreshAppData()]);
     } catch (err: any) {
       alert(err.message || 'Failed to update category');
     } finally {

@@ -38,7 +38,16 @@ export const getCountdownLabel = (startDate?: string | null) => {
 };
 
 export function ExamCard({ exam, variant = 'default', size = 'default', hideCategory = false }: ExamCardProps) {
-  const examUrl = exam.url_path || `/exams/${exam.slug || exam.id}`;
+  // Exam landing URL resolution. The [...slug] catch-all only resolves SINGLE-segment
+  // slugs as categories/subcategories — never exams. Exam overview pages live at a
+  // multi-segment url_path (e.g. /ssc-cgl-exam/full-test-03), which resolves via the
+  // exam-path branch. So a bare `/${slug}` 404s for any standalone exam/quiz (e.g.
+  // current-affairs quizzes that have a slug but no url_path). Use url_path only when
+  // it's a real multi-segment path; otherwise fall back to the universal by-id page
+  // /mock-test-series/[id], which loads any exam and launches its attempt.
+  const trimmedPath = exam.url_path?.trim();
+  const isMultiSegmentPath = Boolean(trimmedPath && trimmedPath.replace(/^\//, '').includes('/'));
+  const examUrl = isMultiSegmentPath ? (trimmedPath as string) : `/mock-test-series/${exam.id}`;
   const summary = formatExamSummary(exam);
   const supportsHindi = Boolean(exam.supports_hindi);
   const languageLabel = supportsHindi ? 'English + हिंदी' : 'English only';

@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { categoryAdminService } from '@/lib/api/categoryAdminService';
+import { useAppData } from '@/context/AppDataContext';
 
 export default function AdminCreateCategoryPage() {
   const router = useRouter();
+  const { refresh: refreshAppData } = useAppData();
 
   const [categoryForm, setCategoryForm] = useState({
     name: '',
@@ -56,6 +58,8 @@ export default function AdminCreateCategoryPage() {
         is_active: categoryForm.is_active,
         logo: logoFile || undefined,
       });
+      // Bust AppDataContext cache so navbar and public pages reflect the new category
+      refreshAppData().catch(console.error);
       router.push(`/admin/categories/${result.data.id}`);
     } catch (err: any) {
       setError(err.message || 'Failed to create category');

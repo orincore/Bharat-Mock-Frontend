@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Index from "@/views/Index";
 import { HomepageData } from "@/lib/api/homepageService";
+
+// Render fresh on every request so admin edits to categories / featured exams
+// appear on the homepage immediately (no static/ISR HTML cache).
+export const dynamic = 'force-dynamic';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const SITE_URL = "https://bharatmock.com";
@@ -10,14 +15,27 @@ const DEFAULT_DESCRIPTION =
 const DEFAULT_KEYWORDS = "All sarkari exam, online exam test, all government exams, govt exam preparation, online exam for govt jobs, online competitive exams, government exams india";
 const DEFAULT_OG_IMAGE = `${SITE_URL}/assets/login_banner_image.jpg`;
 
-async function fetchHomepageData(): Promise<HomepageData | null> {
+// Admin edits to categories / featured exams must reflect on the homepage
+// instantly. We therefore bypass BOTH caches on these fetches:
+//   1. cache: 'no-store'              → skip the Next.js Data Cache (no 1h ISR hold)
+//   2. Cache-Control: no-cache header → tell the backend to skip its own cache
+//      (same header the admin panel sends to read fresh data)
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Pragma': 'no-cache',
+} as const;
+
+// Wrapped in React cache() so generateMetadata() and HomePage() share a single
+// backend call within the same request (no-store disables the Data Cache, but
+// request-level memoization still dedupes the two callers).
+const fetchHomepageData = cache(async (): Promise<HomepageData | null> => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), 5000);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/homepage/data`, {
-      // Use ISR to allow static rendering and periodic updates
-      next: { revalidate: 3600 },
+    const response = await fetch(`${API_BASE_URL}/homepage/data?_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: NO_CACHE_HEADERS,
       signal: controller.signal
     });
     clearTimeout(id);
@@ -33,13 +51,13 @@ async function fetchHomepageData(): Promise<HomepageData | null> {
     }
     return null;
   }
-}
+});
 
 async function fetchMostAttemptedExams(): Promise<any[]> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/exams?limit=8&sortBy=attempts&sortOrder=desc&exam_type=mock_test`,
-      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(5000) }
+      `${API_BASE_URL}/exams?limit=8&sortBy=attempts&sortOrder=desc&exam_type=mock_test&_t=${Date.now()}`,
+      { cache: 'no-store', headers: NO_CACHE_HEADERS, signal: AbortSignal.timeout(5000) }
     );
     if (!response.ok) return [];
     const payload = await response.json();

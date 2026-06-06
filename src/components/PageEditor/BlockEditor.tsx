@@ -93,6 +93,7 @@ import {
 import DOMPurify from 'dompurify';
 import { BlockRenderer, getBlockIcon } from './BlockRenderer';
 import { sanitizeTableCellHtml, TABLE_CELL_RESET } from './tableCellHtml';
+import { adminService } from '@/lib/api/adminService';
 
 interface Block {
   id: string;
@@ -347,14 +348,8 @@ const ExamCardsContentEditor = ({ content, onChange }: { content: any; onChange:
     if (!term.trim()) { setResults([]); return; }
     try {
       setSearching(true);
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '') || '/api/v1';
-      const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
-      const res = await fetch(`${apiBase}/admin/exams?search=${encodeURIComponent(term.trim())}&limit=50`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      if (!res.ok) throw new Error('Search failed');
-      const data = await res.json();
-      const exams = data.data || [];
+      const response = await adminService.getExams({ search: term.trim(), limit: 50 });
+      const exams = response.data || [];
       setResults(exams.map((e: any) => ({ id: e.id, title: e.title, category: e.category, status: e.status, exam_uid: e.exam_uid })));
       setShowDropdown(true);
     } catch (err) {

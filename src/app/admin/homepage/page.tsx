@@ -425,9 +425,9 @@ export default function HomepageAdminPage() {
     try {
       await homepageAdminService.addPopularTest('homepage', examId);
       toast({ title: 'Exam featured' });
-      fetchFeaturedExams();
       setExamSearch('');
       setExamSearchResults([]);
+      await fetchFeaturedExams();
     } catch (error: any) {
       toast({
         title: 'Failed to feature exam',
@@ -438,16 +438,19 @@ export default function HomepageAdminPage() {
   };
 
   const handleRemoveFeaturedExam = async (id: string) => {
+    // Optimistic removal so the row disappears instantly
+    setFeaturedExams(prev => prev.filter(fe => fe.id !== id));
     try {
       await homepageAdminService.removePopularTest(id);
       toast({ title: 'Exam removed from featured' });
-      fetchFeaturedExams();
+      await fetchFeaturedExams();
     } catch (error: any) {
       toast({
         title: 'Failed to remove exam',
         description: error?.message || 'Please try again.',
         variant: 'destructive'
       });
+      await fetchFeaturedExams(); // restore on failure
     }
   };
 
@@ -460,18 +463,16 @@ export default function HomepageAdminPage() {
     const newFeatured = [...featuredExams];
     [newFeatured[index], newFeatured[newIndex]] = [newFeatured[newIndex], newFeatured[index]];
 
+    // Update local state immediately for instant UI feedback — no loading flash
+    setFeaturedExams(newFeatured);
+
     try {
-      setFeaturedLoading(true);
       await homepageAdminService.reorderPopularTests('homepage', newFeatured.map(fe => fe.id));
-      setFeaturedExams(newFeatured);
       toast({ title: 'Reordered successfully' });
     } catch (error: any) {
-      toast({
-        title: 'Failed to reorder',
-        variant: 'destructive'
-      });
-    } finally {
-      setFeaturedLoading(false);
+      toast({ title: 'Failed to reorder', variant: 'destructive' });
+      // Revert to server state on failure
+      await fetchFeaturedExams();
     }
   };
 

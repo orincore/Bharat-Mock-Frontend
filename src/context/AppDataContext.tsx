@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { apiClient } from '@/lib/api/client';
 import { NavigationLink, FooterLink, ContactInfo } from '@/types';
 
 interface ExamCategory {
@@ -61,12 +60,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      const response = await apiClient.get<{ success: boolean; data: AppInitData }>(
-        '/init',
-        Boolean(token)
-      );
 
-      const data = response.data;
+      // Send Cache-Control: no-cache so the backend bypasses any server-side cache
+      // (Redis / in-memory). Without this, deleted/added categories persist until
+      // the backend cache TTL expires, even across full page refreshes.
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+      const url = `${apiBase}/init?_t=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store', headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: failed to load app data`);
+      const json = await res.json();
+
+      const data: AppInitData = json.data;
       setNavigation(data.navigation || []);
       setFooter(data.footer || []);
       setContact(data.contact || null);

@@ -11,16 +11,21 @@ const authFetch = async (path: string, options: RequestInit = {}) => {
   const token = getAuthToken();
   if (!token) throw new Error('Authentication required');
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...(options.headers as Record<string, string> || {}),
+    'Authorization': `Bearer ${token}`,
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
   };
 
-  (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+  const separator = path.includes('?') ? '&' : '?';
+  const url = `${API_BASE}${path}${separator}_t=${Date.now()}`;
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(url, {
     ...options,
-    headers
+    cache: 'no-store',
+    headers,
   });
 
   const data = await response.json();
