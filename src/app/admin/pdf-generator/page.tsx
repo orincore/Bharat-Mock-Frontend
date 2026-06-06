@@ -495,6 +495,22 @@ function stripHtml(v?: string) {
   return d.textContent || '';
 }
 
+// Render raw rich-text HTML in the preview — keep <img> tags but cap their size
+// so they don't blow out the page layout. Strip only truly unsafe tags (script/style).
+function renderHtmlForPreview(raw: string | undefined): string {
+  if (!raw) return '';
+  return raw
+    // Remove script / style blocks entirely
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    // Constrain every <img> to fit within its container — max-width:100% clips to
+    // the parent div width; box-sizing ensures padding doesn't push it wider.
+    .replace(/<img(\b[^>]*)>/gi, (_, attrs) => {
+      const cleanAttrs = attrs.replace(/\bstyle\s*=\s*["'][^"']*["']/gi, '');
+      return `<img${cleanAttrs} style="max-width:100%;width:auto;max-height:150px;display:block;margin:4px 0;border-radius:3px;border:1px solid #e5e7eb;box-sizing:border-box;">`;
+    });
+}
+
 function buildPreviewHtml(examData: any, options: PdfOptions): string {
   const { exam, sections, questions } = examData;
   const sectionMap = new Map(sections.map((s: any) => [s.id, s]));
@@ -632,15 +648,13 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
 
     if (pageQCount >= QUESTIONS_PER_PAGE) flushPage();
 
-    const qText = stripHtml(
-      (options.language === 'hi' && q.text_hi)
-        ? q.text_hi
-        : (q.text || q.question_text || '')
-    );
+    const qRaw = (options.language === 'hi' && q.text_hi)
+      ? q.text_hi
+      : (q.text || q.question_text || '');
     pageBuffer += `<div style="margin-bottom:10px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:5px;background:#fafafa">`;
     pageBuffer += `<div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:6px">`;
     pageBuffer += `<span style="font-weight:700;flex-shrink:0;font-size:11px">${qNum}.</span>`;
-    pageBuffer += `<span style="font-weight:700;line-height:1.5;font-size:11px">${qText}</span>`;
+    pageBuffer += `<div style="font-weight:700;line-height:1.5;font-size:11px;flex:1;min-width:0">${renderHtmlForPreview(qRaw)}</div>`;
     pageBuffer += `</div>`;
 
     if (q.image_url) {
@@ -655,16 +669,14 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
     for (let i = 0; i < sortedOpts.length; i++) {
       const o = sortedOpts[i] as any;
       const label = String.fromCharCode(65 + i);
-      const oText = stripHtml(
-        (options.language === 'hi' && o.option_text_hi)
-          ? o.option_text_hi
-          : (o.option_text || o.text || '')
-      );
+      const oRaw = (options.language === 'hi' && o.option_text_hi)
+        ? o.option_text_hi
+        : (o.option_text || o.text || '');
       const isCorrect = options.showAnswers && o.is_correct;
       const color = isCorrect ? '#166534' : '#374151';
       const weight = isCorrect ? '700' : '400';
       pageBuffer += `<div style="padding:2px 6px;margin-bottom:2px;font-size:10.5px;color:${color};font-weight:${weight}">`;
-      pageBuffer += `<span style="font-weight:700;margin-right:3px;color:${isCorrect ? '#16a34a' : 'inherit'}">${label}.</span>${oText}`;
+      pageBuffer += `<span style="font-weight:700;margin-right:3px;color:${isCorrect ? '#16a34a' : 'inherit'}">${label}.</span><span>${renderHtmlForPreview(oRaw)}</span>`;
       if (o.image_url) {
         pageBuffer += `<img src="${o.image_url}" style="max-width:160px;max-height:80px;margin:3px 0 2px;border-radius:3px;border:1px solid #e5e7eb;display:block" />`;
       }
@@ -672,14 +684,10 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
     }
     pageBuffer += `</div>`;
 
-    if (options.showExplanations && q.explanation) {
-      const explanationText = stripHtml(
-        (options.language === 'hi' && q.explanation_hi)
-          ? q.explanation_hi
-          : q.explanation
-      );
-      pageBuffer += `<div style="margin-top:6px;margin-left:20px;padding:5px 8px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 3px 3px 0;color:#166534;font-size:10px;font-style:italic">`;
-      pageBuffer += `<strong style="font-style:normal">Explanation:</strong> ${explanationText}`;
+    if (options.showExplanations && (q.explanation || q.explanation_hi)) {
+      const expRaw = (options.language === 'hi' && q.explanation_hi) ? q.explanation_hi : q.explanation;
+      pageBuffer += `<div style="margin-top:6px;margin-left:20px;margin-right:12px;padding:5px 10px 5px 8px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 3px 3px 0;color:#166534;font-size:10px;font-style:italic;overflow:hidden;box-sizing:border-box">`;
+      pageBuffer += `<strong style="font-style:normal">Explanation:</strong> ${renderHtmlForPreview(expRaw)}`;
       pageBuffer += `</div>`;
     }
 

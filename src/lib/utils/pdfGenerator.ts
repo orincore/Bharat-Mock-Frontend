@@ -227,6 +227,17 @@ const stripHtml = (value?: string) => {
   return temp.textContent || '';
 };
 
+// Extract absolute src URLs from <img> tags embedded in rich-text HTML so we
+// can render them in the PDF separately (jsPDF cannot parse HTML directly).
+const extractImgUrls = (html?: string): string[] => {
+  if (!html) return [];
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return Array.from(div.querySelectorAll('img'))
+    .map((img) => img.getAttribute('src') || '')
+    .filter(Boolean);
+};
+
 const normalizeText = (value?: string) =>
   stripHtml(value)
     .replace(/\u00A0/g, ' ')
@@ -615,6 +626,24 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
       doc.text(questionLines, margin + 10, yPosition + 4);
       yPosition += questionLines.length * 5.5 + 5;
     }
+    // Images embedded in the rich-text HTML of the question (editor <img> tags)
+    const questionHtmlRaw = (opts.language === 'hi' && (question as any).text_hi)
+      ? (question as any).text_hi
+      : (question.question_text || question.text || '');
+    for (const imgSrc of extractImgUrls(questionHtmlRaw)) {
+      try {
+        const imgData = await loadImage(imgSrc);
+        const maxW = pageWidth - 2 * margin - 12;
+        const { w, h } = fitImage(imgData.naturalWidth, imgData.naturalHeight, maxW, 60);
+        checkPageBreak(h + 6);
+        doc.addImage(imgData.dataUrl, imgData.format, margin + 10, yPosition, w, h, undefined, 'FAST');
+        yPosition += h + 4;
+      } catch (error) {
+        console.error('Failed to load embedded question image:', error);
+      }
+    }
+
+    // Standalone question image (separate upload field)
     if (question.image_url) {
       try {
         const imgData = await loadImage(question.image_url);
@@ -625,7 +654,6 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
         yPosition += h + 4;
       } catch (error) {
         console.error('Failed to load question image:', error);
-        // skip — no black box left behind
       }
     }
 
@@ -687,6 +715,24 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
         yPosition += 6;
       }
 
+      // Images embedded in the rich-text HTML of the option
+      const optionHtmlRaw = (opts.language === 'hi' && (option as any).option_text_hi)
+        ? (option as any).option_text_hi
+        : (option.option_text || option.text || '');
+      for (const imgSrc of extractImgUrls(optionHtmlRaw)) {
+        try {
+          const imgData = await loadImage(imgSrc);
+          const maxW = pageWidth - 2 * margin - 16;
+          const { w, h } = fitImage(imgData.naturalWidth, imgData.naturalHeight, maxW, 45);
+          checkPageBreak(h + 4);
+          doc.addImage(imgData.dataUrl, imgData.format, margin + 10, yPosition, w, h, undefined, 'FAST');
+          yPosition += h + 3;
+        } catch (error) {
+          console.error('Failed to load embedded option image:', error);
+        }
+      }
+
+      // Standalone option image (separate upload field)
       if (option.image_url) {
         try {
           const imgData = await loadImage(option.image_url);
@@ -697,7 +743,6 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
           yPosition += h + 3;
         } catch (error) {
           console.error('Failed to load option image:', error);
-          // skip — no black box left behind
         }
       }
     }
@@ -708,21 +753,21 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
 
     if (question.explanation || question.explanation_hi) {
       if (opts.showExplanations) {
+        const expRaw = (opts.language === 'hi' && question.explanation_hi)
+          ? question.explanation_hi
+          : question.explanation;
+        const explanationText = normalizeText(expRaw);
+
         checkPageBreak(15);
         doc.setFontSize(8.5);
         setFont('italic');
         doc.setTextColor(22, 101, 52);
         doc.setFillColor(240, 253, 244);
-        const explanationText = normalizeText(
-          (opts.language === 'hi' && question.explanation_hi)
-            ? question.explanation_hi
-            : question.explanation
-        );
+
         if (useHindiFont) {
           doc.setFillColor(240, 253, 244);
           const expH = addHindiText('Explanation: ' + explanationText, margin + 9, yPosition, pageWidth - 2 * margin - 15, 8.5, '#166534', false);
           const boxH = Math.max(expH, 8) + 4;
-          // Draw background behind the image (draw first, then re-render image on top)
           doc.setFillColor(240, 253, 244);
           doc.roundedRect(margin + 6, yPosition - 1, pageWidth - 2 * margin - 6, boxH, 1, 1, 'F');
           addHindiText('Explanation: ' + explanationText, margin + 9, yPosition, pageWidth - 2 * margin - 15, 8.5, '#166534', false);
@@ -734,6 +779,23 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
           doc.roundedRect(margin + 6, yPosition - 1, pageWidth - 2 * margin - 6, expHeight, 1, 1, 'F');
           doc.text(expLines, margin + 9, yPosition + 3);
           yPosition += expHeight + 3;
+        }
+
+        // Images embedded in the explanation rich-text HTML
+        for (const imgSrc of extractImgUrls(expRaw)) {
+          try {
+            const imgData = await loadImage(imgSrc);
+            const maxW = pageWidth - 2 * margin - 16;
+            const { w, h } = fitImage(imgData.naturalWidth, imgData.naturalHeight, maxW, 50);
+            checkPageBreak(h + 6);
+            // Green tinted background strip for explanation images
+            doc.setFillColor(240, 253, 244);
+            doc.roundedRect(margin + 6, yPosition - 1, pageWidth - 2 * margin - 6, h + 6, 1, 1, 'F');
+            doc.addImage(imgData.dataUrl, imgData.format, margin + 10, yPosition + 2, w, h, undefined, 'FAST');
+            yPosition += h + 8;
+          } catch (error) {
+            console.error('Failed to load explanation image:', error);
+          }
         }
       }
     }
