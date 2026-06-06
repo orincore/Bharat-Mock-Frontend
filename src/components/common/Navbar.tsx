@@ -166,7 +166,7 @@ export function Navbar() {
   }, [hoveredCategoryId, categories]);
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
+    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 nav-sticky">
       <div className="w-full px-4 sm:px-6 lg:px-10">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}

@@ -254,6 +254,19 @@ body.translated-rtl {
   }
 }
 
+/* Sticky nav — GPU compositing layer prevents flicker on mobile reverse-scroll.
+   When the mobile browser chrome (address bar) reappears on scroll-up it triggers
+   a visual-viewport resize; without this the browser repaints the sticky element
+   every frame during that resize, causing a visible flicker. translateZ(0) moves
+   the nav onto its own compositor layer so it is never repainted mid-scroll.
+   backface-visibility: hidden reinforces this on WebKit (iOS Safari). */
+.nav-sticky {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
 /* Global thin blue scrollbar — Webkit (Chrome, Edge, Safari) */
 ::-webkit-scrollbar {
   width: 2px;
