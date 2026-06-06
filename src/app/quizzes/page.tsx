@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import QuizzesClient from './QuizzesClient';
 import { QuizzesFAQ } from './QuizzesFAQ';
 import type { Exam } from '@/types';
-import type { Category, Subcategory } from '@/lib/api/taxonomyService';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,53 +34,28 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 
 async function fetchInitialData() {
   try {
-    const [examsRes, categoriesRes, subcategoriesRes, difficultiesRes] = await Promise.all([
-      fetch(`${API_BASE}/exams?exam_type=short_quiz&page=1&limit=12`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/taxonomy/categories`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/taxonomy/subcategories`, { cache: 'no-store' }),
+    const [examsRes, difficultiesRes] = await Promise.all([
+      // Quizzes enriched with their Test Series section/topic names so the client
+      // can group them (Section tabs → Topic pills, pooled across series).
+      fetch(`${API_BASE}/exams/quizzes-grouped?limit=1000`, { cache: 'no-store' }),
       fetch(`${API_BASE}/taxonomy/difficulties`, { cache: 'no-store' }),
     ]);
 
-    const [examsData, categoriesData, subcategoriesData, difficultiesData] = await Promise.all([
-      examsRes.ok ? examsRes.json() : { data: [], pagination: { total: 0, totalPages: 0 } },
-      categoriesRes.ok ? categoriesRes.json() : { data: [] },
-      subcategoriesRes.ok ? subcategoriesRes.json() : { data: [] },
+    const [examsData, difficultiesData] = await Promise.all([
+      examsRes.ok ? examsRes.json() : { data: [] },
       difficultiesRes.ok ? difficultiesRes.json() : undefined,
     ]);
 
-    const rawExams: Exam[] = Array.isArray(examsData?.data) ? examsData.data : [];
-    const exams = [...rawExams].sort(
-      (a, b) =>
-        new Date(b.created_at || b.updated_at || '').getTime() -
-        new Date(a.created_at || a.updated_at || '').getTime()
-    );
-
-    const rawCategories: Category[] = Array.isArray(categoriesData?.data)
-      ? categoriesData.data
-      : [];
-    const categories = rawCategories
-      .filter((c) => c.is_active !== false)
-      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
-
-    const subcategories: Subcategory[] = (
-      Array.isArray(subcategoriesData?.data) ? subcategoriesData.data : []
-    ).filter((s: Subcategory) => s.name);
+    const exams: Exam[] = Array.isArray(examsData?.data) ? examsData.data : [];
 
     // undefined if fetch failed → client will fetch its own difficulties
     const difficulties = difficultiesData === undefined
       ? undefined
       : (Array.isArray(difficultiesData?.data) ? difficultiesData.data : (Array.isArray(difficultiesData) ? difficultiesData : []));
 
-    return {
-      exams,
-      categories,
-      subcategories,
-      difficulties,
-      total: examsData?.pagination?.total ?? 0,
-      totalPages: examsData?.pagination?.totalPages ?? 1,
-    };
+    return { exams, difficulties, total: exams.length };
   } catch {
-    return { exams: [], categories: [], subcategories: [], total: 0, totalPages: 1 };
+    return { exams: [], total: 0 };
   }
 }
 

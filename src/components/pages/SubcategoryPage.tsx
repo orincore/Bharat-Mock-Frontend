@@ -259,7 +259,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
           </div>
           {overview?.hero_image_url && (
             <div className="flex-1 w-full max-w-xl mx-auto lg:mx-0">
-              <div className="rounded-[32px] border border-white/30 bg-white/5 backdrop-blur p-4 shadow-[0_45px_120px_-40px_rgba(0,0,0,0.8)]">
+              <div className="rounded-[32px] border border-white/30 bg-white/10 p-4 shadow-[0_45px_120px_-40px_rgba(0,0,0,0.8)]">
                 <img
                   src={overview.hero_image_url}
                   alt={subcategory.name}

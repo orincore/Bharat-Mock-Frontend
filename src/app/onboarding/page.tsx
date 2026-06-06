@@ -43,6 +43,8 @@ function OnboardingContent() {
     if (token && refresh) {
       localStorage.setItem('auth_token', token);
       localStorage.setItem('refresh_token', refresh);
+      // Clear any stale cached user so AuthProvider fetches a fresh profile.
+      localStorage.removeItem('auth_user');
     }
 
     const initialize = async () => {
@@ -156,7 +158,11 @@ function OnboardingContent() {
       };
 
       await authService.completeOnboarding(payload);
-      router.push('/');
+      // Hard navigation (not router.push) so AuthProvider re-initializes and reads
+      // the now-stored token, hydrating auth state. A plain SPA push leaves
+      // AuthContext.user = null (it only reads tokens on mount), which made
+      // auth-gated actions like "Start Exam" wrongly redirect to /login.
+      window.location.assign('/');
     } catch (err: any) {
       setError(err.message || 'Failed to complete onboarding');
     } finally {

@@ -1,91 +1,90 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { Search, Filter, BookOpen } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, Filter, BookOpen, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
-import { examService } from '@/lib/api/examService';
-import { taxonomyService, Difficulty, Category, Subcategory } from '@/lib/api/taxonomyService';
+import { taxonomyService, Difficulty } from '@/lib/api/taxonomyService';
 import { Exam } from '@/types';
 import { PageSeoSections } from '@/components/sections/PageSeoSections';
 
-const QUIZ_EXAM_TYPE = 'short_quiz';
+// Quizzes carry their Test Series section/topic NAMES (resolved server-side by the
+// /exams/quizzes-grouped endpoint). We pool quizzes across all series by section
+// name (top tabs) and topic name (pills) — mirroring the test-series Section→Topic UI.
+type QuizExam = Exam & {
+  section_name?: string | null;
+  section_order?: number | null;
+  topic_name?: string | null;
+  topic_order?: number | null;
+};
+
+const UNSECTIONED = '__no_section__';
+const UNSECTIONED_LABEL = 'Other Quizzes';
 
 interface InitialData {
-  exams: Exam[];
-  categories: Category[];
-  subcategories: Subcategory[];
+  exams: QuizExam[];
   total: number;
-  totalPages: number;
+}
+
+interface SectionGroup {
+  key: string;
+  name: string;
+  order: number;
+  count: number;
+}
+
+interface TopicGroup {
+  key: string;
+  name: string;
+  order: number;
+  count: number;
 }
 
 export default function QuizzesClient({ initialData, initialDifficulties }: { initialData: InitialData; initialDifficulties?: Difficulty[] }) {
-  const [exams, setExams] = useState<Exam[]>(initialData.exams);
-  const [categories, setCategories] = useState<Category[]>(initialData.categories);
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [subcategories, setSubcategories] = useState<Subcategory[]>(initialData.subcategories);
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
-  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
+  // Full quiz set (fetched server-side). All grouping/filtering happens client-side
+  // so the Section → Topic navigation can show accurate counts, mirroring the
+  // test-series Section → Topic listing.
+  const [exams] = useState<QuizExam[]>(initialData.exams);
+
   const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>(initialDifficulties ?? []);
-  const [selectedDifficultyId, setSelectedDifficultyId] = useState('');
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [difficultiesLoading, setDifficultiesLoading] = useState(initialDifficulties === undefined);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+
+  // Filters that narrow the working set (section/topic live in the tabs/pills)
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedDifficultyId, setSelectedDifficultyId] = useState('');
+  const [accessFilter, setAccessFilter] = useState<'' | 'true' | 'false'>('');
+
+  // Grouped navigation state (keyed by section/topic NAME, pooled across series)
+  const [activeSectionKey, setActiveSectionKey] = useState('');
+  const [selectedTopicKey, setSelectedTopicKey] = useState('');
+
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  const [filters, setFilters] = useState({
-    search: '',
-    category: '',
-    subcategory: '',
-    difficulty: '',
-    status: '',
-    is_premium: '',
-    exam_type: QUIZ_EXAM_TYPE,
-  });
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const activeRequestRef = useRef(0);
-  const isInitialMount = useRef(true);
+  const sectionsScrollRef = useRef<HTMLDivElement>(null);
+  const topicsScrollRef = useRef<HTMLDivElement>(null);
 
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 12,
-    total: initialData.total,
-    totalPages: initialData.totalPages,
-  });
+  const scroll = (ref: React.RefObject<HTMLDivElement | null>, dir: 'left' | 'right') => {
+    ref.current?.scrollBy({ left: dir === 'left' ? -240 : 240, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     if (initialDifficulties === undefined) fetchDifficulties();
   }, [initialDifficulties]);
 
   useEffect(() => {
-    // Skip first render — initial data already loaded server-side
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    fetchExams();
-  }, [filters.category, filters.subcategory, filters.difficulty, filters.status, filters.is_premium, pagination.page, debouncedSearch]);
-
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      setDebouncedSearch(filters.search.trim());
-    }, 400);
+    const handle = setTimeout(() => setDebouncedSearch(search.trim()), 400);
     return () => clearTimeout(handle);
-  }, [filters.search]);
+  }, [search]);
 
   useEffect(() => {
     if (!mobileFiltersOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
+    return () => { document.body.style.overflow = previousOverflow; };
   }, [mobileFiltersOpen]);
 
   const fetchDifficulties = async () => {
@@ -99,105 +98,112 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
     }
   };
 
-  const fetchExams = async () => {
-    const requestId = ++activeRequestRef.current;
-    setIsLoading(true);
-    setError('');
-    try {
-      const params: any = { page: pagination.page, limit: pagination.limit, exam_type: QUIZ_EXAM_TYPE };
-      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
-      if (filters.category.trim()) params.category = filters.category.trim();
-      if (filters.subcategory.trim()) params.subcategory = filters.subcategory.trim();
-      if (filters.difficulty.trim()) params.difficulty = filters.difficulty.trim();
-      if (filters.status.trim()) params.status = filters.status.trim();
-      if (filters.is_premium.trim()) params.is_premium = filters.is_premium.trim();
+  // Section/topic identity helpers — pooled across series by NAME.
+  const sectionKeyOf = (e: QuizExam) => (e.section_name?.trim() || UNSECTIONED);
+  const topicKeyOf = (e: QuizExam) => (e.topic_name?.trim() || '');
 
-      const response = await examService.getExams(params);
-      if (requestId !== activeRequestRef.current) return;
+  // ── Filtering (search / difficulty / access) ───────────────────────────────
+  const filteredExams = useMemo(() => {
+    const q = debouncedSearch.toLowerCase();
+    return exams.filter((e) => {
+      if (q) {
+        const hay = `${e.title || ''} ${e.section_name || ''} ${e.topic_name || ''} ${(e.exam_categories as any)?.name || e.category || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (selectedDifficultyId && e.difficulty_id !== selectedDifficultyId) return false;
+      if (accessFilter === 'true' && !e.is_premium) return false;
+      if (accessFilter === 'false' && e.is_premium) return false;
+      return true;
+    });
+  }, [exams, debouncedSearch, selectedDifficultyId, accessFilter]);
 
-      const sorted = [...response.data].sort((a, b) =>
-        new Date(b.created_at || b.updated_at || '').getTime() -
-        new Date(a.created_at || a.updated_at || '').getTime()
-      );
-      setExams(sorted);
-      setPagination((prev) => ({ ...prev, total: response.total, totalPages: Math.max(response.totalPages, 1) }));
-    } catch (err: any) {
-      if (requestId !== activeRequestRef.current) return;
-      setError(err.message || 'Failed to load quizzes');
-    } finally {
-      if (requestId !== activeRequestRef.current) return;
-      setIsLoading(false);
-    }
-  };
-
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
-  const buildCategoryValue = (id: string) => {
-    const c = categories.find((c) => c.id === id);
-    return c ? (c.slug || c.name || '') : '';
-  };
-
-  const buildSubcategoryValue = (id: string) => {
-    const s = subcategories.find((s) => s.id === id);
-    return s ? (s.slug || s.name || '') : '';
-  };
-
-  const buildDifficultyValue = (id: string) => {
-    const d = difficultyOptions.find((d) => d.id === id);
-    return d ? (d.slug || d.name || '') : '';
-  };
-
-  const handleCategoryChange = (categoryId: string) => {
-    setSelectedCategoryId(categoryId);
-    handleFilterChange('category', buildCategoryValue(categoryId));
-    if (selectedSubcategoryId) {
-      const sub = subcategories.find((s) => s.id === selectedSubcategoryId);
-      if (!categoryId || (sub && sub.category_id !== categoryId)) {
-        setSelectedSubcategoryId('');
-        handleFilterChange('subcategory', '');
+  // ── Section groups (top-level tabs), pooled by section name ────────────────
+  const sectionGroups = useMemo<SectionGroup[]>(() => {
+    const map = new Map<string, SectionGroup>();
+    for (const e of filteredExams) {
+      const key = sectionKeyOf(e);
+      const existing = map.get(key);
+      if (existing) {
+        existing.count++;
+        if (e.section_order != null) existing.order = Math.min(existing.order, e.section_order);
+      } else {
+        map.set(key, {
+          key,
+          name: key === UNSECTIONED ? UNSECTIONED_LABEL : (e.section_name as string),
+          order: e.section_order ?? Number.MAX_SAFE_INTEGER,
+          count: 1,
+        });
       }
     }
-  };
+    // Sort by admin display order, then name; keep "Other Quizzes" last.
+    return [...map.values()].sort((a, b) => {
+      if (a.key === UNSECTIONED) return 1;
+      if (b.key === UNSECTIONED) return -1;
+      if (a.order !== b.order) return a.order - b.order;
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredExams]);
 
-  const handleSubcategoryChange = (subcategoryId: string) => {
-    setSelectedSubcategoryId(subcategoryId);
-    handleFilterChange('subcategory', buildSubcategoryValue(subcategoryId));
-    if (subcategoryId) {
-      const sub = subcategories.find((s) => s.id === subcategoryId);
-      if (sub && selectedCategoryId !== sub.category_id) {
-        setSelectedCategoryId(sub.category_id);
-        handleFilterChange('category', buildCategoryValue(sub.category_id));
+  // Resolve the active section during render (not in a post-mount effect) so the
+  // first section's quizzes are present in the server HTML. Falls back to the
+  // first available group whenever the stored selection is empty or filtered out.
+  const effectiveActiveSectionKey = useMemo(
+    () => (activeSectionKey && sectionGroups.some((s) => s.key === activeSectionKey))
+      ? activeSectionKey
+      : (sectionGroups[0]?.key ?? ''),
+    [activeSectionKey, sectionGroups]
+  );
+
+  // Reset topic selection whenever the active section changes.
+  useEffect(() => { setSelectedTopicKey(''); }, [effectiveActiveSectionKey]);
+
+  // ── Topic groups for the active section (topic pills), pooled by topic name ─
+  const topicGroups = useMemo<TopicGroup[]>(() => {
+    if (!effectiveActiveSectionKey) return [];
+    const inSection = filteredExams.filter((e) => sectionKeyOf(e) === effectiveActiveSectionKey);
+    const map = new Map<string, TopicGroup>();
+    for (const e of inSection) {
+      const key = topicKeyOf(e);
+      if (!key) continue; // quizzes without a topic only appear under "All"
+      const existing = map.get(key);
+      if (existing) {
+        existing.count++;
+        if (e.topic_order != null) existing.order = Math.min(existing.order, e.topic_order);
+      } else {
+        map.set(key, { key, name: e.topic_name as string, order: e.topic_order ?? Number.MAX_SAFE_INTEGER, count: 1 });
       }
     }
-  };
+    return [...map.values()].sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredExams, effectiveActiveSectionKey]);
 
-  const handleDifficultyChange = (difficultyId: string) => {
-    setSelectedDifficultyId(difficultyId);
-    handleFilterChange('difficulty', buildDifficultyValue(difficultyId));
-  };
+  // ── Quizzes visible in the current Section / Topic selection ───────────────
+  const visibleExams = useMemo(() => {
+    if (!effectiveActiveSectionKey) return [];
+    let list = filteredExams.filter((e) => sectionKeyOf(e) === effectiveActiveSectionKey);
+    if (selectedTopicKey) list = list.filter((e) => topicKeyOf(e) === selectedTopicKey);
+    return [...list].sort((a, b) =>
+      new Date(b.created_at || b.updated_at || '').getTime() -
+      new Date(a.created_at || a.updated_at || '').getTime()
+    );
+  }, [filteredExams, effectiveActiveSectionKey, selectedTopicKey]);
+
+  const activeSectionCount = useMemo(
+    () => sectionGroups.find((s) => s.key === effectiveActiveSectionKey)?.count ?? 0,
+    [sectionGroups, effectiveActiveSectionKey]
+  );
+
+  const hasCustomFilters = Boolean(search || selectedDifficultyId || accessFilter);
 
   const clearFilters = () => {
-    setFilters({ search: '', category: '', subcategory: '', difficulty: '', status: '', is_premium: '', exam_type: QUIZ_EXAM_TYPE });
-    setSelectedCategoryId('');
-    setSelectedSubcategoryId('');
+    setSearch('');
+    setDebouncedSearch('');
     setSelectedDifficultyId('');
-    setPagination((prev) => ({ ...prev, page: 1 }));
+    setAccessFilter('');
+    setSelectedTopicKey('');
   };
-
-  const handleAccessFilter = (value: string) => {
-    setFilters((prev) => ({ ...prev, is_premium: value }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
-  const filteredSubcategories = selectedCategoryId
-    ? subcategories.filter((s) => s.category_id === selectedCategoryId)
-    : subcategories;
-
-  const isFilterDataLoading = categoriesLoading || difficultiesLoading || subcategoriesLoading;
-  const hasCustomFilters = Boolean(filters.search || selectedCategoryId || selectedSubcategoryId || selectedDifficultyId || filters.is_premium);
 
   const FiltersPanel = () => (
     <div className="bg-card rounded-xl border border-border p-6 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
@@ -211,90 +217,46 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
         )}
       </div>
 
-      {isFilterDataLoading ? (
-        <div className="space-y-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full rounded-lg" />
+      <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Difficulty</label>
+          {difficultiesLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-full rounded" />)}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Category</label>
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input type="radio" name="quiz-category" className="h-4 w-4 accent-primary"
-                  checked={selectedCategoryId === ''} onChange={() => handleCategoryChange('')} />
-                <span>All Categories</span>
-              </label>
-              {categories.map((category) => (
-                <label key={category.id} className="flex items-center gap-2 text-sm text-foreground">
-                  <input type="radio" name="quiz-category" className="h-4 w-4 accent-primary"
-                    checked={selectedCategoryId === category.id}
-                    onChange={() => handleCategoryChange(category.id)} />
-                  <span>{category.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Sub-category</label>
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input type="radio" name="quiz-subcategory" className="h-4 w-4 accent-primary"
-                  checked={selectedSubcategoryId === ''}
-                  onChange={() => handleSubcategoryChange('')}
-                  disabled={filteredSubcategories.length === 0} />
-                <span>{selectedCategoryId ? 'All Sub-categories' : 'Select category first'}</span>
-              </label>
-              {filteredSubcategories.map((sub) => (
-                <label key={sub.id} className="flex items-center gap-2 text-sm text-foreground">
-                  <input type="radio" name="quiz-subcategory" className="h-4 w-4 accent-primary"
-                    checked={selectedSubcategoryId === sub.id}
-                    onChange={() => handleSubcategoryChange(sub.id)} />
-                  <span>{sub.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Difficulty</label>
+          ) : (
             <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="radio" name="quiz-difficulty" className="h-4 w-4 accent-primary"
-                  checked={selectedDifficultyId === ''} onChange={() => handleDifficultyChange('')} />
+                  checked={selectedDifficultyId === ''} onChange={() => setSelectedDifficultyId('')} />
                 <span>All Difficulties</span>
               </label>
               {difficultyOptions.map((d) => (
                 <label key={d.id} className="flex items-center gap-2 text-sm text-foreground">
                   <input type="radio" name="quiz-difficulty" className="h-4 w-4 accent-primary"
                     checked={selectedDifficultyId === d.id}
-                    onChange={() => handleDifficultyChange(d.id)} />
+                    onChange={() => setSelectedDifficultyId(d.id)} />
                   <span>{d.name}</span>
                 </label>
               ))}
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Access</label>
-            <div className="border border-border rounded-lg p-3 space-y-2">
-              {[{ label: 'All', value: '' }, { label: 'Free', value: 'false' }, { label: 'Premium', value: 'true' }].map(({ label, value }) => (
-                <label key={value} className="flex items-center gap-2 text-sm text-foreground">
-                  <input type="radio" name="quiz-access" className="h-4 w-4 accent-primary"
-                    checked={filters.is_premium === value}
-                    onChange={() => handleAccessFilter(value)} />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Access</label>
+          <div className="border border-border rounded-lg p-3 space-y-2">
+            {[{ label: 'All', value: '' }, { label: 'Free', value: 'false' }, { label: 'Premium', value: 'true' }].map(({ label, value }) => (
+              <label key={value} className="flex items-center gap-2 text-sm text-foreground">
+                <input type="radio" name="quiz-access" className="h-4 w-4 accent-primary"
+                  checked={accessFilter === value}
+                  onChange={() => setAccessFilter(value as '' | 'true' | 'false')} />
+                <span>{label}</span>
+              </label>
+            ))}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 
@@ -311,13 +273,13 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
             <p className="text-lg text-background/80 mb-8">
               Topic-wise short quizzes for all govt exams to improve your accuracy &amp; confidence.
             </p>
-            <form onSubmit={(e) => { e.preventDefault(); setPagination((p) => ({ ...p, page: 1 })); }}
+            <form onSubmit={(e) => e.preventDefault()}
               className="flex flex-col sm:flex-row gap-3 sm:items-stretch" suppressHydrationWarning>
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" suppressHydrationWarning />
                 <Input type="text" placeholder="Search quizzes by name or category..."
-                  value={filters.search}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                   className="pl-10 bg-background" suppressHydrationWarning />
               </div>
               <Button type="submit" className="h-10 px-6 text-base font-semibold" suppressHydrationWarning>Search</Button>
@@ -332,32 +294,24 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
             <div className="sticky top-20"><FiltersPanel /></div>
           </aside>
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
               <div>
                 <h2 className="font-display text-2xl font-bold text-foreground">Quiz Results</h2>
                 <p className="text-sm text-muted-foreground">
-                  Showing {exams.length} of {pagination.total} short quizzes
+                  Showing {visibleExams.length} of {filteredExams.length} short quizzes
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={clearFilters} suppressHydrationWarning>Reset filters</Button>
                 <div className="flex items-center gap-2 text-muted-foreground text-sm">
                   <BookOpen className="h-4 w-4" />
-                  <span>{pagination.total} quizzes</span>
+                  <span>{filteredExams.length} quizzes</span>
                 </div>
               </div>
             </div>
 
-            {error && (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 mb-6 text-destructive">
-                {error}
-              </div>
-            )}
-
-            {isLoading ? (
-              <div className="flex justify-center py-12"><LoadingSpinner size="lg" /></div>
-            ) : exams.length === 0 ? (
+            {sectionGroups.length === 0 ? (
               <div className="text-center py-12 bg-card rounded-2xl border border-border">
                 <h3 className="font-display text-2xl font-bold mb-2">No quizzes found</h3>
                 <p className="text-muted-foreground mb-6">
@@ -368,34 +322,112 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
                 {hasCustomFilters && <Button onClick={clearFilters}>Clear filters</Button>}
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {exams.map((exam) => (
-                  <StandardExamCard
-                    key={exam.id}
-                    exam={{ ...exam, category_logo_url: exam.exam_categories?.logo_url, category_icon: exam.exam_categories?.icon }}
-                    hideAttempts={true}
-                  />
-                ))}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5 min-w-0 overflow-hidden">
+                {/* Section tabs */}
+                <div className="border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => scroll(sectionsScrollRef, 'left')}
+                      className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
+                      aria-label="Scroll sections left"
+                      suppressHydrationWarning
+                    >
+                      <ChevronLeft className="h-4 w-4 text-slate-600" />
+                    </button>
+                    <div
+                      ref={sectionsScrollRef}
+                      className="flex items-center gap-4 overflow-x-auto pb-3 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth -mx-5 px-5"
+                    >
+                      {sectionGroups.map((section) => (
+                        <button
+                          key={section.key}
+                          onClick={() => setActiveSectionKey(section.key)}
+                          className={`relative shrink-0 pb-2 text-sm font-semibold transition-colors whitespace-nowrap ${
+                            effectiveActiveSectionKey === section.key ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                          suppressHydrationWarning
+                        >
+                          {section.name} ({section.count})
+                          {effectiveActiveSectionKey === section.key && (
+                            <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-blue-600 rounded-full" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => scroll(sectionsScrollRef, 'right')}
+                      className="hidden md:flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors mb-3"
+                      aria-label="Scroll sections right"
+                    >
+                      <ChevronRight className="h-4 w-4 text-slate-600" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Topic pills */}
+                {topicGroups.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => scroll(topicsScrollRef, 'left')}
+                      className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                      aria-label="Scroll topics left"
+                    >
+                      <ChevronLeft className="h-4 w-4 text-slate-600" />
+                    </button>
+                    <div
+                      ref={topicsScrollRef}
+                      className="flex items-center gap-3 overflow-x-auto pb-1 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth -mx-5 px-5"
+                    >
+                      <button
+                        onClick={() => setSelectedTopicKey('')}
+                        className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                          selectedTopicKey === '' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        All ({activeSectionCount})
+                      </button>
+                      {topicGroups.map((topic) => (
+                        <button
+                          key={topic.key}
+                          onClick={() => setSelectedTopicKey((prev) => (prev === topic.key ? '' : topic.key))}
+                          className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                            selectedTopicKey === topic.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {topic.name} ({topic.count})
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => scroll(topicsScrollRef, 'right')}
+                      className="hidden md:flex shrink-0 h-7 w-7 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                      aria-label="Scroll topics right"
+                    >
+                      <ChevronRight className="h-4 w-4 text-slate-600" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Quiz cards */}
+                {visibleExams.length > 0 ? (
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleExams.map((exam) => (
+                      <StandardExamCard
+                        key={exam.id}
+                        exam={{ ...exam, category_logo_url: (exam.exam_categories as any)?.logo_url, category_icon: (exam.exam_categories as any)?.icon }}
+                        hideAttempts={true}
+                        ctaLabel="Attempt Now"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-10 text-center">
+                    <Layers className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No quizzes match your filters in this section yet.</p>
+                  </div>
+                )}
               </div>
             )}
-
-            <div className="flex items-center justify-between mt-12">
-              <span className="text-sm text-muted-foreground">
-                Page {pagination.page} of {Math.max(pagination.totalPages, 1)}
-              </span>
-              <div className="flex gap-3">
-                <Button variant="outline"
-                  disabled={pagination.page === 1 || isLoading}
-                  onClick={() => setPagination((p) => ({ ...p, page: Math.max(p.page - 1, 1) }))} suppressHydrationWarning>
-                  Previous
-                </Button>
-                <Button variant="outline"
-                  disabled={pagination.page >= pagination.totalPages || isLoading}
-                  onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))} suppressHydrationWarning>
-                  Next
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -428,10 +460,7 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
                 <Button
                   variant="outline"
                   className="flex-1 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
-                  onClick={() => {
-                    clearFilters();
-                    setMobileFiltersOpen(false);
-                  }}
+                  onClick={() => { clearFilters(); setMobileFiltersOpen(false); }}
                 >
                   Clear All
                 </Button>

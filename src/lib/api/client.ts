@@ -141,6 +141,7 @@ class ApiClient {
               try { retryBody = await retryResponse.json(); } catch { /* ignore */ }
               const retryErr = new Error(retryBody.message || `HTTP ${retryResponse.status}: ${retryResponse.statusText}`) as any;
               if (retryBody.code) retryErr.code = retryBody.code;
+              retryErr.status = retryResponse.status;
               throw retryErr;
             }
             return retryResponse.json() as Promise<T>;

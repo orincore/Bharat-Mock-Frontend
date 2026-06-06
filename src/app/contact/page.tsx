@@ -171,7 +171,7 @@ export default function ContactPage() {
               </div>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
+            <div className="bg-white/10 border border-white/15 rounded-3xl p-6">
               <div className="space-y-4">
                 {primaryChannels.map((channel) => (
                   <div key={channel.title} className="flex gap-4 rounded-2xl bg-white/5 p-4 border border-white/5">

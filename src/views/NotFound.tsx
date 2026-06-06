@@ -48,7 +48,7 @@ const NotFound = () => {
 
         {/* Feature Sections */}
         {featuredCategories.length > 0 && (
-          <div className="bg-white/80 backdrop-blur-sm p-8 rounded-3xl border border-white/50 shadow-xl shadow-slate-200/50 mt-12">
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 mt-12">
             <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
               <Search className="w-5 h-5 text-blue-600" />
               Maybe you were looking for one of these?

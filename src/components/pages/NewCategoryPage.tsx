@@ -987,7 +987,7 @@ export default function NewCategoryPage({
 
       {/* Mobile tab list overlay */}
       {isTabListOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden">
+        <div className="fixed inset-0 bg-black/80 z-50 md:hidden">
           <div className="absolute inset-0 bg-white text-gray-900 flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <div className="text-lg font-bold text-gray-900 mb-4 px-2">All Sections</div>

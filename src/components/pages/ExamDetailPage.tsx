@@ -86,8 +86,15 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
     }
   };
 
+  // Source of truth for "can call authed APIs" is the stored token. The React
+  // `isAuthenticated` flag can briefly lag (e.g. while the profile is being
+  // validated, or right after onboarding), so gate navigation on the token too —
+  // otherwise a logged-in user gets wrongly bounced to /login.
+  const hasAuthToken = () =>
+    typeof window !== 'undefined' && !!localStorage.getItem('auth_token');
+
   const handleUnlockExam = () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !hasAuthToken()) {
       router.push('/login?redirect=/subscriptions');
       return;
     }
@@ -156,7 +163,7 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
   };
 
   const handleStartExam = async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !hasAuthToken()) {
       router.push('/login');
       return;
     }
@@ -171,6 +178,12 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
       const langParam = selectedLanguage || 'en';
       goToAttempt(`/exams/${targetExamId}/attempt/${attempt.attemptId}?lang=${langParam}`);
     } catch (err: any) {
+      // 401 = not authenticated → login. 403 = access denied (e.g. subscription
+      // required/expired) → surface the message, don't bounce to login.
+      if (err?.status === 401) {
+        router.push('/login');
+        return;
+      }
       setError(err.message || 'Failed to start exam');
     }
   };

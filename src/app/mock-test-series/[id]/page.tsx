@@ -155,7 +155,7 @@ export default function ExamDetailPage() {
             </div>
 
             <div className="lg:w-80">
-              <div className="bg-background/10 backdrop-blur-sm rounded-xl p-6 border border-background/20">
+              <div className="bg-background/15 rounded-xl p-6 border border-background/20">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-background">
                     <span className="text-sm">Start Date</span>

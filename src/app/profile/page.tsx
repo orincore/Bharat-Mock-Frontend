@@ -211,7 +211,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 py-12">
+    <div className="min-h-screen bg-muted/30 py-8 sm:py-12">
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="bg-background border border-border rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
@@ -252,8 +252,8 @@ export default function ProfilePage() {
       <div className="container-main">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-2">
               My Profile
             </h1>
             <p className="text-muted-foreground">
@@ -264,9 +264,9 @@ export default function ProfilePage() {
           {/* Profile Card */}
           <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
             {/* Avatar Section */}
-            <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-8">
-              <div className="flex items-center gap-6">
-                <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
+            <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-5 sm:p-8">
+              <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:text-left gap-4 sm:gap-6">
+                <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-white shadow-lg shrink-0">
                   {user?.avatar_url ? (
                     <AvatarImage src={user.avatar_url} alt={user?.name || 'User avatar'} />
                   ) : null}
@@ -274,7 +274,7 @@ export default function ProfilePage() {
                     {user?.name?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-display text-2xl font-bold text-foreground">
                     {user?.name}
                   </h2>
@@ -289,7 +289,7 @@ export default function ProfilePage() {
                         })
                       : 'Not available'}
                   </p>
-                  <div className="flex flex-wrap items-center gap-3 mt-3">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3">
                     <Badge
                       variant={user?.is_premium ? 'default' : 'secondary'}
                       className={user?.is_premium ? 'bg-amber-500/10 text-amber-600 border-amber-200' : ''}
@@ -313,7 +313,7 @@ export default function ProfilePage() {
                       </p>
                     )}
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-3">
+                  <div className="mt-4 flex flex-wrap justify-center sm:justify-start gap-3">
                     {!user?.is_premium ? (
                       <Button asChild size="sm" className="bg-primary text-primary-foreground">
                         <Link href="/subscriptions">Upgrade Plan</Link>
@@ -328,14 +328,14 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                 </div>
-                <div className="ml-auto">
+                <div className="w-full sm:w-auto sm:ml-auto">
                   {!isEditing ? (
-                    <Button onClick={() => setIsEditing(true)} variant="outline">
+                    <Button onClick={() => setIsEditing(true)} variant="outline" className="w-full sm:w-auto">
                       <Edit2 className="h-4 w-4 mr-2" />
                       Edit Profile
                     </Button>
                   ) : (
-                    <Button onClick={handleCancel} variant="ghost">
+                    <Button onClick={handleCancel} variant="ghost" className="w-full sm:w-auto">
                       <X className="h-4 w-4 mr-2" />
                       Cancel
                     </Button>
@@ -345,7 +345,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Form Section */}
-            <div className="p-8">
+            <div className="p-5 sm:p-8">
               {error && (
                 <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                   <p className="text-destructive text-sm">{error}</p>
@@ -555,7 +555,7 @@ export default function ProfilePage() {
 
           {/* Danger Zone */}
           <div className="mt-8 bg-card rounded-xl border border-destructive/30 shadow-sm overflow-hidden">
-            <div className="p-6 flex items-center justify-between">
+            <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -568,6 +568,7 @@ export default function ProfilePage() {
               <Button
                 variant="destructive"
                 size="sm"
+                className="w-full sm:w-auto shrink-0"
                 onClick={() => { setDeleteConfirmInput(''); setDeleteError(''); setShowDeleteModal(true); }}
               >
                 Delete Account

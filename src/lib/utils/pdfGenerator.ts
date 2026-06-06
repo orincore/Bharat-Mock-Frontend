@@ -409,7 +409,27 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
     naturalHeight: number;
   }
 
-  const loadImage = async (url: string): Promise<LoadedImage> => {
+  // The media CDN serves images without CORS headers, which taints the canvas and
+  // makes toDataURL() throw — silently dropping every question/option image from
+  // the PDF. Route remote http(s) images through our same-origin proxy so canvas
+  // extraction is never blocked. Data URLs and same-origin paths pass through.
+  const toLoadableUrl = (url: string): string => {
+    if (!url) return url;
+    if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+    try {
+      const parsed = new URL(url, window.location.origin);
+      if (parsed.origin === window.location.origin) return url; // same-origin already
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return `/api/proxy-image?url=${encodeURIComponent(parsed.toString())}`;
+      }
+    } catch {
+      /* relative or malformed — fall through and use as-is */
+    }
+    return url;
+  };
+
+  const loadImage = async (rawUrl: string): Promise<LoadedImage> => {
+    const url = toLoadableUrl(rawUrl);
     // Strategy: Try fetching first (best for CORS), then fallback to Image object.
     // Always convert to JPEG/PNG as jsPDF support for WebP is unreliable.
     const convertToSupportedFormat = async (blobOrImg: Blob | HTMLImageElement): Promise<LoadedImage> => {

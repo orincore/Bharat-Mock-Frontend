@@ -247,20 +247,33 @@ body.translated-rtl {
     box-shadow: var(--shadow-glow);
   }
 
-  /* Used on the sticky navbar. `backdrop-filter` on a sticky/fixed element triggers a
-     compositing bug on many Android GPUs (Adreno/Mali): the area behind the bar fails to
-     invalidate while content scrolls under it, smearing the page into ghost/paint-trails
-     and stalling the compositor (page becomes unoperational). So we only enable the glass
-     blur on devices with a fine pointer (desktop/mouse) and fall back to a near-opaque
-     solid bar — which is indistinguishable on a navbar — on touch devices. */
+  /* Removed glass/backdrop-filter — causes compositor stalls on Android GPUs (Adreno/Mali)
+     on sticky/fixed elements, making pages unscrollable. Navbar now uses solid bg-white. */
   .glass-effect {
-    @apply bg-white/90 dark:bg-black/70;
+    @apply bg-white dark:bg-gray-900;
   }
-  @media (hover: hover) and (pointer: fine) {
-    .glass-effect {
-      @apply backdrop-blur-md bg-white/80 dark:bg-black/50;
-    }
-  }
+}
+
+/* Global thin blue scrollbar — Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 2px;
+  height: 2px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 transparent;
 }
 
 @layer utilities {
@@ -315,13 +328,68 @@ table, .rich-text-content table {
   border-collapse: collapse;
 }
 
-table th, table td, 
-.rich-text-content table th, 
+table th, table td,
+.rich-text-content table th,
 .rich-text-content table td {
   white-space: nowrap !important;
   word-break: normal !important;
   overflow-wrap: normal !important;
   font-size: 1.125rem;
+}
+
+/* Keep embedded media inside rich text within its container on every screen
+   (prevents wide images/videos from forcing horizontal page scroll on mobile). */
+.rich-text-content img,
+.rich-text-content video,
+.rich-text-content iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Wide preformatted blocks scroll inside their box rather than the whole page. */
+.rich-text-content pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Mobile: make rich-text content WRAP to fit the screen instead of forcing a
+   horizontal scroll. Overrides the desktop white-space:nowrap on table cells
+   (which is intentional on desktop but makes tables overflow on phones). */
+@media (max-width: 640px) {
+  .rich-text-content {
+    font-size: 1rem;
+  }
+  .rich-text-content * {
+    max-width: 100% !important;
+  }
+  .rich-text-content table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .rich-text-content table th,
+  .rich-text-content table td {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    font-size: 0.8125rem;
+    padding: 6px 8px;
+  }
+
+  /* Compact rich text inside the result review so questions/options fit the
+     screen without any horizontal scroll. */
+  #solutions-section .rich-text-content {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+  #solutions-section .rich-text-content table th,
+  #solutions-section .rich-text-content table td {
+    font-size: 0.75rem;
+    padding: 4px 6px;
+  }
+  #solutions-section .rich-text-content p,
+  #solutions-section .rich-text-content div {
+    margin-bottom: 0.5em !important;
+  }
 }
 
 /* Remove leading/trailing white space from pasted/rendered content */

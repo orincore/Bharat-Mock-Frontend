@@ -29,7 +29,10 @@ import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { formatExamSummary } from '@/lib/utils/examSummary';
 import { TestimonialsSection } from '@/components/sections/TestimonialsSection';
 
-const STATUS_TABS: { label: string; value: 'upcoming' | 'ongoing' | 'completed'; helper: string }[] = [
+type LiveStatus = 'all' | 'upcoming' | 'ongoing' | 'completed';
+
+const STATUS_TABS: { label: string; value: LiveStatus; helper: string }[] = [
+  { label: 'All Tests', value: 'all', helper: '' },
   { label: 'Upcoming Tests', value: 'upcoming', helper: '' },
   { label: 'Live Now', value: 'ongoing', helper: '' },
   { label: 'Recently Completed', value: 'completed', helper: '' }
@@ -39,8 +42,8 @@ interface FiltersContentProps {
   categories: { id: string; name: string }[];
   selectedCategoryId: string;
   setSelectedCategoryId: (id: string) => void;
-  selectedStatus: 'upcoming' | 'ongoing' | 'completed';
-  setSelectedStatus: (s: 'upcoming' | 'ongoing' | 'completed') => void;
+  selectedStatus: LiveStatus;
+  setSelectedStatus: (s: LiveStatus) => void;
   resetFilters: () => void;
   setMobileFiltersOpen: (open: boolean) => void;
   closeOnSelect?: boolean;
@@ -56,7 +59,7 @@ function FiltersContent({
   setMobileFiltersOpen,
   closeOnSelect = false,
 }: FiltersContentProps) {
-  const hasCustomFilters = selectedCategoryId !== '' || selectedStatus !== 'upcoming';
+  const hasCustomFilters = selectedCategoryId !== '' || selectedStatus !== 'all';
 
   return (
     <div className="space-y-6">
@@ -209,7 +212,7 @@ export default function LiveTestsClient({ initialData, initialBanner }: { initia
   const [exams, setExams] = useState<Exam[]>(initialData.exams);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<'upcoming' | 'ongoing' | 'completed'>('upcoming');
+  const [selectedStatus, setSelectedStatus] = useState<LiveStatus>('all');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categories, setCategories] = useState<Category[]>(initialData.categories);
@@ -224,6 +227,9 @@ export default function LiveTestsClient({ initialData, initialBanner }: { initia
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [activeFaqTab, setActiveFaqTab] = useState<'All' | 'Payments'>('All');
+  // Client clock for window-based status filtering. Stays 0 until mount so the
+  // SSR and first client render agree (no hydration mismatch); set after mount.
+  const [now, setNow] = useState(0);
   const activeRequestRef = useRef(0);
 
   const faqItems = useMemo(
@@ -326,10 +332,12 @@ export default function LiveTestsClient({ initialData, initialBanner }: { initia
     try {
       const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
       const params: any = {
-        status: selectedStatus,
         exam_type: 'all',
         limit: 100,
       };
+      // Status is filtered client-side by the actual schedule window (the DB
+      // `status` column is unreliable — e.g. tests with status='upcoming' whose
+      // window is already live), so we always fetch the full scheduled set here.
       if (debouncedSearch) params.search = debouncedSearch;
       if (selectedCategory) params.category = selectedCategory.slug || selectedCategory.name;
 
@@ -348,7 +356,7 @@ export default function LiveTestsClient({ initialData, initialBanner }: { initia
       if (requestId !== activeRequestRef.current) return;
       setIsLoading(false);
     }
-  }, [selectedCategoryId, debouncedSearch, selectedStatus, categories]);
+  }, [selectedCategoryId, debouncedSearch, categories]);
 
   useEffect(() => {
     // Skip first render — initial data fetched server-side
@@ -359,9 +367,17 @@ export default function LiveTestsClient({ initialData, initialBanner }: { initia
     fetchScheduledExams();
   }, [fetchScheduledExams]);
 
+  // Set the clock after mount and refresh periodically so a test that crosses
+  // its start/end boundary moves between filter tabs without a reload.
+  useEffect(() => {
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
   const resetFilters = useCallback(() => {
     setSelectedCategoryId('');
-    setSelectedStatus('upcoming');
+    setSelectedStatus('all');
   }, []);
 
   const nextUpcomingExam = useMemo(() => {
@@ -372,19 +388,45 @@ export default function LiveTestsClient({ initialData, initialBanner }: { initia
 
   const [activeTab, setActiveTab] = useState<'mock' | 'quiz'>('mock');
 
+  // Effective status from the actual schedule window (mirrors StandardExamCard's
+  // live derivation) so the filter matches what the card shows. The DB `status`
+  // column is only a fallback when no window is set.
+  const getEffectiveStatus = (exam: Exam, ts: number): LiveStatus => {
+    const s = (exam.status || '').toLowerCase().trim();
+    if (s.includes('live') || s === 'ongoing') return 'ongoing';
+    const start = exam.start_date ? new Date(exam.start_date).getTime() : null;
+    const end = exam.end_date ? new Date(exam.end_date).getTime() : null;
+    if (start && end && !Number.isNaN(start) && !Number.isNaN(end)) {
+      if (ts < start) return 'upcoming';
+      if (ts > end) return 'completed';
+      return 'ongoing';
+    }
+    if (start && !Number.isNaN(start) && ts < start) return 'upcoming';
+    if (end && !Number.isNaN(end) && ts > end) return 'completed';
+    if (s === 'completed') return 'completed';
+    return 'upcoming';
+  };
+
+  // Apply the status filter client-side. Before mount (now === 0) show everything
+  // to keep SSR/CSR output identical, then narrow once the clock is set.
+  const visibleExams = useMemo(() => {
+    if (selectedStatus === 'all' || now === 0) return exams;
+    return exams.filter((exam) => getEffectiveStatus(exam, now) === selectedStatus);
+  }, [exams, selectedStatus, now]);
+
   const mockExams = useMemo(() => {
-    return exams.filter((exam) => {
+    return visibleExams.filter((exam) => {
       const type = exam.exam_type?.toLowerCase();
       return type === 'mock_test' || type === 'past_paper';
     });
-  }, [exams]);
+  }, [visibleExams]);
 
   const quizExams = useMemo(() => {
-    return exams.filter((exam) => {
+    return visibleExams.filter((exam) => {
       const type = exam.exam_type?.toLowerCase();
       return type === 'short_quiz';
     });
-  }, [exams]);
+  }, [visibleExams]);
 
   const handleAddToCalendar = useCallback((exam: Exam) => {
     const window = buildCalendarWindow(exam);
@@ -580,7 +622,7 @@ export default function LiveTestsClient({ initialData, initialBanner }: { initia
                         </div>
                         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                           {mockExams.map((exam) => (
-                            <StandardExamCard key={exam.id} exam={exam} hideAttempts={true} isLive={
+                            <StandardExamCard key={exam.id} exam={exam} hideAttempts={true} showSchedule={true} isLive={
                               (exam.status || '').toLowerCase().includes('live') ||
                               (exam.status || '').toLowerCase() === 'ongoing'
                             } />
@@ -603,7 +645,7 @@ export default function LiveTestsClient({ initialData, initialBanner }: { initia
                         </div>
                         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                           {quizExams.map((exam) => (
-                            <StandardExamCard key={exam.id} exam={exam} hideAttempts={true} isLive={
+                            <StandardExamCard key={exam.id} exam={exam} hideAttempts={true} showSchedule={true} isLive={
                               (exam.status || '').toLowerCase().includes('live') ||
                               (exam.status || '').toLowerCase() === 'ongoing'
                             } />

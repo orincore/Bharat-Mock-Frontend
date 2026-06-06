@@ -88,6 +88,20 @@ interface SEOData {
   updated_at?: string;
 }
 
+// structured_data is an overloaded JSONB: it carries the admin's JSON-LD schema
+// AND internal page config (tab_headings/toc_order/tab_seo) edited by their own
+// panels. The "Structured Data" field must only ever show/save the schema, so we
+// strip the internal keys for that view. The backend merges, so omitting them on
+// save never deletes them.
+const STRUCTURED_DATA_INTERNAL_KEYS = ['tab_headings', 'toc_order', 'tab_seo'];
+
+const stripStructuredDataConfig = (value: any): any => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const clone: Record<string, any> = { ...value };
+  STRUCTURED_DATA_INTERNAL_KEYS.forEach((k) => delete clone[k]);
+  return clone;
+};
+
 export default function AdminCategoryEditorPage() {
   const params = useParams();
   const router = useRouter();
@@ -535,6 +549,10 @@ export default function AdminCategoryEditorPage() {
         }
       }
 
+      // Only persist the JSON-LD schema here. Internal config (tab_headings/
+      // toc_order/tab_seo) is owned by its own panels and preserved server-side.
+      const schemaOnly = stripStructuredDataConfig(parsedStructuredData);
+
       const response = await fetch(
         buildApiUrl(`/category-page-content/${categoryId}/seo`),
         {
@@ -545,7 +563,7 @@ export default function AdminCategoryEditorPage() {
           },
           body: JSON.stringify({
             ...seoData,
-            structured_data: parsedStructuredData
+            structured_data: schemaOnly
           })
         }
       );
@@ -1047,11 +1065,14 @@ export default function AdminCategoryEditorPage() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Structured Data Notes</label>
                   <textarea
-                    value={
-                      typeof seoData.structured_data === 'object' && seoData.structured_data !== null
-                        ? JSON.stringify(seoData.structured_data, null, 2)
-                        : (seoData.structured_data as string) || ''
-                    }
+                    value={(() => {
+                      const sd = seoData.structured_data;
+                      if (typeof sd === 'object' && sd !== null) {
+                        const schemaOnly = stripStructuredDataConfig(sd);
+                        return Object.keys(schemaOnly).length ? JSON.stringify(schemaOnly, null, 2) : '';
+                      }
+                      return (sd as string) || '';
+                    })()}
                     onChange={(e) => handleSeoChange('structured_data' as keyof SEOData, e.target.value)}
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

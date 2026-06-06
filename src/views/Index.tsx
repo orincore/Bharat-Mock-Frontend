@@ -502,22 +502,22 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
                   renderMediaAsset(heroMediaPrimary, 'w-full h-auto object-contain', { disableShadow: true })
                 ) : (
                   <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 p-4 sm:p-8">
-                    <div className="bg-white/10 backdrop-blur p-3 sm:p-6 border border-white/20">
+                    <div className="bg-blue-700 p-3 sm:p-6 border border-blue-500">
                       <h3 className="text-white text-xl font-bold mb-6 text-center">My board</h3>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white/20 backdrop-blur rounded-xl p-4 text-white">
+                        <div className="bg-blue-800 rounded-xl p-4 text-white">
                           <div className="text-2xl mb-2">📋</div>
                           <p className="text-sm font-medium">Attempted Tests</p>
                         </div>
-                        <div className="bg-white/20 backdrop-blur rounded-xl p-4 text-white">
+                        <div className="bg-blue-800 rounded-xl p-4 text-white">
                           <div className="text-2xl mb-2">📚</div>
                           <p className="text-sm font-medium">My Library</p>
                         </div>
-                        <div className="bg-white/20 backdrop-blur rounded-xl p-4 text-white">
+                        <div className="bg-blue-800 rounded-xl p-4 text-white">
                           <div className="text-2xl mb-2">📅</div>
                           <p className="text-sm font-medium">Exam Calendar</p>
                         </div>
-                        <div className="bg-white/20 backdrop-blur rounded-xl p-4 text-white">
+                        <div className="bg-blue-800 rounded-xl p-4 text-white">
                           <div className="text-2xl mb-2">📊</div>
                           <p className="text-sm font-medium">My Test Series</p>
                         </div>
@@ -943,7 +943,7 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
               <div className="relative">
                 <div className="absolute -top-6 right-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
                 <div className="relative mx-auto max-w-sm rounded-[36px] bg-gradient-to-b from-white via-slate-50 to-sky-50 p-6 shadow-2xl">
-                  <div className="rounded-[28px] bg-white/90 p-4 border border-white/70 backdrop-blur">
+                  <div className="rounded-[28px] bg-white p-4 border border-gray-100">
                     <Image
                       src="/assets/image1.png"
                       alt="Learner reviewing BharatMock pass dashboard"

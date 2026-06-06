@@ -267,7 +267,7 @@ export function AuthReminderDialog() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
         {/* badge pinned to bottom-left */}
-        <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-black/50 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-amber-300">
+        <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-black/70 px-3 py-1 text-xs font-semibold text-amber-300">
           <Crown className="h-3.5 w-3.5" />
           Bharat Mock Premium
         </div>

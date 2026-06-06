@@ -457,7 +457,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
             <div className="text-center lg:text-left space-y-6 max-w-3xl mx-auto">
               {heroSection?.settings?.show_badge && (
-                <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm text-sm px-4 py-1 inline-flex w-auto">
+                <Badge className="bg-white/25 text-white border-white/30 text-sm px-4 py-1 inline-flex w-auto">
                   {heroSection.settings.badge_text || heroSection.subtitle || 'Premium Learning'}
                 </Badge>
               )}
@@ -485,7 +485,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
             {heroImageUrl && (
               <div className="relative w-full max-w-2xl lg:ml-auto">
                 <div className="absolute inset-0 rounded-3xl bg-white/10 blur-3xl"></div>
-                <div className="relative rounded-3xl border border-white/20 bg-white/5 shadow-2xl backdrop-blur">
+                <div className="relative rounded-3xl border border-white/20 bg-white/10 shadow-2xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={heroImageUrl}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Clock, FileText, TrendingUp, Languages, ArrowRight, Lock, Download, Users } from 'lucide-react';
+import { Clock, FileText, TrendingUp, Languages, ArrowRight, Lock, Download, Users, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logoUrl } from '@/lib/utils/imageUrl';
 
@@ -38,6 +38,8 @@ interface StandardExamCardProps {
   pdfMode?: boolean;
   isLocked?: boolean;
   isLive?: boolean;
+  /** Show the scheduled From/To window (used on the Live Tests page) */
+  showSchedule?: boolean;
   hideAttempts?: boolean;
   showAttemptsTop?: boolean;
   ctaLabel?: string;
@@ -51,6 +53,7 @@ export function StandardExamCard({
   pdfMode = false,
   isLocked = false,
   isLive = false,
+  showSchedule = false,
   hideAttempts = false,
   showAttemptsTop = false,
   ctaLabel,
@@ -87,6 +90,15 @@ export function StandardExamCard({
 
   const languageLabel = exam.supports_hindi ? 'English + हिंदी' : 'English only';
   const examUrl = exam.url_path || `/mock-test-series/${exam.id}`;
+
+  // Format a schedule date — only after mount, since toLocaleString is timezone
+  // dependent and would otherwise mismatch between server and client render.
+  const formatScheduleDate = (d: Date | null) =>
+    mounted && d && !Number.isNaN(d.getTime())
+      ? d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
+      : null;
+  const scheduleFrom = formatScheduleDate(startDate);
+  const scheduleTo = formatScheduleDate(endDate);
 
   const hasPdfEn = Boolean(exam.pdf_url_en);
   const hasPdfHi = Boolean(exam.pdf_url_hi);
@@ -220,6 +232,26 @@ export function StandardExamCard({
             </div>
           )}
         </div>
+
+        {/* Scheduled window — Live Tests only */}
+        {showSchedule && (scheduleFrom || scheduleTo) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2 space-y-1 text-[11px] sm:text-xs">
+            {scheduleFrom && (
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-500 shrink-0" />
+                <span className="font-medium text-slate-400">From</span>
+                <span className="ml-auto font-semibold text-slate-700">{scheduleFrom}</span>
+              </div>
+            )}
+            {scheduleTo && (
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-500 shrink-0" />
+                <span className="font-medium text-slate-400">To</span>
+                <span className="ml-auto font-semibold text-slate-700">{scheduleTo}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* CTA */}
         <div className="mt-auto flex flex-col gap-1.5 sm:gap-2">

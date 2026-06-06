@@ -36,7 +36,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 async function fetchInitialData() {
   try {
     const [examsRes, categoriesRes, bannersRes] = await Promise.all([
-      fetch(`${API_BASE}/exams?status=upcoming&exam_type=all&limit=100`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/exams?exam_type=all&limit=100`, { cache: 'no-store' }),
       fetch(`${API_BASE}/taxonomy/categories`, { cache: 'no-store' }),
       fetch(`${API_BASE}/page-banners/live_tests_hero`, { cache: 'no-store' }),
     ]);

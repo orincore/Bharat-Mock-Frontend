@@ -760,7 +760,7 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
             {!error && testSeries.length > 0 && (
               <div className="relative">
                 {isLoading && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-sm">
+                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/85">
                     <div className="flex flex-col items-center gap-2">
                       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                       <span className="text-sm text-muted-foreground font-medium">Filtering…</span>

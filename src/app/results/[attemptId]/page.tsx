@@ -455,6 +455,8 @@ export default function ResultPage() {
             </Button>
             <Button
               variant="outline"
+              size="sm"
+              className="h-8"
               onClick={() => document.getElementById('solutions-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             >
               Solutions
@@ -540,7 +542,7 @@ export default function ResultPage() {
             </div>
 
             {/* Middle Column */}
-            <div className="flex flex-col gap-3 h-full">
+            <div className="grid grid-cols-2 gap-3 lg:flex lg:flex-col lg:h-full">
               <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-4 flex flex-col justify-center">
                 <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
                   <Trophy className="h-3 w-3 text-amber-500" />
@@ -578,7 +580,7 @@ export default function ResultPage() {
             </div>
 
             {/* Right Column */}
-            <div className="flex flex-col gap-3 h-full">
+            <div className="grid grid-cols-2 gap-3 lg:flex lg:flex-col lg:h-full">
               <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-4 flex flex-col justify-center">
                 <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
                   <Users className="h-3 w-3 text-emerald-500" />
@@ -627,7 +629,35 @@ export default function ResultPage() {
           {sectionWiseAnalysis.length === 0 ? (
             <p className="text-sm text-slate-500">Section-wise analysis is not available for this result yet.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile: stacked cards (table is unreadable on small screens) */}
+            <div className="space-y-3 md:hidden">
+              {sectionWiseAnalysis.map(section => (
+                <div key={section.sectionId} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                  <p className="text-sm font-bold text-slate-800 mb-2">{section.sectionName}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex justify-between rounded-lg bg-white border border-slate-100 px-2.5 py-1.5">
+                      <span className="text-slate-400 font-medium">Score</span>
+                      <span className="font-semibold text-slate-700">{section.score}</span>
+                    </div>
+                    <div className="flex justify-between rounded-lg bg-white border border-slate-100 px-2.5 py-1.5">
+                      <span className="text-slate-400 font-medium">Attempted</span>
+                      <span className="font-semibold text-slate-700">{section.correctAnswers + section.wrongAnswers}</span>
+                    </div>
+                    <div className="flex justify-between rounded-lg bg-white border border-slate-100 px-2.5 py-1.5">
+                      <span className="text-slate-400 font-medium">Time</span>
+                      <span className="font-semibold text-slate-700">{formatTime(section.timeTaken)}</span>
+                    </div>
+                    <div className="flex justify-between rounded-lg bg-white border border-slate-100 px-2.5 py-1.5">
+                      <span className="text-slate-400 font-medium">Accuracy</span>
+                      <span className="font-semibold text-slate-700">{section.accuracy.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop/tablet: table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[760px] border-separate border-spacing-0 overflow-hidden rounded-2xl border border-slate-200">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
@@ -651,6 +681,7 @@ export default function ResultPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
 
@@ -729,7 +760,7 @@ export default function ResultPage() {
           </div>
         </div>
 
-        <div id="solutions-section" className="bg-card border border-border rounded-2xl p-6 mt-6">
+        <div id="solutions-section" className="bg-card border border-border rounded-2xl p-4 sm:p-6 mt-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-xl font-bold">Detailed Question Review</h2>
             {isReviewLoading && <span className="text-sm text-muted-foreground">Loading review...</span>}
@@ -738,11 +769,11 @@ export default function ResultPage() {
           {Object.keys(reviewBySection).length === 0 && !isReviewLoading ? (
             <p className="text-muted-foreground text-sm">Review data unavailable for this attempt.</p>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6">
               {Object.values(reviewBySection).map(section => (
                 <div key={section.sectionName}>
-                  <h3 className="font-semibold text-lg mb-3">{section.sectionName}</h3>
-                  <div className="space-y-4">
+                  <h3 className="font-semibold text-base sm:text-lg mb-2 sm:mb-3">{section.sectionName}</h3>
+                  <div className="space-y-3">
                     {section.questions.map((question, idx) => {
                       const statusBadge = question.userAnswer
                         ? question.isCorrect ? 'Correct' : 'Incorrect'
@@ -753,16 +784,16 @@ export default function ResultPage() {
                         : 'bg-gray-100 text-gray-600 border-gray-200';
 
                       return (
-                        <div key={question.id} className="border border-border rounded-xl p-4">
-                          <div className="flex items-start justify-between gap-4 mb-3">
-                            <div>
-                              <p className="text-sm text-muted-foreground mb-1">Question {idx + 1}</p>
+                        <div key={question.id} className="border border-border rounded-xl p-3 sm:p-4">
+                          <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2 sm:mb-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Question {idx + 1}</p>
                               <div
-                                className="font-medium text-base rich-text-content"
+                                className="font-medium text-sm sm:text-base rich-text-content break-words"
                                 dangerouslySetInnerHTML={createRichTextMarkup(question.text)}
                               />
                             </div>
-                            <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusColor}`}>
+                            <span className={`shrink-0 text-[10px] sm:text-xs font-semibold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border ${statusColor}`}>
                               {statusBadge}
                             </span>
                           </div>
@@ -771,22 +802,22 @@ export default function ResultPage() {
                             <img
                               src={question.imageUrl}
                               alt={`Question image for question ${idx + 1}`}
-                              className="max-h-64 rounded-lg border border-border object-contain mb-4"
+                              className="max-h-64 max-w-full rounded-lg border border-border object-contain mb-3"
                             />
                           )}
 
-                          <div className="space-y-2 mb-3">
+                          <div className="space-y-1.5 sm:space-y-2 mb-3">
                             {question.options.map((option, idx) => (
                               <div
                                 key={option.id}
-                                className={`p-4 rounded-lg border space-y-2 ${getOptionClass(option.id, question)}`}
+                                className={`p-2.5 sm:p-4 rounded-lg border space-y-1.5 ${getOptionClass(option.id, question)}`}
                               >
-                                <div className="flex items-start gap-3">
-                                  <span className="text-sm font-medium text-muted-foreground">
+                                <div className="flex items-start gap-2 sm:gap-3">
+                                  <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                                     {String.fromCharCode(65 + idx)}.
                                   </span>
                                   <div
-                                    className="flex-1 rich-text-content text-sm"
+                                    className="flex-1 min-w-0 rich-text-content text-xs sm:text-sm"
                                     dangerouslySetInnerHTML={createRichTextMarkup(option.option_text)}
                                   />
                                 </div>
@@ -794,23 +825,23 @@ export default function ResultPage() {
                                   <img
                                     src={resolveOptionImage(option)}
                                     alt={`Option ${String.fromCharCode(65 + idx)}`}
-                                    className="max-h-32 rounded-lg border border-border object-contain"
+                                    className="max-h-32 max-w-full rounded-lg border border-border object-contain"
                                   />
                                 )}
                               </div>
                             ))}
                           </div>
 
-                          <p className="text-sm text-muted-foreground mb-1">
+                          <p className="text-[11px] sm:text-sm text-muted-foreground mb-1 break-words">
                             {renderAnswerSummary(question)}
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-[11px] sm:text-sm text-muted-foreground">
                             Marks: {question.marksObtained} / {question.marks}
                             {question.negativeMarks > 0 && ` (Negative: -${question.negativeMarks})`}
                           </p>
                           {(question.explanation || question.explanationImageUrl) && (
-                            <details className="mt-4">
-                              <summary className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 font-semibold text-sm rounded-lg border border-blue-200 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md select-none">
+                            <details className="mt-3">
+                              <summary className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 font-semibold text-xs sm:text-sm rounded-lg border border-blue-200 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md select-none">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -821,16 +852,16 @@ export default function ResultPage() {
                               </summary>
                               {question.explanation && (
                                 <div
-                                  className="text-sm text-muted-foreground mt-2 rich-text-content"
+                                  className="text-xs sm:text-sm text-muted-foreground mt-2 rich-text-content max-w-full break-words"
                                   dangerouslySetInnerHTML={createRichTextMarkup(question.explanation)}
                                 />
                               )}
                               {question.explanationImageUrl && (
                                 <div className="mt-4 flex justify-start">
-                                  <img 
+                                  <img
                                     src={question.explanationImageUrl.startsWith('http') ? question.explanationImageUrl : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/exam-images/${question.explanationImageUrl}`}
-                                    alt="Explanation" 
-                                    className="max-h-[250px] w-auto object-contain rounded-lg border border-slate-200 shadow-sm"
+                                    alt="Explanation"
+                                    className="max-h-[250px] max-w-full w-auto object-contain rounded-lg border border-slate-200 shadow-sm"
                                   />
                                 </div>
                               )}
@@ -846,7 +877,7 @@ export default function ResultPage() {
           )}
         </div>
 
-        <div className="flex gap-4 mt-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
           <Button onClick={() => router.push(withLocale('/mock-test-series'))} className="flex-1">
             Browse More Exams
           </Button>
