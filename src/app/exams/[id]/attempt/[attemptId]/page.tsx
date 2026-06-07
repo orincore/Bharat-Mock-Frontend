@@ -1206,8 +1206,9 @@ function ExamAttemptContent() {
         <header className="h-10 md:h-12 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-6 shrink-0 shadow-sm z-10">
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <img src="/logo.png" alt="Logo" className="h-6 md:h-7 w-auto shrink-0" />
-            <div className="h-5 w-px bg-slate-200 mx-1 shrink-0" />
-            <h1 className="font-black text-slate-800 tracking-tight text-[14px] md:text-[16px] truncate">Free Full Test : {exam?.title || 'SSC CGL 2025 (Tier-I)'}</h1>
+            <div className="hidden md:block h-5 w-px bg-slate-200 mx-1 shrink-0" />
+            {/* Title shown in header on desktop only; on mobile it appears above the table */}
+            <h1 className="hidden md:block font-black text-slate-800 tracking-tight text-[14px] md:text-[16px] truncate">Free Full Test : {exam?.title || 'SSC CGL 2025 (Tier-I)'}</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="md:hidden flex h-8 items-center gap-1 bg-blue-50/80 rounded-lg px-2 border border-blue-100 shadow-sm active:bg-blue-100 transition-colors">
@@ -1241,9 +1242,15 @@ function ExamAttemptContent() {
             {/* Left Content - Instructions */}
             <div className="flex-1 p-3 md:p-4 lg:p-6 space-y-2 md:space-y-3 lg:border-r lg:border-slate-100 overflow-hidden">
               <div className="max-w-4xl h-full flex flex-col">
+                {/* Mobile-only exam title (hidden in the header on mobile, shown here instead) */}
+                <h1 className="md:hidden font-black text-slate-800 tracking-tight text-[15px] leading-snug mb-2">Free Full Test : {exam?.title || 'SSC CGL 2025 (Tier-I)'}</h1>
                 {/* Section Table - High-Density Precision Centered Grid */}
                 <div className="w-full mb-3 overflow-x-auto bg-white shrink-0 border border-[#e8e8e8] rounded-lg">
-                  <table className="w-full text-[10px] md:text-xs text-left border-collapse min-w-[450px] md:min-w-full">
+                  {/* Mobile: table-fixed guarantees the columns never exceed the screen
+                      width (no horizontal scroll). The narrow Sl/Questions/Marks columns
+                      take their set widths and the Section Name column wraps into whatever
+                      space is left. Desktop reverts to auto layout. */}
+                  <table className="w-full table-fixed md:table-auto text-[10px] md:text-xs text-left border-collapse">
                     <thead>
                       {/* Desktop header (light blue) */}
                       <tr className="hidden md:table-row bg-[#dbeafe] text-slate-700 font-semibold border-b border-slate-300">
@@ -1253,11 +1260,11 @@ function ExamAttemptContent() {
                         <th className="px-3 py-2 w-24 text-center">Maximum Marks</th>
                       </tr>
                       {/* Mobile header (light blue) */}
-                      <tr className="table-row md:hidden bg-[#dbeafe] text-slate-700 font-semibold text-[10px]">
-                        <th className="px-2 py-2 border border-slate-300 w-10 text-center">Sl No.</th>
-                        <th className="px-2 py-2 border border-slate-300">Section Name</th>
-                        <th className="px-2 py-2 border border-slate-300 text-center w-[80px]">Questions</th>
-                        <th className="px-2 py-2 border border-slate-300 text-center w-[80px]">Marks</th>
+                      <tr className="table-row md:hidden bg-[#dbeafe] text-slate-700 font-semibold leading-tight">
+                        <th className="px-1.5 py-1.5 border border-slate-300 w-7 text-center text-[9px] !whitespace-normal">Sl</th>
+                        <th className="px-1.5 py-1.5 border border-slate-300 text-[9px] !whitespace-normal">Section Name</th>
+                        <th className="px-1.5 py-1.5 border border-slate-300 text-center w-[44px] text-[9px] !whitespace-normal">Ques.</th>
+                        <th className="px-1.5 py-1.5 border border-slate-300 text-center w-[44px] text-[9px] !whitespace-normal">Marks</th>
                       </tr>
                     </thead>
                     <tbody className="text-slate-700">
@@ -1269,10 +1276,10 @@ function ExamAttemptContent() {
                           <td className="hidden md:table-cell px-3 py-2 border-b border-r border-slate-300 text-center">{section.totalQuestions || 0}</td>
                           <td className="hidden md:table-cell px-3 py-2 border-b border-slate-300 text-center">{(section.totalQuestions || 0) * (section.marksPerQuestion || 2)}</td>
                           {/* Mobile cells */}
-                          <td className="table-cell md:hidden px-2 py-2 border border-slate-300 text-center font-semibold">{idx + 1}</td>
-                          <td className="table-cell md:hidden px-2 py-2 border border-slate-300 leading-snug break-words">{getLocalizedSectionName(section)}</td>
-                          <td className="table-cell md:hidden px-2 py-2 border border-slate-300 text-center">{section.totalQuestions || 0}</td>
-                          <td className="table-cell md:hidden px-2 py-2 border border-slate-300 text-center">{(section.totalQuestions || 0) * (section.marksPerQuestion || 2)}</td>
+                          <td className="table-cell md:hidden px-1.5 py-1.5 border border-slate-300 text-center font-semibold text-[10px]">{idx + 1}</td>
+                          <td className="table-cell md:hidden px-1.5 py-1.5 border border-slate-300 text-[10px] leading-snug !whitespace-normal ![overflow-wrap:anywhere] ![word-break:break-word]">{getLocalizedSectionName(section)}</td>
+                          <td className="table-cell md:hidden px-1.5 py-1.5 border border-slate-300 text-center text-[10px]">{section.totalQuestions || 0}</td>
+                          <td className="table-cell md:hidden px-1.5 py-1.5 border border-slate-300 text-center text-[10px]">{(section.totalQuestions || 0) * (section.marksPerQuestion || 2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1370,47 +1377,22 @@ function ExamAttemptContent() {
           </div>
         </main>
 
-        {/* Resume banner — shown when a previous in-progress attempt exists for this same attemptId */}
-        {resumeAttempts.some((a: any) => a.id === attemptId) && (() => {
-          const prev = resumeAttempts.find((a: any) => a.id === attemptId);
-          const mins = prev?.time_remaining != null ? Math.floor(prev.time_remaining / 60) : null;
-          const secs = prev?.time_remaining != null ? prev.time_remaining % 60 : null;
-          return (
-            <div className="mx-4 mb-2 mt-1 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm">
-              <div>
-                <p className="font-bold text-amber-800">You have an unfinished attempt</p>
-                <p className="text-amber-700 text-xs mt-0.5">
-                  {prev?.answered_count || 0} questions answered
-                  {mins != null && ` · ${mins}m ${secs}s remaining`}
-                  {prev?.language === 'hi' ? ' · Hindi' : ' · English'}
-                </p>
-              </div>
-              <Button
-                onClick={handleStartExamFlow}
-                className="h-9 px-5 text-[13px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shrink-0"
-              >
-                Resume
-              </Button>
-            </div>
-          );
-        })()}
-
         {/* Sticky Footer - Precision Action Buttons */}
-        <footer className="h-14 md:h-16 bg-white border-t border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 shadow-lg z-20">
+        <footer className="h-14 md:h-16 bg-white border-t border-slate-200 flex items-center justify-between gap-2 px-3 md:px-8 shrink-0 shadow-lg z-20">
           <Button
             variant="outline"
-            className="h-11 px-6 md:px-10 border-slate-200 text-slate-600 text-[14px] font-bold rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+            className="h-11 px-4 md:px-10 border-slate-200 text-slate-600 text-[13px] md:text-[14px] font-bold rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95 shrink-0"
             onClick={() => router.push(`/exams/${examId}`)}
           >
             Previous
           </Button>
 
-          <div className="flex-grow md:flex-none" />
+          <div className="hidden md:block md:flex-none" />
 
           <Button
             onClick={handleStartExamFlow}
             disabled={!isAgreed || !languageSelectionMade}
-            className={`h-11 px-8 md:px-14 text-[15px] font-black uppercase tracking-widest rounded-lg active:scale-95 transition-all shadow-md ml-6 ${isAgreed && languageSelectionMade
+            className={`h-11 min-w-0 px-4 md:px-14 text-[12px] md:text-[15px] font-black uppercase tracking-wide md:tracking-widest rounded-lg active:scale-95 transition-all shadow-md whitespace-nowrap ${isAgreed && languageSelectionMade
               ? 'bg-[#00aeef] hover:bg-[#0096ce] text-white'
               : 'bg-slate-100 text-slate-400 cursor-not-allowed'
               }`}

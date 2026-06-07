@@ -2732,6 +2732,10 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
   const headerTextColor = content.headerTextColor || '#ffffff';
   const borderColor = content.borderColor || '#d1d5db';
   const cellLinks = content.cellLinks || {}; // Format: { "rowIndex-colIndex": "url" }
+  // 'scroll' (default) = columns keep a min width and the table scrolls horizontally
+  // on narrow screens. 'fixed' = table always fits the screen width; columns share
+  // the width equally and cell text wraps instead of scrolling.
+  const layout: 'scroll' | 'fixed' = content.layout === 'fixed' ? 'fixed' : 'scroll';
 
   const update = (next: Partial<any>) => onChange({ ...content, ...next });
 
@@ -2923,6 +2927,34 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
         >
           Clear formatting
         </button>
+      </div>
+
+      {/* Table width behaviour */}
+      <div className="flex items-center justify-between gap-3 flex-wrap p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Table width</label>
+          <p className="text-xs text-gray-500">
+            {layout === 'fixed'
+              ? 'Fit to screen — columns share the width equally and text wraps.'
+              : 'Scrollable — columns keep their width and the table scrolls sideways on small screens.'}
+          </p>
+        </div>
+        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden text-xs font-semibold shrink-0">
+          <button
+            type="button"
+            onClick={() => update({ layout: 'fixed' })}
+            className={`px-3 py-1.5 transition-colors ${layout === 'fixed' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+          >
+            Fit to width
+          </button>
+          <button
+            type="button"
+            onClick={() => update({ layout: 'scroll' })}
+            className={`px-3 py-1.5 border-l border-gray-300 transition-colors ${layout === 'scroll' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+          >
+            Scrollable
+          </button>
+        </div>
       </div>
 
       {/* Color Options */}
@@ -3642,6 +3674,10 @@ const InlineTableEditor = ({
   const cellLinks = content.cellLinks || {}; // Format: { "rowIndex-colIndex": "url" }
   const cellColors = content.cellColors || {}; // Format: { "rowIndex-colIndex": { bg: "#fff", text: "#000" } }
   const headerColors = content.headerColors || {}; // Format: { "colIndex": { bg: "", text: "" } }
+  // 'scroll' (default) = columns keep a min width and the table scrolls horizontally
+  // on narrow screens. 'fixed' = table always fits the screen width; columns share
+  // the width equally and cell text wraps instead of scrolling.
+  const layout: 'scroll' | 'fixed' = content.layout === 'fixed' ? 'fixed' : 'scroll';
 
   const update = (next: Partial<any>) => onChange({ ...content, ...next });
 
@@ -4012,6 +4048,20 @@ const InlineTableEditor = ({
         </label>
         <div className="w-px h-4 bg-gray-200 mx-1" />
 
+        {/* Table width: fit-to-screen vs horizontal scroll */}
+        <div className="inline-flex items-center rounded border border-gray-300 overflow-hidden text-[10px] font-semibold"
+          title="Fit to width: table fills the screen and text wraps. Scroll: columns keep their width and the table scrolls sideways on small screens.">
+          <button type="button" onClick={() => update({ layout: 'fixed' })}
+            className={`px-1.5 py-0.5 transition-colors ${layout === 'fixed' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+            Fit
+          </button>
+          <button type="button" onClick={() => update({ layout: 'scroll' })}
+            className={`px-1.5 py-0.5 border-l border-gray-300 transition-colors ${layout === 'scroll' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+            Scroll
+          </button>
+        </div>
+        <div className="w-px h-4 bg-gray-200 mx-1" />
+
         {/* Add controls */}
         <button type="button" onClick={addColumn}
           className="px-2 py-0.5 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 rounded border border-blue-200 hover:border-blue-400 transition-colors">
@@ -4039,8 +4089,11 @@ const InlineTableEditor = ({
       </div>
 
       {/* ── Table ─────────────────────────────────────────────── */}
-      <div className="overflow-x-auto hide-scrollbar">
-        <table className="min-w-full text-sm border-collapse">
+      <div className={layout === 'fixed' ? '' : 'overflow-x-auto hide-scrollbar'}>
+        <table
+          className={`${layout === 'fixed' ? 'w-full bm-table-fit' : 'min-w-full bm-table-scroll'} text-sm border-collapse`}
+          style={layout === 'fixed' ? { tableLayout: 'fixed' } : undefined}
+        >
           {hasHeader && (
             <thead>
               <tr>
@@ -4053,7 +4106,7 @@ const InlineTableEditor = ({
                       <div
                         contentEditable
                         suppressContentEditableWarning
-                        className={`px-3 py-2 text-xs font-semibold leading-snug text-center min-w-[90px] min-h-[32px] focus:outline-none focus:brightness-110 ${TABLE_CELL_RESET}`}
+                        className={`px-3 py-2 text-xs font-semibold leading-snug text-center ${layout === 'fixed' ? 'whitespace-normal break-words [overflow-wrap:anywhere] [word-break:break-word]' : 'min-w-[90px]'} min-h-[32px] focus:outline-none focus:brightness-110 ${TABLE_CELL_RESET}`}
                         style={{ color: hText, backgroundColor: hBg }}
                         dangerouslySetInnerHTML={{ __html: header }}
                         onFocus={() => setFocusedCell(`h-${index}`)}
@@ -4117,7 +4170,7 @@ const InlineTableEditor = ({
                       <div
                         contentEditable
                         suppressContentEditableWarning
-                        className={`px-3 py-2 text-xs leading-snug text-center min-h-[32px] min-w-[90px] focus:outline-none ${TABLE_CELL_RESET}`}
+                        className={`px-3 py-2 text-xs leading-snug text-center min-h-[32px] ${layout === 'fixed' ? 'whitespace-normal break-words [overflow-wrap:anywhere] [word-break:break-word]' : 'min-w-[90px]'} focus:outline-none ${TABLE_CELL_RESET}`}
                         style={{ color: cellColor.text || '#111827', backgroundColor: cellColor.bg || 'transparent' }}
                         dangerouslySetInnerHTML={{ __html: cell }}
                         onFocus={() => setFocusedCell(cellKey)}

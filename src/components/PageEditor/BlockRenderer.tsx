@@ -258,16 +258,33 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     borderColor = '#e5e7eb',
     cellLinks = {},
     cellColors = {},
-    headerColors = {}
+    headerColors = {},
+    layout = 'scroll'
   } = content;
 
   if (!rows.length && !headers.length) return null;
 
+  // 'fixed' = table always fits the screen width (table-layout:fixed, equal columns,
+  // text wraps). 'scroll' (default) = columns keep a min width and the wrapper scrolls
+  // horizontally on narrow viewports instead of crushing columns.
+  const isFixed = layout === 'fixed';
+  // In fixed layout the columns have a hard width, so any non-wrapping content would
+  // spill into the neighbouring cell. Force aggressive wrapping (long words/links/URLs
+  // break onto the next line) and let the row grow taller instead — content stays
+  // contained in its own cell.
+  const cellWidthClass = isFixed
+    ? 'whitespace-normal break-words [overflow-wrap:anywhere] [word-break:break-word]'
+    : 'min-w-[7rem]';
+
   return (
-    <div className="overflow-x-auto mb-5 rounded-xl border shadow-sm" style={{ borderColor }}>
-      {/* min-w-full (not w-full) lets the table grow past a narrow viewport so the
-          wrapper scrolls horizontally instead of crushing columns on mobile */}
-      <table className="min-w-full border-collapse text-sm">
+    <div
+      className={`${isFixed ? '' : 'overflow-x-auto'} mb-5 rounded-xl border shadow-sm`}
+      style={{ borderColor }}
+    >
+      <table
+        className={`${isFixed ? 'w-full bm-table-fit' : 'min-w-full bm-table-scroll'} border-collapse text-sm`}
+        style={isFixed ? { tableLayout: 'fixed' } : undefined}
+      >
 
         {hasHeader && headers.length > 0 && (
           <thead>
@@ -280,7 +297,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                 return (
                   <th
                     key={index}
-                    className={`min-w-[7rem] px-4 py-3 text-center text-base font-bold tracking-wide select-none align-top leading-snug ${TABLE_CELL_RESET}`}
+                    className={`${cellWidthClass} ${isFixed ? 'px-2 py-2 text-sm sm:px-4 sm:py-3 sm:text-base' : 'px-4 py-3 text-base'} text-center font-bold tracking-wide select-none align-top leading-snug ${TABLE_CELL_RESET}`}
                     style={{
                       backgroundColor: bg,
                       color: fg,
@@ -316,7 +333,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                   return (
                     <td
                       key={cellIndex}
-                      className={`min-w-[7rem] px-4 py-2.5 align-top text-center leading-relaxed text-gray-700 ${TABLE_CELL_RESET}`}
+                      className={`${cellWidthClass} ${isFixed ? 'px-2 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm' : 'px-4 py-2.5'} align-top text-center leading-relaxed text-gray-700 ${TABLE_CELL_RESET}`}
                       style={{
                         ...(cellColor.bg ? { backgroundColor: cellColor.bg } : {}),
                         ...(cellColor.text ? { color: cellColor.text } : {}),

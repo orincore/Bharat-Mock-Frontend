@@ -350,6 +350,84 @@ table th, table td,
   font-size: 1.125rem;
 }
 
+/* Fit-to-width table block (layout = 'fixed'): force every cell to WRAP and grow
+   taller instead of overflowing into the neighbouring cell. This overrides the
+   global `white-space: nowrap !important` above (which keeps scroll-mode tables on
+   a single line). Works on every screen size, including mobile. */
+.bm-table-fit {
+  table-layout: fixed;
+  width: 100%;
+}
+/* The `.rich-text-content ...` variants are listed so this still beats the
+   `.rich-text-content table td { white-space: nowrap }` rule above when a fit-mode
+   table is rendered INSIDE rich text (e.g. blog post pages, which wrap every block
+   in a `.rich-text-content` container). Without them that rule out-specifies this
+   one on desktop and the cells stay on one line. */
+.bm-table-fit th,
+.bm-table-fit td,
+.rich-text-content .bm-table-fit th,
+.rich-text-content .bm-table-fit td {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Scroll-mode table block (layout = 'scroll'): keep columns on a single line and let
+   the wrapper scroll horizontally. Inside a blog post the table sits in a
+   `.rich-text-content` container whose mobile rules (`@media (max-width: 640px)`) force
+   EVERY table to `table-layout: fixed`, `width: 100%`, `max-width: 100%` and wrapping
+   cells — which would turn scroll mode into fit mode on phones. These higher-specificity
+   overrides opt the scroll-mode table back out so the toggle works on blogs too. */
+.rich-text-content .bm-table-scroll {
+  table-layout: auto !important;
+  width: auto !important;
+  max-width: none !important;
+}
+.rich-text-content .bm-table-scroll th,
+.rich-text-content .bm-table-scroll td {
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  max-width: none !important;
+}
+
+/* Exam attempt page (question & option content): tables come from pasted HTML and may
+   carry inline width/col widths that the non-!important global rule can't beat, so they
+   overflow the question panel on phones. Force them to FIT the screen — fixed layout,
+   wrapping cells, inline widths neutralised — for a clean, well-spaced mobile view. */
+@media (max-width: 640px) {
+  .exam-question-text table,
+  .exam-option-text table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .exam-question-text table col,
+  .exam-option-text table col {
+    width: auto !important;
+  }
+  .exam-question-text table th,
+  .exam-question-text table td,
+  .exam-option-text table th,
+  .exam-option-text table td {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    padding: 6px 8px !important;
+    font-size: 0.8125rem !important;
+  }
+  .exam-question-text table img,
+  .exam-option-text table img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
+
 /* Keep embedded media inside rich text within its container on every screen
    (prevents wide images/videos from forcing horizontal page scroll on mobile). */
 .rich-text-content img,
