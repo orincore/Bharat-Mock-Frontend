@@ -409,10 +409,11 @@ export default function HomepageAdminPage() {
   };
 
   const handleSearchExams = async () => {
-    if (!examSearch.trim()) return;
+    const query = examSearch.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!query) return;
     try {
       setIsSearching(true);
-      const results = await adminService.getExams({ search: examSearch, limit: 10 });
+      const results = await adminService.getExams({ search: query, limit: 10 });
       setExamSearchResults(results.data);
     } catch (error) {
       console.error('Failed to search exams:', error);

@@ -286,13 +286,14 @@ export default function AdminCurrentAffairsPage() {
   };
 
   const performExamSearch = useCallback(async (term: string) => {
-    if (!term.trim()) {
+    const query = term.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!query) {
       setExamResults([]);
       return;
     }
     setSearchingExams(true);
     try {
-      const response = await adminService.getExams({ search: term, limit: 10 });
+      const response = await adminService.getExams({ search: query, limit: 10 });
       setExamResults(response.data);
     } catch (error) {
       console.error('Exam search failed', error);

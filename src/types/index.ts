@@ -595,6 +595,12 @@ export interface User {
   bio?: string;
   date_of_birth?: string;
   role: 'user' | 'admin' | 'editor' | 'author';
+  is_admin?: boolean;
+  isAdmin?: boolean;
+  is_editor?: boolean;
+  isEditor?: boolean;
+  is_author?: boolean;
+  isAuthor?: boolean;
   is_verified: boolean;
   is_blocked: boolean;
   block_reason?: string | null;

@@ -378,6 +378,13 @@ function ExamAttemptContent() {
   const [questionTimer, setQuestionTimer] = useState(0);
   const [paletteViewMode, setPaletteViewMode] = useState<'section' | 'overall'>('section');
 
+  const unfinishedAttempt = resumeAttempts.find(
+    (a: any) =>
+      (a.examId === examId || a.exam_id === examId) &&
+      a.id === attemptId &&
+      (a.status === 'in-progress' || a.status === 'in_progress' || !a.is_submitted)
+  );
+
   // Refs to always have latest values inside intervals/callbacks without stale closures
   const selectedAnswerRef = useRef<string | string[] | null>(null);
   const markedForReviewRef = useRef(false);
@@ -1322,6 +1329,29 @@ function ExamAttemptContent() {
             </div>
           </div>
         </main>
+
+        {unfinishedAttempt && (() => {
+          const mins = unfinishedAttempt?.time_remaining != null ? Math.floor(unfinishedAttempt.time_remaining / 60) : null;
+          const secs = unfinishedAttempt?.time_remaining != null ? unfinishedAttempt.time_remaining % 60 : null;
+          return (
+            <div className="mx-4 mb-2 mt-1 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm">
+              <div>
+                <p className="font-bold text-amber-800">You have an unfinished attempt</p>
+                <p className="text-amber-700 text-xs mt-0.5">
+                  {unfinishedAttempt?.answered_count || unfinishedAttempt?.answeredQuestions || 0} questions answered
+                  {mins != null && ` · ${mins}m ${secs}s remaining`}
+                  {unfinishedAttempt?.language === 'hi' ? ' · Hindi' : ' · English'}
+                </p>
+              </div>
+              <Button
+                onClick={handleStartExamFlow}
+                className="h-9 px-5 text-[13px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shrink-0"
+              >
+                Resume
+              </Button>
+            </div>
+          );
+        })()}
 
         {/* Sticky Footer - Precision Action Buttons */}
         <footer className="h-14 md:h-16 bg-white border-t border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 shadow-lg z-20">

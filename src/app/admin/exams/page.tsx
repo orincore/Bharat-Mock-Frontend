@@ -55,11 +55,12 @@ export default function AdminExamsPage() {
 
   const fetchExams = async () => {
     setLoading(true);
+    const sanitizedSearch = search ? search.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim() : undefined;
     try {
       const response = await adminService.getExams({
         page,
         limit,
-        search: search || undefined,
+        search: sanitizedSearch || undefined,
         ...Object.fromEntries(
           Object.entries(filters).filter(([, value]) => Boolean(value))
         )

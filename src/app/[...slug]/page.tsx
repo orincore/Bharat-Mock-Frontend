@@ -1,9 +1,10 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import ServerPageContent from './ServerPageContent';
 import ServerExamDetail from './ServerExamDetail';
 import DynamicPageClient from './DynamicPageClient';
-import { DynamicJsonLd } from '@/components/seo/JsonLd';
+import FooterVisible from './FooterVisible';
+import { decodeHtmlEntities } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -47,6 +48,8 @@ interface SlugSeoResult {
   meta_keywords?: string;
   canonical_url?: string;
   robots_meta?: string;
+  // string = admin entered JSON-LD directly; Record = internal JSONB config (toc_order, tab_seo, etc.)
+  structured_data?: string | Record<string, any>;
   tab_seo?: Record<string, TabSeoEntry>;
   custom_tabs?: CustomTabEntry[];
 }
@@ -133,6 +136,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
               meta_keywords: content.seo?.meta_keywords,
               canonical_url: content.seo?.canonical_url,
               robots_meta: content.seo?.robots_meta,
+              structured_data: content.seo?.structured_data,
               tab_seo: content.tabSeo || {},
               custom_tabs: content.customTabs || [],
             };
@@ -213,6 +217,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
               meta_keywords: content.seo?.meta_keywords,
               canonical_url: content.seo?.canonical_url,
               robots_meta: content.seo?.robots_meta,
+              structured_data: content.seo?.structured_data,
               tab_seo: content.tabSeo || {},
               custom_tabs: content.customTabs || [],
             };
@@ -276,20 +281,147 @@ function resolveTabSeo(
 const slugToTitle = (s: string) =>
   s.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
+// ── Shared JSON-LD builder (used by both generateMetadata and DynamicPage) ────
+// Returns the resolved JSON-LD object (admin schema or auto-generated fallback).
+function buildPageJsonLd({
+  seo,
+  firstSegmentType,
+  slugArray,
+  serverPageData,
+  isTabPage,
+  tabOverrideForSchema,
+}: {
+  seo: SlugSeoResult | null;
+  firstSegmentType: FirstSegmentType;
+  slugArray: string[];
+  serverPageData: ServerPageData | null;
+  isTabPage: boolean;
+  tabOverrideForSchema: TabSeoEntry | undefined;
+}): Record<string, any> | Record<string, any>[] {
+  const SITE_URL_LOCAL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com').replace(/\/$/, '');
+  const slugPath = slugArray.join('/');
+  const pageUrl = `${SITE_URL_LOCAL}/${slugPath}`;
+  const pageTitle = tabOverrideForSchema?.meta_title || seo?.meta_title || slugToTitle(slugArray[slugArray.length - 1]);
+  const pageDescription = tabOverrideForSchema?.meta_description || seo?.meta_description
+    || `Practice ${slugToTitle(slugArray[0])} mock tests, previous year papers and study material on BharatMock.`;
+
+  const overviewSeo = resolveTabSeo('overview', seo);
+  const firstSegmentLabel = seo?.meta_title || overviewSeo?.meta_title;
+  const breadcrumbItems = [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL_LOCAL },
+    ...slugArray.map((segment, i) => ({
+      '@type': 'ListItem',
+      position: i + 2,
+      name: i === 0 && firstSegmentLabel
+        ? firstSegmentLabel
+        : (i === slugArray.length - 1 && tabOverrideForSchema?.meta_title)
+          ? tabOverrideForSchema.meta_title
+          : slugToTitle(segment),
+      item: `${SITE_URL_LOCAL}/${slugArray.slice(0, i + 1).join('/')}`,
+    })),
+  ];
+
+  // Parse admin-provided JSON-LD schema
+  const parseAdminSchemaLocal = (
+    raw?: string | Record<string, any>
+  ): Record<string, any> | Record<string, any>[] | null => {
+    if (!raw) return null;
+    if (typeof raw === 'object') {
+      if (!('@context' in raw || '@type' in raw)) return null;
+      const { tab_seo: _ts, tab_headings: _th, toc_order: _to, ...schema } = raw as any;
+      return schema;
+    }
+    try { return JSON.parse(raw); } catch { /* fall through */ }
+    try {
+      // eslint-disable-next-line no-control-regex
+      return JSON.parse(raw.replace(/[\x00-\x1F\x7F]+/g, ' '));
+    } catch { /* fall through */ }
+    const scriptRe = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+    const extracted: Record<string, any>[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = scriptRe.exec(raw)) !== null) {
+      const content = match[1].trim();
+      try { extracted.push(JSON.parse(content)); } catch {
+        try {
+          // eslint-disable-next-line no-control-regex
+          extracted.push(JSON.parse(content.replace(/[\x00-\x1F\x7F]+/g, ' ')));
+        } catch { /* skip */ }
+      }
+    }
+    if (extracted.length === 1) return extracted[0];
+    if (extracted.length > 1) return extracted;
+    return null;
+  };
+
+  let adminSchema: Record<string, any> | Record<string, any>[] | null = null;
+  if (isTabPage) {
+    adminSchema = parseAdminSchemaLocal(tabOverrideForSchema?.structured_data)
+      ?? parseAdminSchemaLocal(seo?.structured_data);
+  } else {
+    adminSchema = parseAdminSchemaLocal(seo?.structured_data);
+    if (!adminSchema) {
+      const overviewTabSeo = resolveTabSeo('overview', seo);
+      adminSchema = parseAdminSchemaLocal(overviewTabSeo?.structured_data) ?? null;
+    }
+  }
+
+  const generatedJsonLd = isTabPage
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: pageTitle,
+        description: pageDescription,
+        url: pageUrl,
+        isPartOf: { '@type': 'WebSite', url: SITE_URL_LOCAL, name: 'BharatMock' },
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: breadcrumbItems },
+      }
+    : {
+        '@context': 'https://schema.org',
+        '@type': 'Course',
+        name: pageTitle,
+        description: pageDescription,
+        url: pageUrl,
+        provider: {
+          '@type': 'Organization',
+          name: 'BharatMock',
+          url: SITE_URL_LOCAL,
+        },
+        educationalLevel: 'Government Exam',
+        inLanguage: ['en', 'hi'],
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: breadcrumbItems },
+      };
+
+  return adminSchema ?? generatedJsonLd;
+}
+
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string[] }> }
 ): Promise<Metadata> {
   const { slug } = await params;
-  const slugArray = Array.isArray(slug) ? slug : [slug];
+  const rawSlug = Array.isArray(slug) ? slug : [slug];
+
+  // Strip locale prefix if the root catch-all received a locale-prefixed slug
+  const LOCALE_PREFIXES = new Set(['hi', 'en']);
+  const slugArray = rawSlug.length > 1 && LOCALE_PREFIXES.has(rawSlug[0].toLowerCase())
+    ? rawSlug.slice(1)
+    : rawSlug;
 
   if (slugArray.length > 0 && STATIC_PREFIXES.has(slugArray[0].toLowerCase())) {
+    return {};
+  }
+
+  // /xxx/overview redirects to /xxx — return empty metadata so Next.js doesn't generate duplicate tags
+  if (slugArray.length === 2 && slugArray[1].toLowerCase() === 'overview') {
     return {};
   }
 
   const { seo, firstSegmentType, serverPageData } = await fetchSeoForSlug(slugArray);
 
   const isTabPage = slugArray.length >= 2;
-  const tabSlug = isTabPage ? slugArray[slugArray.length - 1] : undefined;
+  // The "overview" tab IS the main 1-segment page (/slug), so its tab SEO must be
+  // resolved here too — otherwise overview-tab meta_title/description (where admins
+  // commonly enter the primary page SEO) is silently dropped on the main page.
+  const tabSlug = isTabPage ? slugArray[slugArray.length - 1] : 'overview';
   const tabOverride = resolveTabSeo(tabSlug, seo);
   const slugPath = slugArray.join('/');
 
@@ -299,8 +431,6 @@ export async function generateMetadata(
   const currentYear = new Date().getFullYear().toString();
   const rawTitle = examForMeta?.title
     || tabOverride?.meta_title || seo?.meta_title
-    || (serverPageData?.categoryInfo?.name ? `${serverPageData.categoryInfo.name} - Mock Tests & Exam Preparation` : null)
-    || (serverPageData?.subcategoryInfo?.name ? `${serverPageData.subcategoryInfo.name} - Mock Tests & Study Material` : null)
     || slugToTitle(slugArray[slugArray.length - 1]);
   // Replace stale year references (2024 or earlier) with the current year
   const title = rawTitle?.replace(/\b202[0-4]\b/g, currentYear) ?? rawTitle;
@@ -314,22 +444,14 @@ export async function generateMetadata(
       }${
         examForMeta.category ? ' Category: ' + examForMeta.category + '.' : ''
       }`.trim()
-    : (tabOverride?.meta_description || seo?.meta_description
-      || (serverPageData?.categoryInfo?.name 
-          ? `Free ${serverPageData.categoryInfo.name} mock tests, previous year papers, and study material. Practice online tests for ${serverPageData.categoryInfo.name} exam preparation on BharatMock.`
-          : null)
-      || (serverPageData?.subcategoryInfo?.name
-          ? `Prepare for ${serverPageData.subcategoryInfo.name} with free mock tests and previous year papers on BharatMock. Practice online tests and improve your exam scores.`
-          : null));
+    : (tabOverride?.meta_description || seo?.meta_description);
   const keywords = examForMeta
     ? `${examForMeta.title}, ${examForMeta.category || ''} mock test, free online test, BharatMock`
-    : (tabOverride?.meta_keywords || seo?.meta_keywords
-      || (serverPageData?.categoryInfo?.name
-          ? `${serverPageData.categoryInfo.name} mock tests, ${serverPageData.categoryInfo.name} previous year papers, ${serverPageData.categoryInfo.name} exam preparation, free online tests`
-          : null)
-      || (serverPageData?.subcategoryInfo?.name
-          ? `${serverPageData.subcategoryInfo.name} mock tests, ${serverPageData.subcategoryInfo.name} exam, online test, practice papers`
-          : null));
+    : (tabOverride?.meta_keywords || seo?.meta_keywords);
+
+  const decodedTitle = decodeHtmlEntities(title);
+  const decodedDescription = description ? decodeHtmlEntities(description) : undefined;
+  const decodedKeywords = keywords ? decodeHtmlEntities(keywords) : undefined;
 
   // Always construct canonical from SITE_URL env variable
   // Ignore any hardcoded canonical URLs from the database/API
@@ -343,25 +465,41 @@ export async function generateMetadata(
 
   const ogImage = `${SITE_URL}/assets/login_banner_image.jpg`;
 
+  // Build JSON-LD and inject it into <head> via Next.js metadata `other`.
+  // This is the correct placement — body-level <script> tags cause React hydration
+  // mismatches that can make sibling elements like <h1> disappear.
+  const jsonLdSchema = buildPageJsonLd({
+    seo,
+    firstSegmentType,
+    slugArray,
+    serverPageData,
+    isTabPage,
+    tabOverrideForSchema: tabOverride,
+  });
+
   return {
-    title,
-    ...(description && { description }),
-    ...(keywords && { keywords }),
+    title: decodedTitle,
+    ...(decodedDescription && { description: decodedDescription }),
+    ...(decodedKeywords && { keywords: decodedKeywords }),
     alternates: { canonical },
     ...(robots && { robots }),
     openGraph: {
-      title,
-      ...(description && { description }),
+      title: decodedTitle,
+      ...(decodedDescription && { description: decodedDescription }),
       url: canonical,
       type: "website",
       siteName: "BharatMock",
-      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: decodedTitle }],
     },
     twitter: {
       card: "summary_large_image",
-      title,
-      ...(description && { description }),
+      title: decodedTitle,
+      ...(decodedDescription && { description: decodedDescription }),
       images: [ogImage],
+    },
+    other: {
+      // Inject JSON-LD into <head> — avoids hydration conflicts with body content
+      'script:ld+json': JSON.stringify(jsonLdSchema),
     },
   };
 }
@@ -370,7 +508,15 @@ export default async function DynamicPage(
   { params }: { params: Promise<{ slug: string[] }> }
 ) {
   const { slug } = await params;
-  const slugArray = Array.isArray(slug) ? slug : [slug];
+  const rawSlug = Array.isArray(slug) ? slug : [slug];
+
+  // If Next.js routing passed a locale-prefixed slug (e.g. ['hi', 'ssc']) because
+  // the locale-specific route didn't take priority, strip the prefix so we resolve
+  // the actual path correctly.
+  const LOCALE_PREFIXES = new Set(['hi', 'en']);
+  const slugArray = rawSlug.length > 1 && LOCALE_PREFIXES.has(rawSlug[0].toLowerCase())
+    ? rawSlug.slice(1)
+    : rawSlug;
 
   // Prevent catch-all from handling system paths
   if (slugArray.length > 0 && (slugArray[0].startsWith('_') || slugArray[0].startsWith('.'))) {
@@ -382,6 +528,11 @@ export default async function DynamicPage(
     notFound();
   }
 
+  // /xxx/overview is identical to /xxx — redirect to the canonical URL to avoid duplicate pages
+  if (slugArray.length === 2 && slugArray[1].toLowerCase() === 'overview') {
+    redirect(`/${slugArray[0]}`);
+  }
+
   // Verify if the slug exists to prevent showing "Category not found" on random URLs
   // fetchSeoForSlug also determines the first-segment type (subcategory / category / etc.)
   // which is passed to the client to skip the client-side slug-resolver spinner.
@@ -391,63 +542,15 @@ export default async function DynamicPage(
   }
 
   const isTabPage = slugArray.length >= 2;
-  const tabSlugForSchema = isTabPage ? slugArray[slugArray.length - 1] : undefined;
+  // Resolve the overview tab SEO on the main page (see generateMetadata above) so the
+  // page title, description and breadcrumb match the metadata.
+  const tabSlugForSchema = isTabPage ? slugArray[slugArray.length - 1] : 'overview';
   const tabOverrideForSchema = resolveTabSeo(tabSlugForSchema, seo);
-  
-  const slugPath = slugArray.join('/');
 
-  // Always use SITE_URL from env for page URL
-  const pageUrl = `${SITE_URL}/${slugPath}`;
+  // JSON-LD schema is now injected into <head> via generateMetadata's `other` field.
+  // This prevents React hydration mismatches that caused <h1> to disappear when
+  // a schema was added. No body-level <script> tag is needed here.
 
-  // Use tab-specific title/description when set by admin, fall back to page-level then slug
-  const pageTitle = tabOverrideForSchema?.meta_title
-    || seo?.meta_title
-    || slugToTitle(slugArray[slugArray.length - 1]);
-  const pageDescription = tabOverrideForSchema?.meta_description
-    || seo?.meta_description
-    || `Practice ${slugToTitle(slugArray[0])} mock tests, previous year papers and study material on BharatMock.`;
-
-  // Build full breadcrumb — use page-level meta_title for first segment label
-  const breadcrumbItems = [
-    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-    ...slugArray.map((segment, i) => ({
-      '@type': 'ListItem',
-      position: i + 2,
-      name: i === 0 && seo?.meta_title
-        ? seo.meta_title
-        : (i === slugArray.length - 1 && tabOverrideForSchema?.meta_title)
-          ? tabOverrideForSchema.meta_title
-          : slugToTitle(segment),
-      item: `${SITE_URL}/${slugArray.slice(0, i + 1).join('/')}`,
-    })),
-  ];
-
-  // Course schema for exam pages, WebPage for tab sub-pages
-  const jsonLd = isTabPage
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'WebPage',
-        name: pageTitle,
-        description: pageDescription,
-        url: pageUrl,
-        isPartOf: { '@type': 'WebSite', url: SITE_URL, name: 'BharatMock' },
-        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: breadcrumbItems },
-      }
-    : {
-        '@context': 'https://schema.org',
-        '@type': 'Course',
-        name: pageTitle,
-        description: pageDescription,
-        url: pageUrl,
-        provider: {
-          '@type': 'Organization',
-          name: 'BharatMock',
-          url: SITE_URL,
-        },
-        educationalLevel: 'Government Exam',
-        inLanguage: ['en', 'hi'],
-        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: breadcrumbItems },
-      };
 
   // Determine active tab slug for tab-specific rendering
   const activeTabSlug = isTabPage ? slugArray[slugArray.length - 1] : undefined;
@@ -480,7 +583,8 @@ export default async function DynamicPage(
 
   return (
     <>
-      {jsonLd && <DynamicJsonLd schema={jsonLd} />}
+      {/* JSON-LD schema is injected into <head> via generateMetadata — no body script needed */}
+      {!isExamPage && <FooterVisible />}
       {isExamPage ? (
         <ServerExamDetail
           urlPath={`/${slugArray.join('/')}`}

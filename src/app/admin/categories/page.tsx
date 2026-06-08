@@ -19,6 +19,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { categoryAdminService } from '@/lib/api/categoryAdminService';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
+import { useAppData } from '@/context/AppDataContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ export default function AdminCategoriesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
+  const { refresh: refreshAppData } = useAppData();
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; target: Category | null }>({ open: false, target: null });
   const [renameForm, setRenameForm] = useState({ name: '', slug: '' });
   const [renaming, setRenaming] = useState(false);
@@ -53,11 +55,13 @@ export default function AdminCategoriesPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/taxonomy/categories`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/taxonomy/categories?_t=${Date.now()}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` },
+          cache: 'no-store',
         }
-      });
+      );
       const data = await response.json();
       if (data.success) {
         setCategories(data.data);
@@ -76,12 +80,21 @@ export default function AdminCategoriesPage() {
 
   const handleDeleteCategory = async () => {
     if (!deleteTarget) return;
+    const targetId = deleteTarget.id;
+    const targetName = deleteTarget.name;
     try {
       setDeleting(true);
-      await categoryAdminService.deleteCategory(deleteTarget.id);
-      toast({ title: 'Deleted', description: `${deleteTarget.name} removed successfully.` });
+      await categoryAdminService.deleteCategory(targetId);
+      // Optimistically remove from local list immediately
+      setCategories(prev => prev.filter(c => c.id !== targetId));
       setDeleteTarget(null);
-      await fetchCategories();
+      toast({ title: 'Deleted', description: `${targetName} removed successfully.` });
+      // Sync the global AppDataContext so Navbar + public pages drop the deleted category.
+      // NOTE: Do NOT call fetchCategories() here — the optimistic filter above already
+      // removed the item from local state instantly. Re-fetching would re-show the
+      // skeleton loader and could race-repopulate the deleted entry if the backend
+      // returns stale/cached data before the delete fully commits.
+      await refreshAppData();
     } catch (error: any) {
       toast({
         title: 'Delete failed',

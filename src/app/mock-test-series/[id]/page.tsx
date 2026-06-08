@@ -48,6 +48,7 @@ export default function ExamDetailPage() {
   };
 
   const handleStartExam = async () => {
+    if (isUpcomingLocked) return;
     if (!isAuthenticated) {
       router.push('/login');
       return;
@@ -95,6 +96,8 @@ export default function ExamDetailPage() {
   }
 
   const isAnytime = exam.status === 'anytime' || exam.allow_anytime || exam.exam_type === 'past_paper' || exam.exam_type === 'short_quiz';
+  const startDate = exam.start_date ? new Date(exam.start_date) : null;
+  const isUpcomingLocked = Boolean(startDate && new Date() < startDate && !isAnytime);
   const isUpcoming = exam.status === 'upcoming' && !isAnytime;
   const isOngoing = exam.status === 'ongoing' || isAnytime;
   const isCompleted = exam.status === 'completed' && !isAnytime;
@@ -180,7 +183,12 @@ export default function ExamDetailPage() {
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-background/20">
-                  {isOngoing ? (
+                  {isUpcomingLocked ? (
+                    <Button disabled className="w-full bg-slate-400 opacity-60 cursor-not-allowed text-white" size="lg">
+                      <Calendar className="h-5 w-5 mr-2" />
+                      Opens on {startDate ? startDate.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                    </Button>
+                  ) : isOngoing ? (
                     <Button 
                       onClick={handleStartExam}
                       className="w-full"
@@ -412,7 +420,7 @@ export default function ExamDetailPage() {
             </div>
 
             {/* CTA Card */}
-            {isOngoing && (
+            {(isOngoing && !isUpcomingLocked) && (
               <div className="bg-gradient-to-br from-primary to-primary/80 rounded-xl p-6 text-primary-foreground">
                 <h3 className="font-display text-xl font-bold mb-2">
                   Ready to Start?

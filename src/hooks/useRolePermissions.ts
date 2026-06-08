@@ -5,12 +5,15 @@ import { getRolePermissions } from '@/lib/constants/adminRoles';
 export function useRolePermissions() {
   const { user } = useAuth();
   
+  const userRole = useMemo(() => {
+    return user?.role?.toLowerCase() || (user?.is_admin ? 'admin' : 'user');
+  }, [user?.role, user?.is_admin]);
+
   const permissions = useMemo(() => {
-    return getRolePermissions(user?.role);
-  }, [user?.role]);
+    return getRolePermissions(userRole);
+  }, [userRole]);
 
   const canDelete = permissions.canDelete;
-  const userRole = user?.role || 'user';
 
   return {
     permissions,

@@ -28,7 +28,7 @@ const SANITIZE_CONFIG = {
   USE_PROFILES: { html: true },
   ADD_TAGS: ['font', 'code', 'sup', 'sub', ...MATHML_TAGS],
   ADD_ATTR: [
-    'style', 'class', 'size', 'target', 'rel', 'data-inline-break',
+    'style', 'class', 'size', 'target', 'rel', 'data-inline-break', 'crossorigin',
     'xmlns', 'display', 'mathvariant', 'mathsize', 'stretchy', 'fence',
     'separator', 'lspace', 'rspace', 'linethickness', 'numalign', 'denomalign',
     'bevelled', 'columnalign', 'rowalign', 'columnspacing', 'rowspacing',
@@ -70,6 +70,11 @@ async function processHtml(html: string): Promise<string> {
   const tmp = document.createElement('div');
   tmp.innerHTML = clean;
   stripStyling(tmp);
+
+  // Ensure all images have crossOrigin="anonymous" for PDF canvas rendering
+  tmp.querySelectorAll('img').forEach((img) => {
+    img.setAttribute('crossorigin', 'anonymous');
+  });
 
   // 3. Check if there's any LaTeX before loading katex
   const hasLatex = tmp.textContent?.includes('$') ?? false;

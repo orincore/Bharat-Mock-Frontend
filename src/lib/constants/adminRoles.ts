@@ -95,8 +95,9 @@ export const ROLE_PERMISSIONS: Record<AdminRole, RolePermissions> = {
 };
 
 export const getRolePermissions = (role?: string): RolePermissions => {
-  if (!role || !(role in ROLE_PERMISSIONS)) {
+  const normalizedRole = role?.toLowerCase();
+  if (!normalizedRole || !(normalizedRole in ROLE_PERMISSIONS)) {
     return ROLE_PERMISSIONS.user;
   }
-  return ROLE_PERMISSIONS[role as AdminRole];
+  return ROLE_PERMISSIONS[normalizedRole as AdminRole];
 };

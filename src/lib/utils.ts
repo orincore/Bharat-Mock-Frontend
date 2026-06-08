@@ -33,11 +33,19 @@ function decodeHtmlEntitiesOnce(value: string): string {
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&ldquo;/gi, '"')
+    .replace(/&rdquo;/gi, '"')
+    .replace(/&lsquo;/gi, "'")
+    .replace(/&rsquo;/gi, "'")
+    .replace(/&ndash;/gi, "–")
+    .replace(/&mdash;/gi, "—")
+    .replace(/&middot;/gi, "·")
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
     .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)));
 }
 
-function fullyDecodeHtmlEntities(value: string): string {
+export function fullyDecodeHtmlEntities(value: string): string {
   let decoded = value;
 
   for (let i = 0; i < 4; i += 1) {
@@ -49,6 +57,11 @@ function fullyDecodeHtmlEntities(value: string): string {
   }
 
   return decoded;
+}
+
+export function decodeHtmlEntities(value?: string | null): string {
+  if (!value) return "";
+  return fullyDecodeHtmlEntities(value);
 }
 
 function stripHtmlToText(value: string): string {

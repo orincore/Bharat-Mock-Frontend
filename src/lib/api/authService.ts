@@ -18,33 +18,19 @@ interface ProfileResponse {
 
 export const authService = {
   async register(email: string, password: string, name: string, phone?: string): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/auth/register', {
+    return apiClient.post<AuthResponse>('/auth/register', {
       email,
       password,
       name,
       phone
     });
-    
-    if (response.success && response.data.token) {
-      localStorage.setItem('auth_token', response.data.token);
-      localStorage.setItem('refresh_token', response.data.refreshToken);
-    }
-    
-    return response;
   },
 
   async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/auth/login', {
+    return apiClient.post<AuthResponse>('/auth/login', {
       email,
       password
     });
-    
-    if (response.success && response.data.token) {
-      localStorage.setItem('auth_token', response.data.token);
-      localStorage.setItem('refresh_token', response.data.refreshToken);
-    }
-    
-    return response;
   },
 
   async getProfile(): Promise<User> {

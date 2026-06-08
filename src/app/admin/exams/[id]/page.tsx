@@ -383,13 +383,14 @@ export default function ExamFormPage() {
   }, []);
 
   useEffect(() => {
-    if (formData.is_test_series && formData.test_series_id) {
+    const isLinked = formData.is_test_series || formData.exam_type === 'short_quiz';
+    if (isLinked && formData.test_series_id) {
       fetchSeriesSections(formData.test_series_id);
-    } else {
+    } else if (!isLinked) {
       setSeriesSections([]);
       setFormData(prev => ({ ...prev, test_series_section_id: '', test_series_topic_id: '' }));
     }
-  }, [formData.is_test_series, formData.test_series_id]);
+  }, [formData.is_test_series, formData.exam_type, formData.test_series_id]);
 
   useEffect(() => {
     if (formData.test_series_section_id) {
@@ -616,7 +617,8 @@ export default function ExamFormPage() {
         is_published: false,
         status: formData.allow_anytime ? 'anytime' : formData.status,
         start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
-        end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date)
+        end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date),
+        is_test_series: formData.exam_type === 'short_quiz' ? true : formData.is_test_series,
       };
 
       const sanitizedSections = serializeSectionsForDraft();
@@ -2250,6 +2252,7 @@ export default function ExamFormPage() {
       end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date),
       status: formData.allow_anytime ? 'anytime' : formData.status,
       is_current_affair: formData.exam_type === 'short_quiz' ? formData.is_current_affair : false,
+      is_test_series: formData.exam_type === 'short_quiz' ? true : formData.is_test_series,
     };
     
     //console.log('Draft payload being sent:', draftPayload);
@@ -2357,6 +2360,7 @@ export default function ExamFormPage() {
         start_date: formData.allow_anytime ? null : normalizeDate(formData.start_date),
         end_date: formData.allow_anytime ? null : normalizeDate(formData.end_date),
         is_premium: formData.is_premium ?? false,
+        is_test_series: formData.exam_type === 'short_quiz' ? true : formData.is_test_series,
       };
       
       //console.log('Exam payload being sent:', payload);
@@ -2867,31 +2871,42 @@ export default function ExamFormPage() {
             </div>
 
             <div className="md:col-span-2">
-              <div className="p-4 rounded-xl border border-blue-300/40 bg-blue-50/50">
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    name="is_test_series"
-                    checked={formData.is_test_series}
-                    onChange={handleChange}
-                    className="h-5 w-5 accent-blue-500 mt-0.5"
-                  />
-                  <div className="flex-1">
-                    <label className="text-sm font-semibold text-foreground cursor-pointer">
-                      Part of Test Series
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Enable this to add this exam to a test series with organized sections and topics.
-                    </p>
+              {formData.exam_type !== 'short_quiz' && (
+                <div className="p-4 rounded-xl border border-blue-300/40 bg-blue-50/50">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      name="is_test_series"
+                      checked={formData.is_test_series}
+                      onChange={handleChange}
+                      className="h-5 w-5 accent-blue-500 mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <label className="text-sm font-semibold text-foreground cursor-pointer">
+                        Part of Test Series
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enable this to add this exam to a test series with organized sections and topics.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {formData.is_test_series && (
+              {(formData.is_test_series || formData.exam_type === 'short_quiz') && (
                 <div className="mt-4 space-y-4 p-4 rounded-xl border border-border bg-muted/30">
+                  {formData.exam_type === 'short_quiz' && (
+                    <div className="mb-2">
+                      <p className="text-sm font-semibold text-foreground">Quiz Subject &amp; Chapter</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Select which Subject and Chapter this quiz belongs to.
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                      Test Series *
+                      {formData.exam_type === 'short_quiz' ? 'Quiz Group / Test Series *' : 'Test Series *'}
                     </label>
                     <div className="space-y-2">
                       <select
@@ -2904,17 +2919,17 @@ export default function ExamFormPage() {
                             test_series_topic_id: ''
                           }));
                         }}
-                        required={formData.is_test_series}
+                        required={formData.is_test_series || formData.exam_type === 'short_quiz'}
                         disabled={testSeriesLoading}
                         className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                       >
-                        <option value="">Select Test Series</option>
+                        <option value="">{formData.exam_type === 'short_quiz' ? 'Select Quiz Group / Series' : 'Select Test Series'}</option>
                         {testSeriesOptions.map(series => (
                           <option key={series.id} value={series.id}>{series.title}</option>
                         ))}
                       </select>
                       {testSeriesLoading && (
-                        <p className="text-xs text-muted-foreground mt-1">Loading test series...</p>
+                        <p className="text-xs text-muted-foreground mt-1">Loading...</p>
                       )}
                       {testSeriesError && (
                         <p className="text-xs text-destructive mt-1">{testSeriesError}</p>
@@ -2927,14 +2942,14 @@ export default function ExamFormPage() {
                           size="sm" 
                           className="w-full"
                         >
-                          <Plus className="h-3 w-3 mr-1" /> Create New Test Series
+                          <Plus className="h-3 w-3 mr-1" /> {formData.exam_type === 'short_quiz' ? 'Create New Quiz Group' : 'Create New Test Series'}
                         </Button>
                       ) : (
                         <div className="space-y-2 p-3 border border-border rounded-lg bg-background">
                           <Input
                             value={newTestSeriesData.title}
                             onChange={(e) => setNewTestSeriesData(prev => ({ ...prev, title: e.target.value }))}
-                            placeholder="Test Series Title *"
+                            placeholder={formData.exam_type === 'short_quiz' ? 'Quiz Group Name *' : 'Test Series Title *'}
                             className="w-full"
                           />
                           <Input
@@ -2975,7 +2990,7 @@ export default function ExamFormPage() {
                     <>
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
-                          Section
+                          {formData.exam_type === 'short_quiz' ? 'Subject (Section)' : 'Section'}
                         </label>
                         <div className="space-y-2">
                           <select
@@ -2989,7 +3004,7 @@ export default function ExamFormPage() {
                             }}
                             className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                           >
-                            <option value="">Select Section (Optional)</option>
+                            <option value="">{formData.exam_type === 'short_quiz' ? 'Select Subject (Optional)' : 'Select Section (Optional)'}</option>
                             {seriesSections.map(section => (
                               <option key={section.id} value={section.id}>{section.name}</option>
                             ))}
@@ -3002,14 +3017,14 @@ export default function ExamFormPage() {
                               size="sm" 
                               className="w-full"
                             >
-                              <Plus className="h-3 w-3 mr-1" /> Create New Section
+                              <Plus className="h-3 w-3 mr-1" /> {formData.exam_type === 'short_quiz' ? 'Create New Subject' : 'Create New Section'}
                             </Button>
                           ) : (
                             <div className="flex gap-2">
                               <Input
                                 value={newSeriesSectionName}
                                 onChange={(e) => setNewSeriesSectionName(e.target.value)}
-                                placeholder="e.g., Full Test, Sectional Test"
+                                placeholder={formData.exam_type === 'short_quiz' ? 'e.g., Quantitative Aptitude, English' : 'e.g., Full Test, Sectional Test'}
                                 className="flex-1"
                               />
                               <Button 
@@ -3036,7 +3051,7 @@ export default function ExamFormPage() {
                       {formData.test_series_section_id && (
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-2">
-                            Topic
+                            {formData.exam_type === 'short_quiz' ? 'Chapter (Topic)' : 'Topic'}
                           </label>
                           <div className="space-y-2">
                             <select
@@ -3046,7 +3061,7 @@ export default function ExamFormPage() {
                               }}
                               className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                             >
-                              <option value="">Select Topic (Optional)</option>
+                              <option value="">{formData.exam_type === 'short_quiz' ? 'Select Chapter (Optional)' : 'Select Topic (Optional)'}</option>
                               {sectionTopics.map(topic => (
                                 <option key={topic.id} value={topic.id}>{topic.name}</option>
                               ))}
@@ -3059,14 +3074,14 @@ export default function ExamFormPage() {
                                 size="sm" 
                                 className="w-full"
                               >
-                                <Plus className="h-3 w-3 mr-1" /> Create New Topic
+                                <Plus className="h-3 w-3 mr-1" /> {formData.exam_type === 'short_quiz' ? 'Create New Chapter' : 'Create New Topic'}
                               </Button>
                             ) : (
                               <div className="flex gap-2">
                                 <Input
                                   value={newSeriesTopicName}
                                   onChange={(e) => setNewSeriesTopicName(e.target.value)}
-                                  placeholder="e.g., Paper I, Paper II"
+                                  placeholder={formData.exam_type === 'short_quiz' ? 'e.g., Percentage, Profit & Loss' : 'e.g., Paper I, Paper II'}
                                   className="flex-1"
                                 />
                                 <Button 
@@ -3082,6 +3097,7 @@ export default function ExamFormPage() {
                                   onClick={() => setShowNewSeriesTopic(false)} 
                                   variant="outline" 
                                   size="sm"
+                                  className="flex-1"
                                 >
                                   Cancel
                                 </Button>

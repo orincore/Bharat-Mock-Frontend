@@ -50,7 +50,7 @@ export default function AdminLayout({
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
 
-  const userRole = user?.role || 'user';
+  const userRole = user?.role?.toLowerCase() || (user?.is_admin ? 'admin' : 'user');
   const permissions = useMemo(() => getRolePermissions(userRole), [userRole]);
 
   const filteredNavItems = useMemo(() => {
@@ -68,8 +68,12 @@ export default function AdminLayout({
     if (!isLoading) {
       if (!isAuthenticated) {
         router.push('/login');
-      } else if (!['admin', 'editor', 'author'].includes(user?.role || '')) {
-        router.push('/');
+      } else {
+        const role = user?.role?.toLowerCase() || '';
+        const hasAccess = ['admin', 'editor', 'author'].includes(role) || user?.is_admin === true;
+        if (!hasAccess) {
+          router.push('/');
+        }
       }
     }
   }, [isAuthenticated, isLoading, user, router]);
@@ -82,7 +86,10 @@ export default function AdminLayout({
     );
   }
 
-  if (!isAuthenticated || !['admin', 'editor', 'author'].includes(user?.role || '')) {
+  const currentRole = user?.role?.toLowerCase() || '';
+  const hasLayoutAccess = ['admin', 'editor', 'author'].includes(currentRole) || user?.is_admin === true;
+
+  if (!isAuthenticated || !hasLayoutAccess) {
     return null;
   }
 

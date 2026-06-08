@@ -60,10 +60,11 @@ export default function PdfGeneratorPage() {
   });
 
   const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return;
+    const query = searchQuery.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!query) return;
     setIsSearching(true);
     try {
-      const result = await adminService.getExams({ search: searchQuery, limit: 20 });
+      const result = await adminService.getExams({ search: query, limit: 20 });
       setSearchResults(result.data);
     } catch (e) {
       console.error(e);

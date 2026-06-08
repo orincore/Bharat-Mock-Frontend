@@ -4,9 +4,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
+import { isBlockEmpty } from "@/lib/utils/blockContent";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
-import { getCleanContentLabel } from "@/lib/utils";
+import { getCleanContentLabel, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
 import { Download, Lock, Filter, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
 import { useAuth } from "@/context/AuthContext";
@@ -99,6 +100,69 @@ const getSectionTocLabel = (section: Section): string => {
     .replace(/[-_]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+};
+
+// ── Category → Stage label mapping ─────────────────────────────────────────
+// Keys are matched case-insensitively against the parent category name.
+// Values are the stage pills shown (excluding the implicit "All" pill).
+const CATEGORY_STAGE_MAP: Record<string, string[]> = {
+  ssc:     ['Tier 1', 'Tier 2'],
+  banking: ['Pre', 'Mains'],
+  railway: ['CBT 1', 'CBT 2'],
+  police:  ['Pre', 'Mains'],
+};
+
+/** Returns the defined stage labels for a parent category, or [] if none configured. */
+const getStagesForCategory = (categoryName?: string | null): string[] => {
+  if (!categoryName) return [];
+  const key = categoryName.trim().toLowerCase();
+  // Direct match
+  if (CATEGORY_STAGE_MAP[key]) return CATEGORY_STAGE_MAP[key];
+  // Partial match (e.g. "SSC Exams" → "ssc")
+  for (const mapKey of Object.keys(CATEGORY_STAGE_MAP)) {
+    if (key.includes(mapKey)) return CATEGORY_STAGE_MAP[mapKey];
+  }
+  return [];
+};
+
+/**
+ * Returns true when an exam title matches the requested stage label.
+ * Works for the wide variety of naming conventions found in the DB:
+ *   SSC:     "Tier 1" / "Tier-I" / "Tier I"
+ *   Banking: "Pre" / "Prelims" / "Mains"
+ *   Railway: "CBT 1" / "CBT-1" / "Stage 1"
+ *   Police:  "Pre" / "Prelims" / "Mains"
+ */
+const examMatchesStage = (examTitle: string | undefined | null, stage: string): boolean => {
+  if (!examTitle || stage === 'All') return true;
+  const title = examTitle.toLowerCase();
+  const s = stage.toLowerCase();
+
+  // SSC Tier matching
+  if (s === 'tier 1') {
+    return /tier[-\s]?1/i.test(examTitle) || /tier[-\s]?i\b/i.test(examTitle);
+  }
+  if (s === 'tier 2') {
+    return /tier[-\s]?2/i.test(examTitle) || /tier[-\s]?ii\b/i.test(examTitle);
+  }
+  // Banking / Police Pre
+  if (s === 'pre') {
+    return /\bpre\b/i.test(examTitle) || /prelim/i.test(examTitle);
+  }
+  // Banking / Police Mains
+  if (s === 'mains') {
+    return /\bmains?\b/i.test(examTitle);
+  }
+  // Railway CBT 1
+  if (s === 'cbt 1') {
+    return /cbt[-\s]?1/i.test(examTitle) || /stage[-\s]?1/i.test(examTitle);
+  }
+  // Railway CBT 2
+  if (s === 'cbt 2') {
+    return /cbt[-\s]?2/i.test(examTitle) || /stage[-\s]?2/i.test(examTitle);
+  }
+  // Generic fallback: check if stage string appears in title
+  return title.includes(s);
 };
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL
@@ -260,6 +324,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const [pastPaperLoading, setPastPaperLoading] = useState(false);
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
+  // Stage pill filter – single-select; 'All' means no filter
+  const [selectedStage, setSelectedStage] = useState<string>('All');
   const [customTabs, setCustomTabs] = useState<CustomTab[]>(serverPageData?.pageContentData?.customTabs || []);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [isLoading, setIsLoading] = useState(!serverPageData?.subcategoryId);
@@ -608,18 +674,17 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     const isOverview = !tabId || tabId === 'overview';
     const tabOverride = tabId ? pageContent?.tabSeo?.[tabId] : undefined;
 
-    // --- Title (apply root-layout template suffix if missing) ---
-    const TITLE_SUFFIX = ' | Bharat Mock';
-    const applyTemplate = (base: string) =>
-      base.includes(TITLE_SUFFIX) ? base : `${base}${TITLE_SUFFIX}`;
+    // --- Title (do not auto-append site suffix) ---
+    const TITLE_SUFFIX = '';
+    const applyTemplate = (base: string) => base;
 
     if (tabOverride?.meta_title) {
-      document.title = applyTemplate(tabOverride.meta_title);
+      document.title = applyTemplate(decodeHtmlEntities(tabOverride.meta_title));
     } else if (heroTitle) {
       const customHeading = tabId ? pageContent?.tabHeadings?.[tabId] : null;
       const tabLabel = !isOverview ? (customHeading || currentTabDescriptor?.label) : null;
       const base = tabLabel ? `${tabLabel} - ${heroTitle}` : (pageContent?.seo?.meta_title || heroTitle);
-      document.title = applyTemplate(base);
+      document.title = applyTemplate(decodeHtmlEntities(base));
     }
 
     // Only add/update — never remove a server-rendered tag when no new value is provided.
@@ -631,7 +696,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         el.setAttribute('name', name);
         document.head.appendChild(el);
       }
-      el.setAttribute('content', content);
+      el.setAttribute('content', decodeHtmlEntities(content));
     };
 
     // Only update canonical if we have an explicit value; never delete the server-rendered one.
@@ -808,15 +873,26 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return Array.from(tiers).sort();
   }, [combinedQuestionPapers]);
 
+  // Derive category name from the resolved subcategory info
+  const parentCategoryName: string | null = subcategoryInfo?.category?.name ?? null;
+  // Predefined stage labels for this category (empty = category not configured)
+  const categoryStages: string[] = useMemo(
+    () => getStagesForCategory(parentCategoryName || resolvedCategorySlug),
+    [parentCategoryName, resolvedCategorySlug]
+  );
+  // Whether this category has predefined stages
+  const hasCategoryStages = categoryStages.length > 0;
+
   const filteredMockTests = useMemo(() => {
     return extendedMockTests.filter((exam) => {
       const year = extractYearFromTitle(exam.title);
       const tierLabel = getExamTierLabel(exam);
       const matchesYear = selectedYears.length === 0 || (year && selectedYears.includes(year));
       const matchesTier = selectedTiers.length === 0 || (tierLabel && selectedTiers.includes(tierLabel));
-      return matchesYear && matchesTier;
+      const matchesStage = selectedStage === 'All' || examMatchesStage(exam.title, selectedStage);
+      return matchesYear && matchesTier && matchesStage;
     });
-  }, [extendedMockTests, selectedYears, selectedTiers]);
+  }, [extendedMockTests, selectedYears, selectedTiers, selectedStage]);
 
   const filteredPreviousPapers = useMemo(() => {
     return combinedQuestionPapers.filter((exam) => {
@@ -824,9 +900,13 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       const tierLabel = getExamTierLabel(exam) || getExamTierLabel(exam.exam);
       const matchesYear = selectedYears.length === 0 || (year && selectedYears.includes(year));
       const matchesTier = selectedTiers.length === 0 || (tierLabel && selectedTiers.includes(tierLabel));
-      return matchesYear && matchesTier;
+      const matchesStage = selectedStage === 'All' || examMatchesStage(
+        exam.title || exam.exam?.title,
+        selectedStage
+      );
+      return matchesYear && matchesTier && matchesStage;
     });
-  }, [combinedQuestionPapers, selectedYears, selectedTiers]);
+  }, [combinedQuestionPapers, selectedYears, selectedTiers, selectedStage]);
 
   const toggleYear = (year: string) => {
     setSelectedYears((prev) =>
@@ -844,6 +924,15 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
   const clearTierFilters = () => setSelectedTiers([]);
 
+  // Reset stage pill when the active tab changes
+  const prevActiveTabRef = useRef(activeTab);
+  useEffect(() => {
+    if (prevActiveTabRef.current !== activeTab) {
+      setSelectedStage('All');
+      prevActiveTabRef.current = activeTab;
+    }
+  }, [activeTab]);
+
   const isFilterTab = activeTab === 'mock-tests' || activeTab === 'previous-papers';
   const currentYearOptions = activeTab === 'mock-tests' ? availableMockTestYears : availablePreviousPaperYears;
   const hasYearFilters = isFilterTab && currentYearOptions.length > 0;
@@ -853,6 +942,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       : availablePreviousPaperTiers
     : [];
   const hasTierFilters = isFilterTab && tierOptions.length > 0;
+  // Show stage pills only on special tabs and only when category has configured stages
+  const showStagePills = isFilterTab && hasCategoryStages;
 
   const FiltersPanel = ({ className = '' }: { className?: string }) => {
     if (!hasYearFilters && !hasTierFilters) return null;
@@ -864,8 +955,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               <Filter className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xs  tracking-wide text-blue-600 font-semibold">Filters</p>
-              <p className="text-sm text-slate-500">Refine the list by year or tier</p>
+              <p className="text-xs tracking-wide text-blue-600 font-semibold">Filters</p>
+              <p className="text-sm text-slate-500">Refine the list by year</p>
             </div>
           </div>
           {(selectedYears.length > 0 || selectedTiers.length > 0) && (
@@ -918,7 +1009,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           </div>
         )}
 
-        {hasTierFilters && (
+        {/* Only show legacy tier filter if the category does NOT have predefined stages */}
+        {hasTierFilters && !hasCategoryStages && (
           <div className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -957,6 +1049,31 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     );
   };
 
+  /** Horizontal stage-pill bar — shown above exam lists for configured categories */
+  const StagePillBar = () => {
+    if (!showStagePills) return null;
+    const allStages = ['All', ...categoryStages];
+    return (
+      <div className="flex items-center gap-2 flex-wrap mb-5">
+        <span className="text-xs font-semibold text-slate-500 mr-1 hidden sm:inline">Stage:</span>
+        {allStages.map((stage) => (
+          <button
+            key={stage}
+            type="button"
+            onClick={() => setSelectedStage(stage)}
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all duration-150 ${
+              selectedStage === stage
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400 hover:text-blue-600'
+            }`}
+          >
+            {stage}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   const getSidebarSectionsForTab = (tabId: string) => {
     return sections.filter((section) => {
       if (!section.is_sidebar) return false;
@@ -970,7 +1087,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     });
   };
 
-  const sidebarSections = getSidebarSectionsForTab(activeTab);
+  const sidebarSections = getSidebarSectionsForTab(activeTab)
+    .map((section) => ({ ...section, blocks: (section.blocks || []).filter((b) => !isBlockEmpty(b)) }))
+    .filter((section) => Array.isArray(section.blocks) && section.blocks.length > 0);
 
   const getSectionsForTab = (tabId: string) => {
     if (tabId === 'overview') {
@@ -994,9 +1113,18 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
     return 0;
   };
 
-  const visibleSections = getSectionsForTab(activeTab);
+  const rawVisibleSections = getSectionsForTab(activeTab);
   const tabItems = tabDescriptors.map(({ id, label }) => ({ id, label }));
   const isSpecialTab = activeTab === 'mock-tests' || activeTab === 'previous-papers';
+  // For normal content tabs, drop blank blocks and any section that ends up with no
+  // renderable content so the public page never shows an empty card. Special tabs keep
+  // their sections — they host reserved exam/paper cards not stored as content blocks.
+  const visibleSections = isSpecialTab
+    ? rawVisibleSections
+    : rawVisibleSections
+        .map((section) => ({ ...section, blocks: (section.blocks || []).filter((b) => !isBlockEmpty(b)) }))
+        .filter((section) => Array.isArray(section.blocks) && section.blocks.length > 0);
+  const renderableOrphanBlocks = (pageContent?.orphanBlocks || []).filter((b) => !isBlockEmpty(b));
   const isContentTab = currentTabDescriptor?.type === 'content' || isSpecialTab;
   const reservedPosition = getReservedPosition(activeTab);
   const tableOfContents = useMemo<TableOfContentsEntry[]>(() => {
@@ -1038,14 +1166,14 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   return (
     <div className="min-h-screen bg-gray-50">
 
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4 sm:py-8 lg:py-12 relative overflow-hidden">
         {subcategoryInfo?.logo_url && (
-          <div className="absolute right-4 sm:right-12 lg:right-24 top-1/2 -translate-y-1/2 pointer-events-none select-none">
+          <div className="sm:hidden absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none select-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={subcategoryInfo.logo_url}
               alt=""
-              className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 object-contain opacity-15"
+              className="w-24 h-24 sm:w-32 sm:h-32 object-contain opacity-15"
             />
           </div>
         )}
@@ -1100,9 +1228,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         </div>
       </div>
 
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+      <div className="bg-white sticky top-0 z-40 shadow-sm">
         <div className="container-main">
-          <div className="flex items-center">
+          <div className="flex items-center py-3 border-b border-gray-200">
             {/* Left scroll arrow */}
             <button
               type="button"
@@ -1113,7 +1241,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
 
-            <div ref={tabScrollRef} className="flex-1 flex items-center gap-1 overflow-x-auto py-3" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div ref={tabScrollRef} className="flex-1 flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {tabItems.map((tab) => {
                 const tabDescriptor = tabDescriptors.find((t) => t.id === tab.id);
                 const tabHref = tabDescriptor?.slug === 'overview' || !tabDescriptor?.slug
@@ -1162,7 +1290,11 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         </div>
       </div>
 
-      <div className="container-main py-10">
+      <div className="bg-white">
+        <div className="container-main pb-6">
+        {/* Stage pills — visible at full width above content on all screen sizes */}
+        {showStagePills && <StagePillBar />}
+
         {isFilterTab && (hasYearFilters || hasTierFilters) && (
           <div className="mb-6 lg:hidden">
             <button
@@ -1182,7 +1314,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           <div className="lg:col-span-3">
             {isContentTab && (
               <>
-                {pageContent?.orphanBlocks?.map((block) => (
+                {renderableOrphanBlocks.map((block) => (
                   <div key={block.id} className="mb-6">
                     <PageBlockRenderer block={block} />
                   </div>
@@ -1193,7 +1325,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                   <MobileTOC key="toc-mobile" tableOfContents={tableOfContents} scrollToAnchor={scrollToAnchor} />
                 )}
 
-                {visibleSections.length === 0 && (!pageContent?.orphanBlocks || pageContent.orphanBlocks.length === 0) && !isSpecialTab ? (
+                {visibleSections.length === 0 && renderableOrphanBlocks.length === 0 && !isSpecialTab ? (
                   <div className="bg-white rounded-lg border border-dashed border-gray-300 p-10 text-center text-gray-500">
                     No Content Yet! Come again later...
                   </div>
@@ -1583,7 +1715,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
 
           <aside className="lg:col-span-1">
             {(sidebarSections.length > 0 || hasYearFilters || tableOfContents.length > 0) && (
-              <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto">
+              <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto hide-scrollbar">
                 {tableOfContents.length > 0 && (
                   <section className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200 bg-gray-50">
@@ -1631,10 +1763,11 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
             )}
           </aside>
         </div>
+        </div>
       </div>
 
       {isTabListOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden">
+        <div className="fixed inset-0 bg-black/80 z-50 md:hidden">
           <div className="absolute inset-0 bg-white text-gray-900 flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <div className="text-lg font-bold text-gray-900 mb-4 px-2">All Sections</div>
@@ -1679,7 +1812,7 @@ const DefaultModernPage = ({ title, subtitle }: { title: string; subtitle: strin
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">{title}</h1>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 leading-tight mb-4">{subtitle}</h1>
+          {subtitle && <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 leading-tight mb-4">{subtitle}</p>}
           <p className="text-blue-100">Content is being configured. Please check back soon.</p>
         </div>
       </div>

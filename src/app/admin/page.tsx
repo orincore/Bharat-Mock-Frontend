@@ -25,11 +25,11 @@ export default function AdminDashboard() {
   const [showLogsViewer, setShowLogsViewer] = useState(false);
 
   const allowedRoles = ['admin', 'editor', 'author'];
-  const hasDashboardAccess = useMemo(
-    () => (user?.role ? allowedRoles.includes(user.role) : false),
-    [user?.role]
-  );
-  const isAdmin = user?.role === 'admin';
+  const hasDashboardAccess = useMemo(() => {
+    const role = user?.role?.toLowerCase() || '';
+    return ['admin', 'editor', 'author'].includes(role) || user?.is_admin === true;
+  }, [user?.role, user?.is_admin]);
+  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.is_admin === true;
   const canViewActivityLogs = isAdmin;
 
   useEffect(() => {

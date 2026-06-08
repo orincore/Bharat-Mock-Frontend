@@ -86,8 +86,15 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
     }
   };
 
+  // Source of truth for "can call authed APIs" is the stored token. The React
+  // `isAuthenticated` flag can briefly lag (e.g. while the profile is being
+  // validated, or right after onboarding), so gate navigation on the token too —
+  // otherwise a logged-in user gets wrongly bounced to /login.
+  const hasAuthToken = () =>
+    typeof window !== 'undefined' && !!localStorage.getItem('auth_token');
+
   const handleUnlockExam = () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !hasAuthToken()) {
       router.push('/login?redirect=/subscriptions');
       return;
     }
@@ -142,8 +149,22 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
     setLanguageSelected(Boolean(lang));
   };
 
+  // Navigate to the exam attempt via a FULL page load (not router.push).
+  // The site-wide Google Translate widget installs a MutationObserver that keeps
+  // re-translating content across SPA navigation; a hard load tears it down so the
+  // exam renders its original text and relies solely on our API-based translation.
+  // We also clear the googtrans cookie so the fresh load starts untranslated.
+  const goToAttempt = (url: string) => {
+    if (typeof document !== 'undefined') {
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
+    }
+    window.location.assign(url);
+  };
+
   const handleStartExam = async () => {
-    if (!isAuthenticated) {
+    if (isUpcomingLocked) return;
+    if (!isAuthenticated && !hasAuthToken()) {
       router.push('/login');
       return;
     }
@@ -156,8 +177,14 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
 
       const attempt = await examService.startExam(targetExamId, selectedLanguage || 'en');
       const langParam = selectedLanguage || 'en';
-      router.push(`/exams/${targetExamId}/attempt/${attempt.attemptId}?lang=${langParam}`);
+      goToAttempt(`/exams/${targetExamId}/attempt/${attempt.attemptId}?lang=${langParam}`);
     } catch (err: any) {
+      // 401 = not authenticated → login. 403 = access denied (e.g. subscription
+      // required/expired) → surface the message, don't bounce to login.
+      if (err?.status === 401) {
+        router.push('/login');
+        return;
+      }
       setError(err.message || 'Failed to start exam');
     }
   };
@@ -165,7 +192,7 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
   const handleResumeExam = (attempt: ExamHistoryEntry) => {
     if (!exam) return;
     const langParam = attempt.language || selectedLanguage || 'en';
-    router.push(`/exams/${exam.id}/attempt/${attempt.attemptId}?lang=${langParam}`);
+    goToAttempt(`/exams/${exam.id}/attempt/${attempt.attemptId}?lang=${langParam}`);
   };
 
   if (isLoading) {
@@ -215,11 +242,12 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
     if (isUpcoming) return 'Upcoming';
     return exam?.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Upcoming';
   })();
+  const isUpcomingLocked = Boolean(startDate && new Date() < startDate && !isAnytime);
   const isLiveExam = !isQuiz && (isOngoing || (isUpcoming && isWithinWindow));
   const canStartExam = isOngoing || isAnytime || isWithinWindow;
   const userHasPremium = !!user?.is_premium;
   const requiresUnlock = !exam.is_free && !userHasPremium;
-  const showAttemptCta = canStartExam && !requiresUnlock;
+  const showAttemptCta = (canStartExam || isUpcomingLocked) && !requiresUnlock;
   const showUpcomingNotice = isUpcoming && !windowStarted;
   const showEndedNotice = windowEnded && !isLiveExam;
   const topResumeAttempt = resumeAttempts[0] || null;
@@ -434,9 +462,11 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
         </div>
       </div>
 
-      {/* Sticky Bottom CTA Bar - Visible on all devices when exam is startable */}
+      {/* Sticky Bottom CTA Bar - Visible on all devices when exam is startable.
+          No backdrop-filter: a fixed bar over scrolling content triggers an Android GPU
+          compositing/ghosting bug; bg-white/95 is opaque enough without it. */}
       {(showAttemptCta || requiresUnlock) && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 md:py-4 px-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 border-t border-slate-200 py-3 md:py-4 px-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] animate-in slide-in-from-bottom duration-300">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
             <div className="hidden md:flex flex-col">
               <h4 className="text-sm font-bold text-slate-900 truncate max-w-[250px]">{exam.title}</h4>
@@ -466,12 +496,22 @@ export function ExamDetailPage({ urlPath, initialExamData }: ExamDetailPageProps
               ) : (
                 <Button
                   onClick={handleStartExam}
-                  className={`flex-1 md:flex-none h-11 md:h-12 px-10 rounded-full font-bold text-white transition-all active:scale-95 shadow-xl ${isLiveExam
-                    ? 'bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 shadow-red-200/50'
-                    : 'bg-gradient-to-r from-[#00aeef] to-[#0086b8] hover:from-[#0099d4] shadow-blue-200/50'
-                    }`}
+                  disabled={isUpcomingLocked}
+                  className={`flex-1 md:flex-none h-11 md:h-12 px-10 rounded-full font-bold text-white transition-all active:scale-95 shadow-xl ${
+                    isUpcomingLocked
+                      ? 'bg-slate-400 opacity-60 cursor-not-allowed shadow-none'
+                      : isLiveExam
+                      ? 'bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 shadow-red-200/50'
+                      : 'bg-gradient-to-r from-[#00aeef] to-[#0086b8] hover:from-[#0099d4] shadow-blue-200/50'
+                  }`}
                 >
-                  {isLiveExam ? 'Enter Exam Hall' : topResumeAttempt ? 'Start Fresh' : 'Attempt Now'}
+                  {isUpcomingLocked
+                    ? `Opens on ${startDate ? startDate.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}`
+                    : isLiveExam
+                    ? 'Enter Exam Hall'
+                    : topResumeAttempt
+                    ? 'Start Fresh'
+                    : 'Attempt Now'}
                 </Button>
               )}
             </div>

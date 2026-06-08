@@ -127,7 +127,8 @@ export default function ExamPageAdmin() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) {
+    const query = searchQuery.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!query) {
       setSearchResults([]);
       return;
     }
@@ -135,7 +136,7 @@ export default function ExamPageAdmin() {
     setSearching(true);
     try {
       const response = await examService.getExams({
-        search: searchQuery,
+        search: query,
         limit: 10
       });
       setSearchResults(response.data);
@@ -240,7 +241,8 @@ export default function ExamPageAdmin() {
 
   const handleNewTestSeriesSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTestSeriesSearchQuery.trim()) {
+    const query = newTestSeriesSearchQuery.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!query) {
       setNewTestSeriesSearchResults([]);
       return;
     }
@@ -248,7 +250,7 @@ export default function ExamPageAdmin() {
     setNewTestSeriesSearching(true);
     try {
       const response = await examService.getExams({
-        search: newTestSeriesSearchQuery,
+        search: query,
         limit: 10
       });
       setNewTestSeriesSearchResults(response.data);

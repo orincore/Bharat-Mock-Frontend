@@ -22,7 +22,7 @@ const sanitizeHtml = (html?: string): string => {
   const clean = DOMPurify.sanitize(html || '', {
     USE_PROFILES: { html: true },
     ADD_TAGS: ['font', 'code', 'sup', 'sub', ...MATHML_TAGS],
-    ADD_ATTR: ['style', 'class', 'size', 'target', 'rel',
+    ADD_ATTR: ['style', 'class', 'size', 'target', 'rel', 'crossorigin',
       'xmlns', 'display', 'mathvariant', 'mathsize', 'stretchy', 'fence',
       'separator', 'lspace', 'rspace', 'linethickness', 'numalign', 'denomalign',
       'bevelled', 'columnalign', 'rowalign', 'columnspacing', 'rowspacing',
@@ -32,6 +32,9 @@ const sanitizeHtml = (html?: string): string => {
   });
   const tmp = document.createElement('div');
   tmp.innerHTML = clean;
+  tmp.querySelectorAll('img').forEach((img) => {
+    img.setAttribute('crossorigin', 'anonymous');
+  });
   tmp.querySelectorAll('*').forEach((el) => {
     if (el.namespaceURI === 'http://www.w3.org/1998/Math/MathML') return;
     const s = (el as HTMLElement).style;
@@ -332,6 +335,7 @@ export default function ReviewPage() {
                               src={question.imageUrl}
                               alt="Question"
                               className="max-w-full h-auto rounded-lg border border-border mb-4"
+                              crossOrigin="anonymous"
                             />
                           )}
 

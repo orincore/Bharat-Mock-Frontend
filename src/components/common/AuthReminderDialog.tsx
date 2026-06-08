@@ -87,7 +87,9 @@ export function AuthReminderDialog() {
     }
 
     // Don't show upsell for admin, editor, or author roles
-    if (user.role === 'admin' || user.role === 'editor' || user.role === 'author') {
+    const userRole = user?.role?.toLowerCase();
+    const isStaff = ['admin', 'editor', 'author'].includes(userRole || '') || user?.is_admin === true;
+    if (isStaff) {
       setOpen(false);
       setVariant((current) => (current === 'upsell' ? null : current));
       return;
@@ -113,7 +115,9 @@ export function AuthReminderDialog() {
       if (user?.is_premium) return;
 
       // Don't show upsell for admin, editor, or author roles
-      if (user && (user.role === 'admin' || user.role === 'editor' || user.role === 'author')) {
+      const userRole = user?.role?.toLowerCase();
+      const isStaff = ['admin', 'editor', 'author'].includes(userRole || '') || user?.is_admin === true;
+      if (user && isStaff) {
         return;
       }
 

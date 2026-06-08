@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { decodeHtmlEntities } from './utils';
 
 const SITE_NAME = 'BharatMock';
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com').replace(/\/$/, '');
@@ -13,6 +14,10 @@ export interface SEOProps {
   keywords?: string[];
 }
 
+function sanitizeTitle(title: string) {
+  return title.replace(/^\s*BharatMock\s*\|\s*/i, '').trim();
+}
+
 export function buildMetadata({
   title,
   description,
@@ -21,30 +26,37 @@ export function buildMetadata({
   noIndex = false,
   keywords = [],
 }: SEOProps): Metadata {
-  const fullTitle = `${title} | ${SITE_NAME}`;
+  const decodedTitle = decodeHtmlEntities(title);
+  const decodedDescription = decodeHtmlEntities(description);
+  const decodedKeywords = keywords.map(kw => decodeHtmlEntities(kw));
+
+  const normalizedTitle = sanitizeTitle(decodedTitle);
+  const fullTitle = normalizedTitle.endsWith(` | ${SITE_NAME}`)
+    ? normalizedTitle
+    : `${normalizedTitle} | ${SITE_NAME}`;
   const canonicalUrl = canonical.startsWith('http') ? canonical : `${SITE_URL}${canonical}`;
 
   return {
     title: fullTitle,
-    description,
-    ...(keywords.length && { keywords: keywords.join(', ') }),
+    description: decodedDescription,
+    ...(decodedKeywords.length && { keywords: decodedKeywords.join(', ') }),
     authors: [{ name: SITE_NAME }],
     robots: noIndex ? 'noindex, nofollow' : 'index, follow',
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title,
-      description,
+      title: normalizedTitle,
+      description: decodedDescription,
       url: canonicalUrl,
       siteName: SITE_NAME,
       type: 'website',
-      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: normalizedTitle }],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
-      description,
+      title: normalizedTitle,
+      description: decodedDescription,
       images: [ogImage],
       site: '@BharatMock',
     },

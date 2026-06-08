@@ -149,7 +149,8 @@ export function Navbar() {
     }));
   }, [categories, subcategories]);
 
-  const roleTheme = user?.role && (ROLE_THEMES as Record<string, RoleTheme>)[user.role];
+  const userRole = user?.role?.toLowerCase() || (user?.is_admin ? 'admin' : 'user');
+  const roleTheme = (userRole && userRole in ROLE_THEMES) ? (ROLE_THEMES as Record<string, RoleTheme>)[userRole] : undefined;
 
   const handleExploreMouseEnter = () => {
     if (closeTimeout) {

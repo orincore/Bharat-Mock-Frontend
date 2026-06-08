@@ -26,9 +26,13 @@ class ApiClient {
 
   private clearTokens() {
     if (typeof window === 'undefined') return;
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
-    window.dispatchEvent(new CustomEvent('auth:session-expired'));
+    const token = localStorage.getItem('auth_token');
+    const refresh = localStorage.getItem('refresh_token');
+    if (token || refresh) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
+      window.dispatchEvent(new CustomEvent('auth:session-expired'));
+    }
   }
 
   private async refreshAccessToken(): Promise<boolean> {
@@ -94,6 +98,12 @@ class ApiClient {
     };
 
     if (requiresAuth) {
+      // If a token refresh is currently in progress, wait for it to complete
+      // before sending the request. This avoids making a request with an expired
+      // token that is guaranteed to fail with 401/403.
+      if (this.refreshPromise) {
+        await this.refreshPromise;
+      }
       const token = this.getAuthToken();
       if (token) requestHeaders['Authorization'] = `Bearer ${token}`;
     }

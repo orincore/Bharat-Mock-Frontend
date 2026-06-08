@@ -168,7 +168,11 @@ export const examService = {
     try {
       const response = await apiClient.get<{ success: boolean; data: any[]; total: number }>('/page-popular-tests/homepage');
       if (response.data && response.data.length > 0) {
-        return response.data.map((item: any) => item.exams).filter(Boolean);
+        // The API returns each item with the exam nested under `exam` (singular).
+        // Fallback to `exams` (plural) for backward compatibility with older response shapes.
+        return response.data
+          .map((item: any) => item.exam ?? item.exams)
+          .filter(Boolean);
       }
       return [];
     } catch {

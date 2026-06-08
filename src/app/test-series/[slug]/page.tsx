@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import TestSeriesDetailClient from './TestSeriesDetailClient';
 import type { TestSeries } from '@/lib/api/testSeriesService';
 import type { PageBanner } from '@/lib/api/pageBannersService';
+import { decodeHtmlEntities } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -80,24 +81,31 @@ export async function generateMetadata(
   const testSeries = await fetchTestSeriesBySlug(slug);
   if (!testSeries) return { title: 'Test Series Not Found' };
   const canonicalUrl = `${SITE_URL}/test-series/${slug}`;
+
+  const title = testSeries.title;
+  const description = testSeries.description || `Practice with ${testSeries.title} test series on Bharat Mock`;
+
+  const decodedTitle = decodeHtmlEntities(title);
+  const decodedDescription = decodeHtmlEntities(description);
+
   return {
-    title: testSeries.title,
-    description: testSeries.description || `Practice with ${testSeries.title} test series on Bharat Mock`,
+    title: decodedTitle,
+    description: decodedDescription,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title: testSeries.title,
-      description: testSeries.description,
+      title: decodedTitle,
+      description: decodedDescription,
       url: canonicalUrl,
       type: 'website',
       siteName: 'BharatMock',
-      images: testSeries.image_url ? [{ url: testSeries.image_url, width: 1200, height: 630, alt: testSeries.title }] : [{ url: `${SITE_URL}/assets/login_banner_image.jpg`, width: 1200, height: 630 }],
+      images: testSeries.image_url ? [{ url: testSeries.image_url, width: 1200, height: 630, alt: decodedTitle }] : [{ url: `${SITE_URL}/assets/login_banner_image.jpg`, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: testSeries.title,
-      description: testSeries.description,
+      title: decodedTitle,
+      description: decodedDescription,
       images: testSeries.image_url ? [testSeries.image_url] : [`${SITE_URL}/assets/login_banner_image.jpg`],
     },
   };

@@ -30,12 +30,16 @@ export function RoleGuard({
       return;
     }
 
-    const userRole = user?.role || 'user';
+    const userRole = user?.role?.toLowerCase() || (user?.is_admin ? 'admin' : 'user');
 
     // Check if user has one of the allowed roles
-    if (allowedRoles && !allowedRoles.includes(userRole)) {
-      router.push(fallbackPath);
-      return;
+    if (allowedRoles) {
+      const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
+      const isAllowed = normalizedAllowed.includes(userRole) || (user?.is_admin && normalizedAllowed.includes('admin'));
+      if (!isAllowed) {
+        router.push(fallbackPath);
+        return;
+      }
     }
 
     // Check if user has the required permission
@@ -60,11 +64,15 @@ export function RoleGuard({
     return null;
   }
 
-  const userRole = user?.role || 'user';
+  const userRole = user?.role?.toLowerCase() || (user?.is_admin ? 'admin' : 'user');
 
   // Check allowed roles
-  if (allowedRoles && !allowedRoles.includes(userRole)) {
-    return null;
+  if (allowedRoles) {
+    const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
+    const isAllowed = normalizedAllowed.includes(userRole) || (user?.is_admin && normalizedAllowed.includes('admin'));
+    if (!isAllowed) {
+      return null;
+    }
   }
 
   // Check required permission

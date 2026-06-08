@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import BlogDetailClient from './BlogDetailClient';
-import ServerBlogDetail from './ServerBlogDetail';
+import { decodeHtmlEntities } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -9,9 +9,18 @@ export const revalidate = 0;
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com';
 
+// `cache: 'no-store'` only disables Next.js's own Data Cache. The BACKEND also caches
+// its responses, so admin edits (e.g. a table's fit/scroll layout) won't appear until
+// that cache expires. Mirror the homepage fix: send no-cache headers AND a `?_t=`
+// cache-buster so the backend skips its cache and returns fresh content every request.
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Pragma': 'no-cache',
+} as const;
+
 async function fetchBlog(slug: string) {
   try {
-    const res = await fetch(`${apiBase}/blogs/${slug}`, { cache: 'no-store' });
+    const res = await fetch(`${apiBase}/blogs/${slug}?_t=${Date.now()}`, { cache: 'no-store', headers: NO_CACHE_HEADERS });
     if (!res.ok) return null;
     const json = await res.json();
     return json?.data || json || null;
@@ -20,7 +29,7 @@ async function fetchBlog(slug: string) {
 
 async function fetchBlogContent(id: string) {
   try {
-    const res = await fetch(`${apiBase}/blogs/${id}/content`, { cache: 'no-store' });
+    const res = await fetch(`${apiBase}/blogs/${id}/content?_t=${Date.now()}`, { cache: 'no-store', headers: NO_CACHE_HEADERS });
     if (!res.ok) return [];
     const json = await res.json();
     const sections = json?.sections || json?.data || [];
@@ -65,24 +74,32 @@ export async function generateMetadata(
   const canonicalUrl = `${SITE_URL}/blogs/${slug}`;
   const title = article.meta_title || article.title;
   const description = article.meta_description || article.excerpt;
+  const ogTitle = article.og_title || article.title;
+  const ogDescription = article.og_description || article.excerpt;
+
+  const decodedTitle = decodeHtmlEntities(title);
+  const decodedDescription = decodeHtmlEntities(description);
+  const decodedOgTitle = decodeHtmlEntities(ogTitle);
+  const decodedOgDescription = decodeHtmlEntities(ogDescription);
+
   return {
-    title,
-    description,
+    title: decodedTitle,
+    description: decodedDescription,
     alternates: { canonical: canonicalUrl },
     openGraph: {
-      title: article.og_title || article.title,
-      description: article.og_description || article.excerpt,
+      title: decodedOgTitle,
+      description: decodedOgDescription,
       url: canonicalUrl,
       type: 'article',
       siteName: 'BharatMock',
       images: article.featured_image_url
-        ? [{ url: article.featured_image_url, width: 1200, height: 630, alt: title }]
+        ? [{ url: article.featured_image_url, width: 1200, height: 630, alt: decodedTitle }]
         : [{ url: `${SITE_URL}/assets/login_banner_image.jpg`, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: article.og_title || article.title,
-      description: article.og_description || article.excerpt,
+      title: decodedOgTitle,
+      description: decodedOgDescription,
       images: article.featured_image_url
         ? [article.featured_image_url]
         : [`${SITE_URL}/assets/login_banner_image.jpg`],
@@ -141,12 +158,6 @@ export default async function BlogDetailPage(
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <ServerBlogDetail
-        article={article}
-        sections={sections}
-        relatedArticles={relatedArticles}
-        categories={categories}
       />
       <BlogDetailClient
         article={article}

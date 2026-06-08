@@ -11,7 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isDeleted: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, phone: string) => Promise<void>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   completePasswordReset: (token: string, newPassword: string) => Promise<void>;
@@ -46,8 +46,25 @@ const persistUser = (userData: User | null) => {
 const normalizeUser = (userData: any): User | null => {
   if (!userData) return null;
   const { user_education, user_preferences, education, preferences, ...rest } = userData;
+
+  let resolvedRole = rest.role ? String(rest.role).toLowerCase() : undefined;
+  if (!resolvedRole) {
+    if (rest.is_admin === true || rest.isAdmin === true) {
+      resolvedRole = 'admin';
+    } else if (rest.is_editor === true || rest.isEditor === true) {
+      resolvedRole = 'editor';
+    } else if (rest.is_author === true || rest.isAuthor === true) {
+      resolvedRole = 'author';
+    } else {
+      resolvedRole = 'user';
+    }
+  } else if (!['admin', 'editor', 'author', 'user'].includes(resolvedRole)) {
+    resolvedRole = 'user';
+  }
+
   return {
     ...rest,
+    role: resolvedRole as any,
     education: education ?? (Array.isArray(user_education) ? user_education[0] : user_education),
     preferences: preferences ?? (Array.isArray(user_preferences) ? user_preferences[0] : user_preferences),
   } as User;
@@ -107,6 +124,7 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
           setIsDeleted(true);
         } else if (msg.includes('401') || msg.includes('403')) {
           // Token invalid/expired — clear everything and show logged-out state
+          console.warn("ADMIN GUARD KICKED OUT USER:", user);
           authService.logout();
           apiClient.clearAuthCache();
           setUser(null);
@@ -130,7 +148,7 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
 
   // Cross-tab sync via storage events
   useEffect(() => {
-    const syncFromStorage = () => {
+    const syncFromStorage = async () => {
       const token = localStorage.getItem('auth_token');
       const storedUser = getStoredUser();
 
@@ -145,6 +163,17 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
       if (storedUser) {
         // Token + user in storage — sync to this tab
         setUser(storedUser);
+      } else {
+        // auth_token exists but auth_user is temporarily missing.
+        // DO NOT log out. Instead, fetch the user profile from the API directly.
+        try {
+          const userData = await authService.getProfile();
+          const normalized = normalizeUser(userData);
+          setUser(normalized);
+          persistUser(normalized);
+        } catch (err) {
+          console.error('Failed to sync profile from storage token:', err);
+        }
       }
     };
 
@@ -175,10 +204,17 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
     setIsLoading(true);
     try {
       const response = await authService.login(email, password);
-      const normalized = normalizeUser(response.data.user);
-      apiClient.clearAuthCache();
-      setUser(normalized);
-      persistUser(normalized);
+      if (response.success && response.data.token) {
+        const normalized = normalizeUser(response.data.user);
+        
+        // Write tokens and user data synchronously to localStorage in the same block:
+        localStorage.setItem('auth_token', response.data.token);
+        localStorage.setItem('refresh_token', response.data.refreshToken);
+        persistUser(normalized);
+        
+        apiClient.clearAuthCache();
+        setUser(normalized);
+      }
       setTimeout(() => onAuthChange?.(), 0);
     } catch (err: any) {
       if (err?.code === 'ACCOUNT_DELETED') {
@@ -199,13 +235,20 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
     }
   };
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (email: string, password: string, name: string, phone: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.register(email, password, name);
-      const normalized = normalizeUser(response.data.user);
-      setUser(normalized);
-      persistUser(normalized);
+      const response = await authService.register(email, password, name, phone);
+      if (response.success && response.data.token) {
+        const normalized = normalizeUser(response.data.user);
+        
+        // Write tokens and user data synchronously to localStorage in the same block:
+        localStorage.setItem('auth_token', response.data.token);
+        localStorage.setItem('refresh_token', response.data.refreshToken);
+        persistUser(normalized);
+        
+        setUser(normalized);
+      }
       setTimeout(() => onAuthChange?.(), 0);
     } finally {
       setIsLoading(false);
@@ -235,6 +278,7 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
         setUser(null);
         setIsDeleted(true);
       } else if (msg.includes('401') || msg.includes('403')) {
+        console.warn("ADMIN GUARD KICKED OUT USER:", user);
         authService.logout();
         apiClient.clearAuthCache();
         setUser(null);
