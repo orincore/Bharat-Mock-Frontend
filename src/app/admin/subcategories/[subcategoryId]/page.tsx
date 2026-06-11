@@ -103,6 +103,8 @@ interface SubcategoryInfo {
     slug: string;
   };
   is_active?: boolean;
+  show_mock_tests_tab?: boolean;
+  show_previous_papers_tab?: boolean;
 }
 
 interface SEOData {
@@ -173,6 +175,8 @@ export default function AdminSubcategoryEditorPage() {
     description: '',
     display_order: '0',
     is_active: true,
+    show_mock_tests_tab: true,
+    show_previous_papers_tab: true,
   });
   const [descriptionInput, setDescriptionInput] = useState('');
   const [savingDescription, setSavingDescription] = useState(false);
@@ -539,6 +543,8 @@ export default function AdminSubcategoryEditorPage() {
       description: info.description || '',
       display_order: (info.display_order ?? 0).toString(),
       is_active: info.is_active ?? true,
+      show_mock_tests_tab: info.show_mock_tests_tab ?? true,
+      show_previous_papers_tab: info.show_previous_papers_tab ?? true,
     });
     setLogoPreview(info.logo_url || '');
     setLogoFile(null);
@@ -598,6 +604,8 @@ export default function AdminSubcategoryEditorPage() {
         description: settingsForm.description,
         display_order: settingsForm.display_order || '0',
         is_active: settingsForm.is_active,
+        show_mock_tests_tab: settingsForm.show_mock_tests_tab,
+        show_previous_papers_tab: settingsForm.show_previous_papers_tab,
         logo: logoFile || undefined,
       });
       toast({ title: 'Success', description: 'Subcategory settings saved successfully' });
@@ -1826,6 +1834,27 @@ export default function AdminSubcategoryEditorPage() {
                     <option value="true">Active (Live)</option>
                     <option value="false">Inactive (Draft)</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mock Tests Tab</label>
+                  <select value={settingsForm.show_mock_tests_tab ? 'true' : 'false'} onChange={e => setSettingsForm(prev => ({ ...prev, show_mock_tests_tab: e.target.value === 'true' }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-400 transition-colors">
+                    <option value="true">Visible on public page</option>
+                    <option value="false">Hidden (URL returns 404)</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-400">Hides the reserved Mock Tests tab and de-indexes its URL</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Previous Papers Tab</label>
+                  <select value={settingsForm.show_previous_papers_tab ? 'true' : 'false'} onChange={e => setSettingsForm(prev => ({ ...prev, show_previous_papers_tab: e.target.value === 'true' }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-400 transition-colors">
+                    <option value="true">Visible on public page</option>
+                    <option value="false">Hidden (URL returns 404)</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-400">Hides the reserved Previous Papers tab and de-indexes its URL</p>
                 </div>
               </div>
 

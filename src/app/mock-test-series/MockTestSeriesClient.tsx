@@ -235,10 +235,15 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
       const response = await testSeriesService.getTestSeries(params);
       if (requestId !== activeRequestRef.current) return;
 
-      const sortedSeries = [...response.data].sort((a, b) =>
-        new Date(b.created_at || b.updated_at || '').getTime() -
-        new Date(a.created_at || a.updated_at || '').getTime()
-      );
+      // Respect the admin-configured card order (display_order), newest first as tiebreak.
+      const sortedSeries = [...response.data].sort((a, b) => {
+        const orderDiff = (a.display_order ?? 0) - (b.display_order ?? 0);
+        if (orderDiff !== 0) return orderDiff;
+        return (
+          new Date(b.created_at || b.updated_at || '').getTime() -
+          new Date(a.created_at || a.updated_at || '').getTime()
+        );
+      });
       setTestSeries(sortedSeries);
       setPagination((prev) => ({ ...prev, total: response.total, totalPages: response.totalPages }));
     } catch (err: any) {

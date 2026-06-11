@@ -223,7 +223,13 @@ const getBrandAssets = async () => {
 const stripHtml = (value?: string) => {
   if (!value) return '';
   const temp = document.createElement('div');
-  temp.innerHTML = value;
+  // Preserve line structure: <br> and closing block tags become newlines so the
+  // PDF keeps the same paragraph/line breaks as the exam attempt page (plain
+  // textContent glues "…end.Start…" together across block boundaries).
+  temp.innerHTML = value
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<li\b[^>]*>/gi, '\n• ')
+    .replace(/<\/(p|div|li|h[1-6]|tr|blockquote|ul|ol|table)>/gi, '\n');
   return temp.textContent || '';
 };
 
@@ -244,7 +250,11 @@ const normalizeText = (value?: string) =>
     .replace(/\u200B/g, '')
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
-    .replace(/\s+/g, ' ')
+    // Collapse runs of spaces/tabs but KEEP newlines (paragraph structure),
+    // then tidy spaces around them and drop blank lines.
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{2,}/g, '\n')
     .trim();
 
 const formatOptionText = (value?: string) =>
@@ -511,14 +521,15 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
   };
 
   // Fit image into a max bounding box preserving aspect ratio, returns mm dimensions.
-  // Uses pure aspect ratio — no DPI assumption, just scales to fit within maxW × maxH mm.
+  // Never upscale: an image is rendered at most at its natural size (CSS px → mm at
+  // 96 DPI, same size it appears on the attempt page), then shrunk if it exceeds the
+  // box. Previously every image was stretched to the full box width, which blew
+  // small diagrams up to page width.
   const fitImage = (naturalWidth: number, naturalHeight: number, maxWmm: number, maxHmm: number) => {
-    if (!naturalWidth || !naturalHeight) return { w: maxWmm, h: maxHmm };
+    if (!naturalWidth || !naturalHeight) return { w: Math.min(maxWmm, 60), h: Math.min(maxHmm, 40) };
     const aspect = naturalHeight / naturalWidth;
-    // Start by fitting to max width
-    let w = maxWmm;
+    let w = Math.min(maxWmm, pxToMm(naturalWidth));
     let h = w * aspect;
-    // If too tall, fit to max height instead
     if (h > maxHmm) {
       h = maxHmm;
       w = h / aspect;
@@ -603,19 +614,28 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
   };
 
   const addQuestion = async (question: any, questionNumber: number) => {
-    checkPageBreak(35);
+    const questionText = normalizeText(
+      (opts.language === 'hi' && (question as any).text_hi)
+        ? (question as any).text_hi
+        : (question.question_text || question.text || 'Question')
+    );
+
+    // Reserve the REAL height of the question block (capped at one page) so long
+    // questions move to a fresh page instead of overflowing into the footer strip.
+    doc.setFontSize(10);
+    if (useHindiFont) {
+      checkPageBreak(35);
+    } else {
+      setFont('bold');
+      const measuredLines = doc.splitTextToSize(questionText, pageWidth - 2 * margin - 12);
+      checkPageBreak(Math.min(measuredLines.length * 5.5 + 12, pageHeight - 2 * margin));
+    }
 
     // Question number always in helvetica
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(20, 20, 20);
     doc.text(`${questionNumber}.`, margin, yPosition + 4);
-
-    const questionText = normalizeText(
-      (opts.language === 'hi' && (question as any).text_hi)
-        ? (question as any).text_hi
-        : (question.question_text || question.text || 'Question')
-    );
 
     if (useHindiFont) {
       const h = addHindiText(questionText, margin + 10, yPosition, pageWidth - 2 * margin - 12, 10, '#141414', true);
@@ -672,7 +692,6 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
 
     for (let optionIndex = 0; optionIndex < optionList.length; optionIndex++) {
       const option = optionList[optionIndex];
-      checkPageBreak(12);
 
       // Always use sequential index for label (A, B, C, D...)
       const optionLabel = String.fromCharCode(65 + optionIndex);
@@ -686,6 +705,15 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
       // Reset to known good state before rendering
       doc.setFontSize(10);
       setFont('normal');
+
+      // Reserve the real height of this option so multi-line options never
+      // overflow past the bottom boundary / footer strip.
+      if (useHindiFont) {
+        checkPageBreak(12);
+      } else {
+        const measured = doc.splitTextToSize(`${optionLabel}. ${optionText}`, pageWidth - 2 * margin - 12);
+        checkPageBreak(Math.min(measured.length * 5 + 6, pageHeight - 2 * margin));
+      }
       if (opts.showAnswers && isCorrect) {
         doc.setTextColor(0, 150, 0);
       } else {
@@ -758,9 +786,15 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
           : question.explanation;
         const explanationText = normalizeText(expRaw);
 
-        checkPageBreak(15);
         doc.setFontSize(8.5);
         setFont('italic');
+        // Reserve the real height of the explanation box (capped at one page).
+        if (useHindiFont) {
+          checkPageBreak(15);
+        } else {
+          const measured = doc.splitTextToSize(`Explanation: ${explanationText}`, pageWidth - 2 * margin - 14);
+          checkPageBreak(Math.min(measured.length * 4.5 + 10, pageHeight - 2 * margin));
+        }
         doc.setTextColor(22, 101, 52);
         doc.setFillColor(240, 253, 244);
 

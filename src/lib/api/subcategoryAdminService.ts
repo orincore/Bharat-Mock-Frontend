@@ -85,6 +85,8 @@ export const subcategoryAdminService = {
     description?: string;
     display_order?: string | number | null;
     is_active?: boolean;
+    show_mock_tests_tab?: boolean;
+    show_previous_papers_tab?: boolean;
     logo?: File;
   }) {
     const formData = new FormData();
@@ -97,6 +99,12 @@ export const subcategoryAdminService = {
     }
     if (payload.is_active !== undefined) {
       formData.append('is_active', payload.is_active ? 'true' : 'false');
+    }
+    if (payload.show_mock_tests_tab !== undefined) {
+      formData.append('show_mock_tests_tab', payload.show_mock_tests_tab ? 'true' : 'false');
+    }
+    if (payload.show_previous_papers_tab !== undefined) {
+      formData.append('show_previous_papers_tab', payload.show_previous_papers_tab ? 'true' : 'false');
     }
     if (payload.logo) {
       formData.append('logo', payload.logo);
@@ -127,6 +135,8 @@ export const subcategoryAdminService = {
     description?: string;
     display_order?: string | number | null;
     is_active?: boolean;
+    show_mock_tests_tab?: boolean;
+    show_previous_papers_tab?: boolean;
     logo?: File;
   }) {
     const formData = new FormData();
@@ -138,6 +148,12 @@ export const subcategoryAdminService = {
     }
     if (payload.is_active !== undefined) {
       formData.append('is_active', payload.is_active ? 'true' : 'false');
+    }
+    if (payload.show_mock_tests_tab !== undefined) {
+      formData.append('show_mock_tests_tab', payload.show_mock_tests_tab ? 'true' : 'false');
+    }
+    if (payload.show_previous_papers_tab !== undefined) {
+      formData.append('show_previous_papers_tab', payload.show_previous_papers_tab ? 'true' : 'false');
     }
     if (payload.logo) {
       formData.append('logo', payload.logo);

@@ -119,6 +119,49 @@ export default async function BlogDetailPage(
     fetchCategories(),
   ]);
 
+  // Admin-entered structured data: may be a single JSON object, a JSON array,
+  // several <script type="application/ld+json"> tags, or several JSON objects
+  // pasted one after another. Parse ALL of them so every schema the admin adds
+  // is rendered (previously this field was ignored and only the generated
+  // Article schema appeared).
+  const parseAdminSchemas = (raw: unknown): Record<string, any>[] => {
+    if (!raw) return [];
+    if (typeof raw === 'object') {
+      return Array.isArray(raw) ? raw.filter((s) => s && typeof s === 'object') : [raw as Record<string, any>];
+    }
+    if (typeof raw !== 'string' || !raw.trim()) return [];
+
+    const tryParse = (text: string): any | null => {
+      try { return JSON.parse(text); } catch { /* fall through */ }
+      try {
+        // eslint-disable-next-line no-control-regex
+        return JSON.parse(text.replace(/[\x00-\x1F\x7F]+/g, ' '));
+      } catch { return null; }
+    };
+
+    // 1. Whole string is valid JSON (object or array)
+    const direct = tryParse(raw);
+    if (direct) return Array.isArray(direct) ? direct : [direct];
+
+    // 2. Pasted <script type="application/ld+json"> tags
+    const scriptRe = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+    const fromScripts: Record<string, any>[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = scriptRe.exec(raw)) !== null) {
+      const parsed = tryParse(match[1].trim());
+      if (parsed) Array.isArray(parsed) ? fromScripts.push(...parsed) : fromScripts.push(parsed);
+    }
+    if (fromScripts.length) return fromScripts;
+
+    // 3. Multiple JSON objects concatenated back-to-back
+    const wrapped = tryParse(`[${raw.trim().replace(/}\s*,?\s*{/g, '},{')}]`);
+    if (Array.isArray(wrapped)) return wrapped.filter((s) => s && typeof s === 'object');
+
+    return [];
+  };
+
+  const adminSchemas = parseAdminSchemas(article.structured_data);
+
   // Generate JSON-LD structured data
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -144,12 +187,22 @@ export default async function BlogDetailPage(
     },
   };
 
+  // Render every admin schema; keep the generated Article schema only when the
+  // admin hasn't provided their own Article-type schema (avoids duplicates).
+  const hasAdminArticleSchema = adminSchemas.some((s) =>
+    /article|blogposting/i.test(JSON.stringify(s['@type'] ?? ''))
+  );
+  const schemas = [...(hasAdminArticleSchema ? [] : [jsonLd]), ...adminSchemas];
+
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {schemas.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
       <BlogDetailClient
         article={article}
         sections={sections}

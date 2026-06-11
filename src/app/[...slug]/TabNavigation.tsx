@@ -16,14 +16,15 @@ interface TabNavigationProps {
   customTabs: CustomTab[];
   activeTabId: string | null;
   first: string;
-  // Subcategory pages always show the reserved Mock Tests / Previous Papers tabs.
-  showReservedTabs?: boolean;
+  // Reserved Mock Tests / Previous Papers tabs — admin can hide each per subcategory.
+  showMockTestsTab?: boolean;
+  showPreviousPapersTab?: boolean;
 }
 
 const normalize = (value: string) =>
   value.toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
-export default function TabNavigation({ customTabs, activeTabId, first, showReservedTabs = false }: TabNavigationProps) {
+export default function TabNavigation({ customTabs, activeTabId, first, showMockTestsTab = false, showPreviousPapersTab = false }: TabNavigationProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -106,29 +107,29 @@ export default function TabNavigation({ customTabs, activeTabId, first, showRese
               </Link>
             );
           })}
-          {showReservedTabs && (
-            <>
-              <Link
-                href={`/${first}/mock-tests`}
-                className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeTabId === 'mock-tests'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                }`}
-              >
-                Mock Tests
-              </Link>
-              <Link
-                href={`/${first}/previous-papers`}
-                className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeTabId === 'previous-papers'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                }`}
-              >
-                Previous Papers
-              </Link>
-            </>
+          {showMockTestsTab && (
+            <Link
+              href={`/${first}/mock-tests`}
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTabId === 'mock-tests'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              Mock Tests
+            </Link>
+          )}
+          {showPreviousPapersTab && (
+            <Link
+              href={`/${first}/previous-papers`}
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTabId === 'previous-papers'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              Previous Papers
+            </Link>
           )}
           </div>
           

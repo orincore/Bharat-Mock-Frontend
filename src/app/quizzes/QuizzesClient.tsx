@@ -19,10 +19,8 @@ type QuizExam = Exam & {
   section_order?: number | null;
   topic_name?: string | null;
   topic_order?: number | null;
+  exam_subcategories?: { id?: string; name?: string; slug?: string; category_id?: string } | null;
 };
-
-const UNSECTIONED = '__no_section__';
-const UNSECTIONED_LABEL = 'Other Quizzes';
 
 interface InitialData {
   exams: QuizExam[];
@@ -47,7 +45,10 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
   // Full quiz set (fetched server-side). All grouping/filtering happens client-side
   // so the Section → Topic navigation can show accurate counts, mirroring the
   // test-series Section → Topic listing.
-  const [exams] = useState<QuizExam[]>(initialData.exams);
+  // Quizzes without a Test Series section are hidden — no "Other Quizzes" group.
+  const [exams] = useState<QuizExam[]>(
+    initialData.exams.filter((e) => e.section_name?.trim())
+  );
 
   const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>(initialDifficulties ?? []);
   const [difficultiesLoading, setDifficultiesLoading] = useState(initialDifficulties === undefined);
@@ -55,6 +56,8 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
   // Filters that narrow the working set (section/topic live in the tabs/pills)
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
   const [selectedDifficultyId, setSelectedDifficultyId] = useState('');
   const [accessFilter, setAccessFilter] = useState<'' | 'true' | 'false'>('');
 
@@ -99,10 +102,58 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
   };
 
   // Section/topic identity helpers — pooled across series by NAME.
-  const sectionKeyOf = (e: QuizExam) => (e.section_name?.trim() || UNSECTIONED);
+  const sectionKeyOf = (e: QuizExam) => (e.section_name as string).trim();
   const topicKeyOf = (e: QuizExam) => (e.topic_name?.trim() || '');
+  const categoryIdOf = (e: QuizExam) => (e.category_id || (e.exam_categories as any)?.id || '');
+  const subcategoryIdOf = (e: QuizExam) => (e.subcategory_id || e.exam_subcategories?.id || '');
 
-  // ── Filtering (search / difficulty / access) ───────────────────────────────
+  // ── Exam category / Sub exam options, derived from the quiz set ────────────
+  const categoryOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of exams) {
+      const id = categoryIdOf(e);
+      const name = (e.exam_categories as any)?.name || e.category;
+      if (id && name && !map.has(id)) map.set(id, name);
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [exams]);
+
+  const subcategoryOptions = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; categoryId: string }>();
+    for (const e of exams) {
+      const id = subcategoryIdOf(e);
+      const name = e.exam_subcategories?.name || e.subcategory;
+      if (!id || !name || map.has(id)) continue;
+      map.set(id, { id, name, categoryId: e.exam_subcategories?.category_id || categoryIdOf(e) });
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [exams]);
+
+  const visibleSubcategoryOptions = useMemo(
+    () => (selectedCategoryId ? subcategoryOptions.filter((s) => s.categoryId === selectedCategoryId) : subcategoryOptions),
+    [subcategoryOptions, selectedCategoryId]
+  );
+
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    // Drop a sub-exam selection that no longer belongs to the chosen category.
+    if (selectedSubcategoryId) {
+      const sub = subcategoryOptions.find((s) => s.id === selectedSubcategoryId);
+      if (!sub || (categoryId && sub.categoryId !== categoryId)) setSelectedSubcategoryId('');
+    }
+  };
+
+  const handleSubcategoryChange = (subcategoryId: string) => {
+    setSelectedSubcategoryId(subcategoryId);
+    if (subcategoryId) {
+      const sub = subcategoryOptions.find((s) => s.id === subcategoryId);
+      if (sub?.categoryId && selectedCategoryId !== sub.categoryId) setSelectedCategoryId(sub.categoryId);
+    }
+  };
+
+  // ── Filtering (search / category / sub exam / difficulty / access) ─────────
   const filteredExams = useMemo(() => {
     const q = debouncedSearch.toLowerCase();
     return exams.filter((e) => {
@@ -110,12 +161,14 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
         const hay = `${e.title || ''} ${e.section_name || ''} ${e.topic_name || ''} ${(e.exam_categories as any)?.name || e.category || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (selectedCategoryId && categoryIdOf(e) !== selectedCategoryId) return false;
+      if (selectedSubcategoryId && subcategoryIdOf(e) !== selectedSubcategoryId) return false;
       if (selectedDifficultyId && e.difficulty_id !== selectedDifficultyId) return false;
       if (accessFilter === 'true' && !e.is_premium) return false;
       if (accessFilter === 'false' && e.is_premium) return false;
       return true;
     });
-  }, [exams, debouncedSearch, selectedDifficultyId, accessFilter]);
+  }, [exams, debouncedSearch, selectedCategoryId, selectedSubcategoryId, selectedDifficultyId, accessFilter]);
 
   // ── Section groups (top-level tabs), pooled by section name ────────────────
   const sectionGroups = useMemo<SectionGroup[]>(() => {
@@ -129,16 +182,14 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
       } else {
         map.set(key, {
           key,
-          name: key === UNSECTIONED ? UNSECTIONED_LABEL : (e.section_name as string),
+          name: key,
           order: e.section_order ?? Number.MAX_SAFE_INTEGER,
           count: 1,
         });
       }
     }
-    // Sort by admin display order, then name; keep "Other Quizzes" last.
+    // Sort by admin display order, then name.
     return [...map.values()].sort((a, b) => {
-      if (a.key === UNSECTIONED) return 1;
-      if (b.key === UNSECTIONED) return -1;
       if (a.order !== b.order) return a.order - b.order;
       return a.name.localeCompare(b.name);
     });
@@ -195,11 +246,13 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
     [sectionGroups, effectiveActiveSectionKey]
   );
 
-  const hasCustomFilters = Boolean(search || selectedDifficultyId || accessFilter);
+  const hasCustomFilters = Boolean(search || selectedCategoryId || selectedSubcategoryId || selectedDifficultyId || accessFilter);
 
   const clearFilters = () => {
     setSearch('');
     setDebouncedSearch('');
+    setSelectedCategoryId('');
+    setSelectedSubcategoryId('');
     setSelectedDifficultyId('');
     setAccessFilter('');
     setSelectedTopicKey('');
@@ -218,6 +271,85 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
       </div>
 
       <div className="space-y-6">
+        {categoryOptions.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Exam Category</label>
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input type="radio" name="quiz-category" className="h-4 w-4 accent-primary"
+                  checked={selectedCategoryId === ''} onChange={() => handleCategoryChange('')} />
+                <span>All Categories</span>
+              </label>
+              {categoryOptions.map((c) => (
+                <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
+                  <input type="radio" name="quiz-category" className="h-4 w-4 accent-primary"
+                    checked={selectedCategoryId === c.id}
+                    onChange={() => handleCategoryChange(c.id)} />
+                  <span>{c.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {subcategoryOptions.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Sub Exam</label>
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input type="radio" name="quiz-subcategory" className="h-4 w-4 accent-primary"
+                  checked={selectedSubcategoryId === ''} onChange={() => handleSubcategoryChange('')} />
+                <span>All Sub Exams</span>
+              </label>
+              {visibleSubcategoryOptions.map((s) => (
+                <label key={s.id} className="flex items-center gap-2 text-sm text-foreground">
+                  <input type="radio" name="quiz-subcategory" className="h-4 w-4 accent-primary"
+                    checked={selectedSubcategoryId === s.id}
+                    onChange={() => handleSubcategoryChange(s.id)} />
+                  <span>{s.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {sectionGroups.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Section</label>
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
+              {sectionGroups.map((s) => (
+                <label key={s.key} className="flex items-center gap-2 text-sm text-foreground">
+                  <input type="radio" name="quiz-section" className="h-4 w-4 accent-primary"
+                    checked={effectiveActiveSectionKey === s.key}
+                    onChange={() => setActiveSectionKey(s.key)} />
+                  <span>{s.name} ({s.count})</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {topicGroups.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Chapters</label>
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input type="radio" name="quiz-chapter" className="h-4 w-4 accent-primary"
+                  checked={selectedTopicKey === ''} onChange={() => setSelectedTopicKey('')} />
+                <span>All Chapters ({activeSectionCount})</span>
+              </label>
+              {topicGroups.map((t) => (
+                <label key={t.key} className="flex items-center gap-2 text-sm text-foreground">
+                  <input type="radio" name="quiz-chapter" className="h-4 w-4 accent-primary"
+                    checked={selectedTopicKey === t.key}
+                    onChange={() => setSelectedTopicKey(t.key)} />
+                  <span>{t.name} ({t.count})</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">Difficulty</label>
           {difficultiesLoading ? (

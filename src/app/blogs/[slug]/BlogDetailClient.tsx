@@ -57,7 +57,10 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
     const items: { id: string; label: string; level: number }[] = [];
     const seenLabels = new Set<string>();
     if (!Array.isArray(sections)) return items;
-    
+
+    // The TOC is what the admin sets: one entry per section title. Only when no
+    // section has a title do we fall back to scraping headings out of the block
+    // content — otherwise every in-content heading would flood the TOC.
     sections.forEach((section, si) => {
       if (section?.title) {
         const label = decodeHtmlEntities(section.title);
@@ -66,6 +69,10 @@ export default function BlogDetailClient({ article, sections, latestBlogs, relat
           items.push({ id: toAnchorId(`section-${si}`), label, level: 2 });
         }
       }
+    });
+    if (items.length > 0) return items;
+
+    sections.forEach((section, si) => {
       if (Array.isArray(section?.blocks)) {
         section.blocks.forEach((block, bi) => {
           let label: string | null = null;

@@ -693,8 +693,9 @@ export default function AdminBlogEditorPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Structured Data / JSON-LD notes</label>
-                <textarea rows={2} value={formState.structured_data} onChange={(e) => handleFormChange("structured_data", e.target.value)} placeholder='{"@type": "Article", "headline": "…"}' className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none" />
+                <label className="text-xs font-medium text-gray-700">Structured Data / JSON-LD</label>
+                <textarea rows={8} value={formState.structured_data} onChange={(e) => handleFormChange("structured_data", e.target.value)} placeholder='{"@type": "Article", "headline": "…"}' className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-y" />
+                <p className="text-[11px] text-gray-400">Multiple schemas supported — paste a JSON array, several JSON objects, or several &lt;script type="application/ld+json"&gt; tags. All of them are rendered on the public page.</p>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 sticky bottom-0 bg-white rounded-b-2xl">

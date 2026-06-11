@@ -534,9 +534,15 @@ table th, table td,
   margin-top: 0.9em !important;
 }
 
-/* Force all child elements in rich text to use black color */
-.rich-text-editor *,
-.rich-text-content * {
+/* Force rich-text elements to black UNLESS the admin set a colour intentionally.
+   Excluded from the forced black:
+   - table blocks (.bm-table-fit / .bm-table-scroll) — header/cell colours are inline
+   - any element carrying an inline `color:` style (set via the editor toolbar or the
+     right-click formatting menu) and everything nested inside it.
+   Without these exclusions the !important here overrides the admin's inline colours,
+   which is why colours applied in the editor rendered black. */
+.rich-text-editor *:not(.bm-table-fit *):not(.bm-table-scroll *):not([style*="color"]):not([style*="color"] *),
+.rich-text-content *:not(.bm-table-fit *):not(.bm-table-scroll *):not([style*="color"]):not([style*="color"] *) {
   color: #1a1a1a !important;
 }
 

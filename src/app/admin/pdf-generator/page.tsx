@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Search, FileDown, Eye, ChevronLeft, X, Upload, ImageIcon } from 'lucide-react';
 import { adminService } from '@/lib/api/adminService';
-import { generateExamPDF, type PdfOptions } from '@/lib/utils/pdfGenerator';
+import { type PdfOptions } from '@/lib/utils/pdfGenerator';
 import { Exam } from '@/types';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
 
@@ -120,7 +120,10 @@ export default function PdfGeneratorPage() {
     if (!examData) return;
     setIsGenerating(true);
     try {
-      await generateExamPDF(examData, options);
+      // The PDF is rendered FROM the preview HTML (one source of truth), so the
+      // downloaded file matches the Live Preview exactly — layout, format,
+      // fonts, images and question count.
+      await generatePdfFromPreview(buildPreviewHtml(examData, options), examData.exam?.title || 'exam');
     } catch (e) {
       console.error('PDF generation failed', e);
     } finally {
@@ -495,20 +498,150 @@ function stripHtml(v?: string) {
   return d.textContent || '';
 }
 
-// Render raw rich-text HTML in the preview — keep <img> tags but cap their size
-// so they don't blow out the page layout. Strip only truly unsafe tags (script/style).
+// Render rich-text HTML in the preview, normalised the same way the exam attempt
+// page displays it. The attempt page CSS (`.exam-question-text *` in index.css)
+// forces every descendant to the inherited font size and black colour, so pasted
+// inline font-size / font-family / font-weight / colour spans never show there.
+// The preview has no such CSS, which made fragments of a question render at
+// wildly different sizes. Strip that styling noise here; keep semantic
+// formatting (b/strong/i/u/sub/sup, line breaks, lists, tables) and images.
 function renderHtmlForPreview(raw: string | undefined): string {
   if (!raw) return '';
-  return raw
-    // Remove script / style blocks entirely
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
-    // Constrain every <img> to fit within its container — max-width:100% clips to
-    // the parent div width; box-sizing ensures padding doesn't push it wider.
-    .replace(/<img(\b[^>]*)>/gi, (_, attrs) => {
-      const cleanAttrs = attrs.replace(/\bstyle\s*=\s*["'][^"']*["']/gi, '');
-      return `<img${cleanAttrs} style="max-width:100%;width:auto;max-height:150px;display:block;margin:4px 0;border-radius:3px;border:1px solid #e5e7eb;box-sizing:border-box;">`;
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = raw;
+
+  tmp.querySelectorAll('script, style, meta, link, xml').forEach((node) => node.remove());
+
+  tmp.querySelectorAll('*').forEach((element) => {
+    const el = element as HTMLElement;
+    if (el.namespaceURI === 'http://www.w3.org/1998/Math/MathML') return;
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'img') return; // images handled below
+
+    if (el.style) {
+      [
+        'font-size', 'font-family', 'font-weight', 'line-height', 'letter-spacing',
+        'color', 'background', 'background-color',
+        'margin', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
+        'padding', 'padding-top', 'padding-bottom', 'padding-left', 'padding-right',
+        'text-indent', 'width', 'height', 'min-height', 'white-space',
+      ].forEach((prop) => el.style.removeProperty(prop));
+      if (!el.style.cssText.trim()) el.removeAttribute('style');
+    }
+    // <font size/face/color> and stray presentational attributes
+    ['class', 'id', 'color', 'face', 'size', 'dir', 'align'].forEach((attr) => {
+      if (el.hasAttribute(attr)) el.removeAttribute(attr);
     });
+  });
+
+  // The attempt page flattens headings to inherited size with semi-bold weight —
+  // mirror that so an <h2> pasted into a question doesn't explode the preview.
+  tmp.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((heading) => {
+    const div = document.createElement('div');
+    div.setAttribute('style', 'font-weight:600');
+    while (heading.firstChild) div.appendChild(heading.firstChild);
+    heading.replaceWith(div);
+  });
+
+  // Constrain every <img> to fit within its container.
+  tmp.querySelectorAll('img').forEach((img) => {
+    img.removeAttribute('width');
+    img.removeAttribute('height');
+    img.setAttribute('style', 'max-width:100%;width:auto;max-height:150px;display:block;margin:4px 0;border-radius:3px;border:1px solid #e5e7eb;box-sizing:border-box;');
+  });
+
+  return tmp.innerHTML;
+}
+
+// Route remote images through the same-origin proxy so html2canvas can rasterize
+// them (the media CDN sends no CORS headers, which would taint the canvas and
+// silently blank every image in the PDF).
+function toProxiedImageUrl(url: string): string {
+  if (!url || url.startsWith('data:') || url.startsWith('blob:')) return url;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.origin === window.location.origin) return url;
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return `/api/proxy-image?url=${encodeURIComponent(parsed.toString())}`;
+    }
+  } catch { /* relative/malformed — use as-is */ }
+  return url;
+}
+
+// Generate the PDF by rasterizing the SAME page divs the Live Preview renders —
+// one source of truth, so the downloaded PDF matches the preview exactly.
+async function generatePdfFromPreview(previewHtml: string, title: string): Promise<void> {
+  const host = document.createElement('div');
+  // Render off-screen at natural size (display:none would give zero-size pages).
+  host.style.cssText = 'position:fixed;left:-100000px;top:0;width:760px;background:#fff;pointer-events:none;';
+  host.innerHTML = previewHtml;
+  document.body.appendChild(host);
+
+  try {
+    // Preview-only chrome must not appear in the PDF.
+    host.querySelectorAll('[data-preview-only]').forEach((node) => node.remove());
+
+    // Swap every image to a same-origin/proxied URL and wait for them to load.
+    const images = Array.from(host.querySelectorAll('img'));
+    images.forEach((img) => {
+      const src = img.getAttribute('src') || '';
+      const proxied = toProxiedImageUrl(src);
+      if (proxied !== src) img.setAttribute('src', proxied);
+    });
+    await Promise.all(
+      images.map((img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            })
+      )
+    );
+
+    const pages = Array.from(host.querySelectorAll<HTMLElement>('[data-pdf-page]'));
+    if (pages.length === 0) throw new Error('No preview pages to render');
+
+    // Strip the on-screen page chrome (border, shadow, rounding, gap) so the
+    // rasterized page is clean paper.
+    pages.forEach((page) => {
+      page.style.border = 'none';
+      page.style.borderRadius = '0';
+      page.style.boxShadow = 'none';
+      page.style.margin = '0';
+    });
+
+    const html2canvas = (await import('html2canvas')).default;
+    const { default: JsPDF } = await import('jspdf');
+    const doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const A4_W = 210;
+    const A4_H = 297;
+
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i], {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if (i > 0) doc.addPage();
+      // Fit to A4 preserving aspect ratio (pages taller than A4 are scaled down).
+      let w = A4_W;
+      let h = (canvas.height / canvas.width) * A4_W;
+      if (h > A4_H) {
+        w = (A4_H / h) * A4_W;
+        h = A4_H;
+      }
+      doc.addImage(imgData, 'JPEG', (A4_W - w) / 2, 0, w, h, undefined, 'FAST');
+    }
+
+    const safeTitle = title.replace(/[\\/:*?"<>|]+/g, '').trim() || 'exam';
+    doc.save(`${safeTitle}.pdf`);
+  } finally {
+    host.remove();
+  }
 }
 
 function buildPreviewHtml(examData: any, options: PdfOptions): string {
@@ -543,13 +676,13 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
 
   // ── Helper to emit a page label badge ──────────────────────────────────────
   const pageBadge = (label: string) =>
-    `<div style="position:absolute;top:8px;right:8px;background:rgba(59,130,246,0.85);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;z-index:10">${label}</div>`;
+    `<div data-preview-only="true" style="position:absolute;top:8px;right:8px;background:rgba(59,130,246,0.85);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;z-index:10">${label}</div>`;
 
   // ── Footer strip overlay — height derived from image aspect ratio ──────────
   const footerOverlay = options.footerBanner
     ? `<div style="position:absolute;bottom:0;left:0;right:0;overflow:hidden">
         <img src="${options.footerBanner}" style="width:100%;display:block;object-fit:fill" />
-        <div style="position:absolute;top:3px;left:6px;background:rgba(0,0,0,0.5);color:#fff;font-size:8px;padding:1px 5px;border-radius:3px">Footer Strip</div>
+        <div data-preview-only="true" style="position:absolute;top:3px;left:6px;background:rgba(0,0,0,0.5);color:#fff;font-size:8px;padding:1px 5px;border-radius:3px">Footer Strip</div>
        </div>`
     : '';
 
@@ -557,7 +690,7 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
 
   // ── Page 1: Cover banner ────────────────────────────────────────────────────
   if (options.coverBanner) {
-    html += `<div style="${pageStyle}">`;
+    html += `<div data-pdf-page="true" style="${pageStyle}">`;
     html += pageBadge('Cover Page');
     html += `<img src="${options.coverBanner}" style="width:100%;height:${PAGE_H}px;object-fit:cover;display:block" />`;
     html += `</div>`;
@@ -570,7 +703,7 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
 
   // Cover info page
   if (options.showCoverPage) {
-    html += `<div style="${pageStyle}">`;
+    html += `<div data-pdf-page="true" style="${pageStyle}">`;
     html += pageBadge('Cover Info');
     html += `<div style="${contentStyle}">`;
     if (options.headerText) {
@@ -608,7 +741,7 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
   const flushPage = (isLast = false) => {
     if (!pageBuffer) return;
     pageIndex++;
-    html += `<div style="${pageStyle}">`;
+    html += `<div data-pdf-page="true" style="${pageStyle}">`;
     html += pageBadge(`Page ${pageIndex}`);
     html += `<div style="${contentStyle}">`;
     if (options.headerText) {
@@ -700,7 +833,7 @@ function buildPreviewHtml(examData: any, options: PdfOptions): string {
 
   // ── Back cover banner ───────────────────────────────────────────────────────
   if (options.backCoverBanner) {
-    html += `<div style="${pageStyle}">`;
+    html += `<div data-pdf-page="true" style="${pageStyle}">`;
     html += pageBadge('Back Cover');
     html += `<img src="${options.backCoverBanner}" style="width:100%;height:${PAGE_H}px;object-fit:cover;display:block" />`;
     html += `</div>`;

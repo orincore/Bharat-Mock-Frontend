@@ -582,12 +582,12 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
         </section>
 
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {/* ── Hardcoded Free plan ── */}
+          {/* ── Hardcoded Trial plan ── */}
           <Card className="relative border-2 border-gray-200">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between mb-4">
                 <CardTitle className="text-2xl flex items-center gap-2">
-                  Free
+                  Trial
                   {!user?.is_premium && isAuthenticated && (
                     <Badge variant="outline" className="text-xs border-green-200 bg-green-50 text-green-700">
                       Active
@@ -615,7 +615,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
               {isAuthenticated ? (
                 <Button className="w-full h-12 text-base font-semibold" variant="outline" disabled>
                   <Award className="h-5 w-5 mr-2" />
-                  {!user?.is_premium ? 'Current Plan' : 'Free Plan'}
+                  {!user?.is_premium ? 'Current Plan' : 'Trial Plan'}
                 </Button>
               ) : (
                 <Link
@@ -623,7 +623,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                   className="w-full"
                 >
                   <Button className="w-full h-12 text-base font-semibold" variant="outline">
-                    Get Started Free
+                    Start Free Trial
                   </Button>
                 </Link>
               )}

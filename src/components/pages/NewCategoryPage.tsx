@@ -773,7 +773,7 @@ export default function NewCategoryPage({
       <div className="container-main pb-4 lg:pb-6 pt-0">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           
-          <div className="flex-1 min-w-0 w-full order-2 lg:order-1 -mt-2">
+          <div className="flex-1 min-w-0 w-full -mt-2">
             {/* Content tabs (overview + custom) */}
             {isContentTab && (
               <div ref={activeTab === "overview" ? overviewRef : undefined} className="space-y-8 sm:space-y-10">
@@ -938,7 +938,8 @@ export default function NewCategoryPage({
           </div>
 
           {/* Sidebar */}
-          <aside className="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2 lg:sticky lg:top-20">
+          {/* Sidebar stacks below the main content on mobile, beside it on desktop */}
+          <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-20">
             <div className="space-y-4 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto hide-scrollbar">
               {tableOfContents.length > 0 && (
                 <div className="hidden lg:block bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">

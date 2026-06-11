@@ -348,13 +348,24 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       type: 'content'
     }));
 
+    // Reserved tabs are admin-controlled per subcategory (visible unless disabled).
     return [
       staticTabs[0],
       ...customDescriptors,
-      staticTabs[1],
-      staticTabs[2]
+      ...(subcategoryInfo?.show_mock_tests_tab !== false ? [staticTabs[1]] : []),
+      ...(subcategoryInfo?.show_previous_papers_tab !== false ? [staticTabs[2]] : [])
     ];
-  }, [customTabs]);
+  }, [customTabs, subcategoryInfo]);
+
+  // If the active tab is a reserved tab the admin has hidden, fall back to overview.
+  useEffect(() => {
+    if (
+      (activeTab === 'mock-tests' && subcategoryInfo?.show_mock_tests_tab === false) ||
+      (activeTab === 'previous-papers' && subcategoryInfo?.show_previous_papers_tab === false)
+    ) {
+      setActiveTab('overview');
+    }
+  }, [activeTab, subcategoryInfo]);
 
   const normalizedInitialTabSlug = useMemo(() => sanitizeTabSlug(initialTabSlug), [initialTabSlug]);
   const [hasAppliedInitialTab, setHasAppliedInitialTab] = useState(!initialTabSlug);

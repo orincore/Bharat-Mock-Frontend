@@ -259,10 +259,15 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     cellLinks = {},
     cellColors = {},
     headerColors = {},
-    layout = 'scroll'
+    layout = 'scroll',
+    verticalAlign = 'top'
   } = content;
 
   if (!rows.length && !headers.length) return null;
+
+  // Admin-configured vertical alignment of cell content (top / middle / bottom).
+  const vAlignClass =
+    verticalAlign === 'middle' ? 'align-middle' : verticalAlign === 'bottom' ? 'align-bottom' : 'align-top';
 
   // 'fixed' = table always fits the screen width (table-layout:fixed, equal columns,
   // text wraps). 'scroll' (default) = columns keep a min width and the wrapper scrolls
@@ -297,7 +302,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                 return (
                   <th
                     key={index}
-                    className={`${cellWidthClass} ${isFixed ? 'px-2 py-2 text-sm sm:px-4 sm:py-3 sm:text-base' : 'px-4 py-3 text-base'} text-center font-bold tracking-wide select-none align-top leading-snug ${TABLE_CELL_RESET}`}
+                    className={`${cellWidthClass} ${isFixed ? 'px-2 py-2 text-sm sm:px-4 sm:py-3 sm:text-base' : 'px-4 py-3 text-base'} text-center font-bold tracking-wide select-none ${vAlignClass} leading-snug ${TABLE_CELL_RESET}`}
                     style={{
                       backgroundColor: bg,
                       color: fg,
@@ -333,7 +338,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                   return (
                     <td
                       key={cellIndex}
-                      className={`${cellWidthClass} ${isFixed ? 'px-2 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm' : 'px-4 py-2.5'} align-top text-center leading-relaxed text-gray-700 ${TABLE_CELL_RESET}`}
+                      className={`${cellWidthClass} ${isFixed ? 'px-2 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm' : 'px-4 py-2.5'} ${vAlignClass} text-center leading-relaxed text-gray-700 ${TABLE_CELL_RESET}`}
                       style={{
                         ...(cellColor.bg ? { backgroundColor: cellColor.bg } : {}),
                         ...(cellColor.text ? { color: cellColor.text } : {}),

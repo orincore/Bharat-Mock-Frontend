@@ -78,6 +78,9 @@ export function StandardExamCard({
     normalizedStatus.includes('live') ||
     (mounted && windowStarted && !windowEnded && !exam.allow_anytime);
   const isEndedWindow = mounted && windowEnded && !normalizedStatus.includes('live');
+  // Window hasn't opened yet — attempt is locked until the scheduled start time
+  const isUpcomingWindow = mounted && !derivedIsLive && !isEndedWindow &&
+    Boolean(startDate && !Number.isNaN(startDate.getTime()) && !windowStarted);
   const difficultyLabel = exam.difficulty
     ? exam.difficulty.charAt(0).toUpperCase() + exam.difficulty.slice(1)
     : 'Medium';
@@ -105,8 +108,48 @@ export function StandardExamCard({
   const fallbackPdf = exam.download_url || exam.pdf_url || exam.file_url;
 
   const defaultCta = isLocked ? 'Unlock Premium' : (ctaLabel || 'Attempt Now');
+  const isCtaLocked = isEndedWindow || isUpcomingWindow;
 
   const logoSrc = logoUrl(exam.logo_url || exam.image_url || exam.thumbnail_url || exam.category_logo_url || exam.category_icon || '');
+
+  const ctaButton = (
+    <Button
+      className={`w-full rounded-xl font-semibold shadow-lg transition-all duration-300 group/btn text-sm sm:text-base ${
+        isCtaLocked
+          ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+          : derivedIsLive
+            ? 'bg-gradient-to-r from-red-500 via-red-600 to-rose-600 text-white shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-rose-700'
+            : isLocked
+              ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-white shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-orange-500 hover:to-orange-700'
+              : 'bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-white shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-amber-500 hover:via-orange-600 hover:to-orange-700'
+      }`}
+      size="sm"
+      disabled={isCtaLocked}
+    >
+      {isEndedWindow ? (
+        'Window Closed'
+      ) : isUpcomingWindow ? (
+        <span className="inline-flex items-center justify-center gap-1.5 sm:gap-2">
+          <Lock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          Attempt Locked
+        </span>
+      ) : derivedIsLive ? (
+        <span className="relative flex items-center justify-center gap-1.5 sm:gap-2 font-semibold uppercase tracking-wide">
+          <span className="relative flex h-3 w-3 sm:h-3.5 sm:w-3.5 items-center justify-center">
+            <span className="absolute inline-flex h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full bg-white/40 animate-ping" />
+            <span className="relative inline-flex h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-white" />
+          </span>
+          Join Live
+        </span>
+      ) : (
+        <>
+          {isLocked && <Lock className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />}
+          {defaultCta}
+          {!isLocked && <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 transition-transform group-hover/btn:translate-x-0.5" />}
+        </>
+      )}
+    </Button>
+  );
 
   return (
     <div className={`group relative flex h-full flex-col rounded-2xl border bg-white overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 ${
@@ -234,7 +277,16 @@ export function StandardExamCard({
         </div>
 
         {/* Scheduled window — Live Tests only */}
-        {showSchedule && (scheduleFrom || scheduleTo) && (
+        {showSchedule && isUpcomingWindow && scheduleFrom && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2 space-y-1 text-[11px] sm:text-xs">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-500 shrink-0" />
+              <span className="font-medium text-slate-400">Available from</span>
+              <span className="ml-auto font-semibold text-slate-700">{scheduleFrom}</span>
+            </div>
+          </div>
+        )}
+        {showSchedule && !isUpcomingWindow && (scheduleFrom || scheduleTo) && (
           <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2 space-y-1 text-[11px] sm:text-xs">
             {scheduleFrom && (
               <div className="flex items-center gap-1.5">
@@ -255,39 +307,15 @@ export function StandardExamCard({
 
         {/* CTA */}
         <div className="mt-auto flex flex-col gap-1.5 sm:gap-2">
-          <Link href={examUrl} className="inline-flex w-full">
-            <Button
-              className={`w-full rounded-xl font-semibold shadow-lg transition-all duration-300 group/btn text-sm sm:text-base ${
-                isEndedWindow
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
-                  : derivedIsLive
-                    ? 'bg-gradient-to-r from-red-500 via-red-600 to-rose-600 text-white shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-rose-700'
-                    : isLocked
-                      ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-white shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-orange-500 hover:to-orange-700'
-                      : 'bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-white shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:from-amber-500 hover:via-orange-600 hover:to-orange-700'
-              }`}
-              size="sm"
-              disabled={isEndedWindow}
-            >
-              {isEndedWindow ? (
-                'Window Closed'
-              ) : derivedIsLive ? (
-                <span className="relative flex items-center justify-center gap-1.5 sm:gap-2 font-semibold uppercase tracking-wide">
-                  <span className="relative flex h-3 w-3 sm:h-3.5 sm:w-3.5 items-center justify-center">
-                    <span className="absolute inline-flex h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full bg-white/40 animate-ping" />
-                    <span className="relative inline-flex h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-white" />
-                  </span>
-                  Join Live
-                </span>
-              ) : (
-                <>
-                  {isLocked && <Lock className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />}
-                  {defaultCta}
-                  {!isLocked && <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 transition-transform group-hover/btn:translate-x-0.5" />}
-                </>
-              )}
-            </Button>
-          </Link>
+          {isCtaLocked ? (
+            <div className="inline-flex w-full" aria-disabled="true">
+              {ctaButton}
+            </div>
+          ) : (
+            <Link href={examUrl} className="inline-flex w-full">
+              {ctaButton}
+            </Link>
+          )}
 
           {/* PDF buttons */}
           {pdfMode && (

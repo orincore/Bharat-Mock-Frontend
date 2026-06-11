@@ -441,21 +441,23 @@ export default async function ServerPageContent({
         </div>
       </div>
 
-      {/* Tab Navigation — subcategory pages always show it (for the reserved
-          Mock Tests / Previous Papers tabs); category pages only when custom tabs exist. */}
+      {/* Tab Navigation — subcategory pages show the reserved Mock Tests / Previous
+          Papers tabs unless the admin disabled them; category pages only when custom
+          tabs exist. */}
       {(customTabs.length > 0 || isSubcategory) && (
         <TabNavigation
           customTabs={customTabs}
           activeTabId={activeTabId}
           first={first}
-          showReservedTabs={isSubcategory}
+          showMockTestsTab={isSubcategory && pageInfo?.show_mock_tests_tab !== false}
+          showPreviousPapersTab={isSubcategory && pageInfo?.show_previous_papers_tab !== false}
         />
       )}
 
       {/* Content */}
       <div className="container-main pb-4 lg:pb-6">
         <div className={`flex flex-col lg:flex-row items-start ${!isSubcategory ? 'gap-8' : 'lg:gap-8'}`}>
-          <div id="page-pdf-content" className="flex-1 min-w-0 w-full order-2 lg:order-1">
+          <div id="page-pdf-content" className="flex-1 min-w-0 w-full">
             <div className="space-y-8 sm:space-y-10">
               {/* Subcategories - only on overview tab for categories */}
               {!isSubcategory && (!activeTabId || activeTabId === 'overview') && subcategories.length > 0 && (
@@ -541,7 +543,8 @@ export default async function ServerPageContent({
           </div>
 
           {/* Sidebar */}
-          <aside className="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2 lg:sticky lg:top-20">
+          {/* Sidebar stacks below the main content on mobile, beside it on desktop */}
+          <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-20">
             <div className="space-y-4 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto hide-scrollbar">
               {/* Table of Contents */}
               {tableOfContents.length > 0 && (

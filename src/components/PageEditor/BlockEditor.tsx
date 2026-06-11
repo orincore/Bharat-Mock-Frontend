@@ -129,6 +129,7 @@ const normalizeHeadingTag = (value?: string | null, fallback: HeadingTagOption =
 
 const TEXT_COLOR_OPTIONS = [
   { label: 'Default', value: '#111827' },
+  { label: 'White', value: '#ffffff' },
   { label: 'Blue', value: '#1d4ed8' },
   { label: 'Green', value: '#15803d' },
   { label: 'Orange', value: '#d97706' },
@@ -1565,6 +1566,45 @@ const focusRangeEditable = (range: Range | null): HTMLElement | null => {
   return host;
 };
 
+// Custom colour swatch for the context menu. The native colour input stays
+// mounted for the whole interaction: React's onChange fires continuously while
+// the user drags inside the OS picker, and unmounting/refocusing there killed
+// the dialog. Instead we listen for the native `change` event (fired once, when
+// the user confirms/closes the picker) and only then apply the colour.
+const CtxCustomColorSwatch: React.FC<{ onPick: (color: string) => void; title?: string }> = ({ onPick, title = 'Custom colour…' }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const onPickRef = useRef(onPick);
+  onPickRef.current = onPick;
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const handleNativeChange = () => onPickRef.current(el.value);
+    el.addEventListener('change', handleNativeChange);
+    return () => el.removeEventListener('change', handleNativeChange);
+  }, []);
+
+  return (
+    <label
+      title={title}
+      className="relative w-5 h-5 rounded-full border border-gray-300 hover:scale-110 transition-transform flex-shrink-0 cursor-pointer overflow-hidden"
+      style={{ background: 'conic-gradient(#ef4444, #f59e0b, #84cc16, #06b6d4, #3b82f6, #a855f7, #ef4444)' }}
+      // Don't preventDefault here (the input needs its default mousedown to take
+      // focus and open the picker); just stop the menu's own handlers.
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="absolute inset-[5px] rounded-full bg-white flex items-center justify-center text-[9px] leading-none text-gray-600 pointer-events-none">+</span>
+      <input
+        ref={inputRef}
+        type="color"
+        defaultValue="#1d4ed8"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      />
+    </label>
+  );
+};
+
 const CtxBtn: React.FC<{ title: string; onApply: () => void; className?: string; children: React.ReactNode }> = ({
   title,
   onApply,
@@ -1722,6 +1762,11 @@ const RichTextContextMenu: React.FC = () => {
                 style={{ backgroundColor: opt.value }}
               />
             ))}
+            <div className="w-px h-4 bg-gray-200 mx-0.5 flex-shrink-0" />
+            <CtxCustomColorSwatch
+              title="Custom text colour…"
+              onPick={(color) => { exec('foreColor', color); closeMenu(); }}
+            />
           </div>
         )}
       </div>
@@ -1745,6 +1790,11 @@ const RichTextContextMenu: React.FC = () => {
                 {opt.value ? '' : '∅'}
               </button>
             ))}
+            <div className="w-px h-4 bg-gray-200 mx-0.5 flex-shrink-0" />
+            <CtxCustomColorSwatch
+              title="Custom highlight colour…"
+              onPick={(color) => { exec('hiliteColor', color); closeMenu(); }}
+            />
           </div>
         )}
       </div>
@@ -2736,6 +2786,9 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
   // on narrow screens. 'fixed' = table always fits the screen width; columns share
   // the width equally and cell text wraps instead of scrolling.
   const layout: 'scroll' | 'fixed' = content.layout === 'fixed' ? 'fixed' : 'scroll';
+  // Vertical alignment of cell content (top / middle / bottom).
+  const verticalAlign: 'top' | 'middle' | 'bottom' =
+    content.verticalAlign === 'middle' || content.verticalAlign === 'bottom' ? content.verticalAlign : 'top';
 
   const update = (next: Partial<any>) => onChange({ ...content, ...next });
 
@@ -2954,6 +3007,26 @@ const TableContentEditor = ({ content, onChange }: { content: any; onChange: (co
           >
             Scrollable
           </button>
+        </div>
+      </div>
+
+      {/* Vertical alignment of cell content */}
+      <div className="flex items-center justify-between gap-3 flex-wrap p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Vertical alignment</label>
+          <p className="text-xs text-gray-500">Where cell text sits when a row grows taller than one line.</p>
+        </div>
+        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden text-xs font-semibold shrink-0">
+          {([['top', 'Top'], ['middle', 'Center'], ['bottom', 'Bottom']] as const).map(([value, label], i) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => update({ verticalAlign: value })}
+              className={`px-3 py-1.5 ${i > 0 ? 'border-l border-gray-300' : ''} transition-colors ${verticalAlign === value ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -3678,6 +3751,9 @@ const InlineTableEditor = ({
   // on narrow screens. 'fixed' = table always fits the screen width; columns share
   // the width equally and cell text wraps instead of scrolling.
   const layout: 'scroll' | 'fixed' = content.layout === 'fixed' ? 'fixed' : 'scroll';
+  // Vertical alignment of cell content (top / middle / bottom).
+  const verticalAlign: 'top' | 'middle' | 'bottom' =
+    content.verticalAlign === 'middle' || content.verticalAlign === 'bottom' ? content.verticalAlign : 'top';
 
   const update = (next: Partial<any>) => onChange({ ...content, ...next });
 
@@ -4059,6 +4135,18 @@ const InlineTableEditor = ({
             className={`px-1.5 py-0.5 border-l border-gray-300 transition-colors ${layout === 'scroll' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
             Scroll
           </button>
+        </div>
+        <div className="w-px h-4 bg-gray-200 mx-1" />
+
+        {/* Vertical alignment of cell content */}
+        <div className="inline-flex items-center rounded border border-gray-300 overflow-hidden text-[10px] font-semibold"
+          title="Vertical alignment: where cell text sits when a row grows taller than one line.">
+          {([['top', '↑ Top'], ['middle', '↕ Mid'], ['bottom', '↓ Bot']] as const).map(([value, label], i) => (
+            <button key={value} type="button" onClick={() => update({ verticalAlign: value })}
+              className={`px-1.5 py-0.5 ${i > 0 ? 'border-l border-gray-300' : ''} transition-colors ${verticalAlign === value ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+              {label}
+            </button>
+          ))}
         </div>
         <div className="w-px h-4 bg-gray-200 mx-1" />
 

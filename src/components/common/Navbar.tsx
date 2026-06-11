@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from '@/components/common/Image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { GraduationCap, Menu, X, User, LogOut, FileText, ChevronDown, Languages } from 'lucide-react';
+import { GraduationCap, Menu, X, User, LogOut, FileText, ChevronDown, Languages, Crown, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -86,6 +86,45 @@ const ROLE_THEMES: Record<'admin' | 'editor' | 'author', RoleTheme> = {
 };
 
 const DEFAULT_AVATAR_CLASS = 'border-primary/60 bg-primary/10 text-primary-foreground';
+
+function PremiumStatusBadge({ isPremium, className = '', onClick }: { isPremium: boolean; className?: string; onClick?: () => void }) {
+  if (isPremium) {
+    return (
+      <Link
+        href="/subscriptions/manage"
+        onClick={onClick}
+        className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white pl-1 pr-2 py-1 transition-shadow hover:shadow-md ${className}`}
+      >
+        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white">
+          <Crown className="h-3 w-3" />
+        </span>
+        <span className="flex flex-col items-start leading-tight whitespace-nowrap">
+          <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600">Active</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground">
+            Premium
+            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+          </span>
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href="/subscriptions"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-white pl-1 pr-2 py-1 transition-shadow hover:shadow-md ${className}`}
+    >
+      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white">
+        <Crown className="h-3 w-3" />
+      </span>
+      <span className="flex flex-col items-start leading-tight whitespace-nowrap">
+        <span className="text-[8px] font-bold uppercase tracking-wider text-orange-500">Upgrade</span>
+        <span className="text-[11px] font-bold text-foreground">Unlock Premium</span>
+      </span>
+    </Link>
+  );
+}
 
 export function Navbar() {
   const t = useTranslations('nav');
@@ -184,16 +223,16 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1 min-h-[40px]">
+          <div className="hidden md:flex items-center gap-0.5 lg:gap-1 min-h-[40px]">
             <>
                 {/* Explore Exams Dropdown */}
-                <div 
-                  className="relative"
+                <div
+                  className="relative flex-shrink-0"
                   onMouseEnter={handleExploreMouseEnter}
                   onMouseLeave={handleExploreMouseLeave}
                 >
                   <button
-                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    className="px-2 lg:px-3 xl:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted whitespace-nowrap"
                     suppressHydrationWarning
                   >
                     Exams
@@ -296,7 +335,7 @@ export function Navbar() {
                     href={item.href}
                     target={item.open_in_new_tab ? '_blank' : undefined}
                     rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`px-2 lg:px-3 xl:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                       isActive(item.href)
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -306,11 +345,16 @@ export function Navbar() {
                     {item.label}
                   </Link>
                 ))}
+
+                {/* Premium status — shown right after Blogs */}
+                {hasMounted && !isLoading && isAuthenticated && (
+                  <PremiumStatusBadge isPremium={!!user?.is_premium} className="ml-1 flex-shrink-0" />
+                )}
             </>
           </div>
 
           {/* Language Selector & Auth Section */}
-          <div className="hidden md:flex items-center gap-2 min-w-[200px] justify-end">
+          <div className="hidden md:flex items-center gap-1.5 lg:gap-2 flex-shrink-0 justify-end">
             <LanguageSelector />
             {!hasMounted || isLoading ? (
               <div className="flex items-center gap-3">
@@ -528,6 +572,11 @@ export function Navbar() {
                 </div>
               ) : isAuthenticated ? (
                 <>
+                  <PremiumStatusBadge
+                    isPremium={!!user?.is_premium}
+                    className="w-full justify-center py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  />
                   {roleTheme && (
                     <Link
                       href={roleTheme.href}

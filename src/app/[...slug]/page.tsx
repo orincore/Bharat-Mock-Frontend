@@ -409,6 +409,20 @@ export default async function DynamicPage(
   }
 
   const isTabPage = slugArray.length >= 2;
+
+  // Reserved tab URLs return 404 when the admin has hidden that tab for this
+  // subcategory — keeps disabled Mock Tests / Previous Papers pages out of the index.
+  if (isTabPage && (firstSegmentType === 'subcategory' || firstSegmentType === 'combined-subcategory')) {
+    const reservedSlug = slugArray[1]?.toLowerCase();
+    const subInfo = serverPageData?.subcategoryInfo;
+    if (
+      (reservedSlug === 'mock-tests' && subInfo?.show_mock_tests_tab === false) ||
+      (reservedSlug === 'previous-papers' && subInfo?.show_previous_papers_tab === false)
+    ) {
+      notFound();
+    }
+  }
+
   // Resolve the overview tab SEO on the main page (see generateMetadata above) so the
   // page title, description and breadcrumb match the metadata.
   const tabSlugForSchema = isTabPage ? slugArray[slugArray.length - 1] : 'overview';

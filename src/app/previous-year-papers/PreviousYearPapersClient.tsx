@@ -31,6 +31,16 @@ const deriveYear = (exam: Exam): string | null => {
   return String(parsed.getFullYear());
 };
 
+// Cards in descending order: newest paper year first, then newest created.
+const sortPapersDesc = (list: ExamWithDerivedYear[]): ExamWithDerivedYear[] =>
+  [...list].sort((a, b) => {
+    const yearDiff = Number(b.derivedYear || 0) - Number(a.derivedYear || 0);
+    if (yearDiff !== 0) return yearDiff;
+    const aDate = a.created_at || a.updated_at || '';
+    const bDate = b.created_at || b.updated_at || '';
+    return new Date(bDate).getTime() - new Date(aDate).getTime();
+  });
+
 interface InitialData {
   exams: Exam[];
   categories: Category[];
@@ -46,7 +56,9 @@ interface SSRData {
 }
 
 export default function PreviousYearPapersClient({ initialData, initialDifficulties, initialSections, initialTopics }: { initialData: InitialData } & SSRData) {
-  const [exams, setExams] = useState<ExamWithDerivedYear[]>(initialData.exams.map(e => ({ ...e, derivedYear: deriveYear(e) })));
+  const [exams, setExams] = useState<ExamWithDerivedYear[]>(
+    sortPapersDesc(initialData.exams.map(e => ({ ...e, derivedYear: deriveYear(e) })))
+  );
   const [categories, setCategories] = useState<Category[]>(initialData.categories);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialData.subcategories);
@@ -238,11 +250,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
         derivedYear: deriveYear(exam),
       }));
 
-      const sortedExams = enrichedExams.sort((a, b) => {
-        const aDate = a.created_at || a.updated_at || '';
-        const bDate = b.created_at || b.updated_at || '';
-        return new Date(bDate).getTime() - new Date(aDate).getTime();
-      });
+      const sortedExams = sortPapersDesc(enrichedExams);
 
       const backendYearOptions = (response.years || [])
         .filter((year) => typeof year === 'number')
@@ -401,8 +409,10 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
   );
 
   const FiltersPanel = () => (
-    <div className="bg-card rounded-xl border border-border p-6 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-      <div className="flex items-center justify-between mb-6">
+    // Compact spacing + short scrollable option lists so all five filter groups
+    // (Category, Sub-category, Difficulty, Year, Access) stay visible on desktop.
+    <div className="bg-card rounded-xl border border-border p-5 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+      <div className="flex items-center justify-between mb-4">
         <p className="font-display text-lg font-bold text-foreground flex items-center gap-2">
           <Filter className="h-5 w-5 text-primary" />
           Filters
@@ -424,12 +434,12 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
           ))}
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               Category
             </label>
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-36 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -462,7 +472,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
             {subcategoriesLoading ? (
               <Skeleton className="h-10 w-full rounded-lg" />
             ) : (
-              <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
+              <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-36 lg:overflow-y-auto">
                 <label className="flex items-center gap-2 text-sm text-foreground">
                   <input
                     type="radio"
@@ -494,7 +504,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
             <label className="block text-sm font-medium text-foreground mb-2">
               Difficulty
             </label>
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-36 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -524,7 +534,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
             <label className="block text-sm font-medium text-foreground mb-2">
               Year
             </label>
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-48 lg:overflow-y-auto">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-36 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -633,7 +643,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
 
       <div className="container-main py-12">
         <div className="flex flex-col lg:flex-row gap-8">
-          <aside className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0">
+          <aside className="hidden lg:block lg:w-72 xl:w-80 flex-shrink-0">
             <div className="sticky top-20">
               <FiltersPanel />
             </div>
