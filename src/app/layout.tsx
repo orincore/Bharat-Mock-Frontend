@@ -38,7 +38,10 @@ export const metadata: Metadata = {
   authors: [{ name: "BharatMock" }],
   robots: { index: true, follow: true },
   icons: {
-    icon: [{ url: "/favicon.jpg", type: "image/jpeg" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32", type: "image/x-icon" },
+      { url: "/favicon.jpg", type: "image/jpeg" },
+    ],
     apple: [{ url: "/favicon.jpg" }],
   },
   openGraph: {

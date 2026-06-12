@@ -9,16 +9,16 @@ const isDev = process.env.NODE_ENV === 'development';
 
 const prodCSP = [
   "default-src 'self'",
-  // blob: + gstatic/translate → Google Translate widget; clarity.ms → Microsoft Clarity (loaded via GTM)
-  "script-src 'self' 'unsafe-inline' blob: https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://www.clarity.ms https://*.clarity.ms",
+  // blob: + gstatic/translate → Google Translate widget; clarity.ms → Microsoft Clarity (loaded via GTM); *.razorpay.com → checkout loads risk-detection from cdn.razorpay.com
+  "script-src 'self' 'unsafe-inline' blob: https://www.googletagmanager.com https://www.google-analytics.com https://*.razorpay.com https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://www.clarity.ms https://*.clarity.ms",
   // gstatic/translate → Google Translate widget injected stylesheets
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com https://translate.googleapis.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com",
-  // *.clarity.ms + c.bing.com → Clarity beacons; *.google-analytics.com → GA4 regional collectors; translate hosts → widget
-  "connect-src 'self' https://api.bharatmock.com https://media.bharatmock.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://translate.googleapis.com https://translate-pa.googleapis.com https://translate.google.com https://www.gstatic.com https://*.clarity.ms https://c.bing.com",
-  // translate.google.com → Google Translate renders translated content in an iframe
-  "frame-src 'self' https://www.google.com https://maps.google.com https://checkout.razorpay.com https://translate.google.com",
+  // *.clarity.ms + c.bing.com → Clarity beacons; *.google-analytics.com + analytics.google.com + www.google.com → GA4 collectors (gtag sends /g/collect to all three); translate hosts → widget
+  "connect-src 'self' https://api.bharatmock.com https://media.bharatmock.com https://*.razorpay.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://translate.google.com https://www.gstatic.com https://*.clarity.ms https://c.bing.com",
+  // translate.google.com → Google Translate iframe; *.razorpay.com → checkout frames api.razorpay.com for 3DS/payment flows
+  "frame-src 'self' https://www.google.com https://maps.google.com https://*.razorpay.com https://translate.google.com",
   "object-src 'none'",
   "base-uri 'self'",
 ].join('; ');
