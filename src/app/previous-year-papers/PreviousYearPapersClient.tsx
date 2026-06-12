@@ -409,9 +409,9 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
   );
 
   const FiltersPanel = () => (
-    // Compact spacing + short scrollable option lists so all five filter groups
-    // (Category, Sub-category, Difficulty, Year, Access) stay visible on desktop.
-    <div className="bg-card rounded-xl border border-border p-5 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+    // The card renders at full height (no internal scrollbar); only the
+    // individual option lists scroll when a group has many options.
+    <div className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center justify-between mb-4">
         <p className="font-display text-lg font-bold text-foreground flex items-center gap-2">
           <Filter className="h-5 w-5 text-primary" />
@@ -439,7 +439,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
             <label className="block text-sm font-medium text-foreground mb-2">
               Category
             </label>
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-36 lg:overflow-y-auto">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-60 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -472,7 +472,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
             {subcategoriesLoading ? (
               <Skeleton className="h-10 w-full rounded-lg" />
             ) : (
-              <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-36 lg:overflow-y-auto">
+              <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-60 lg:overflow-y-auto">
                 <label className="flex items-center gap-2 text-sm text-foreground">
                   <input
                     type="radio"
@@ -504,7 +504,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
             <label className="block text-sm font-medium text-foreground mb-2">
               Difficulty
             </label>
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-36 lg:overflow-y-auto">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-60 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -534,7 +534,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
             <label className="block text-sm font-medium text-foreground mb-2">
               Year
             </label>
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-36 lg:overflow-y-auto">
+            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-60 lg:overflow-y-auto">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="radio"
@@ -644,9 +644,9 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
       <div className="container-main py-12">
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="hidden lg:block lg:w-72 xl:w-80 flex-shrink-0">
-            <div className="sticky top-20">
-              <FiltersPanel />
-            </div>
+            {/* Not sticky: the panel shows at full height with no internal
+                scrollbar, so pinning it would cut off its bottom on short screens. */}
+            <FiltersPanel />
           </aside>
 
           <div className="flex-1 min-w-0">
