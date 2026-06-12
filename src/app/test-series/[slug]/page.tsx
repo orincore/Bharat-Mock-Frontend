@@ -54,7 +54,7 @@ async function fetchPageContent(testSeriesId: string) {
 async function fetchSidebarContent(slug: string) {
   try {
     const [seriesRes, bannersRes] = await Promise.all([
-      fetch(`${apiBase}/test-series?limit=50&is_published=true`, { cache: 'no-store' }),
+      fetch(`${apiBase}/test-series?limit=50&is_published=true&exclude_hidden=true`, { cache: 'no-store' }),
       fetch(`${apiBase}/page-banners?identifier=${SIDEBAR_BANNER_IDENTIFIER}`, { cache: 'no-store' }),
     ]);
 

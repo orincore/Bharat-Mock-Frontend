@@ -208,7 +208,7 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
     setSidebarLoading(true);
     try {
       const [seriesResponse, banners] = await Promise.all([
-        testSeriesService.getTestSeries({ limit: 50, is_published: true }),
+        testSeriesService.getTestSeries({ limit: 50, is_published: true, exclude_hidden: true }),
         pageBannersService.getBanners(SIDEBAR_BANNER_IDENTIFIER)
       ]);
 

@@ -227,7 +227,7 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
     setIsLoading(true);
     setError('');
     try {
-      const params: any = { page: pagination.page, limit: pagination.limit, is_published: true };
+      const params: any = { page: pagination.page, limit: pagination.limit, is_published: true, exclude_hidden: true };
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (filters.category.trim()) params.category = filters.category.trim();
       if (filters.subcategory.trim()) params.subcategory = filters.subcategory.trim();

@@ -621,6 +621,24 @@ export default function TestSeriesSidebarAdmin() {
     }
   };
 
+  // Toggles whether the series appears as a card on the public /mock-test-series
+  // page. Hidden series stay published: their detail page and exams keep working.
+  const handleToggleListingVisibility = async (series: TestSeriesWithDetails) => {
+    const hide = !series.hidden_from_listing;
+    try {
+      await testSeriesService.updateTestSeries(series.id, { hidden_from_listing: hide });
+      setTestSeries(prev => prev.map(s => s.id === series.id ? { ...s, hidden_from_listing: hide } : s));
+      toast({
+        title: hide ? 'Hidden from listing' : 'Visible on listing',
+        description: hide
+          ? `"${series.title}" will no longer appear on the Mock Test Series page.`
+          : `"${series.title}" will now appear on the Mock Test Series page.`,
+      });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error?.message || 'Failed to update visibility', variant: 'destructive' });
+    }
+  };
+
   const handleDeleteSeries = async (seriesId: string, title: string) => {
     if (!confirm(`Delete test series "${title}"? This cannot be undone.`)) return;
     try {
@@ -983,12 +1001,22 @@ export default function TestSeriesSidebarAdmin() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            series.is_published 
-                              ? 'bg-green-100 text-green-800' 
+                            series.is_published
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
                             {series.is_published ? 'Published' : 'Draft'}
                           </span>
+                          <div
+                            className="flex items-center gap-1.5 pl-2 border-l border-slate-200"
+                            title="Show this series as a card on the public Mock Test Series page"
+                          >
+                            <Switch
+                              checked={!series.hidden_from_listing}
+                              onCheckedChange={() => handleToggleListingVisibility(series)}
+                            />
+                            <span className="text-xs text-slate-500 whitespace-nowrap">On listing</span>
+                          </div>
                         </div>
                       </div>
                       {expandedSeries.has(series.id) && (

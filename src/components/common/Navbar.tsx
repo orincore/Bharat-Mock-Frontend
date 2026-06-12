@@ -41,7 +41,6 @@ const NAV_LINK_KEYS = [
   { key: 'home', href: '/' },
   { key: 'mockTests', href: '/mock-test-series' },
   { key: 'prevPapers', href: '/previous-year-papers' },
-  { key: 'liveTests', href: '/live-tests' },
   { key: 'quizzes', href: '/quizzes' },
   { key: 'currentAffairs', href: '/current-affairs' },
   { key: 'blogs', href: '/blogs' },

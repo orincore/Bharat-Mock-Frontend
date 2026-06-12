@@ -50,6 +50,8 @@ export interface TestSeries {
   is_free: boolean;
   price: number;
   display_order: number;
+  /** Admin flag: hide this series from public listings (e.g. /mock-test-series). */
+  hidden_from_listing?: boolean;
   created_at: string;
   updated_at: string;
   deleted_at?: string;
@@ -85,6 +87,8 @@ export interface TestSeriesFilters {
   subcategory?: string;
   difficulty?: string;
   is_published?: boolean;
+  /** When true, the API omits series marked hidden_from_listing (public listings only). */
+  exclude_hidden?: boolean;
 }
 
 class TestSeriesService {
@@ -100,6 +104,7 @@ class TestSeriesService {
     if (filters?.subcategory) params.append('subcategory', filters.subcategory);
     if (filters?.difficulty) params.append('difficulty', filters.difficulty);
     if (filters?.is_published !== undefined) params.append('is_published', filters.is_published.toString());
+    if (filters?.exclude_hidden !== undefined) params.append('exclude_hidden', filters.exclude_hidden.toString());
 
     const queryString = params.toString();
     const url = `/test-series${queryString ? `?${queryString}` : ''}`;

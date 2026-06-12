@@ -322,7 +322,7 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
                   <input type="radio" name="quiz-section" className="h-4 w-4 accent-primary"
                     checked={effectiveActiveSectionKey === s.key}
                     onChange={() => setActiveSectionKey(s.key)} />
-                  <span>{s.name} ({s.count})</span>
+                  <span>{s.name}</span>
                 </label>
               ))}
             </div>
@@ -336,14 +336,14 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="radio" name="quiz-chapter" className="h-4 w-4 accent-primary"
                   checked={selectedTopicKey === ''} onChange={() => setSelectedTopicKey('')} />
-                <span>All Chapters ({activeSectionCount})</span>
+                <span>All Chapters</span>
               </label>
               {topicGroups.map((t) => (
                 <label key={t.key} className="flex items-center gap-2 text-sm text-foreground">
                   <input type="radio" name="quiz-chapter" className="h-4 w-4 accent-primary"
                     checked={selectedTopicKey === t.key}
                     onChange={() => setSelectedTopicKey(t.key)} />
-                  <span>{t.name} ({t.count})</span>
+                  <span>{t.name}</span>
                 </label>
               ))}
             </div>

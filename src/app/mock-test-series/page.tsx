@@ -36,7 +36,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 async function fetchInitialData() {
   try {
     const [seriesRes, categoriesRes, subcategoriesRes, popularRes, newSeriesRes, bannersRes, testimonialsRes] = await Promise.all([
-      fetch(`${API_BASE}/test-series?page=1&limit=12&is_published=true`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/test-series?page=1&limit=12&is_published=true&exclude_hidden=true`, { cache: 'no-store' }),
       fetch(`${API_BASE}/taxonomy/categories`, { cache: 'no-store' }),
       fetch(`${API_BASE}/taxonomy/subcategories`, { cache: 'no-store' }),
       fetch(`${API_BASE}/page-popular-tests/exam_page`, { cache: 'no-store' }),
