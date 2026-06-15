@@ -401,6 +401,32 @@ export default function TestSeriesSidebarAdmin() {
     }
   };
 
+  // Reorder the test series cards themselves (controls display_order, which the public
+  // /mock-test-series page sorts by). The list is already kept in display_order.
+  const reorderSeries = async (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= testSeries.length) return;
+
+    const newSeries = [...testSeries];
+    const [moved] = newSeries.splice(fromIndex, 1);
+    newSeries.splice(toIndex, 0, moved);
+    newSeries.forEach((s, index) => { s.display_order = index; });
+
+    const previous = testSeries;
+    setTestSeries(newSeries);
+
+    try {
+      await testSeriesService.reorderTestSeries(newSeries.map(s => s.id));
+      toast({ title: 'Success', description: 'Test series order updated' });
+    } catch (error) {
+      console.error('Failed to update test series order:', error);
+      toast({ title: 'Error', description: 'Failed to update test series order', variant: 'destructive' });
+      setTestSeries(previous);
+    }
+  };
+
+  const moveSeriesUp = (index: number) => reorderSeries(index, index - 1);
+  const moveSeriesDown = (index: number) => reorderSeries(index, index + 1);
+
   // Banner Management Functions
   const fetchBanners = async () => {
     setBannersLoading(true);
@@ -862,7 +888,8 @@ export default function TestSeriesSidebarAdmin() {
               <div className="mb-6">
                 <h2 className="text-xl font-semibold text-slate-900 mb-2">Test Series Order Management</h2>
                 <p className="text-sm text-muted-foreground">
-                  Manage the display order of test series sections, topics, and exams. Changes are saved automatically.
+                  Use the up/down arrows beside each series to order the cards on the public Mock Test Series page,
+                  and expand a series to reorder its sections, topics, and exams. Changes are saved automatically.
                 </p>
               </div>
 
@@ -878,17 +905,40 @@ export default function TestSeriesSidebarAdmin() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {testSeries.map((series) => (
+                  {testSeries.map((series, seriesIndex) => (
                     <Card key={series.id} className="p-6 bg-white">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
+                          {/* Reorder the card on the public Mock Test Series page */}
+                          <div className="flex flex-col">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => moveSeriesUp(seriesIndex)}
+                              disabled={seriesIndex === 0}
+                              className="h-6 w-6 p-0"
+                              title="Move series up"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => moveSeriesDown(seriesIndex)}
+                              disabled={seriesIndex === testSeries.length - 1}
+                              className="h-6 w-6 p-0"
+                              title="Move series down"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                          </div>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => toggleSeriesExpansion(series.id)}
                           >
-                            {expandedSeries.has(series.id) ? 
-                              <ChevronUp className="h-4 w-4" /> : 
+                            {expandedSeries.has(series.id) ?
+                              <ChevronUp className="h-4 w-4" /> :
                               <ChevronDown className="h-4 w-4" />
                             }
                           </Button>

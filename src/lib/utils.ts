@@ -116,3 +116,27 @@ export function getCleanContentLabel(value?: string | null): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// High-signal tokens that only appear when raw HTML/CSS was slugified into a
+// section_key (e.g. a pasted "<div class='row' style='...'>" title becomes
+// "div-class-row-style-...-jsx-3766058341-fw-bold"). De-slugifying such a key produced
+// the markup gibberish that leaked into the Table of Contents. A genuine section_key
+// never contains these.
+// Only CSS/markup-specific tokens — NOT plain English words like "important", "style"
+// or "class", which legitimately appear in headings ("Important Dates", "Class 10").
+// The real garbage key is also 500+ chars, so the length guard in humanizeSectionKey
+// catches it independently.
+const SECTION_KEY_GARBAGE_RE = /(--tw-|font[\s-]?family|line[\s-]?height|display[\s-]+flex|flex[\s-]?wrap|bs[\s-]?gutter|gutter[\s-]?y|\bjsx[\s-]?\d|\brgb\b|#[a-f0-9]{6}|\b\d+px\b|\b\d+rem\b)/i;
+
+// Humanize a section_key for use as a TOC label fallback — but only when the key is a
+// real slug. Keys auto-generated from a pasted-HTML title are giant slugified blobs;
+// de-slugifying those is what put raw markup text into the TOC. Reject anything that
+// looks like markup or is absurdly long for a heading.
+export function humanizeSectionKey(sectionKey?: string | null): string {
+  const humanized = (sectionKey || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!humanized || humanized.length > 80 || SECTION_KEY_GARBAGE_RE.test(humanized)) return "";
+  return humanized;
+}

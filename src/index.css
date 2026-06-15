@@ -347,7 +347,20 @@ table th, table td,
   white-space: nowrap !important;
   word-break: normal !important;
   overflow-wrap: normal !important;
-  font-size: 1.125rem;
+  font-size: 1rem !important;
+}
+
+/* One consistent font-size for every table and its content across category,
+   subcategory and blog pages. The `!important` + descendant rule is required because
+   TableBlock puts Tailwind size classes (text-xs/text-sm/text-base) directly on cells
+   and pasted cell content carries inline font-size — both of which otherwise win over
+   the rule above and make tables render at different sizes. sup/sub keep their
+   relative size so superscripts/subscripts still work. */
+table th *:not(sub):not(sup),
+table td *:not(sub):not(sup),
+.rich-text-content table th *:not(sub):not(sup),
+.rich-text-content table td *:not(sub):not(sup) {
+  font-size: inherit !important;
 }
 
 /* Fit-to-width table block (layout = 'fixed'): force every cell to WRAP and grow
@@ -462,8 +475,22 @@ table th, table td,
     white-space: normal !important;
     word-break: break-word !important;
     overflow-wrap: anywhere !important;
-    font-size: 0.8125rem;
     padding: 6px 8px;
+  }
+
+  /* Keep tables one consistent (smaller) size on mobile — covers bare tables
+     (category/subcategory TableBlock) as well as blog rich-text tables, and beats the
+     per-cell Tailwind sizes and pasted inline font-size. */
+  table th, table td,
+  .rich-text-content table th,
+  .rich-text-content table td {
+    font-size: 0.875rem !important;
+  }
+  table th *:not(sub):not(sup),
+  table td *:not(sub):not(sup),
+  .rich-text-content table th *:not(sub):not(sup),
+  .rich-text-content table td *:not(sub):not(sup) {
+    font-size: inherit !important;
   }
 
   /* Compact rich text inside the result review so questions/options fit the
@@ -474,8 +501,12 @@ table th, table td,
   }
   #solutions-section .rich-text-content table th,
   #solutions-section .rich-text-content table td {
-    font-size: 0.75rem;
+    font-size: 0.75rem !important;
     padding: 4px 6px;
+  }
+  #solutions-section .rich-text-content table th *:not(sub):not(sup),
+  #solutions-section .rich-text-content table td *:not(sub):not(sup) {
+    font-size: inherit !important;
   }
   #solutions-section .rich-text-content p,
   #solutions-section .rich-text-content div {
@@ -539,10 +570,14 @@ table th, table td,
    - table blocks (.bm-table-fit / .bm-table-scroll) — header/cell colours are inline
    - any element carrying an inline `color:` style (set via the editor toolbar or the
      right-click formatting menu) and everything nested inside it.
+   - links (<a>) and their contents — these must stay blue (see rule below). Because
+     this selector's many :not() args give it higher specificity than `.rich-text-content a`,
+     without this exclusion the !important here out-ranked the blue link rule and links
+     rendered black (e.g. inside blog post body text).
    Without these exclusions the !important here overrides the admin's inline colours,
    which is why colours applied in the editor rendered black. */
-.rich-text-editor *:not(.bm-table-fit *):not(.bm-table-scroll *):not([style*="color"]):not([style*="color"] *),
-.rich-text-content *:not(.bm-table-fit *):not(.bm-table-scroll *):not([style*="color"]):not([style*="color"] *) {
+.rich-text-editor *:not(.bm-table-fit *):not(.bm-table-scroll *):not([style*="color"]):not([style*="color"] *):not(a):not(a *),
+.rich-text-content *:not(.bm-table-fit *):not(.bm-table-scroll *):not([style*="color"]):not([style*="color"] *):not(a):not(a *) {
   color: #1a1a1a !important;
 }
 
@@ -551,6 +586,30 @@ table th, table td,
 .rich-text-content a {
   color: #2563eb !important;
   text-decoration: underline !important;
+  cursor: pointer;
+}
+
+/* Table-cell links: blue but NOT underlined — applies to both the public render and
+   the admin inline table editor (both use real <td>/<th> cells). Two problems this
+   fixes:
+   1. Admin editor: inline links (added via the right-click menu / createLink) inherited
+      the cell's dark text colour because Tailwind's preflight resets <a> to
+      `color: inherit`, so the link looked like plain text. `td a` forces blue.
+   2. Public page: links inside a cell picked up the underline from `.rich-text-content a`.
+      The `.rich-text-content` variant below out-specifies that rule to drop the underline,
+      while the colour stays blue. */
+/* Table-cell links (inline links added via the right-click menu — only the selected word
+   is an <a>): show the linked word in blue, with NO underline, on both the public render
+   and the admin editor. The surrounding cell text keeps its normal colour. The
+   class-qualified variants are needed because when a table is wrapped in an outer
+   .rich-text-content (e.g. blog posts) the global `.rich-text-content a` rule matches the
+   cell <a>, and a class out-weighs the bare `td a` element selector — so without them the
+   underline wouldn't be removed. */
+td a, th a,
+.rich-text-content td a, .rich-text-content th a,
+td .rich-text-content a, th .rich-text-content a {
+  color: #2563eb !important;
+  text-decoration: none !important;
   cursor: pointer;
 }
 

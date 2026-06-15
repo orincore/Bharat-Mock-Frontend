@@ -182,6 +182,11 @@ class TestSeriesService {
     await this.client.post('/test-series/exams/reorder', { orderedIds }, true);
   }
 
+  // Reorders the test series cards on the public /mock-test-series page.
+  async reorderTestSeries(orderedIds: string[]): Promise<void> {
+    await this.client.post('/test-series/reorder', { orderedIds }, true);
+  }
+
   async uploadLogo(id: string, file: File): Promise<{ success: boolean; logo_url: string; test_series: TestSeries }> {
     const formData = new FormData();
     formData.append('logo', file);

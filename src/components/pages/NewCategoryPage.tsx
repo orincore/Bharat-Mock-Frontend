@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { isBlockEmpty } from "@/lib/utils/blockContent";
-import { getCleanContentLabel } from "@/lib/utils";
+import { getCleanContentLabel, humanizeSectionKey } from "@/lib/utils";
 import { Download, ChevronRight, ChevronLeft, ArrowRight, BookOpen, List, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -75,10 +75,9 @@ const getSectionTocLabel = (section: Section): string => {
     }
   }
 
-  return (section.section_key || "")
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Humanized section_key, but only when it's a real slug — a key generated from a
+  // pasted-HTML title is a markup blob whose de-slugified form leaked into the TOC.
+  return humanizeSectionKey(section.section_key);
 };
 
 interface CustomTab {

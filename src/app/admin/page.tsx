@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Users, CheckCircle, Clock } from 'lucide-react';
+import { FileText, Users, CheckCircle, Clock, Trash2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { examService } from '@/lib/api/examService';
 import { adminService } from '@/lib/api/adminService';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,6 +24,7 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [showLogsViewer, setShowLogsViewer] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
 
   const allowedRoles = ['admin', 'editor', 'author'];
   const hasDashboardAccess = useMemo(
@@ -71,6 +73,22 @@ export default function AdminDashboard() {
 
     fetchStats();
   }, [hasDashboardAccess, isAdmin]);
+
+  const handleClearCache = async () => {
+    if (!window.confirm('Clear the entire application cache? This removes all cached data (exams, pages, navigation, etc.) and they will be rebuilt on the next request.')) {
+      return;
+    }
+    setClearingCache(true);
+    try {
+      const result = await adminService.clearCache();
+      toast.success(result.message || 'Cache cleared successfully');
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      toast.error('Failed to clear cache. Please try again.');
+    } finally {
+      setClearingCache(false);
+    }
+  };
 
   const statCards = useMemo(() => {
     const baseCards = [
@@ -196,6 +214,21 @@ export default function AdminDashboard() {
               >
                 Manage Users
               </Link>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={handleClearCache}
+                  disabled={clearingCache}
+                  className="flex w-full items-center justify-center gap-2 px-4 py-3 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors text-center font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {clearingCache ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  {clearingCache ? 'Clearing Cache…' : 'Clear Application Cache'}
+                </button>
+              )}
             </div>
           )}
         </div>

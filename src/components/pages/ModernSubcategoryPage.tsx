@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { isBlockEmpty } from "@/lib/utils/blockContent";
 import { examPdfService } from "@/lib/api/examPdfService";
 import { generateExamPDF } from "@/lib/utils/pdfGenerator";
-import { getCleanContentLabel } from "@/lib/utils";
+import { getCleanContentLabel, humanizeSectionKey } from "@/lib/utils";
 import { toast } from "sonner";
 import { Download, Lock, Filter, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
 import { useAuth } from "@/context/AuthContext";
@@ -96,10 +97,9 @@ const getSectionTocLabel = (section: Section): string => {
     }
   }
 
-  return (section.section_key || "")
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Humanized section_key, but only when it's a real slug — a key generated from a
+  // pasted-HTML title is a markup blob whose de-slugified form leaked into the TOC.
+  return humanizeSectionKey(section.section_key);
 };
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL
@@ -1135,7 +1135,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
 
-            <div ref={tabScrollRef} className="flex-1 flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div ref={tabScrollRef} className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {tabItems.map((tab) => {
                 const tabDescriptor = tabDescriptors.find((t) => t.id === tab.id);
                 const tabHref = tabDescriptor?.slug === 'overview' || !tabDescriptor?.slug
@@ -1162,6 +1162,15 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               })}
             </div>
 
+            {/* Mobile "More" button — sits to the left of the right arrow */}
+            <button
+              type="button"
+              className="md:hidden whitespace-nowrap text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 flex-shrink-0 ml-2"
+              onClick={() => setIsTabListOpen(true)}
+            >
+              More
+            </button>
+
             {/* Right scroll arrow */}
             <button
               type="button"
@@ -1170,15 +1179,6 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
             >
               <ChevronRight className="w-4 h-4 text-gray-600" />
-            </button>
-
-            {/* Mobile "More" button */}
-            <button
-              type="button"
-              className="md:hidden whitespace-nowrap text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 flex-shrink-0 ml-2"
-              onClick={() => setIsTabListOpen(true)}
-            >
-              More
             </button>
           </div>
         </div>
@@ -1657,8 +1657,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
         </div>
       </div>
 
-      {isTabListOpen && (
-        <div className="fixed inset-0 bg-black/80 z-50 md:hidden">
+      {isTabListOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 z-[60] md:hidden">
           <div className="absolute inset-0 bg-white text-gray-900 flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <div className="text-lg font-bold text-gray-900 mb-4 px-2">All Sections</div>
@@ -1691,7 +1691,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
               </ul>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

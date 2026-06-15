@@ -70,7 +70,7 @@ export function SubscriptionPromoBanner() {
               <div className="sm:hidden flex items-center gap-2 flex-none">
                 <Crown className="h-4 w-4 text-amber-300 flex-shrink-0" />
                 <span className="inline-flex flex-wrap items-center gap-1.5 font-semibold text-[11px]">
-                  <span>30-Days Free @</span>
+                  <span>30 Days Trial @</span>
                   {priceStack}
                   <span>only</span>
                 </span>
@@ -86,7 +86,7 @@ export function SubscriptionPromoBanner() {
                   <span className="text-white/30">•</span>
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300">
                     <Clock className="h-3.5 w-3.5" />
-                    30-Days Free
+                    30 Days Trial
                   </span>
                 </span>
                 <span className="inline-flex items-baseline gap-2 font-semibold whitespace-nowrap">
@@ -98,10 +98,10 @@ export function SubscriptionPromoBanner() {
 
               <Link
                 href="/subscriptions"
-                className="inline-flex items-center rounded-full border border-white/40 px-3 py-1 text-[11px] sm:text-sm font-semibold text-white transition transform hover:-translate-y-0.5 hover:bg-white/10 whitespace-nowrap flex-none"
+                className="inline-flex items-center rounded-full border border-white bg-white px-3 py-1 text-[11px] sm:text-sm font-semibold text-[#0f1f44] transition transform hover:-translate-y-0.5 hover:bg-white/90 whitespace-nowrap flex-none"
                 onClick={handleEnrollClick}
               >
-                Start Free
+                Start Trial
               </Link>
             </div>
             <button

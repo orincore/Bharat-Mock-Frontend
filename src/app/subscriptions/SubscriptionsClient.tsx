@@ -623,7 +623,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                   className="w-full"
                 >
                   <Button className="w-full h-12 text-base font-semibold" variant="outline">
-                    Start Free Free
+                    Start Trial Free
                   </Button>
                 </Link>
               )}

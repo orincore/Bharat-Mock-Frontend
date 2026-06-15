@@ -673,5 +673,13 @@ export const adminService = {
   async removeExamPdfHi(examId: string) {
     const response = await apiClient.delete<{ success: boolean; message: string }>(`/admin/exams/${examId}/remove-pdf-hi`, true);
     return response;
+  },
+
+  async clearCache(): Promise<{ success: boolean; message: string; data: { keysRemoved: number } }> {
+    return apiClient.post<{ success: boolean; message: string; data: { keysRemoved: number } }>(
+      '/admin/cache/clear',
+      {},
+      true
+    );
   }
 };

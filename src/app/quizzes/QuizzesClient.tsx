@@ -19,6 +19,8 @@ type QuizExam = Exam & {
   section_order?: number | null;
   topic_name?: string | null;
   topic_order?: number | null;
+  // Admin-configured quiz order within its topic (exams.display_order)
+  display_order?: number | null;
   exam_subcategories?: { id?: string; name?: string; slug?: string; category_id?: string } | null;
 };
 
@@ -235,10 +237,17 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
     if (!effectiveActiveSectionKey) return [];
     let list = filteredExams.filter((e) => sectionKeyOf(e) === effectiveActiveSectionKey);
     if (selectedTopicKey) list = list.filter((e) => topicKeyOf(e) === selectedTopicKey);
-    return [...list].sort((a, b) =>
-      new Date(b.created_at || b.updated_at || '').getTime() -
-      new Date(a.created_at || a.updated_at || '').getTime()
-    );
+    // Respect the admin-configured order (exams.display_order), matching the test-series
+    // detail page. Fall back to newest-first only when display_order is equal/absent.
+    return [...list].sort((a, b) => {
+      const ao = a.display_order ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.display_order ?? Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return (
+        new Date(b.created_at || b.updated_at || '').getTime() -
+        new Date(a.created_at || a.updated_at || '').getTime()
+      );
+    });
   }, [filteredExams, effectiveActiveSectionKey, selectedTopicKey]);
 
   const activeSectionCount = useMemo(

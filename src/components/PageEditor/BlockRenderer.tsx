@@ -70,9 +70,17 @@ const resolveHeadingTag = (value?: string | null, fallback: HeadingTag = 'h3'): 
     ? ((value || '').toLowerCase() as HeadingTag)
     : fallback;
 
+// Headings are styled entirely by the design system (per-level classes) plus the
+// optional admin `content.color` applied on the outer tag. Inner content pasted from
+// external sites carries foreign `class` (e.g. Bootstrap `row`/`col`, styled-jsx
+// `jsx-...`), `id`, and inline `style` (font-family/font-size/color/display:flex),
+// plus `<div>` block wrappers that fight the heading layout. Strip all of them so the
+// design system always wins. Runs SSR-safe (regex only, no DOM).
 const sanitizeHeadingInnerHtml = (value?: string | null) =>
   removeStandaloneHeadingMarkers(value || '')
     .replace(/<\/?h[1-6][^>]*>/gi, '')
+    .replace(/<\/?div[^>]*>/gi, '')
+    .replace(/\s+(?:class|id|style)\s*=\s*("[^"]*"|'[^']*')/gi, '')
     .replace(/^(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+|(<p>(&nbsp;|\s|<br>)*<\/p>|<br>)+$/gi, '')
     .trim();
 
@@ -346,17 +354,10 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
                         ...(!isLastCol ? { borderRight: `1px solid ${borderColor}` } : {}),
                       }}
                     >
-                      {cellLink ? (
-                        <a
-                          href={cellLink}
-                          className="text-blue-600 hover:text-blue-800 underline underline-offset-2 decoration-blue-300 hover:decoration-blue-600 font-medium transition-colors"
-                          target={cellLinkTarget}
-                          rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
-                          dangerouslySetInnerHTML={{ __html: cell }}
-                        />
-                      ) : (
-                        <span className="rich-text-content" dangerouslySetInnerHTML={{ __html: cell }} />
-                      )}
+                      {/* Links are inline within the cell HTML (added via the right-click
+                          menu) so only the linked text is tappable — the whole cell is no
+                          longer wrapped in a single <a>. */}
+                      <span className="rich-text-content" dangerouslySetInnerHTML={{ __html: cell }} />
                     </td>
                   );
                 })}
@@ -604,17 +605,9 @@ const AccordionBlock: React.FC<{ content: any; settings?: any }> = ({ content })
                     
                     return (
                       <td key={ci} className={`px-4 py-2 align-top text-center text-foreground rich-text-content ${TABLE_CELL_RESET}`} style={cellStyle}>
-                        {cellLink ? (
-                          <a
-                            href={cellLink}
-                            className="text-primary hover:underline"
-                            target={cellLinkTarget}
-                            rel={cellLinkTarget === '_blank' ? 'noopener noreferrer' : undefined}
-                            dangerouslySetInnerHTML={{ __html: cell }}
-                          />
-                        ) : (
-                          <span dangerouslySetInnerHTML={{ __html: cell }} />
-                        )}
+                        {/* Inline links only (right-click menu); the whole cell is not
+                            wrapped in <a> so only the linked text is tappable. */}
+                        <span dangerouslySetInnerHTML={{ __html: cell }} />
                       </td>
                     );
                   })}

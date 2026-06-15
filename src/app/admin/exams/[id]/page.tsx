@@ -4200,6 +4200,7 @@ export default function ExamFormPage() {
                                       placeholder={selectedLanguage === 'en' ? 'Explain the correct answer...' : 'सही उत्तर की व्याख्या करें...'}
                                       rows={3}
                                       variant="compact"
+                                      onImagePaste={(file) => handleExplanationImageUpload(section.id, question.id, file)}
                                     />
                                     {question.explanation_image_url ? (
                                       <div className="mt-2 flex items-center gap-4">

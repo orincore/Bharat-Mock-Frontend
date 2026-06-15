@@ -7,6 +7,7 @@ import TabNavigation from './TabNavigation';
 import MobileTOC from './MobileTOC';
 import DownloadPdfButton from './DownloadPdfButton';
 import { isBlockEmpty } from '@/lib/utils/blockContent';
+import { humanizeSectionKey } from '@/lib/utils';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
@@ -98,6 +99,13 @@ const sanitizeAnchor = (value?: string | null) => {
     .replace(/--+/g, '-');
 };
 
+// Markup/CSS remnants that survive an imperfect HTML-strip of a pasted title (e.g. a
+// truncated `<strong style="...` whose closing `>` was cut off). These contain `=`,
+// `()` or tag names, so — unlike plain words such as "Important" or "Class" — they
+// never appear in a legitimate heading. Used to drop garbage TOC labels. (The
+// section_key fallback uses humanizeSectionKey, which guards the de-slugified form.)
+const TOC_GARBAGE_RE = /(--tw-|style\s*=|class\s*=|rgb\s*\(|#[a-f0-9]{6}|\b\d+px\b|<\/?(?:div|span|strong|h[1-6])\b)/i;
+
 const stripHtmlForToc = (html?: string | null): string => {
   if (!html) return '';
   
@@ -151,7 +159,12 @@ const stripHtmlForToc = (html?: string | null): string => {
     text = text.replace(/:\s*[^\s]+/g, ' ');
     text = text.replace(/\s+/g, ' ').trim();
   }
-  
+
+  // Malformed/truncated HTML (e.g. an unterminated `<strong style="...` whose closing
+  // `>` and real text were cut off) survives the tag/style strips above and leaves
+  // markup remnants. Don't surface those in the TOC — drop the label entirely.
+  if (TOC_GARBAGE_RE.test(text)) return '';
+
   return text;
 };
 
@@ -168,11 +181,11 @@ const getSectionTocLabel = (section: Section): string => {
     }
   }
   
-  // Final fallback to section key
-  return (section.section_key || '')
-    .replace(/[-_]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Final fallback to a humanized section key — but ONLY when the key is a real slug.
+  // Keys auto-generated from a pasted-HTML title are giant slugified blobs
+  // (e.g. "div-class-row-style-...-jsx-...-fw-bold"); de-slugifying those produced the
+  // raw-markup text that leaked into the TOC.
+  return humanizeSectionKey(section.section_key);
 };
 
 // Fetch only tab-specific sections
@@ -364,9 +377,8 @@ export default async function ServerPageContent({
     .filter(entry => {
       // Must have both id and label
       if (!entry.id || !entry.label) return false;
-      // Hide entries that still contain CSS-like garbage
-      const hasGarbage = entry.label.match(/--tw-|style=|#[a-f0-9]{6}|\d+px/);
-      return !hasGarbage;
+      // Hide entries that still contain CSS/markup garbage leaked from pasted titles
+      return !TOC_GARBAGE_RE.test(entry.label);
     });
   
   // Get sidebar sections from the FULL page content — NOT contentData.sections,

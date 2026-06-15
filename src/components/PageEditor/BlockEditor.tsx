@@ -4259,6 +4259,9 @@ const InlineTableEditor = ({
                         contentEditable
                         suppressContentEditableWarning
                         className={`px-3 py-2 text-xs leading-snug text-center min-h-[32px] ${layout === 'fixed' ? 'whitespace-normal break-words [overflow-wrap:anywhere] [word-break:break-word]' : 'min-w-[90px]'} focus:outline-none ${TABLE_CELL_RESET}`}
+                        // Links are added inline (select text → right-click → Add link), so
+                        // only the linked word is an <a> and shows blue (via CSS); the rest of
+                        // the cell keeps the normal text colour. A per-cell text colour wins.
                         style={{ color: cellColor.text || '#111827', backgroundColor: cellColor.bg || 'transparent' }}
                         dangerouslySetInnerHTML={{ __html: cell }}
                         onFocus={() => setFocusedCell(cellKey)}
@@ -4290,22 +4293,9 @@ const InlineTableEditor = ({
                             onFocus={() => setPinnedControls(cellKey)}
                             onBlur={() => setTimeout(() => setPinnedControls(null), 150)}
                             className="w-3.5 h-3.5 rounded cursor-pointer border-0 p-0" title="Text color" />
-                          <button type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              const url = window.prompt('Cell link URL (leave empty to remove):', cellLink);
-                              if (url !== null) handleCellLinkChange(rowIndex, cellIndex, url);
-                            }}
-                            className={`text-[11px] leading-none transition-colors px-0.5 ${cellLink ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600'}`}
-                            title={cellLink ? `Link: ${cellLink}` : 'Add link'}>🔗</button>
-                          {cellLink && (
-                            <button type="button"
-                              onMouseDown={(e) => { e.preventDefault(); handleCellLinkTargetChange(rowIndex, cellIndex, cellLinkTarget === '_blank' ? '_self' : '_blank'); }}
-                              className="text-[9px] text-gray-400 hover:text-gray-700 leading-none"
-                              title={cellLinkTarget === '_blank' ? 'New tab (click to change)' : 'Same tab (click to change)'}>
-                              {cellLinkTarget === '_blank' ? '↗' : '→'}
-                            </button>
-                          )}
+                          {/* Links are added inline: select the text in the cell, right-click,
+                              and choose "Add link" — this wraps only the selected word in an <a>
+                              so just that text is tappable (no whole-cell link). */}
                         </div>
                       </div>
                     </td>
