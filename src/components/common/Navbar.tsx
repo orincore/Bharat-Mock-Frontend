@@ -92,16 +92,16 @@ function PremiumStatusBadge({ isPremium, className = '', onClick }: { isPremium:
       <Link
         href="/subscriptions/manage"
         onClick={onClick}
-        className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white pl-1 pr-2 py-1 transition-shadow hover:shadow-md ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-white pl-1 pr-2 py-1 transition-shadow hover:shadow-md ${className}`}
       >
         <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white">
           <Crown className="h-3 w-3" />
         </span>
         <span className="flex flex-col items-start leading-tight whitespace-nowrap">
-          <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600">Active</span>
+          <span className="text-[8px] font-bold uppercase tracking-wider text-orange-500">Active</span>
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground">
             Premium
-            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+            <CheckCircle2 className="h-2.5 w-2.5 text-orange-500" />
           </span>
         </span>
       </Link>
@@ -344,11 +344,6 @@ export function Navbar() {
                     {item.label}
                   </Link>
                 ))}
-
-                {/* Premium status — shown right after Blogs */}
-                {hasMounted && !isLoading && isAuthenticated && (
-                  <PremiumStatusBadge isPremium={!!user?.is_premium} className="ml-1 flex-shrink-0" />
-                )}
             </>
           </div>
 
@@ -362,6 +357,8 @@ export function Navbar() {
               </div>
             ) : isAuthenticated ? (
               <>
+                {/* Premium status — aligned to the right with the auth controls */}
+                <PremiumStatusBadge isPremium={!!user?.is_premium} className="flex-shrink-0" />
                 {roleTheme && (
                   <Button
                     asChild

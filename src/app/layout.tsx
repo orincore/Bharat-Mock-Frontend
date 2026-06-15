@@ -65,6 +65,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} suppressHydrationWarning className={`${inter.variable} ${plusJakartaSans.variable}`}>
       <head>
+        {/* Google AdSense account verification */}
+        <meta name="google-adsense-account" content="ca-pub-3614937645740807" />
         {/* Google Tag Manager */}
         <Script
           id="gtm-script"
