@@ -386,8 +386,10 @@ export default function BlogsClient({ initialData }: { initialData: InitialData 
             {/* Hero grid — only show when not filtered/searched */}
             {hero && (
               <section>
-                {/* Mobile: show the full featured image (no crop/zoom) with text below */}
-                <div className="lg:hidden">
+                {/* Mobile: full featured hero image with text below, then the
+                    remaining featured articles (heroRight is desktop-only, so
+                    without this they'd vanish on mobile). */}
+                <div className="lg:hidden space-y-4">
                   <Link href={`/blogs/${hero.slug}`} className="group block rounded-xl overflow-hidden border border-border bg-card hover:shadow-md transition">
                     {hero.featured_image_url ? (
                       <img src={hero.featured_image_url} alt={hero.title} className="w-full h-auto" />
@@ -402,6 +404,11 @@ export default function BlogsClient({ initialData }: { initialData: InitialData 
                       <p className="mt-1 text-xs text-muted-foreground">{hero.author?.name && <span>{hero.author.name} · </span>}{formatDate(hero.published_at)}</p>
                     </div>
                   </Link>
+                  {heroRight.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {heroRight.map(a => <ArticleCard key={a.id} article={a} />)}
+                    </div>
+                  )}
                 </div>
                 {/* Desktop: hero + right grid */}
                 <div className="hidden lg:grid grid-cols-[3fr_2fr] gap-4 h-[420px]">

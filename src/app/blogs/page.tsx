@@ -45,14 +45,19 @@ async function fetchInitialData() {
 
     const [articlesData, categoriesData] = await Promise.all([
       articlesRes.ok ? articlesRes.json() : { data: [], pagination: { total: 0, totalPages: 0 } },
-      categoriesRes.ok ? categoriesRes.json() : [],
+      categoriesRes.ok ? categoriesRes.json() : { data: [] },
     ]);
 
     const rawArticles: Blog[] = Array.isArray(articlesData?.data) ? articlesData.data : [];
     // Filter out current affairs notes from the main blog listing
     const articles = rawArticles.filter((b) => !b.is_current_affairs_note);
 
-    const categories: string[] = Array.isArray(categoriesData) ? categoriesData : [];
+    // API responds with { success, data: string[] }; tolerate a bare array too.
+    const categories: string[] = Array.isArray(categoriesData)
+      ? categoriesData
+      : Array.isArray(categoriesData?.data)
+        ? categoriesData.data
+        : [];
 
     return {
       articles,
