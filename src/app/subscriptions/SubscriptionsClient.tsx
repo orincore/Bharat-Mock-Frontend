@@ -391,7 +391,9 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
   const whyUsSection = pageContent?.sections.find(s => s.section_type === 'why_us');
   const faqSection = pageContent?.sections.find(s => s.section_type === 'faq');
 
-  const heroImageUrl = heroSection?.settings?.hero_image_url as string | undefined;
+  // Fall back to the bundled hero illustration when the CMS has no hero image set.
+  const DEFAULT_HERO_IMAGE = '/assets/bharatmock-subscription.webp';
+  const heroImageUrl = (heroSection?.settings?.hero_image_url as string | undefined) || DEFAULT_HERO_IMAGE;
   const heroImageAlt = heroSection?.settings?.hero_image_alt as string | undefined;
 
   const metaTitle = pageContent?.meta?.meta_title || 'Bharat Mock Premium Subscriptions | Unlimited Mock Tests & Analytics';
@@ -447,7 +449,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
             className="mb-8"
           />
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-            <div className="text-center lg:text-left space-y-6 max-w-3xl mx-auto">
+            <div className="order-2 lg:order-1 text-center lg:text-left space-y-6 max-w-3xl mx-auto">
               {heroSection?.settings?.show_badge && (
                 <Badge className="bg-white/25 text-white border-white/30 text-sm px-4 py-1 inline-flex w-auto">
                   {heroSection.settings.badge_text || heroSection.subtitle || 'Premium Learning'}
@@ -475,7 +477,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
               </div>
             </div>
             {heroImageUrl && (
-              <div className="relative w-full max-w-2xl lg:ml-auto">
+              <div className="order-1 lg:order-2 relative w-full max-w-2xl lg:ml-auto">
                 <div className="absolute inset-0 rounded-3xl bg-white/10 blur-3xl"></div>
                 <div className="relative rounded-3xl border border-white/20 bg-white/10 shadow-2xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}

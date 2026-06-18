@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { isBlockEmpty } from "@/lib/utils/blockContent";
 import { examPdfService } from "@/lib/api/examPdfService";
-import { generateExamPDF } from "@/lib/utils/pdfGenerator";
+import { downloadExamPdf } from "@/lib/utils/examPdfHtml";
 import { getCleanContentLabel, humanizeSectionKey } from "@/lib/utils";
 import { toast } from "sonner";
 import { Download, Lock, Filter, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
@@ -74,6 +74,7 @@ interface PageContentResponse {
   tocOrder?: Record<string, number>;
   tabHeadings?: Record<string, string>;
   tabSeo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string; canonical_url?: string }>;
+  pdfUrl?: string | null;
 }
 
 interface ModernSubcategoryPageProps {
@@ -481,7 +482,7 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       toast.loading('Preparing exam PDF...', { id: `pdf-${examId}` });
       const examData = await examPdfService.getExamForPDF(examId);
       toast.loading('Generating PDF document...', { id: `pdf-${examId}` });
-      await generateExamPDF(examData);
+      await downloadExamPdf(examData);
       toast.success('PDF downloaded successfully!', { id: `pdf-${examId}` });
     } catch (err) {
       console.error('[ModernSubcategory] exam PDF generation failed', err);
@@ -1072,7 +1073,8 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
           </div>
         )}
         <div className="container-main relative z-10">
-          <div className="text-left flex items-center gap-5">
+          <div className="text-left flex items-start justify-between gap-3">
+            <div className="flex items-center gap-5 min-w-0 flex-1">
             {subcategoryInfo?.logo_url && (
               <div className="flex-shrink-0 hidden sm:block">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1118,6 +1120,23 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
                 ))}
               </nav>
             </div>
+            </div>
+            {/* Download PDF — admin-uploaded file, overview tab only.
+                Falls back to raw structured_data if the API hasn't surfaced pdfUrl. */}
+            {(!currentTabDescriptor || currentTabDescriptor.id === 'overview') &&
+              (pageContent?.pdfUrl || (pageContent?.seo as any)?.structured_data?.pdf_url) && (
+              <a
+                href={pageContent?.pdfUrl || (pageContent?.seo as any)?.structured_data?.pdf_url}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="flex-shrink-0 mt-1 inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 rounded-full border text-xs sm:text-sm font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Download PDF</span>
+                <span className="sm:hidden">PDF</span>
+              </a>
+            )}
           </div>
         </div>
       </div>

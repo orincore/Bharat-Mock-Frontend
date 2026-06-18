@@ -17,7 +17,7 @@ import {
   Target
 } from 'lucide-react';
 import { examPdfService } from '@/lib/api/examPdfService';
-import { generateExamPDF } from '@/lib/utils/pdfGenerator';
+import { downloadExamPdf } from '@/lib/utils/examPdfHtml';
 import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { toast } from 'sonner';
 import { subcategoryService, type Subcategory, type SubcategoryOverview, type SubcategoryUpdate, type SubcategoryHighlight, type SubcategoryExamStat, type SubcategorySection, type SubcategoryTable, type SubcategoryQuestionPaper, type SubcategoryFAQ, type SubcategoryResource } from '@/lib/api/subcategoryService';
@@ -176,7 +176,7 @@ export default function SubcategoryPage({ categorySlug, subcategorySlug }: Subca
       const examData = await examPdfService.getExamForPDF(examId);
       
       toast.loading('Generating PDF document...', { id: 'pdf-download' });
-      await generateExamPDF(examData);
+      await downloadExamPdf(examData);
       
       toast.success('PDF downloaded successfully!', { id: 'pdf-download' });
     } catch (error) {

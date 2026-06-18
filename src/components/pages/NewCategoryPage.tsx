@@ -7,7 +7,6 @@ import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { isBlockEmpty } from "@/lib/utils/blockContent";
 import { getCleanContentLabel, humanizeSectionKey } from "@/lib/utils";
 import { Download, ChevronRight, ChevronLeft, ArrowRight, BookOpen, List, X } from "lucide-react";
-import { toast } from "sonner";
 
 interface Block {
   id: string;
@@ -114,6 +113,7 @@ interface PageContentResponse {
   tocOrder?: Record<string, number>;
   tabHeadings?: Record<string, string>;
   tabSeo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string; canonical_url?: string }>;
+  pdfUrl?: string | null;
 }
 
 interface Category {
@@ -226,120 +226,12 @@ const MobileTOC = ({
   );
 };
 
-const blobToDataUrl = (blob: Blob) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-      } else {
-        reject(new Error("Unable to convert image to data URL"));
-      }
-    };
-    reader.onerror = () => reject(reader.error || new Error("Failed to read image"));
-    reader.readAsDataURL(blob);
-  });
-
-const inlineImagesForPdf = async (root: HTMLElement | null) => {
-  if (!root) return () => {};
-
-  const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
-  const replacements: { img: HTMLImageElement; originalSrc: string, originalSrcset: string | null }[] = [];
-
-  const getImageUrl = (src: string): Promise<string | null> => {
-    return new Promise(async (resolve) => {
-      // Strategy 1: Fetch (Safest for CORS if supported)
-      try {
-        const response = await fetch(src, { mode: "cors", cache: 'no-cache' });
-        if (response.ok) {
-          const blob = await response.blob();
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
-          return;
-        }
-      } catch (e) {
-        // Fall through to canvas
-      }
-
-      // Strategy 2: Canvas with anonymous crossOrigin
-      const imgElement = new window.Image();
-      imgElement.crossOrigin = "anonymous";
-      imgElement.onload = () => {
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = imgElement.naturalWidth || imgElement.width;
-          canvas.height = imgElement.naturalHeight || imgElement.height;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            resolve(null);
-            return;
-          }
-          ctx.drawImage(imgElement, 0, 0);
-          resolve(canvas.toDataURL("image/png")); // PNG is safer for transparency in logos
-        } catch (e) {
-          resolve(null);
-        }
-      };
-      imgElement.onerror = () => resolve(null);
-      imgElement.src = src;
-    });
-  };
-
-  await Promise.all(
-    images.map(async (img) => {
-      const src = img.getAttribute("src") || img.src;
-      if (!src || src.startsWith("data:")) return;
-
-      try {
-        const dataUrl = await getImageUrl(src);
-        if (dataUrl) {
-          replacements.push({ 
-            img, 
-            originalSrc: src,
-            originalSrcset: img.getAttribute("srcset")
-          });
-          
-          // Clear srcset as it can override the src we're inlining
-          img.removeAttribute("srcset");
-          img.src = dataUrl;
-
-          // Crucial: Wait for the browser to register the new data URL
-          await new Promise((r) => {
-            if (img.complete) r(null);
-            else {
-              img.onload = () => r(null);
-              img.onerror = () => r(null);
-            }
-          });
-        }
-      } catch (error) {
-        console.warn("[NewCategoryPage] Skip image inlining:", src, error);
-      }
-    })
-  );
-
-  // Give the browser one last tick to render
-  await new Promise(r => setTimeout(r, 100));
-
-  return () => {
-    replacements.forEach(({ img, originalSrc, originalSrcset }) => {
-      img.src = originalSrc;
-      if (originalSrcset) {
-        img.setAttribute("srcset", originalSrcset);
-      }
-    });
-  };
-};
-
 export default function NewCategoryPage({
   categorySlug,
   initialTabSlug,
   serverPageData,
 }: NewCategoryPageProps) {
   const router = useRouter();
-  const overviewRef = useRef<HTMLDivElement>(null);
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
   const [category, setCategory] = useState<Category | null>(serverPageData?.categoryInfo || null);
@@ -350,7 +242,6 @@ export default function NewCategoryPage({
   const [isLoading, setIsLoading] = useState(!serverPageData?.categoryId);
   const [error, setError] = useState<string | null>(null);
   const [isTabListOpen, setIsTabListOpen] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Fetch category info + subcategories
   useEffect(() => {
@@ -477,36 +368,15 @@ export default function NewCategoryPage({
     window.history.replaceState(window.history.state, "", nextUrl);
   }, [currentTabDescriptor?.slug, categorySlug, hasAppliedInitialTab]);
 
-  // PDF download for overview tab
-  const handleDownloadOverviewPdf = async () => {
-    if (!overviewRef.current) return;
-    try {
-      setDownloadingPdf(true);
-      toast.loading("Generating PDF...", { id: "category-pdf" });
-
-      const html2pdf = (await import("html2pdf.js")).default;
-      const element = overviewRef.current;
-      const restoreImages = await inlineImagesForPdf(element);
-      const opt = {
-        margin: [10, 10, 10, 10] as [number, number, number, number],
-        filename: `${category?.name || categorySlug}-overview.pdf`,
-        image: { type: "jpeg" as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
-      };
-
-      await html2pdf().set(opt).from(element).save();
-      restoreImages();
-      toast.success("PDF downloaded!", { id: "category-pdf" });
-    } catch (err) {
-      console.error("[NewCategoryPage] PDF generation failed", err);
-      toast.error("Failed to generate PDF. Please try again.", {
-        id: "category-pdf",
-      });
-    } finally {
-      setDownloadingPdf(false);
-    }
-  };
+  // The category download PDF is now an admin-uploaded file (stored at
+  // structured_data.pdf_url and surfaced as pageContent.pdfUrl) rather than a
+  // client-side generated document. See the editor's "Download PDF" panel.
+  // Fall back to the raw structured_data so it works even if the API hasn't
+  // surfaced the top-level pdfUrl yet.
+  const pdfUrl =
+    pageContent?.pdfUrl ||
+    (pageContent?.seo as any)?.structured_data?.pdf_url ||
+    null;
 
   // Derived data
   const heroTitle = category?.name || categorySlug?.toUpperCase();
@@ -752,17 +622,19 @@ export default function NewCategoryPage({
               </div>
             </div>
 
-            {/* Right: Download PDF button */}
-            {activeTab === "overview" && (
-              <button
-                onClick={handleDownloadOverviewPdf}
-                disabled={downloadingPdf}
-                className="flex-shrink-0 mt-1 inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 rounded-full border text-xs sm:text-sm font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            {/* Right: Download PDF — admin-uploaded file, overview tab only */}
+            {activeTab === "overview" && pdfUrl && (
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="flex-shrink-0 mt-1 inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 rounded-full border text-xs sm:text-sm font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 transition-colors"
               >
                 <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">{downloadingPdf ? "Generating..." : "Download PDF"}</span>
-                <span className="sm:hidden">{downloadingPdf ? "..." : "PDF"}</span>
-              </button>
+                <span className="hidden sm:inline">Download PDF</span>
+                <span className="sm:hidden">PDF</span>
+              </a>
             )}
           </div>
         </div>
@@ -775,7 +647,7 @@ export default function NewCategoryPage({
           <div className="flex-1 min-w-0 w-full -mt-2">
             {/* Content tabs (overview + custom) */}
             {isContentTab && (
-              <div ref={activeTab === "overview" ? overviewRef : undefined} className="space-y-8 sm:space-y-10">
+              <div className="space-y-8 sm:space-y-10">
                 {activeTab === "overview" && subcategories.length > 0 && (
                   <div className="mb-8 sm:mb-10">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -792,7 +664,7 @@ export default function NewCategoryPage({
                       </p>
                     </div>
                     {/* Mobile View: Original squares maintained */}
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 md:hidden">
+                    <div data-pdf-pills="mobile" className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 md:hidden">
                       {subcategories.map((sub) => {
                         const logoUrl = sub.logo_url || category?.logo_url || null;
                         return (
@@ -824,7 +696,7 @@ export default function NewCategoryPage({
                     </div>
 
                     {/* Desktop View: Pill format matching home page */}
-                    <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div data-pdf-pills="desktop" className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {subcategories.map((sub) => {
                         const logoUrl = sub.logo_url || category?.logo_url || null;
                         return (

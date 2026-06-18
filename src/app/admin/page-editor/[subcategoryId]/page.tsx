@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { BlockEditor } from '@/components/PageEditor/BlockEditor';
-import { ArrowLeft, Save, Eye, History, Settings } from 'lucide-react';
+import { ArrowLeft, Save, Eye, History, Settings, FileText, Upload, Trash2 } from 'lucide-react';
 
 interface Section {
   id: string;
@@ -32,6 +32,8 @@ export default function PageEditorPage() {
   const [tocOrder, setTocOrder] = useState<Record<string, number | ''>>({});
   const [tabHeadings, setTabHeadings] = useState<Record<string, string>>({});
   const [showTabHeadingsPanel, setShowTabHeadingsPanel] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+  const [pdfUploading, setPdfUploading] = useState(false);
 
   useEffect(() => {
     fetchPageContent();
@@ -66,6 +68,7 @@ export default function PageEditorPage() {
       setCustomTabs(data.customTabs || []);
       setTocOrder(data.tocOrder || {});
       setTabHeadings(data.tabHeadings || {});
+      setPdfUrl(data.pdfUrl || '');
     } catch (error) {
       console.error('Error fetching page content:', error);
     } finally {
@@ -222,6 +225,76 @@ export default function PageEditorPage() {
     }
   };
 
+  // Persist the page download PDF URL into page_seo.structured_data.pdf_url.
+  // The backend merges structured_data, so this never wipes schema/tab config.
+  const persistPdfUrl = async (url: string | null) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/${subcategoryId}/seo`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          ...seoData,
+          structured_data: { ...(seoData.structured_data || {}), pdf_url: url || null }
+        })
+      }
+    );
+    if (!res.ok) throw new Error('Failed to save PDF');
+    setSeoData((prev: any) => ({
+      ...prev,
+      structured_data: { ...(prev.structured_data || {}), pdf_url: url || null }
+    }));
+  };
+
+  const handlePdfFile = async (file: File) => {
+    if (file.type !== 'application/pdf') {
+      alert('Please select a PDF file.');
+      return;
+    }
+    try {
+      setPdfUploading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You must be logged in to upload.');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `page-content/subcategory/${subcategoryId}/pdf`);
+      const uploadRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/page-content/${subcategoryId}/media`,
+        { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData }
+      );
+      if (!uploadRes.ok) throw new Error('Upload failed');
+      const uploadData = await uploadRes.json();
+      if (!uploadData?.file_url) throw new Error('Upload did not return a URL');
+      await persistPdfUrl(uploadData.file_url);
+      setPdfUrl(uploadData.file_url);
+      alert('PDF uploaded. The download button is now live on the public page.');
+    } catch (error) {
+      console.error('Failed to upload PDF:', error);
+      alert('Failed to upload PDF. Please try again.');
+    } finally {
+      setPdfUploading(false);
+    }
+  };
+
+  const handleRemovePdf = async () => {
+    if (!window.confirm('Remove the download PDF? The button will be hidden on the public page.')) return;
+    try {
+      setPdfUploading(true);
+      await persistPdfUrl(null);
+      setPdfUrl('');
+      alert('PDF removed.');
+    } catch (error) {
+      console.error('Failed to remove PDF:', error);
+      alert('Failed to remove the PDF.');
+    } finally {
+      setPdfUploading(false);
+    }
+  };
+
   const handlePreview = () => {
     if (subcategoryInfo?.slug) {
       window.open(`/${subcategoryInfo.slug}`, '_blank');
@@ -280,6 +353,42 @@ export default function PageEditorPage() {
             >
               <span>Tab Headings</span>
             </button>
+            {/* Download PDF — upload an admin-managed file shown on the public page */}
+            {pdfUrl ? (
+              <div className="flex items-center gap-1">
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 border border-green-300 text-green-700 bg-green-50 rounded-lg hover:bg-green-100 flex items-center gap-1.5 text-sm font-medium"
+                  title="View current PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden sm:inline">PDF</span>
+                </a>
+                <label className={`px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 flex items-center gap-1.5 text-sm font-medium cursor-pointer ${pdfUploading ? 'opacity-60 pointer-events-none' : ''}`}>
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden sm:inline">{pdfUploading ? '…' : 'Replace'}</span>
+                  <input type="file" accept="application/pdf" className="hidden" disabled={pdfUploading}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void handlePdfFile(f); e.target.value = ''; }} />
+                </label>
+                <button
+                  onClick={handleRemovePdf}
+                  disabled={pdfUploading}
+                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-50 flex items-center text-sm"
+                  title="Remove PDF"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className={`px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 flex items-center gap-1.5 text-sm font-medium cursor-pointer ${pdfUploading ? 'opacity-60 pointer-events-none' : ''}`}>
+                <Upload className="w-4 h-4" />
+                <span>{pdfUploading ? 'Uploading…' : 'Upload PDF'}</span>
+                <input type="file" accept="application/pdf" className="hidden" disabled={pdfUploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void handlePdfFile(f); e.target.value = ''; }} />
+              </label>
+            )}
             <button
               onClick={handlePreview}
               className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1.5 text-sm"

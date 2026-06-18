@@ -620,15 +620,16 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
         : (question.question_text || question.text || 'Question')
     );
 
-    // Reserve the REAL height of the question block (capped at one page) so long
-    // questions move to a fresh page instead of overflowing into the footer strip.
+    // Ensure a question never *starts* in the last few millimetres of a page, but
+    // DON'T reserve the whole block. Long questions (e.g. reading-comprehension
+    // items that repeat the full passage) must be allowed to flow across pages so
+    // they fill each page completely instead of jumping to a fresh page and
+    // leaving a large blank gap at the bottom of the previous one.
     doc.setFontSize(10);
     if (useHindiFont) {
       checkPageBreak(35);
     } else {
-      setFont('bold');
-      const measuredLines = doc.splitTextToSize(questionText, pageWidth - 2 * margin - 12);
-      checkPageBreak(Math.min(measuredLines.length * 5.5 + 12, pageHeight - 2 * margin));
+      checkPageBreak(16); // room for the number + first line
     }
 
     // Question number always in helvetica
@@ -643,8 +644,18 @@ export async function generateExamPDF(examData: ExamData, pdfOptions: Partial<Pd
     } else {
       setFont('bold');
       const questionLines = doc.splitTextToSize(questionText, pageWidth - 2 * margin - 12);
-      doc.text(questionLines, margin + 10, yPosition + 4);
-      yPosition += questionLines.length * 5.5 + 5;
+      const lineHeight = 5.5;
+      for (let i = 0; i < questionLines.length; i++) {
+        // Flow line-by-line: break only when the next line would cross the bottom
+        // boundary. The question number stays on the page where the block started.
+        if (i > 0) checkPageBreak(lineHeight);
+        setFont('bold');
+        doc.setFontSize(10);
+        doc.setTextColor(20, 20, 20);
+        doc.text(questionLines[i], margin + 10, yPosition + 4);
+        yPosition += lineHeight;
+      }
+      yPosition += 5;
     }
     // Images embedded in the rich-text HTML of the question (editor <img> tags)
     const questionHtmlRaw = (opts.language === 'hi' && (question as any).text_hi)

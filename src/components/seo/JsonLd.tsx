@@ -18,11 +18,11 @@ export function OrganizationJsonLd() {
       availableLanguage: ['English', 'Hindi'],
     },
     sameAs: [
-      'https://x.com/bharatmock',
-      'https://www.instagram.com/bharatmock',
+      'https://t.me/s/Bharatmock',
+      'https://instagram.com/bharatmock',
+      'https://facebook.com/bharatmock',
       'https://www.youtube.com/@bharatmock',
-      'https://www.facebook.com/bharatmock',
-      'https://linkedin.com/company/bharatmock',
+      'https://wa.me/918806727785',
     ],
   };
   return (

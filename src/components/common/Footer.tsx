@@ -5,11 +5,11 @@ import Image from '@/components/common/Image';
 import { Mail, Phone } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
-  FaFacebook,
+  FaTelegram,
   FaInstagram,
-  FaLinkedin,
+  FaFacebook,
   FaYoutube,
-  FaTwitter,
+  FaWhatsapp,
 } from 'react-icons/fa';
 
 const CONTACT = {
@@ -18,11 +18,11 @@ const CONTACT = {
 };
 
 const SOCIAL_LINKS = [
-  { label: 'Facebook',  href: 'https://www.facebook.com/bharatmock',        Icon: FaFacebook },
-  { label: 'Instagram', href: 'https://www.instagram.com/bharatmock',       Icon: FaInstagram },
-  { label: 'LinkedIn',  href: 'https://linkedin.com/company/bharatmock',    Icon: FaLinkedin },
-  { label: 'YouTube',   href: 'https://www.youtube.com/@bharatmock',        Icon: FaYoutube },
-  { label: 'Twitter',   href: 'https://x.com/bharatmock',                   Icon: FaTwitter },
+  { label: 'Telegram',  href: 'https://t.me/s/Bharatmock',          Icon: FaTelegram },
+  { label: 'Instagram', href: 'https://instagram.com/bharatmock',   Icon: FaInstagram },
+  { label: 'Facebook',  href: 'https://facebook.com/bharatmock',    Icon: FaFacebook },
+  { label: 'YouTube',   href: 'https://www.youtube.com/@bharatmock', Icon: FaYoutube },
+  { label: 'WhatsApp',  href: 'https://wa.me/918806727785',         Icon: FaWhatsapp },
 ];
 
 export function Footer() {

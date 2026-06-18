@@ -1,11 +1,10 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, BookOpen, List } from 'lucide-react';
+import { ChevronRight, BookOpen, List, Download } from 'lucide-react';
 import { PageBlockRenderer } from '@/components/PageEditor/PageBlockRenderer';
 import type { ServerPageData, FirstSegmentType } from './page';
 import TabNavigation from './TabNavigation';
 import MobileTOC from './MobileTOC';
-import DownloadPdfButton from './DownloadPdfButton';
 import { isBlockEmpty } from '@/lib/utils/blockContent';
 import { humanizeSectionKey } from '@/lib/utils';
 
@@ -62,6 +61,7 @@ interface PageContentResponse {
   tocOrder?: Record<string, number>;
   tabHeadings?: Record<string, string>;
   tabSeo?: Record<string, { meta_title?: string; meta_description?: string; meta_keywords?: string; canonical_url?: string }>;
+  pdfUrl?: string | null;
 }
 
 interface SubcategoryItem {
@@ -295,6 +295,13 @@ export default async function ServerPageContent({
 
   const rawPageContent: PageContentResponse | null = pageContent || null;
 
+  // Admin-uploaded download PDF. Prefer the top-level pdfUrl; fall back to the raw
+  // structured_data so the button appears even if the API hasn't surfaced pdfUrl yet.
+  const pageDownloadPdf =
+    rawPageContent?.pdfUrl ||
+    (rawPageContent?.seo as any)?.structured_data?.pdf_url ||
+    null;
+
   const filterContentForTab = (data: PageContentResponse): { sections: Section[]; orphanBlocks: Block[] } => {
     if (!activeTabId || activeTabId === 'overview') {
       return {
@@ -442,12 +449,20 @@ export default async function ServerPageContent({
                 </nav>
               </div>
             </div>
-            {/* Download PDF — category pages only */}
-            {!isSubcategory && (!activeTabId || activeTabId === 'overview') && (
-              <DownloadPdfButton
-                filename={heroTitle || first}
-                contentId="page-pdf-content"
-              />
+            {/* Download PDF — category & subcategory pages, shown when an admin has
+                uploaded a PDF for this page (stored at structured_data.pdf_url). */}
+            {(!activeTabId || activeTabId === 'overview') && pageDownloadPdf && (
+              <a
+                href={pageDownloadPdf}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="flex-shrink-0 mt-1 inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 rounded-full border text-xs sm:text-sm font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Download PDF</span>
+                <span className="sm:hidden">PDF</span>
+              </a>
             )}
           </div>
         </div>

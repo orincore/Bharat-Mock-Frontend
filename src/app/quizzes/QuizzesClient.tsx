@@ -166,8 +166,10 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
       if (selectedCategoryId && categoryIdOf(e) !== selectedCategoryId) return false;
       if (selectedSubcategoryId && subcategoryIdOf(e) !== selectedSubcategoryId) return false;
       if (selectedDifficultyId && e.difficulty_id !== selectedDifficultyId) return false;
-      if (accessFilter === 'true' && !e.is_premium) return false;
-      if (accessFilter === 'false' && e.is_premium) return false;
+      // Access is driven by is_free (the source of truth); is_premium is not
+      // reliably populated. Radio value 'true' = Premium (paid), 'false' = Free.
+      if (accessFilter === 'true' && e.is_free) return false;
+      if (accessFilter === 'false' && !e.is_free) return false;
       return true;
     });
   }, [exams, debouncedSearch, selectedCategoryId, selectedSubcategoryId, selectedDifficultyId, accessFilter]);
@@ -358,31 +360,6 @@ export default function QuizzesClient({ initialData, initialDifficulties }: { in
             </div>
           </div>
         )}
-
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">Difficulty</label>
-          {difficultiesLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-full rounded" />)}
-            </div>
-          ) : (
-            <div className="border border-border rounded-lg p-3 space-y-2 lg:max-h-40 lg:overflow-y-auto">
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input type="radio" name="quiz-difficulty" className="h-4 w-4 accent-primary"
-                  checked={selectedDifficultyId === ''} onChange={() => setSelectedDifficultyId('')} />
-                <span>All Difficulties</span>
-              </label>
-              {difficultyOptions.map((d) => (
-                <label key={d.id} className="flex items-center gap-2 text-sm text-foreground">
-                  <input type="radio" name="quiz-difficulty" className="h-4 w-4 accent-primary"
-                    checked={selectedDifficultyId === d.id}
-                    onChange={() => setSelectedDifficultyId(d.id)} />
-                  <span>{d.name}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
 
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">Access</label>
