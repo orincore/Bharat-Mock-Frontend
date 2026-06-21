@@ -600,7 +600,7 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
               <div className="relative group">
                 <button
                   onClick={() => scrollLeft(categoriesScrollRef)}
-                  className="absolute left-0 inset-y-0 my-auto z-10 h-11 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                  className="absolute left-0 top-7 md:top-10 -translate-y-1/2 z-10 h-11 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
                   aria-label="Scroll left"
                 >
                   <ChevronLeft className="h-5 w-5 text-slate-700" />
@@ -655,7 +655,7 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
                 </div>
                 <button
                   onClick={() => scrollRight(categoriesScrollRef)}
-                  className="absolute right-0 inset-y-0 my-auto z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                  className="absolute right-0 top-7 md:top-10 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
                   aria-label="Scroll right"
                 >
                   <ChevronRight className="h-5 w-5 text-slate-700" />

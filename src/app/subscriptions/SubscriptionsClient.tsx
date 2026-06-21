@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Crown, CheckCircle2, Shield, Loader2, Sparkles, Star, Users, TrendingUp, Award, BookOpen, Target, ChevronDown, ChevronUp, ExternalLink, GraduationCap, Tag } from 'lucide-react';
+import { Crown, CheckCircle2, Shield, Loader2, Sparkles, Star, Users, TrendingUp, Award, BookOpen, Target, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, GraduationCap, Tag } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,38 +67,33 @@ const whyChooseFeatures = [
 
 const STATIC_FAQS = [
   {
-    id: 'faq-1',
-    title: 'Q1. What is the difference between Free, Super, and Premium plans?',
-    content: 'Free offers limited tests and current affairs. Super unlocks unlimited mocks, papers, and live exams. Premium includes everything plus AIR, leaderboards, bilingual tests, and priority support.',
-  },
-  {
     id: 'faq-2',
-    title: 'Q2. How do I upgrade from Free to a paid plan?',
+    title: 'Q1. How do I upgrade from Free to a paid plan?',
     content: 'Click on "Get Started" or "Get Premium" for your preferred plan. Complete the secure payment process, and your account will be upgraded instantly after successful payment.',
   },
   {
     id: 'faq-3',
-    title: 'Q3. When does my subscription start?',
+    title: 'Q2. When does my subscription start?',
     content: 'Your subscription starts immediately after successful payment. The validity period begins from the purchase date itself.',
   },
   {
     id: 'faq-4',
-    title: 'Q4. Can I upgrade from Super to Premium anytime?',
+    title: 'Q3. Can I upgrade from Super to Premium anytime?',
     content: 'Yes, you can upgrade anytime during your active subscription. Your remaining Super plan validity will be adjusted during the upgrade process.',
   },
   {
     id: 'faq-5',
-    title: 'Q5. What payment methods are accepted?',
+    title: 'Q4. What payment methods are accepted?',
     content: 'You can pay using UPI apps like GPay, PhonePe, and Paytm, along with debit cards, credit cards, and net banking from major Indian banks.',
   },
   {
     id: 'faq-7',
-    title: 'Q7. Will my subscription renew automatically?',
+    title: 'Q5. Will my subscription renew automatically?',
     content: 'No, subscriptions do not auto-renew. Once your plan expires, your account automatically shifts back to the Free plan.',
   },
   {
     id: 'faq-8',
-    title: 'Q8. Can I share my subscription with others?',
+    title: 'Q6. Can I share my subscription with others?',
     content: 'No, each subscription is valid for one user only. Sharing accounts or simultaneous multiple-device access may lead to account restrictions.',
   },
 ];
@@ -145,6 +140,10 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const activeCategories = useMemo(() => categories, [categories]);
 
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
+  const scrollCategories = (offset: number) => {
+    categoriesScrollRef.current?.scrollBy({ left: offset, behavior: 'smooth' });
+  };
 
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === selectedPlanId) ?? null,
@@ -523,77 +522,105 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
           </section>
         )}
 
-        <section className="py-3 md:py-8">
-          <div className="grid grid-cols-3 gap-2 md:gap-4">
-            <div className="rounded-lg md:rounded-2xl border border-blue-200/50 bg-gradient-to-br from-blue-50 to-blue-50/50 p-2 md:p-6 text-center">
-              <div className="flex justify-center mb-1 md:mb-3">
-                <Users className="h-4 md:h-8 w-4 md:w-8 text-blue-600" />
-              </div>
-              <p className="text-[10px] leading-tight md:text-sm text-gray-600 mb-0.5 md:mb-1">Active Learners</p>
-              <p className="text-sm md:text-2xl font-bold text-gray-900">10,000+</p>
+        <section className="-mt-2 md:-mt-8 -mb-2 md:-mb-8">
+          <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
+            <div className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border border-blue-200/60 bg-blue-50 px-3 md:px-4 py-1.5 md:py-2">
+              <Users className="h-3.5 md:h-4 w-3.5 md:w-4 text-blue-600 flex-shrink-0" />
+              <span className="text-xs md:text-sm font-bold text-gray-900">10,000+</span>
+              <span className="text-[11px] md:text-sm text-gray-600">Active Learners</span>
             </div>
-            <div className="rounded-lg md:rounded-2xl border border-yellow-200/50 bg-gradient-to-br from-yellow-50 to-yellow-50/50 p-2 md:p-6 text-center">
-              <div className="flex justify-center mb-1 md:mb-3">
-                <Star className="h-4 md:h-8 w-4 md:w-8 text-yellow-500" />
-              </div>
-              <p className="text-[10px] leading-tight md:text-sm text-gray-600 mb-0.5 md:mb-1">Average Rating</p>
-              <p className="text-sm md:text-2xl font-bold text-gray-900">4.8/5</p>
+            <div className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border border-yellow-200/60 bg-yellow-50 px-3 md:px-4 py-1.5 md:py-2">
+              <Star className="h-3.5 md:h-4 w-3.5 md:w-4 text-yellow-500 flex-shrink-0" />
+              <span className="text-xs md:text-sm font-bold text-gray-900">4.8/5</span>
+              <span className="text-[11px] md:text-sm text-gray-600">Average Rating</span>
             </div>
-            <div className="rounded-lg md:rounded-2xl border border-green-200/50 bg-gradient-to-br from-green-50 to-green-50/50 p-2 md:p-6 text-center">
-              <div className="flex justify-center mb-1 md:mb-3">
-                <TrendingUp className="h-4 md:h-8 w-4 md:w-8 text-green-600" />
-              </div>
-              <p className="text-[10px] leading-tight md:text-sm text-gray-600 mb-0.5 md:mb-1">Success Rate</p>
-              <p className="text-sm md:text-2xl font-bold text-gray-900">95%</p>
+            <div className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border border-green-200/60 bg-green-50 px-3 md:px-4 py-1.5 md:py-2">
+              <TrendingUp className="h-3.5 md:h-4 w-3.5 md:w-4 text-green-600 flex-shrink-0" />
+              <span className="text-xs md:text-sm font-bold text-gray-900">95%</span>
+              <span className="text-[11px] md:text-sm text-gray-600">Success Rate</span>
             </div>
           </div>
         </section>
 
         {(categoriesSection || categoriesLoading || activeCategories.length > 0) && (
-          <section className="py-3 md:py-6">
-            <div className="text-center mb-4 md:mb-8">
-              <h2 className="text-xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-3">
-                {categoriesSection?.title || 'Exam Categories'}
-              </h2>
-              {categoriesSection?.subtitle && (
-                <p className="text-gray-600 text-sm md:text-lg max-w-3xl mx-auto">{categoriesSection.subtitle}</p>
+          <section className="mx-[calc(50%-50vw)] w-screen bg-slate-900 text-white border-y border-slate-800 my-2 md:my-3">
+            <div className="w-full max-w-6xl mx-auto px-4 py-4 md:py-5 space-y-3">
+              <div className="flex flex-wrap items-center gap-3 justify-center text-center">
+                <h2 className="text-base md:text-xl font-bold">
+                  {categoriesSection?.title || 'Government exams by categories'}
+                </h2>
+              </div>
+
+              {categoriesLoading ? (
+                <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2 justify-start md:justify-center px-4">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="flex-shrink-0 w-16 md:w-32 text-center">
+                      <div className="w-14 h-14 md:w-20 md:h-20 mx-auto rounded-2xl bg-white/10 animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : activeCategories.length === 0 ? (
+                <p className="text-white/60 text-sm text-center">No categories available right now. Please check back later.</p>
+              ) : (
+                <div className="relative group">
+                  <button
+                    onClick={() => scrollCategories(-300)}
+                    className="absolute left-0 top-7 md:top-10 -translate-y-1/2 z-10 h-11 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-slate-700" />
+                  </button>
+                  <div ref={categoriesScrollRef} className="flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar pb-4 justify-start md:justify-center px-4 pr-12 md:pr-0">
+                    {activeCategories.map((category, index) => {
+                      const badgeBackgrounds = [
+                        'from-[#E6FBFF] to-[#F8FFFF]',
+                        'from-[#FFF5E1] to-[#FFFDF3]',
+                        'from-[#F3E5F5] to-[#FEF6FF]',
+                        'from-[#E8F5E9] to-[#F9FFFB]',
+                        'from-[#FDEDED] to-[#FFF9F9]',
+                        'from-[#E3F2FD] to-[#F5FBFF]'
+                      ];
+                      const cardBg = badgeBackgrounds[index % badgeBackgrounds.length];
+                      const categoryHref = category.slug ? `/${category.slug}` : `/category/${category.id}`;
+
+                      return (
+                        <Link
+                          key={category.id}
+                          href={categoryHref}
+                          className="flex-shrink-0 w-16 md:w-32 text-center group"
+                        >
+                          <div className={`w-14 h-14 md:w-20 md:h-20 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform duration-200 group-hover:scale-95`}>
+                            {category.logo_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={category.logo_url}
+                                alt={category.name}
+                                className="h-full w-full object-cover rounded-2xl p-2"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="text-[10px] md:text-lg font-semibold text-slate-700">
+                                {category.name.slice(0, 3).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <span className="mt-1 md:mt-3 block text-[9px] md:text-sm font-medium leading-tight text-white/80">
+                            {category.name}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => scrollCategories(300)}
+                    className="absolute right-0 top-7 md:top-10 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-white/90 border border-white/30 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight className="h-5 w-5 text-slate-700" />
+                  </button>
+                </div>
               )}
             </div>
-            {categoriesLoading ? (
-              <div className="grid grid-cols-2 gap-2 md:gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-                {Array.from({ length: 10 }).map((_, idx) => (
-                  <div key={idx} className="h-14 sm:h-20 rounded-xl md:rounded-2xl bg-gray-100 animate-pulse" />
-                ))}
-              </div>
-            ) : activeCategories.length === 0 ? (
-              <div className="border border-dashed border-gray-300 rounded-2xl p-8 text-center text-gray-500 max-w-4xl mx-auto">
-                No categories available yet.
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 md:gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-                {activeCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="border border-gray-200/80 rounded-xl md:rounded-2xl px-2 sm:px-4 py-1.5 sm:py-3 bg-white flex items-center gap-1.5 sm:gap-3 min-h-[3.25rem] sm:h-20"
-                  >
-                    {category.logo_url ? (
-                      <div className="w-6 h-6 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={category.logo_url} alt={category.name} className="w-full h-full object-contain" />
-                      </div>
-                    ) : (
-                      <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                        <GraduationCap className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[11px] leading-tight sm:text-sm text-gray-900 truncate sm:whitespace-normal sm:line-clamp-2">{category.name}</p>
-                      {category.description && <p className="hidden sm:block text-[10px] sm:text-xs text-gray-500 line-clamp-1">{category.description}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </section>
         )}
 
