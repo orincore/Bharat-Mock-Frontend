@@ -31,6 +31,14 @@ class ApiClient {
     window.dispatchEvent(new CustomEvent('auth:session-expired'));
   }
 
+  // Force the user to the onboarding page when the backend reports an incomplete
+  // profile. Keeps the session intact (tokens are valid) — only the profile is missing.
+  private redirectToOnboarding() {
+    if (typeof window === 'undefined') return;
+    if (window.location.pathname.replace(/^\/(en|hi)(?=\/|$)/, '').startsWith('/onboarding')) return;
+    window.location.assign('/onboarding');
+  }
+
   private async refreshAccessToken(): Promise<boolean> {
     if (this.refreshPromise) return this.refreshPromise;
 
@@ -125,6 +133,20 @@ class ApiClient {
     const response = await this.fetchWithTimeout(url, { ...rest, headers: requestHeaders }, timeout);
 
     if (!response.ok) {
+      let errorBody: any = {};
+      try { errorBody = await response.json(); } catch { /* ignore */ }
+
+      // Server-side onboarding gate. The session is valid — the profile is just
+      // incomplete — so we must NOT refresh or clear tokens (that would log the user
+      // out). Bounce them to the onboarding page instead.
+      if (response.status === 403 && errorBody.code === 'PROFILE_INCOMPLETE') {
+        this.redirectToOnboarding();
+        const incompleteErr = new Error(errorBody.message || 'Please complete your profile') as any;
+        incompleteErr.code = 'PROFILE_INCOMPLETE';
+        incompleteErr.status = 403;
+        throw incompleteErr;
+      }
+
       // Attempt token refresh on 401/403
       if ((response.status === 401 || response.status === 403) && requiresAuth) {
         const refreshed = await this.refreshAccessToken();
@@ -134,11 +156,19 @@ class ApiClient {
             requestHeaders['Authorization'] = `Bearer ${newToken}`;
             const retryResponse = await this.fetchWithTimeout(url, { ...rest, headers: requestHeaders }, timeout);
             if (!retryResponse.ok) {
+              let retryBody: any = {};
+              try { retryBody = await retryResponse.json(); } catch { /* ignore */ }
+              // The onboarding gate can also surface on the retry — handle identically.
+              if (retryResponse.status === 403 && retryBody.code === 'PROFILE_INCOMPLETE') {
+                this.redirectToOnboarding();
+                const e = new Error(retryBody.message || 'Please complete your profile') as any;
+                e.code = 'PROFILE_INCOMPLETE';
+                e.status = 403;
+                throw e;
+              }
               if (retryResponse.status === 401 || retryResponse.status === 403) {
                 this.clearTokens();
               }
-              let retryBody: any = {};
-              try { retryBody = await retryResponse.json(); } catch { /* ignore */ }
               const retryErr = new Error(retryBody.message || `HTTP ${retryResponse.status}: ${retryResponse.statusText}`) as any;
               if (retryBody.code) retryErr.code = retryBody.code;
               retryErr.status = retryResponse.status;
@@ -149,8 +179,6 @@ class ApiClient {
         }
         this.clearTokens();
       }
-      let errorBody: any = {};
-      try { errorBody = await response.json(); } catch { /* ignore */ }
       const err = new Error(errorBody.message || `HTTP ${response.status}: ${response.statusText}`) as any;
       err.code = errorBody.code;
       err.status = response.status;

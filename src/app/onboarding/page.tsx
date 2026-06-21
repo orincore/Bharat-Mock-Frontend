@@ -26,6 +26,10 @@ function OnboardingContent() {
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(true);
   const [shouldShowForm, setShouldShowForm] = useState(false);
   const [requiresPassword, setRequiresPassword] = useState(false);
+  // Set when arriving from Google OAuth as a brand-new signup whose account has NOT been
+  // created yet. In this mode the account is created only on submit (no profile, no
+  // login until complete details are provided).
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
 
   const countryOptions = [
     { label: 'India (+91)', value: '+91' },
@@ -39,7 +43,20 @@ function OnboardingContent() {
   useEffect(() => {
     const token = searchParams.get('token');
     const refresh = searchParams.get('refresh');
-    
+    const pending = searchParams.get('pending');
+
+    // Pre-registration mode: a brand-new Google signup with NO account yet. We only have
+    // a short-lived onboarding token — there is no session to validate. Show the form
+    // (password required, since the account is created here) and create the account on submit.
+    if (pending) {
+      setPendingToken(pending);
+      setRequiresPassword(true);
+      setShouldShowForm(true);
+      setIsCheckingEligibility(false);
+      fetchCategories();
+      return;
+    }
+
     if (token && refresh) {
       localStorage.setItem('auth_token', token);
       localStorage.setItem('refresh_token', refresh);
@@ -151,13 +168,28 @@ function OnboardingContent() {
 
     try {
       const cleanedPhone = formData.phone.replace(/[^\d]/g, '');
-      const payload = {
-        ...formData,
-        phone: `${countryCode}${cleanedPhone}`,
-        password: requiresPassword ? formData.password : undefined
-      };
+      const fullPhone = `${countryCode}${cleanedPhone}`;
 
-      await authService.completeOnboarding(payload);
+      if (pendingToken) {
+        // Brand-new Google signup: this call CREATES the account (with complete details)
+        // and returns real login tokens. Until it succeeds, no profile exists and the
+        // user cannot log in anywhere.
+        await authService.completeGoogleRegistration({
+          pendingToken,
+          phone: fullPhone,
+          date_of_birth: formData.date_of_birth,
+          interested_categories: formData.interested_categories,
+          password: formData.password
+        });
+      } else {
+        const payload = {
+          ...formData,
+          phone: fullPhone,
+          password: requiresPassword ? formData.password : undefined
+        };
+        await authService.completeOnboarding(payload);
+      }
+
       // Hard navigation (not router.push) so AuthProvider re-initializes and reads
       // the now-stored token, hydrating auth state. A plain SPA push leaves
       // AuthContext.user = null (it only reads tokens on mount), which made

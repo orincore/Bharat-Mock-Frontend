@@ -325,6 +325,9 @@ function ExamAttemptContent() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | string[] | null>(null);
   const [markedForReview, setMarkedForReview] = useState(false);
   const [initialTime, setInitialTime] = useState(0);
+  // Set when the attempt is found to be out of time at load — triggers an
+  // immediate auto-submit via the effect below (server time is authoritative).
+  const [expiredOnLoad, setExpiredOnLoad] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [isLoading, setIsLoading] = useState(!isFastLoad || !exam);
   const [error, setError] = useState('');
@@ -523,14 +526,36 @@ function ExamAttemptContent() {
         }
 
         setExam(examData);
-        // Always prefer cached timer so paused/resumed exams don't reset
-        const savedTimer = sessionStorage.getItem(`timer_${attemptId}`);
-        // Prefer sessionStorage (same tab), then server-persisted time_remaining, then full duration
-        const serverTimeRemaining = resumeList.find((a: any) => a.id === attemptId)?.time_remaining;
-        const resolvedTime = savedTimer
-          ? parseInt(savedTimer)
-          : serverTimeRemaining ?? (examData.duration || 0) * 60;
+        // Timer resolution — the server's persisted time_remaining is AUTHORITATIVE.
+        // The same-tab sessionStorage cache only exists to keep a smooth countdown
+        // across refreshes/pauses; it must NEVER grant more time than the server
+        // believes is left, otherwise a stale cache can resurrect an attempt the
+        // server already considers expired (the auto-submit-on-expiry bug).
+        const savedTimerRaw = sessionStorage.getItem(`timer_${attemptId}`);
+        const savedTimer = savedTimerRaw !== null && savedTimerRaw !== ''
+          ? parseInt(savedTimerRaw)
+          : null;
+        const serverEntry = resumeList.find((a: any) => a.id === attemptId);
+        const serverTimeRemaining = serverEntry?.time_remaining;
+        const hasServerTime = typeof serverTimeRemaining === 'number' && Number.isFinite(serverTimeRemaining);
+        const fullDuration = (examData.duration || 0) * 60;
+
+        let resolvedTime: number;
+        if (savedTimer !== null && Number.isFinite(savedTimer)) {
+          // Cap the cached countdown by the server's remaining time when available.
+          resolvedTime = hasServerTime ? Math.min(savedTimer, serverTimeRemaining) : savedTimer;
+        } else {
+          resolvedTime = hasServerTime ? serverTimeRemaining : fullDuration;
+        }
+        resolvedTime = Math.max(0, resolvedTime);
         setInitialTime(resolvedTime);
+
+        // If the attempt is already out of time on load (server expired it, or the
+        // capped cache reached zero), submit immediately instead of seeding a dead
+        // countdown that would otherwise never fire.
+        if (resolvedTime <= 0) {
+          setExpiredOnLoad(true);
+        }
 
 
 
@@ -784,16 +809,24 @@ function ExamAttemptContent() {
     const currentQuestion = getCurrentSectionQuestions()[currentQuestionIndex];
     if (!currentQuestion) return;
 
+    let nextAnswer: string | string[] | null;
     if (currentQuestion.type === 'multiple') {
       const currentAnswers = Array.isArray(selectedAnswer) ? selectedAnswer : [];
       const newAnswers = currentAnswers.includes(optionId)
         ? currentAnswers.filter(id => id !== optionId)
         : [...currentAnswers, optionId];
-      const nextAnswer = newAnswers.length > 0 ? newAnswers : null;
-      setSelectedAnswer(nextAnswer);
+      nextAnswer = newAnswers.length > 0 ? newAnswers : null;
     } else {
-      setSelectedAnswer(optionId);
+      nextAnswer = optionId;
     }
+
+    setSelectedAnswer(nextAnswer);
+    // Keep the ref in sync immediately (the [selectedAnswer] effect is async).
+    selectedAnswerRef.current = nextAnswer;
+    // Commit the selection into local question state right away so that
+    // navigating away and back — even without pressing "Save & Next" — rehydrates
+    // the radio selection (the navigation effect reads userAnswer from local state).
+    updateCurrentQuestionLocally(nextAnswer, markedForReview);
   };
 
   const handleSaveAndNext = async (markedOverride?: boolean) => {
@@ -859,6 +892,9 @@ function ExamAttemptContent() {
 
   const handleClearResponse = () => {
     setSelectedAnswer(null);
+    selectedAnswerRef.current = null;
+    // Commit the cleared state locally so the cleared answer persists across navigation.
+    updateCurrentQuestionLocally(null, markedForReview);
   };
 
   const handleAutoSubmit = useCallback(async () => {
@@ -885,6 +921,16 @@ function ExamAttemptContent() {
       setShowSubmissionModal(false);
     }
   }, [attemptId, isSubmitting, markedForReview, router, saveAnswer, selectedAnswer, selectedLanguage, googleTranslateLang]);
+
+  // Force an immediate submit when the attempt is found to be out of time on load.
+  // This is the server-authoritative expiry path: it fires regardless of the
+  // client-only countdown, so a stale cached timer can never keep an expired
+  // attempt alive.
+  useEffect(() => {
+    if (expiredOnLoad && !isLoading && !isSubmitting) {
+      handleAutoSubmit();
+    }
+  }, [expiredOnLoad, isLoading, isSubmitting, handleAutoSubmit]);
 
   const handleSubmitExam = useCallback(async () => {
     if (isSubmitting) return;
@@ -1415,6 +1461,8 @@ function ExamAttemptContent() {
     currentQuestionIndex === currentSectionQuestions.length - 1;
 
   const navigatePrevious = async () => {
+    // Persist the current selection to the backend before leaving the question.
+    silentSave();
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
     } else if (currentSectionIndex > 0) {
@@ -1424,6 +1472,8 @@ function ExamAttemptContent() {
   };
 
   const navigateNext = async () => {
+    // Persist the current selection to the backend before leaving the question.
+    silentSave();
     if (currentQuestionIndex < currentSectionQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else if (currentSectionIndex < sections.length - 1) {
@@ -2118,6 +2168,7 @@ function ExamAttemptContent() {
                                 <button
                                   key={q.id}
                                   onClick={() => {
+                                    silentSave();
                                     setCurrentSectionIndex(sectionIdx);
                                     setCurrentQuestionIndex(idx);
                                     setShowMobilePalette(false);
@@ -2152,6 +2203,7 @@ function ExamAttemptContent() {
                                 <button
                                   key={q.id}
                                   onClick={() => {
+                                    silentSave();
                                     setCurrentSectionIndex(sectionIdx);
                                     setCurrentQuestionIndex(idx);
                                     setShowMobilePalette(false);

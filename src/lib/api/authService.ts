@@ -80,6 +80,25 @@ export const authService = {
     await apiClient.post('/auth/onboarding', data, true);
   },
 
+  // Creates a brand-new Google account from the pre-registration onboarding token.
+  // No account exists until this succeeds, so it returns fresh login tokens.
+  async completeGoogleRegistration(data: {
+    pendingToken: string;
+    phone: string;
+    date_of_birth: string;
+    interested_categories: string[];
+    password: string;
+  }): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>('/auth/google/complete-registration', data, false);
+    if (response.success && response.data?.token) {
+      localStorage.setItem('auth_token', response.data.token);
+      localStorage.setItem('refresh_token', response.data.refreshToken);
+      // Clear any stale cached user so AuthProvider hydrates the fresh profile.
+      localStorage.removeItem('auth_user');
+    }
+    return response;
+  },
+
   async deleteAccount(): Promise<void> {
     await apiClient.delete('/auth/account', true);
   },

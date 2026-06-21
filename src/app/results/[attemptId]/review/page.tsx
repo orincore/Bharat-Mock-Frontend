@@ -112,11 +112,17 @@ export default function ReviewPage() {
       }
 
       try {
+        // NEXT_PUBLIC_API_URL already includes the `/api/v1` prefix (see apiClient),
+        // and the auth token is stored under `auth_token` (not `token`). Using the
+        // wrong base/key here previously made both fetches 404/401, so the review
+        // page rendered no questions or explanations.
+        const authToken = localStorage.getItem("auth_token") || localStorage.getItem("token");
+
         const resultResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/results/attempt/${attemptId}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/results/attempt/${attemptId}`,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${authToken}`,
             },
           }
         );
@@ -129,10 +135,10 @@ export default function ReviewPage() {
         setResult(resultJson.data);
 
         const reviewResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/results/${resultJson.data.id}/review`,
+          `${process.env.NEXT_PUBLIC_API_URL}/results/${resultJson.data.id}/review`,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${authToken}`,
             },
           }
         );
