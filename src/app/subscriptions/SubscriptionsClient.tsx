@@ -581,15 +581,13 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                         'from-[#E3F2FD] to-[#F5FBFF]'
                       ];
                       const cardBg = badgeBackgrounds[index % badgeBackgrounds.length];
-                      const categoryHref = category.slug ? `/${category.slug}` : `/category/${category.id}`;
 
                       return (
-                        <Link
+                        <div
                           key={category.id}
-                          href={categoryHref}
-                          className="flex-shrink-0 w-16 md:w-32 text-center group"
+                          className="flex-shrink-0 w-16 md:w-32 text-center"
                         >
-                          <div className={`w-14 h-14 md:w-20 md:h-20 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform duration-200 group-hover:scale-95`}>
+                          <div className={`w-14 h-14 md:w-20 md:h-20 mx-auto rounded-2xl border border-white/30 bg-gradient-to-br ${cardBg} flex items-center justify-center shadow-lg shadow-slate-900/10`}>
                             {category.logo_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -607,7 +605,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                           <span className="mt-1 md:mt-3 block text-[9px] md:text-sm font-medium leading-tight text-white/80">
                             {category.name}
                           </span>
-                        </Link>
+                        </div>
                       );
                     })}
                   </div>
