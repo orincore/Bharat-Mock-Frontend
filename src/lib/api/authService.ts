@@ -64,11 +64,25 @@ export const authService = {
     await apiClient.post('/auth/reset-password', { token, newPassword });
   },
 
-  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await apiClient.post('/auth/change-password', {
-      currentPassword,
-      newPassword
-    }, true);
+  // Step 1: email a 6-digit OTP to the logged-in user's registered address.
+  async sendChangePasswordOtp(): Promise<{ email?: string }> {
+    const response = await apiClient.post<{ success: boolean; message: string; email?: string }>(
+      '/auth/change-password/send-otp', {}, true
+    );
+    return { email: response.email };
+  },
+
+  // Step 2: verify the OTP and set the new password. The backend revokes all sessions
+  // and returns fresh tokens for THIS session — store them so the current user stays
+  // logged in while every other device is signed out.
+  async changePassword(otp: string, newPassword: string): Promise<void> {
+    const response = await apiClient.post<{ success: boolean; data?: { token: string; refreshToken: string } }>(
+      '/auth/change-password', { otp, newPassword }, true
+    );
+    if (response.data?.token) {
+      localStorage.setItem('auth_token', response.data.token);
+      localStorage.setItem('refresh_token', response.data.refreshToken);
+    }
   },
 
   async getPublicProfile(id: string): Promise<{ id: string; name: string; avatar_url?: string; bio?: string; role: string; created_at: string; blog_count: number }> {
@@ -76,7 +90,7 @@ export const authService = {
     return response.data;
   },
 
-  async completeOnboarding(data: { phone: string; date_of_birth: string; interested_categories: string[] }): Promise<void> {
+  async completeOnboarding(data: { phone: string; password?: string }): Promise<void> {
     await apiClient.post('/auth/onboarding', data, true);
   },
 
@@ -85,8 +99,6 @@ export const authService = {
   async completeGoogleRegistration(data: {
     pendingToken: string;
     phone: string;
-    date_of_birth: string;
-    interested_categories: string[];
     password: string;
   }): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>('/auth/google/complete-registration', data, false);

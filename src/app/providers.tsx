@@ -130,7 +130,7 @@ function stripLocalePrefix(path: string): string {
 function userNeedsOnboarding(user: User | null): boolean {
   if (!user) return false;
   if (user.auth_provider !== "google") return false;
-  return !user.is_onboarded || !user.phone || !user.date_of_birth;
+  return !user.is_onboarded || !user.phone;
 }
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {

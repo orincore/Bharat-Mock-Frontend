@@ -7,6 +7,15 @@ import { Mail, Lock, User, Phone, Eye, EyeOff, UserPlus, ShieldCheck, RefreshCw,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
+import { PasswordStrength } from '@/components/common/PasswordStrength';
+import { cn } from '@/lib/utils';
+import {
+  validateName,
+  validateEmail,
+  validatePhone,
+  validatePasswordStrength,
+  validateConfirmPassword,
+} from '@/lib/validation';
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
@@ -65,6 +74,8 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  type FieldKey = 'name' | 'email' | 'phone' | 'password' | 'confirmPassword';
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
 
   // OTP state
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -105,17 +116,40 @@ export default function RegisterPage() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
+    setFieldErrors(prev => (prev[name as FieldKey] ? { ...prev, [name]: undefined } : prev));
+  };
+
+  // Validate a single field — used for onBlur feedback.
+  const validateField = (field: FieldKey, next = formData): string | null => {
+    switch (field) {
+      case 'name': return validateName(next.name);
+      case 'email': return validateEmail(next.email);
+      case 'phone': return validatePhone(next.phone, countryCode.code);
+      case 'password': return validatePasswordStrength(next.password);
+      case 'confirmPassword': return validateConfirmPassword(next.password, next.confirmPassword);
+      default: return null;
+    }
+  };
+
+  const handleBlur = (field: FieldKey) => {
+    const err = validateField(field);
+    setFieldErrors(prev => ({ ...prev, [field]: err || undefined }));
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) { setError('Name is required'); return false; }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) { setError('Enter a valid email address'); return false; }
-    if (!formData.phone.trim()) { setError('Phone number is required'); return false; }
-    if (formData.phone.length < 7) { setError('Enter a valid phone number'); return false; }
-    if (formData.password.length < 6) { setError('Password must be at least 6 characters'); return false; }
-    if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return false; }
+    const errors: Partial<Record<FieldKey, string>> = {};
+    (['name', 'email', 'phone', 'password', 'confirmPassword'] as FieldKey[]).forEach((field) => {
+      const err = validateField(field);
+      if (err) errors[field] = err;
+    });
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('Please fix the highlighted fields before continuing');
+      return false;
+    }
     if (!acceptTerms) { setError('You must accept the Terms of Service and Privacy Policy'); return false; }
     return true;
   };
@@ -251,16 +285,18 @@ export default function RegisterPage() {
                 <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">Full Name</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="name" name="name" type="text" required value={formData.name} onChange={handleChange} placeholder="John Doe" className="pl-10" disabled={isLoading} />
+                  <Input id="name" name="name" type="text" required value={formData.name} onChange={handleChange} onBlur={() => handleBlur('name')} placeholder="John Doe" className={cn('pl-10', fieldErrors.name && 'border-destructive focus-visible:ring-destructive')} disabled={isLoading} aria-invalid={!!fieldErrors.name} />
                 </div>
+                {fieldErrors.name && <p className="mt-1.5 text-xs text-destructive">{fieldErrors.name}</p>}
               </div>
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="email" name="email" type="email" required value={formData.email} onChange={handleChange} placeholder="you@example.com" className="pl-10" disabled={isLoading} />
+                  <Input id="email" name="email" type="email" required value={formData.email} onChange={handleChange} onBlur={() => handleBlur('email')} placeholder="you@example.com" className={cn('pl-10', fieldErrors.email && 'border-destructive focus-visible:ring-destructive')} disabled={isLoading} aria-invalid={!!fieldErrors.email} />
                 </div>
+                {fieldErrors.email && <p className="mt-1.5 text-xs text-destructive">{fieldErrors.email}</p>}
               </div>
 
               <div>
@@ -321,37 +357,47 @@ export default function RegisterPage() {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setFormData(prev => ({ ...prev, phone: val }));
                         setError('');
+                        setFieldErrors(prev => (prev.phone ? { ...prev, phone: undefined } : prev));
                       }}
+                      onBlur={() => handleBlur('phone')}
                       placeholder="9876543210"
-                      className="pl-10"
+                      className={cn('pl-10', fieldErrors.phone && 'border-destructive focus-visible:ring-destructive')}
                       disabled={isLoading}
                       maxLength={10}
                       inputMode="numeric"
+                      aria-invalid={!!fieldErrors.phone}
                     />
                   </div>
                 </div>
+                {fieldErrors.phone && <p className="mt-1.5 text-xs text-destructive">{fieldErrors.phone}</p>}
               </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="password" name="password" type={showPassword ? 'text' : 'password'} required value={formData.password} onChange={handleChange} placeholder="At least 6 characters" className="pl-10 pr-10" disabled={isLoading} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <Input id="password" name="password" type={showPassword ? 'text' : 'password'} required value={formData.password} onChange={handleChange} onBlur={() => handleBlur('password')} placeholder="Create a strong password" className={cn('pl-10 pr-10', fieldErrors.password && 'border-destructive focus-visible:ring-destructive')} disabled={isLoading} aria-invalid={!!fieldErrors.password} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {fieldErrors.password && <p className="mt-1.5 text-xs text-destructive">{fieldErrors.password}</p>}
+                <PasswordStrength password={formData.password} />
               </div>
 
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-2">Confirm Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} required value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm your password" className="pl-10 pr-10" disabled={isLoading} />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <Input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} required value={formData.confirmPassword} onChange={handleChange} onBlur={() => handleBlur('confirmPassword')} placeholder="Confirm your password" className={cn('pl-10 pr-10', fieldErrors.confirmPassword && 'border-destructive focus-visible:ring-destructive')} disabled={isLoading} aria-invalid={!!fieldErrors.confirmPassword} />
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {fieldErrors.confirmPassword && <p className="mt-1.5 text-xs text-destructive">{fieldErrors.confirmPassword}</p>}
+                {!fieldErrors.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && (
+                  <p className="mt-1.5 text-xs text-green-600">Passwords match</p>
+                )}
               </div>
 
               <div className="flex items-start gap-2">

@@ -3,15 +3,18 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X, Crown, FileText, Trash2, AlertTriangle } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Calendar, GraduationCap, Save, Edit2, X, Crown, FileText, Trash2, AlertTriangle, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/context/AuthContext';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
+import { ChangePasswordDialog } from '@/components/common/ChangePasswordDialog';
 import type { Education, User as UserType } from '@/types';
 import { resultService } from '@/lib/api/resultService';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { validateName, validatePhoneInternational } from '@/lib/validation';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -26,6 +29,8 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; phone?: string }>({});
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [stats, setStats] = useState({ examsTaken: 0, daysActive: 0, avgScore: 0 });
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState('');
@@ -54,7 +59,6 @@ export default function ProfilePage() {
     name: '',
     email: '',
     phone: '',
-    date_of_birth: '',
     bio: '',
     education: {
       level: '',
@@ -78,7 +82,6 @@ export default function ProfilePage() {
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
-        date_of_birth: user.date_of_birth || '',
         bio: user.bio || '',
         education: {
           level: user.education?.level || '',
@@ -127,13 +130,30 @@ export default function ProfilePage() {
         ...prev,
         [name]: value
       }));
+      if (name === 'name' || name === 'phone') {
+        setFieldErrors(prev => (prev[name as 'name' | 'phone'] ? { ...prev, [name]: undefined } : prev));
+      }
     }
     setError('');
     setSuccess('');
   };
 
+  const validateFields = () => {
+    const errors: { name?: string; phone?: string } = {};
+    const nameErr = validateName(formData.name);
+    if (nameErr) errors.name = nameErr;
+    const phoneErr = validatePhoneInternational(formData.phone);
+    if (phoneErr) errors.phone = phoneErr;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateFields()) {
+      setError('Please fix the highlighted fields before saving');
+      return;
+    }
     setIsSaving(true);
     setError('');
     setSuccess('');
@@ -142,7 +162,6 @@ export default function ProfilePage() {
       const payload: Partial<UserType> & { bio?: string } = {
         name: formData.name,
         phone: formData.phone,
-        date_of_birth: formData.date_of_birth || undefined,
         education: {
           id: user?.education?.id,
           user_id: user?.education?.user_id || user?.id || '',
@@ -183,7 +202,6 @@ export default function ProfilePage() {
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
-        date_of_birth: user.date_of_birth || '',
         bio: user.bio || '',
         education: {
           level: user.education?.level || '',
@@ -196,6 +214,7 @@ export default function ProfilePage() {
     setIsEditing(false);
     setError('');
     setSuccess('');
+    setFieldErrors({});
   };
 
   if (!mounted || authLoading) {
@@ -212,6 +231,14 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-muted/30 py-8 sm:py-12">
+      <ChangePasswordDialog
+        open={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        onSuccess={() => {
+          setSuccess('Password changed successfully!');
+          setTimeout(() => setSuccess(''), 3000);
+        }}
+      />
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="bg-background border border-border rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
@@ -376,9 +403,13 @@ export default function ProfilePage() {
                         type="text"
                         value={formData.name}
                         onChange={handleChange}
+                        onBlur={() => setFieldErrors(prev => ({ ...prev, name: validateName(formData.name) || undefined }))}
                         disabled={!isEditing || isSaving}
+                        className={cn(fieldErrors.name && 'border-destructive focus-visible:ring-destructive')}
+                        aria-invalid={!!fieldErrors.name}
                         required
                       />
+                      {fieldErrors.name && <p className="mt-1.5 text-xs text-destructive">{fieldErrors.name}</p>}
                     </div>
 
                     <div>
@@ -408,23 +439,13 @@ export default function ProfilePage() {
                         type="tel"
                         value={formData.phone}
                         onChange={handleChange}
+                        onBlur={() => setFieldErrors(prev => ({ ...prev, phone: validatePhoneInternational(formData.phone) || undefined }))}
                         disabled={!isEditing || isSaving}
                         placeholder="+91 9876543210"
+                        className={cn(fieldErrors.phone && 'border-destructive focus-visible:ring-destructive')}
+                        aria-invalid={!!fieldErrors.phone}
                       />
-                    </div>
-
-                    <div>
-                      <label htmlFor="date_of_birth" className="block text-sm font-medium text-foreground mb-2">
-                        Date of Birth
-                      </label>
-                      <Input
-                        id="date_of_birth"
-                        name="date_of_birth"
-                        type="date"
-                        value={formData.date_of_birth}
-                        onChange={handleChange}
-                        disabled={!isEditing || isSaving}
-                      />
+                      {fieldErrors.phone && <p className="mt-1.5 text-xs text-destructive">{fieldErrors.phone}</p>}
                     </div>
                   </div>
                 </div>
@@ -550,6 +571,29 @@ export default function ProfilePage() {
                   </div>
                 )}
               </form>
+            </div>
+          </div>
+
+          {/* Security */}
+          <div className="mt-8 bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-primary" />
+                  Password
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Change your password. We&apos;ll email a verification code to confirm it&apos;s you.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto shrink-0"
+                onClick={() => setShowChangePassword(true)}
+              >
+                Change Password
+              </Button>
             </div>
           </div>
 

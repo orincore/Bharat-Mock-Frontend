@@ -593,7 +593,6 @@ export interface User {
   phone?: string;
   avatar_url?: string;
   bio?: string;
-  date_of_birth?: string;
   role: 'user' | 'admin' | 'editor' | 'author';
   is_verified: boolean;
   is_blocked: boolean;

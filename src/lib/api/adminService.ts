@@ -88,7 +88,6 @@ export interface AdminUserDetails {
     subscription_auto_renew?: boolean;
     auth_provider?: string;
     is_onboarded?: boolean;
-    date_of_birth?: string | null;
     deleted_at?: string | null;
   };
   stats: AdminUserStats;

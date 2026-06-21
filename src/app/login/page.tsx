@@ -7,6 +7,8 @@ import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
+import { validateEmail } from '@/lib/validation';
+import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,22 +31,36 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
     setError('');
+    // Clear a field's inline error as soon as the user edits it.
+    setFieldErrors(prev => (prev[name as 'email' | 'password'] ? { ...prev, [name]: undefined } : prev));
+  };
+
+  const validateFields = () => {
+    const errors: { email?: string; password?: string } = {};
+    const emailError = validateEmail(formData.email);
+    if (emailError) errors.email = emailError;
+    if (!formData.password) errors.password = 'Password is required';
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateFields()) return;
     setIsLoading(true);
     setError('');
 
     try {
-      await login(formData.email, formData.password);
+      await login(formData.email.trim(), formData.password);
       // Gates (blocked/deleted) handle rendering — only push if truly authenticated
       if (!isDeleted && !user?.is_blocked) {
         const nextParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') || '/' : '/';
@@ -79,7 +95,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
                 Email Address
@@ -93,11 +109,20 @@ export default function LoginPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
+                  onBlur={() => {
+                    const err = validateEmail(formData.email);
+                    setFieldErrors(prev => ({ ...prev, email: err || undefined }));
+                  }}
                   placeholder="you@example.com"
-                  className="pl-10"
+                  className={cn('pl-10', fieldErrors.email && 'border-destructive focus-visible:ring-destructive')}
                   disabled={isLoading}
+                  aria-invalid={!!fieldErrors.email}
+                  aria-describedby={fieldErrors.email ? 'email-error' : undefined}
                 />
               </div>
+              {fieldErrors.email && (
+                <p id="email-error" className="mt-1.5 text-xs text-destructive">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -114,12 +139,15 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Enter your password"
-                  className="pl-10 pr-10"
+                  className={cn('pl-10 pr-10', fieldErrors.password && 'border-destructive focus-visible:ring-destructive')}
                   disabled={isLoading}
+                  aria-invalid={!!fieldErrors.password}
+                  aria-describedby={fieldErrors.password ? 'password-error' : undefined}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? (
@@ -129,6 +157,9 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p id="password-error" className="mt-1.5 text-xs text-destructive">{fieldErrors.password}</p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
