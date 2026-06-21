@@ -1065,27 +1065,27 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
           seoContent={
             <>
 
-              <section className="mt-10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
+              <section className="mt-8 md:mt-10 bg-white text-slate-700 rounded-2xl md:rounded-3xl p-5 sm:p-8 md:p-10 shadow-sm border border-slate-200">
                 <div className="max-w-5xl mx-auto space-y-8">
-                  <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
+                  <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-slate-900">
                     Prepare Smarter for 2026 Exams with Bharat Mock Previous Year Papers
                   </h2>
-                  <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                  <div className="space-y-4 text-slate-700 text-base leading-relaxed">
                     <p>Bharat Mock will give you free access to previous year question papers for SSC, Banking, Railway, Police, and 70+ other government exams in one place. Along with the questions come with simple explanations and are updated for 2026.</p>
                     <p>Every year, over five million students compete for limited government jobs. However, the ones who clear the cutoff are not always the smartest.</p>
                     <p>Instead, they are the most prepared. So, the best way to prepare is by solving previous year papers.</p>
                   </div>
 
                   <div className="space-y-4">
-                    <h2 className="font-display text-2xl font-bold text-white">Why Previous Year Papers Work Better Than Any Textbook</h2>
-                    <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Why Previous Year Papers Work Better Than Any Textbook</h2>
+                    <div className="space-y-4 text-slate-700 text-base leading-relaxed">
                       <p>Most students spend months learning theory that never appears on the exam. But that's fixed by previous year papers.</p>
                       <p>So, by solving previous years' question papers for SSC, Banking and Railway exams, you get to know the actual exam pattern, topics and types of questions asked in the exam, making you smarter and more confident.</p>
                     </div>
 
                     <div className="space-y-2">
-                      <h3 className="font-semibold text-lg text-blue-200">And you will learn three things that no textbook can teach you:</h3>
-                      <ul className="list-disc pl-6 space-y-2 text-slate-100 text-base">
+                      <h3 className="font-semibold text-lg text-blue-600">And you will learn three things that no textbook can teach you:</h3>
+                      <ul className="list-disc pl-6 space-y-2 text-slate-700 text-base">
                         <li>You will also see which topics repeat every year and which ones you can focus less on.</li>
                         <li>You will know how questions are asked, and you can identify patterns faster in the exam.</li>
                         <li>So you can improve your score by 15-20 marks.</li>
@@ -1094,48 +1094,48 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
                   </div>
 
                   <div className="space-y-4">
-                    <h2 className="font-display text-2xl font-bold text-white">Section-Wise Previous Year Question Papers</h2>
-                    <p className="text-slate-100 text-base leading-relaxed">We have categorised previous year question papers for SSC, railway, bank, police and other government exams chapter-wise and topic-wise so that you can easily get what you need.</p>
-                    <p className="text-slate-100 text-base leading-relaxed">Here is all that you need to prepare. Question papers and simple, easy-to-understand solutions.</p>
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Section-Wise Previous Year Question Papers</h2>
+                    <p className="text-slate-700 text-base leading-relaxed">We have categorised previous year question papers for SSC, railway, bank, police and other government exams chapter-wise and topic-wise so that you can easily get what you need.</p>
+                    <p className="text-slate-700 text-base leading-relaxed">Here is all that you need to prepare. Question papers and simple, easy-to-understand solutions.</p>
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-white/20">
+                    <table className="w-full border-collapse border border-slate-200">
                       <thead>
-                        <tr className="bg-white/10">
-                          <th className="border border-white/20 px-4 py-3 text-left font-semibold">Exam Category</th>
-                          <th className="border border-white/20 px-4 py-3 text-left font-semibold">Papers Covered</th>
-                          <th className="border border-white/20 px-4 py-3 text-left font-semibold">Solution Status</th>
+                        <tr className="bg-slate-100">
+                          <th className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3 text-left font-semibold">Exam Category</th>
+                          <th className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3 text-left font-semibold">Papers Covered</th>
+                          <th className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3 text-left font-semibold">Solution Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="border border-white/20 px-4 py-3"><Link href="/ssc" className="text-blue-200 hover:text-white hover:underline">SSC Exams</Link></td>
-                          <td className="border border-white/20 px-4 py-3">Full Syllabus Papers</td>
-                          <td className="border border-white/20 px-4 py-3">Detailed Solutions</td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3"><Link href="/ssc" className="text-blue-600 hover:text-blue-800 hover:underline">SSC Exams</Link></td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Full Syllabus Papers</td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Detailed Solutions</td>
                         </tr>
-                        <tr className="bg-white/5">
-                          <td className="border border-white/20 px-4 py-3"><Link href="/banking" className="text-blue-200 hover:text-white hover:underline">Banking Exams</Link></td>
-                          <td className="border border-white/20 px-4 py-3">Pre + Mains Papers</td>
-                          <td className="border border-white/20 px-4 py-3">Step-by-step Solutions</td>
+                        <tr className="bg-slate-50">
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3"><Link href="/banking" className="text-blue-600 hover:text-blue-800 hover:underline">Banking Exams</Link></td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Pre + Mains Papers</td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Step-by-step Solutions</td>
                         </tr>
                         <tr>
-                          <td className="border border-white/20 px-4 py-3"><Link href="/railway" className="text-blue-200 hover:text-white hover:underline">Railway Exams</Link></td>
-                          <td className="border border-white/20 px-4 py-3">NTPC, Group D, ALP Papers</td>
-                          <td className="border border-white/20 px-4 py-3">Explained Solutions</td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3"><Link href="/railway" className="text-blue-600 hover:text-blue-800 hover:underline">Railway Exams</Link></td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">NTPC, Group D, ALP Papers</td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Explained Solutions</td>
                         </tr>
-                        <tr className="bg-white/5">
-                          <td className="border border-white/20 px-4 py-3"><Link href="/police" className="text-blue-200 hover:text-white hover:underline">Police Bharti</Link></td>
-                          <td className="border border-white/20 px-4 py-3">State + Central Papers</td>
-                          <td className="border border-white/20 px-4 py-3">Answered Papers</td>
+                        <tr className="bg-slate-50">
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3"><Link href="/police" className="text-blue-600 hover:text-blue-800 hover:underline">Police Bharti</Link></td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">State + Central Papers</td>
+                          <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Answered Papers</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
 
                   <div className="space-y-4">
-                    <h2 className="font-display text-2xl font-bold text-white">What Makes Bharat Mock Different</h2>
-                    <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">What Makes Bharat Mock Different</h2>
+                    <div className="space-y-4 text-slate-700 text-base leading-relaxed">
                       <p>We don't just provide the PDFs. We prepare you the right way. For each paper, you will get clear explanations that not only give you the answer, but also explain why it is the answer, and why the other choices are not.</p>
                       <p>This is the thing that helps you improve your accuracy over time.</p>
                       <p>We track your performance, so you know what is improving and what still needs work. Over time, you get better at time management, accuracy, and choosing the right questions.</p>
@@ -1143,16 +1143,16 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
                   </div>
 
                   <div className="space-y-4">
-                    <h2 className="font-display text-2xl font-bold text-white">Built for Hindi and English Medium Students</h2>
-                    <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Built for Hindi and English Medium Students</h2>
+                    <div className="space-y-4 text-slate-700 text-base leading-relaxed">
                       <p>Not everyone prefers English, and that is completely okay. So, we provide bilingual practice sets, so you can prepare in Hindi with the same quality and clarity.</p>
                       <p>If you are looking for SSC, banking, railway, or other government exam previous year question papers in Hindi or your preferred language, we have you covered.</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h2 className="font-display text-2xl font-bold text-white">Start With the Papers That Matter Most</h2>
-                    <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Start With the Papers That Matter Most</h2>
+                    <div className="space-y-4 text-slate-700 text-base leading-relaxed">
                       <p>If you are just getting started, let us show you a simple approach that works.</p>
                       <p>If you are just getting started, let us show you a simple approach that works.</p>
                       <p>First, select the exam you wish to prepare for and solve the past 3 years of papers.</p>

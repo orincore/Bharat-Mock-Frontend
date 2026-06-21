@@ -28,7 +28,6 @@ const loadRazorpayScript = () =>
 interface CheckoutOptions {
   plan: SubscriptionPlan;
   promoCode?: string;
-  autoRenew?: boolean;
   onSuccess?: () => void;
 }
 
@@ -38,7 +37,7 @@ export function useRazorpayCheckout() {
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
 
-  const startCheckout = useCallback(async ({ plan, promoCode = "", autoRenew = true, onSuccess }: CheckoutOptions) => {
+  const startCheckout = useCallback(async ({ plan, promoCode = "", onSuccess }: CheckoutOptions) => {
     if (!isAuthenticated) {
       router.push("/login?redirect=/subscriptions");
       return;
@@ -59,7 +58,6 @@ export function useRazorpayCheckout() {
       const checkout = await subscriptionService.startCheckout({
         plan_id: plan.id,
         promo_code: promoCode.trim() || undefined,
-        auto_renew: autoRenew,
       });
 
       const rzp = new window.Razorpay({

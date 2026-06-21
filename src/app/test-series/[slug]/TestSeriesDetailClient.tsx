@@ -51,6 +51,24 @@ type NormalizedEntry = {
 
 const SIDEBAR_BANNER_IDENTIFIER = 'test_series_sidebar';
 
+// Section titles are authored in a rich-text field, so they can arrive wrapped in
+// HTML markup (e.g. "<div>SSC CGL Mock Test Series</div>") and contain entities
+// like &nbsp;. The Table of Contents renders them as plain text labels, so strip
+// the tags and decode common entities. Regex-based (no DOM) so it's SSR-safe.
+function toPlainText(value?: string | null): string {
+  if (!value) return '';
+  return value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function shuffleArray<T>(items: T[]): T[] {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -106,7 +124,7 @@ function MobileTOC({
               }`}
             >
               <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeSection === section.id ? 'bg-blue-600' : 'bg-blue-400/40 group-hover:bg-blue-600'}`} />
-              <span className="leading-snug">{section.title}</span>
+              <span className="leading-snug">{toPlainText(section.title)}</span>
             </button>
           ))}
         </nav>
@@ -817,7 +835,7 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
                     >
                       <div className="flex items-start gap-2">
                         <Hash className="h-3.5 w-3.5 mt-0.5 shrink-0 opacity-50" />
-                        <span className="line-clamp-2">{section.title}</span>
+                        <span className="line-clamp-2">{toPlainText(section.title)}</span>
                       </div>
                     </a>
                   ))}

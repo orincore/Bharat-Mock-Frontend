@@ -47,7 +47,7 @@ export const subscriptionService = {
     return asData(response);
   },
 
-  async startCheckout(payload: { plan_id: string; promo_code?: string; auto_renew?: boolean }) {
+  async startCheckout(payload: { plan_id: string; promo_code?: string }) {
     const response = await apiClient.post<{ success: boolean; data: CheckoutInitialization }>(
       '/subscriptions/checkout/start',
       payload,
@@ -56,7 +56,7 @@ export const subscriptionService = {
     return asData(response);
   },
 
-  async previewCheckout(payload: { plan_id: string; promo_code?: string; auto_renew?: boolean }) {
+  async previewCheckout(payload: { plan_id: string; promo_code?: string }) {
     const response = await apiClient.post<{ success: boolean; data: CheckoutPreview }>(
       '/subscriptions/checkout/preview',
       payload,
@@ -69,15 +69,6 @@ export const subscriptionService = {
     const response = await apiClient.post<{ success: boolean; message: string }>(
       '/subscriptions/checkout/confirm',
       payload,
-      true
-    );
-    return response;
-  },
-
-  async toggleAutoRenew(enable: boolean) {
-    const response = await apiClient.post<{ success: boolean; message: string }>(
-      '/subscriptions/auto-renew',
-      { enable },
       true
     );
     return response;

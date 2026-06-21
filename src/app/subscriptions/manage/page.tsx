@@ -7,7 +7,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { subscriptionService } from '@/lib/api/subscriptionService';
 import { AlertTriangle, Loader2, ShieldCheck, Crown, Sparkles } from 'lucide-react';
@@ -42,23 +41,16 @@ export default function ManageSubscriptionPage() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading, refreshProfile } = useAuth();
 
-  const [autoRenew, setAutoRenew] = useState(user?.subscription_auto_renew ?? false);
   const [toggling, setToggling] = useState(false);
-  const [confirmToggle, setConfirmToggle] = useState<{ open: boolean; nextValue: boolean }>({ open: false, nextValue: false });
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
-  const [subscription, setSubscription] = useState<{ id: string; status: string; expires_at: string | null; auto_renew: boolean; plan: { id: string; name: string } | null } | null>(null);
+  const [subscription, setSubscription] = useState<{ id: string; status: string; expires_at: string | null; plan: { id: string; name: string } | null } | null>(null);
   const [subLoading, setSubLoading] = useState(true);
-
-  useEffect(() => {
-    setConfirmToggle((prev) => ({ ...prev, open: false }));
-  }, []);
 
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
         router.replace('/login?redirect=/subscriptions/manage');
       } else {
-        setAutoRenew(Boolean(user?.subscription_auto_renew));
         // Fetch actual subscription status
         subscriptionService.getMySubscription()
           .then(setSubscription)
@@ -66,58 +58,12 @@ export default function ManageSubscriptionPage() {
           .finally(() => setSubLoading(false));
       }
     }
-  }, [isAuthenticated, isLoading, router, user?.subscription_auto_renew]);
+  }, [isAuthenticated, isLoading, router]);
 
   const isCancelled = subscription?.status === 'canceled';
   const hasActiveSubscription = Boolean(user?.is_premium && user?.subscription_plan);
   const planName = subscription?.plan?.name || user?.subscription_plan?.name || 'No active plan';
   const expiresAt = subscription?.expires_at ? formatDate(subscription.expires_at) : (user?.subscription_expires_at ? formatDate(user.subscription_expires_at) : '—');
-
-  const performToggle = async (checked: boolean) => {
-    if (!hasActiveSubscription) {
-      toast({
-        title: 'No active subscription',
-        description: 'Purchase a plan before changing auto renew.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setToggling(true);
-    try {
-      await subscriptionService.toggleAutoRenew(checked);
-      setAutoRenew(checked);
-      toast({
-        title: `Auto renew ${checked ? 'enabled' : 'disabled'}`,
-        description: checked
-          ? 'We will renew your plan automatically before it expires.'
-          : 'Auto renew is off. You can manually renew before expiry.'
-      });
-    } catch (error: any) {
-      console.error('Auto renew toggle failed', error);
-      toast({
-        title: 'Failed to update auto renew',
-        description: error.message || 'Please try again later.',
-        variant: 'destructive'
-      });
-    } finally {
-      setToggling(false);
-      setConfirmToggle({ open: false, nextValue: false });
-    }
-  };
-
-  const handleToggle = (checked: boolean) => {
-    if (!hasActiveSubscription) {
-      toast({
-        title: 'No active subscription',
-        description: 'Purchase a plan before changing auto renew.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setConfirmToggle({ open: true, nextValue: checked });
-  };
 
   const handleCancelSubscription = async () => {
     if (!hasActiveSubscription) {
@@ -129,7 +75,6 @@ export default function ManageSubscriptionPage() {
     try {
       await subscriptionService.cancelSubscription();
       setConfirmCancelOpen(false);
-      setAutoRenew(false);
       await refreshProfile();
       toast({ title: 'Subscription cancelled', description: 'Your premium access remains active until the expiry date.' });
       router.refresh();
@@ -184,7 +129,7 @@ export default function ManageSubscriptionPage() {
             Manage your Premium Access
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            View your current plan, monitor renewal dates, and control auto renew in one place.
+            View your current plan and monitor renewal dates in one place.
           </p>
         </div>
 
@@ -224,20 +169,6 @@ export default function ManageSubscriptionPage() {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-border/80 p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Auto renew</p>
-                  <p className="text-xs text-muted-foreground">
-                    Keep premium active without interruption. You can toggle this anytime.
-                  </p>
-                </div>
-                <Switch
-                  checked={autoRenew}
-                  onCheckedChange={handleToggle}
-                  disabled={toggling || !hasActiveSubscription || isCancelled}
-                />
-              </div>
-
               {!hasActiveSubscription && (
                 <div className="rounded-xl border border-dashed border-border/80 p-4 text-sm text-muted-foreground">
                   Upgrade to premium to unlock detailed analytics, unlimited mock tests, and more.
@@ -268,7 +199,7 @@ export default function ManageSubscriptionPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will disable auto-renewal. Your premium access will remain active until the current expiry date.
+                        Your premium access will remain active until the current expiry date.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -306,37 +237,13 @@ export default function ManageSubscriptionPage() {
                   <Sparkles className="h-4 w-4 text-primary" /> Tip
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Auto renew ensures premium analytics and test archives stay available even on exam day.
+                  Renew before your plan expires to keep premium analytics and test archives available without interruption.
                 </p>
               </div>
             </CardFooter>
           </Card>
         </div>
       </div>
-
-      <AlertDialog open={confirmToggle.open} onOpenChange={(open) => setConfirmToggle((prev) => ({ ...prev, open }))}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmToggle.nextValue ? 'Enable auto renew?' : 'Disable auto renew?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmToggle.nextValue
-                ? 'Your plan will renew automatically before expiry. You can turn this off anytime.'
-                : 'Premium will not renew automatically. Make sure to resubscribe before expiry to avoid losing benefits.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={toggling}>Keep Current Setting</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => performToggle(confirmToggle.nextValue)}
-              disabled={toggling}
-            >
-              Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

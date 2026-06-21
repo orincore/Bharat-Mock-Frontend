@@ -41,14 +41,62 @@ async function fetchTestSeriesBySlug(slug: string) {
 async function fetchPageContent(testSeriesId: string) {
   try {
     const res = await fetch(buildApiUrl(`/test-series-page-content/${testSeriesId}`), { cache: 'no-store' });
-    if (!res.ok) return { sections: [], orphanBlocks: [] };
+    if (!res.ok) return { sections: [], orphanBlocks: [], customTabs: [], seo: null };
     const data = await res.json();
     return {
       sections: data.sections || [],
       orphanBlocks: data.orphanBlocks || [],
       customTabs: Array.isArray(data.customTabs) ? data.customTabs : [],
+      seo: data.seo || null,
     };
-  } catch { return { sections: [], orphanBlocks: [], customTabs: [] }; }
+  } catch { return { sections: [], orphanBlocks: [], customTabs: [], seo: null }; }
+}
+
+// structured_data is an overloaded JSONB column: it holds the admin's public JSON-LD
+// schema AND internal page config (toc_order/tab_headings/tab_seo/pdf_url). Extract only
+// a usable JSON-LD object from the admin's "Structured Data Notes" field. Returns null
+// when nothing usable is present so the caller can fall back to the generated schema.
+const SCHEMA_INTERNAL_KEYS = ['tab_headings', 'toc_order', 'tab_seo', 'pdf_url'];
+
+function parseAdminSchema(
+  raw?: string | Record<string, any> | null
+): Record<string, any> | Record<string, any>[] | null {
+  if (!raw) return null;
+
+  // Object (admin editor parsed it before saving)
+  if (typeof raw === 'object') {
+    if (Array.isArray(raw)) return raw.length ? raw : null;
+    if (!('@context' in raw || '@type' in raw)) return null; // internal config only
+    const schema: Record<string, any> = { ...raw };
+    SCHEMA_INTERNAL_KEYS.forEach((k) => delete schema[k]);
+    return Object.keys(schema).length ? schema : null;
+  }
+
+  // String: try direct JSON, then control-char-stripped JSON, then pasted <script> blocks
+  try { return JSON.parse(raw); } catch { /* fall through */ }
+  try {
+    // eslint-disable-next-line no-control-regex
+    return JSON.parse(raw.replace(/[\x00-\x1F\x7F]+/g, ' '));
+  } catch { /* fall through */ }
+
+  const scriptRe = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const extracted: Record<string, any>[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = scriptRe.exec(raw)) !== null) {
+    const content = match[1].trim();
+    try {
+      extracted.push(JSON.parse(content));
+    } catch {
+      try {
+        // eslint-disable-next-line no-control-regex
+        extracted.push(JSON.parse(content.replace(/[\x00-\x1F\x7F]+/g, ' ')));
+      } catch { /* skip this block */ }
+    }
+  }
+  if (extracted.length === 1) return extracted[0];
+  if (extracted.length > 1) return extracted;
+
+  return null;
 }
 
 async function fetchSidebarContent(slug: string) {
@@ -126,7 +174,10 @@ export default async function TestSeriesDetailPage({
     sidebarBanner,
   };
 
-  const jsonLd = {
+  // Prefer the admin-provided JSON-LD ("Structured Data Notes" in the editor, saved to
+  // page_seo.structured_data) over the generated Product schema. Fall back to generated
+  // schema only when the admin hasn't configured a valid one.
+  const generatedJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: testSeries.title,
@@ -152,6 +203,9 @@ export default async function TestSeriesDetailPage({
         }
       : undefined,
   };
+
+  const adminSchema = parseAdminSchema(pageContent.seo?.structured_data);
+  const jsonLd = adminSchema ?? generatedJsonLd;
 
   return (
     <>

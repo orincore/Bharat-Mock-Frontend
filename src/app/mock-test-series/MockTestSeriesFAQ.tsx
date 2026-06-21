@@ -23,7 +23,7 @@ const paymentFaqs = [
   { q: 'What payment methods are accepted?', a: 'You can choose to pay with UPI, Credit & Debit card, Net banking or using wallets - Paytm or PhonePe.' },
   { q: 'Can I share my account with others?', a: 'No, each account is for individual use only. Sharing may lead to suspension without refund.' },
   { q: 'How long is the paid plan valid?', a: 'The plan you select will determine the duration, which is clearly stated before purchasing. Always check before payment.' },
-  { q: 'Does the plan auto-renew?', a: 'There is an option for auto-renewal. You can TURN-ON the auto-renewal option.' },
+  { q: 'Does the plan auto-renew?', a: 'No, plans do not auto-renew. Once your plan expires, your account automatically shifts back to the Free plan. You can renew anytime from the Subscriptions page.' },
   { q: 'Can I use my plan on mobile and laptop?', a: 'Yes, you can use any device. All you need to do is log in to the same account.' },
 ];
 

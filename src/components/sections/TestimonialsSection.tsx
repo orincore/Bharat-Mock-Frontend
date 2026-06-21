@@ -121,17 +121,17 @@ export function TestimonialsSection({
       <div className="relative group" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
         <button
           onClick={() => scrollByOffset(scrollRef, -320)}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition hidden md:flex"
           aria-label="Scroll testimonials left"
         >
           <ChevronLeft className="h-5 w-5 text-slate-700" />
         </button>
         <div
           ref={scrollRef}
-          className="flex gap-4 sm:gap-6 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 hide-scrollbar"
+          className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto px-3 sm:px-4 -mx-3 sm:-mx-4 md:px-0 md:mx-0 pb-4 md:pb-6 hide-scrollbar"
         >
           {testimonials.map((item) => (
-            <div key={item.id} className="flex-shrink-0 w-[17rem] sm:w-[22rem] max-w-[85vw] snap-start">
+            <div key={item.id} className="flex-shrink-0 w-[15rem] sm:w-[18rem] md:w-[22rem] max-w-[90vw] snap-start">
               <div className="relative h-full rounded-3xl bg-gradient-to-br from-white via-white to-white/80 p-[1px] shadow-lg">
                 <div className="h-full rounded-[calc(1.5rem-1px)] bg-white/95 p-6 space-y-4">
                   <div className="flex items-center gap-3">
@@ -153,17 +153,12 @@ export function TestimonialsSection({
                         <p className="text-xs font-medium uppercase tracking-wide text-orange-500">{item.exam}</p>
                       )}
                     </div>
-                    {item.highlight && (
-                      <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-600">
-                        Featured
-                      </span>
-                    )}
                   </div>
                   <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-line">
                     “{formatTestimonialContent(item.review || "")}”
                   </p>
                   <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""}</span>
+                    <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}</span>
                   </div>
                 </div>
               </div>
@@ -184,7 +179,7 @@ export function TestimonialsSection({
   return (
     <section
       className={cn(
-        "relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] border border-border/40 p-5 sm:p-8 md:p-12",
+        "relative overflow-hidden rounded-2xl sm:rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] border border-border/40 p-4 sm:p-6 md:p-8 lg:p-12",
         className
       )}
     >
@@ -193,13 +188,13 @@ export function TestimonialsSection({
         <div className="absolute bottom-0 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-pink-200 blur-3xl" />
       </div>
 
-      <div className="relative z-10 space-y-10">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
+      <div className="relative z-10 space-y-6 md:space-y-10">
+        <div className="flex flex-col gap-4 md:gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2 md:space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
               {eyebrow}
             </div>
-            <h2 className="font-display text-2xl md:text-4xl font-semibold text-slate-900 leading-tight">
+            <h2 className="font-display text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-900 leading-tight">
               {title}
             </h2>
             <p className="text-sm text-slate-600">{description}</p>

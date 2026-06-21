@@ -1000,20 +1000,20 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
 
       {/* Testimonials Section - Hide when searching */}
       {!debouncedSearch && (
-        <section className="container-main mt-16">
-          <div className="relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] p-8 md:p-10">
+        <section className="container-main mt-8 md:mt-16">
+          <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-[radial-gradient(circle_at_top,_#fef3c7,_#fdf2f8_50%,_#f5f3ff)] p-4 sm:p-6 md:p-8 lg:p-10">
             <div className="pointer-events-none absolute inset-0 opacity-70">
               <div className="absolute -top-16 -right-24 h-64 w-64 rounded-full bg-orange-200 blur-3xl" />
               <div className="absolute bottom-0 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-pink-200 blur-3xl" />
             </div>
 
-            <div className="relative z-10 space-y-10">
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-4">
+            <div className="relative z-10 space-y-6 md:space-y-10">
+              <div className="flex flex-col gap-4 md:gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-2 md:space-y-4">
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
                     View Reviews
                   </div>
-                  <h2 className="font-display text-4xl font-semibold text-slate-900 whitespace-nowrap">
+                  <h2 className="font-display text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-900 whitespace-nowrap">
                     Trusted by Aspirants
                   </h2>
 
@@ -1027,15 +1027,15 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
 
               <div className="relative">
                 {testimonialsLoading ? (
-                  <div className="flex gap-4 overflow-x-auto hide-scrollbar">
+                  <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto hide-scrollbar px-3 sm:px-4 -mx-3 sm:-mx-4 md:px-0 md:mx-0">
                     {Array.from({ length: 3 }).map((_, idx) => (
-                      <div key={idx} className="flex-shrink-0 w-80">
-                        <Skeleton className="h-56 w-full rounded-2xl bg-white/60" />
+                      <div key={idx} className="flex-shrink-0 w-[15rem] sm:w-[18rem] md:w-80">
+                        <Skeleton className="h-48 sm:h-56 w-full rounded-xl sm:rounded-2xl bg-white/60" />
                       </div>
                     ))}
                   </div>
                 ) : testimonials.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/70 bg-white/70 p-10 text-center">
+                  <div className="rounded-2xl border border-dashed border-white/70 bg-white/70 p-6 sm:p-10 text-center">
                     <h3 className="font-display text-2xl font-semibold text-slate-900 mb-2">No stories yet</h3>
                     <p className="text-slate-600">New testimonials will appear here as admins publish them.</p>
                   </div>
@@ -1043,19 +1043,19 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
                   <div className="relative group" onMouseEnter={() => setTestimonialsPaused(true)} onMouseLeave={() => setTestimonialsPaused(false)}>
                     <button
                       onClick={() => scrollLeft(testimonialsScrollRef)}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition hidden md:flex"
                       aria-label="Scroll left"
                     >
                       <ChevronLeft className="h-5 w-5 text-slate-700" />
                     </button>
                     <div
                       ref={testimonialsScrollRef}
-                      className="flex gap-6 overflow-x-auto px-4 -mx-4 sm:px-0 sm:mx-0 pb-6 hide-scrollbar"
+                      className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto px-3 sm:px-4 -mx-3 sm:-mx-4 md:px-0 md:mx-0 pb-4 md:pb-6 hide-scrollbar"
                     >
                       {testimonials.map((item) => (
-                        <div key={item.id} className="flex-shrink-0 w-[17rem] sm:w-[22rem] max-w-[85vw] snap-start">
+                        <div key={item.id} className="flex-shrink-0 w-[15rem] sm:w-[18rem] md:w-[22rem] max-w-[90vw] snap-start">
                           <div className="relative h-full rounded-3xl bg-gradient-to-br from-white via-white to-white/80 p-[1px] shadow-lg">
-                            <div className="h-full rounded-[calc(1.5rem-1px)] bg-white/95 p-6 space-y-4">
+                            <div className="h-full rounded-[calc(1.5rem-1px)] bg-white/95 p-6 space-y-2 md:space-y-4">
                               <div className="flex items-center gap-3">
                                 {item.profilePhotoUrl ? (
                                   <img
@@ -1074,18 +1074,12 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
                                     <p className="text-xs font-medium uppercase tracking-wide text-orange-500">{item.exam}</p>
                                   )}
                                 </div>
-                                {item.highlight && (
-                                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-600">
-                                    Featured
-                                  </span>
-                                )}
                               </div>
                               <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-line">
                                 “{formatTestimonialContent(item.review || '')}”
                               </p>
                               <div className="flex items-center justify-between text-xs text-slate-500">
-                                <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-
+                                <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}</span>
                               </div>
                             </div>
                           </div>
@@ -1094,7 +1088,7 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
                     </div>
                     <button
                       onClick={() => scrollRight(testimonialsScrollRef)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition hidden md:flex"
                       aria-label="Scroll right"
                     >
                       <ChevronRight className="h-5 w-5 text-slate-700" />
@@ -1173,26 +1167,26 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
       {/* SEO Content Block - Hide when searching */}
       {!debouncedSearch && (
         <div className="container-main">
-          <section className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-10 shadow-2xl">
+          <section className="mt-8 md:mt-16 bg-white text-slate-700 rounded-2xl md:rounded-3xl p-5 sm:p-8 md:p-10 shadow-sm border border-slate-200">
             <div className="max-w-5xl mx-auto space-y-8">
-              <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
+              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-slate-900">
                 How Bharat Mock Test Series Helps You Prepare Better for Exams
               </h2>
-              <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+              <div className="space-y-4 text-slate-700 text-base leading-relaxed">
                 <p>Bharat Mock Mock Test Series gives you practice tests for SSC, Banking, Railway, Police, and other competitive exams.</p>
                 <p>You can practice questions based on the latest exam pattern and improve your speed, accuracy, and confidence in a real exam-like setup.</p>
                 <p>Here, you can find organised mock tests with simple filters by category and difficulty, to help you plan your preparation and improve your performance.</p>
               </div>
 
               <div className="space-y-4">
-                <h2 className="font-display text-2xl font-bold text-white">Why Practice Mock Tests on Bharat Mock?</h2>
-                <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Why Practice Mock Tests on Bharat Mock?</h2>
+                <div className="space-y-4 text-slate-700 text-base leading-relaxed">
                   <p>Most students read, revise and then skip the most important step, which is testing under real exam pressure. A good mock test is not only a test of your knowledge. It builds your time management, shows the weak areas and trains you to perform on the actual day.</p>
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-lg text-blue-200">Here is what makes this platform different:</h3>
-                  <ul className="list-disc pl-6 space-y-2 text-slate-100 text-base">
+                  <h3 className="font-semibold text-lg text-blue-600">Here is what makes this platform different:</h3>
+                  <ul className="list-disc pl-6 space-y-2 text-slate-700 text-base">
                     <li>Tests are designed to closely replicate the real exam interface so you feel at home on exam day</li>
                     <li>AI-powered performance analysis makes your rank transparent and makes your improvement trackable</li>
                     <li>Added new tests regularly to be in tune with the latest exam pattern for 2026</li>
@@ -1201,55 +1195,55 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
               </div>
 
               <div className="space-y-4">
-                <h2 className="font-display text-2xl font-bold text-white">What Mock Tests Will You Find Here?</h2>
-                <p className="text-slate-100 text-base leading-relaxed">Here you will find the latest mock tests, practice sets, and test series for almost all major competitive exams in India. This includes exam-specific practice for SSC, Banking, Railway, Police, and State exams.</p>
-                <ul className="list-disc pl-6 space-y-1 text-slate-100 text-base">
+                <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">What Mock Tests Will You Find Here?</h2>
+                <p className="text-slate-700 text-base leading-relaxed">Here you will find the latest mock tests, practice sets, and test series for almost all major competitive exams in India. This includes exam-specific practice for SSC, Banking, Railway, Police, and State exams.</p>
+                <ul className="list-disc pl-6 space-y-1 text-slate-700 text-base">
                   <li><strong>SSC Exams:</strong> SSC CGL, CHSL, MTS, GD Constable, CPO, Stenographer, SSC JE, and more.</li>
                   <li><strong>Banking Exams:</strong> IBPS PO, IBPS Clerk, SBI PO, SBI Clerk, RBI Grade B, RBI Assistant, NABARD, LIC AAO, etc.</li>
                   <li><strong>Railway Exams:</strong> RRB NTPC, RPF constable, Group D, ALP, Technician, and other railway exams.</li>
                   <li><strong>Police & Defence Exams:</strong> Police Bharti, Constable, SI, Army, CAPF, and other defence exams.</li>
                   <li><strong>State-Level Exams:</strong> CET, Patwari, State Public Service Commission (PSC), Gram Sevak, Talathi, and more.</li>
                 </ul>
-                <p className="text-slate-100 text-base leading-relaxed">You will get subject-wise tests, full mock tests, and <Link href="/previous-year-papers" className="text-blue-200 hover:text-white hover:underline">previous year question papers</Link> to enhance your speed, accuracy, and confidence.</p>
-                <p className="text-slate-100 text-base leading-relaxed">The best part is, you can either take a quick 20-minute <Link href="/quizzes" className="text-blue-200 hover:text-white hover:underline">sectional quiz</Link> or attempt a full 3-hour mock test based on your schedule.</p>
+                <p className="text-slate-700 text-base leading-relaxed">You will get subject-wise tests, full mock tests, and <Link href="/previous-year-papers" className="text-blue-600 hover:text-blue-800 hover:underline">previous year question papers</Link> to enhance your speed, accuracy, and confidence.</p>
+                <p className="text-slate-700 text-base leading-relaxed">The best part is, you can either take a quick 20-minute <Link href="/quizzes" className="text-blue-600 hover:text-blue-800 hover:underline">sectional quiz</Link> or attempt a full 3-hour mock test based on your schedule.</p>
               </div>
 
               <div className="space-y-4">
-                <h2 className="font-display text-2xl font-bold text-white">Quick Look: Popular Mock Test Categories</h2>
+                <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Quick Look: Popular Mock Test Categories</h2>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-white/20">
+                  <table className="w-full border-collapse border border-slate-200">
                     <thead>
-                      <tr className="bg-white/10">
-                        <th className="border border-white/20 px-4 py-3 text-left font-semibold">Exam Category</th>
-                        <th className="border border-white/20 px-4 py-3 text-left font-semibold">Test Type</th>
-                        <th className="border border-white/20 px-4 py-3 text-left font-semibold">Difficulty Options</th>
+                      <tr className="bg-slate-100">
+                        <th className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3 text-left font-semibold">Exam Category</th>
+                        <th className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3 text-left font-semibold">Test Type</th>
+                        <th className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3 text-left font-semibold">Difficulty Options</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border border-white/20 px-4 py-3">SSC Mock Test</td>
-                        <td className="border border-white/20 px-4 py-3">Full-length + Sectional</td>
-                        <td className="border border-white/20 px-4 py-3">Easy / Medium / Hard</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">SSC Mock Test</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Full-length + Sectional</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Easy / Medium / Hard</td>
                       </tr>
-                      <tr className="bg-white/5">
-                        <td className="border border-white/20 px-4 py-3">Bank Exam Mock Test</td>
-                        <td className="border border-white/20 px-4 py-3">IBPS, SBI, RBI Series</td>
-                        <td className="border border-white/20 px-4 py-3">Easy / Medium / Hard</td>
-                      </tr>
-                      <tr>
-                        <td className="border border-white/20 px-4 py-3">Railway Mock Test</td>
-                        <td className="border border-white/20 px-4 py-3">NTPC, Group D, ALP</td>
-                        <td className="border border-white/20 px-4 py-3">Easy / Medium / Hard</td>
-                      </tr>
-                      <tr className="bg-white/5">
-                        <td className="border border-white/20 px-4 py-3">Police Bharti Test</td>
-                        <td className="border border-white/20 px-4 py-3">State + Central Level</td>
-                        <td className="border border-white/20 px-4 py-3">Easy / Medium / Hard</td>
+                      <tr className="bg-slate-50">
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Bank Exam Mock Test</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">IBPS, SBI, RBI Series</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Easy / Medium / Hard</td>
                       </tr>
                       <tr>
-                        <td className="border border-white/20 px-4 py-3">Online Test Series</td>
-                        <td className="border border-white/20 px-4 py-3">Weekly Anytime Exams</td>
-                        <td className="border border-white/20 px-4 py-3">Adaptive Difficulty</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Railway Mock Test</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">NTPC, Group D, ALP</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Easy / Medium / Hard</td>
+                      </tr>
+                      <tr className="bg-slate-50">
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Police Bharti Test</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">State + Central Level</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Easy / Medium / Hard</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Online Test Series</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Weekly Anytime Exams</td>
+                        <td className="border border-slate-200 px-2.5 py-2 text-sm sm:px-4 sm:py-3">Adaptive Difficulty</td>
                       </tr>
                     </tbody>
                   </table>
@@ -1257,20 +1251,20 @@ function ExamsPageContent({ initialData, initialPopularTests, initialNewTestSeri
               </div>
 
               <div className="space-y-4">
-                <h2 className="font-display text-2xl font-bold text-white">Updated as per the Latest Exam Pattern</h2>
-                <ul className="list-disc pl-6 space-y-2 text-slate-100 text-base">
+                <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Updated as per the Latest Exam Pattern</h2>
+                <ul className="list-disc pl-6 space-y-2 text-slate-700 text-base">
                   <li>Regular updates as per the latest exam trends and syllabus updates</li>
                   <li>Copies the difficulty and question style of the real exam</li>
                   <li>Makes sure that practice is always relevant and up to date</li>
                 </ul>
-                <p className="text-slate-100 text-base leading-relaxed">Mock tests are regularly updated to be in sync with the latest exam pattern and syllabus changes. In other words, you are always working on the most relevant and up-to-date questions.</p>
-                <p className="text-slate-100 text-base leading-relaxed">The tests are adapted as exam trends change, so you're always up-to-date with your preparation. You will be exposed to the same level of difficulty and style of questions that appear in the real exams.</p>
-                <p className="text-slate-100 text-base leading-relaxed">This way, you are aligned with what examiners are actually asking for. Your preparation remains relevant, practical, and exam-ready at all times.</p>
+                <p className="text-slate-700 text-base leading-relaxed">Mock tests are regularly updated to be in sync with the latest exam pattern and syllabus changes. In other words, you are always working on the most relevant and up-to-date questions.</p>
+                <p className="text-slate-700 text-base leading-relaxed">The tests are adapted as exam trends change, so you're always up-to-date with your preparation. You will be exposed to the same level of difficulty and style of questions that appear in the real exams.</p>
+                <p className="text-slate-700 text-base leading-relaxed">This way, you are aligned with what examiners are actually asking for. Your preparation remains relevant, practical, and exam-ready at all times.</p>
               </div>
 
               <div className="space-y-4">
-                <h2 className="font-display text-2xl font-bold text-white">Start Where You Are, Get Where You Want to Be</h2>
-                <div className="space-y-4 text-slate-100 text-base leading-relaxed">
+                <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Start Where You Are, Get Where You Want to Be</h2>
+                <div className="space-y-4 text-slate-700 text-base leading-relaxed">
                   <p>It does not matter whether you are starting from scratch or are already 60% through your preparation.</p>
                   <p>The filter system lets you pick up right where you left off. Filter by exam status to find tests you haven't taken yet, or look back at older sets to see how much you've improved.</p>
                   <p>Every year, more than 5 million aspirants apply for SSC, Banking and Railway jobs. The people who crack it aren't necessarily the brightest. They are the most regular ones.</p>

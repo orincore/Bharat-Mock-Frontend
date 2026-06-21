@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Crown, CheckCircle2, Shield, Loader2, Sparkles, Star, Users, TrendingUp, Award, BookOpen, Target, ChevronDown, ChevronUp, ExternalLink, GraduationCap } from 'lucide-react';
+import { Crown, CheckCircle2, Shield, Loader2, Sparkles, Star, Users, TrendingUp, Award, BookOpen, Target, ChevronDown, ChevronUp, ExternalLink, GraduationCap, Tag } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { subscriptionService, SubscriptionPlan } from '@/lib/api/subscriptionService';
@@ -131,13 +131,14 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
     return initialPlans[0]?.id ?? null;
   });
   const [promoCode, setPromoCode] = useState('');
-  const [autoRenew, setAutoRenew] = useState(true);
   const [processingCheckout, setProcessingCheckout] = useState(false);
   const [error, setError] = useState('');
   const [discountedAmount, setDiscountedAmount] = useState<number | null>(null);
   const [promoStatus, setPromoStatus] = useState<'idle' | 'applied' | 'invalid'>('idle');
   const [promoMessage, setPromoMessage] = useState('');
   const [promoValidationLoading, setPromoValidationLoading] = useState(false);
+  const [checkoutDialogOpen, setCheckoutDialogOpen] = useState(false);
+  const [showPromoField, setShowPromoField] = useState(false);
   const [pageContent, setPageContent] = useState<SubscriptionPageContent | null>(initialContent);
   const [loadingContent, setLoadingContent] = useState(false);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
@@ -173,11 +174,11 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
   }, [promoCode]);
 
   useEffect(() => {
-    // Reset discount when plan or auto-renew state changes
+    // Reset discount when plan changes
     setDiscountedAmount(null);
     setPromoStatus(promoCode ? 'idle' : 'idle');
     setPromoMessage(promoCode ? 'Tap “Apply” to validate this code.' : '');
-  }, [selectedPlanId, autoRenew]);
+  }, [selectedPlanId]);
 
   const handleApplyPromo = useCallback(async () => {
     if (!selectedPlanId) {
@@ -202,8 +203,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
     try {
       const preview = await subscriptionService.previewCheckout({
         plan_id: selectedPlanId,
-        promo_code: promoCode.trim(),
-        auto_renew: autoRenew
+        promo_code: promoCode.trim()
       });
       setDiscountedAmount(preview.adjusted_amount_cents);
       setPromoStatus('applied');
@@ -216,7 +216,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
     } finally {
       setPromoValidationLoading(false);
     }
-  }, [autoRenew, promoCode, selectedPlanId, toast]);
+  }, [promoCode, selectedPlanId, toast]);
 
   const handleCheckout = useCallback(async () => {
     if (!selectedPlanId) {
@@ -256,8 +256,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
 
       const checkout = await subscriptionService.startCheckout({
         plan_id: selectedPlanId,
-        promo_code: promoCode.trim() || undefined,
-        auto_renew: autoRenew
+        promo_code: promoCode.trim() || undefined
       });
 
       if (checkout.adjustedAmount) {
@@ -281,6 +280,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
               signature: response.razorpay_signature
             });
             await refreshProfile();
+            setCheckoutDialogOpen(false);
             toast({
               title: 'Subscription activated',
               description: 'Enjoy your premium access!'
@@ -319,6 +319,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
         });
       });
 
+      setCheckoutDialogOpen(false);
       rzp.open();
     } catch (checkoutError: any) {
       console.error('Checkout failed', checkoutError);
@@ -330,7 +331,17 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
         variant: 'destructive'
       });
     }
-  }, [autoRenew, isAuthenticated, promoCode, router, selectedPlan, selectedPlanId, toast, user]);
+  }, [isAuthenticated, promoCode, router, selectedPlan, selectedPlanId, toast, user]);
+
+  const openCheckoutForPlan = useCallback((planId: string) => {
+    setSelectedPlanId(planId);
+    setPromoCode('');
+    setPromoStatus('idle');
+    setPromoMessage('');
+    setDiscountedAmount(null);
+    setShowPromoField(false);
+    setCheckoutDialogOpen(true);
+  }, []);
 
   const displayAmount = discountedAmount ?? (selectedPlan ? selectedPlan.price_cents : 0);
 
@@ -437,7 +448,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white py-12 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white py-6 md:py-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]"></div>
         <div className="w-full max-w-6xl mx-auto px-4 relative z-10">
           <Breadcrumbs
@@ -446,35 +457,21 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
               { label: 'Subscriptions' }
             ]}
             variant="dark"
-            className="mb-8"
+            className="mb-4 md:mb-8"
           />
-          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-            <div className="order-2 lg:order-1 text-center lg:text-left space-y-6 max-w-3xl mx-auto">
+          <div className="grid gap-6 lg:gap-10 lg:grid-cols-2 lg:items-center">
+            <div className="order-2 lg:order-1 text-center lg:text-left space-y-3 md:space-y-6 max-w-3xl mx-auto">
               {heroSection?.settings?.show_badge && (
                 <Badge className="bg-white/25 text-white border-white/30 text-sm px-4 py-1 inline-flex w-auto">
                   {heroSection.settings.badge_text || heroSection.subtitle || 'Premium Learning'}
                 </Badge>
               )}
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight break-words">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight break-words">
                 {heroSection?.title || 'Level up with Bharat Mock Premium'}
               </h1>
-              <p className="text-xl text-blue-100 leading-relaxed">
+              <p className="text-base sm:text-lg md:text-xl text-blue-100 leading-relaxed">
                 {heroSection?.description || 'Unlock advanced analytics, unlimited practice tests, and exclusive exam resources curated by experts. Pick a plan and start preparing smarter today.'}
               </p>
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-8 pt-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-200" />
-                  <span className="text-blue-100">10,000+ Active Learners</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-yellow-300" />
-                  <span className="text-blue-100">4.8/5 Average Rating</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-green-300" />
-                  <span className="text-blue-100">95% Success Rate</span>
-                </div>
-              </div>
             </div>
             {heroImageUrl && (
               <div className="order-1 lg:order-2 relative w-full max-w-2xl lg:ml-auto">
@@ -494,7 +491,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
         </div>
       </div>
 
-      <div className="w-full max-w-6xl mx-auto px-4 py-12 space-y-12">
+      <div className="w-full max-w-6xl mx-auto px-4 py-4 md:py-12 space-y-6 md:space-y-12">
 
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
@@ -526,20 +523,46 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
           </section>
         )}
 
+        <section className="py-3 md:py-8">
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <div className="rounded-lg md:rounded-2xl border border-blue-200/50 bg-gradient-to-br from-blue-50 to-blue-50/50 p-2 md:p-6 text-center">
+              <div className="flex justify-center mb-1 md:mb-3">
+                <Users className="h-4 md:h-8 w-4 md:w-8 text-blue-600" />
+              </div>
+              <p className="text-[10px] leading-tight md:text-sm text-gray-600 mb-0.5 md:mb-1">Active Learners</p>
+              <p className="text-sm md:text-2xl font-bold text-gray-900">10,000+</p>
+            </div>
+            <div className="rounded-lg md:rounded-2xl border border-yellow-200/50 bg-gradient-to-br from-yellow-50 to-yellow-50/50 p-2 md:p-6 text-center">
+              <div className="flex justify-center mb-1 md:mb-3">
+                <Star className="h-4 md:h-8 w-4 md:w-8 text-yellow-500" />
+              </div>
+              <p className="text-[10px] leading-tight md:text-sm text-gray-600 mb-0.5 md:mb-1">Average Rating</p>
+              <p className="text-sm md:text-2xl font-bold text-gray-900">4.8/5</p>
+            </div>
+            <div className="rounded-lg md:rounded-2xl border border-green-200/50 bg-gradient-to-br from-green-50 to-green-50/50 p-2 md:p-6 text-center">
+              <div className="flex justify-center mb-1 md:mb-3">
+                <TrendingUp className="h-4 md:h-8 w-4 md:w-8 text-green-600" />
+              </div>
+              <p className="text-[10px] leading-tight md:text-sm text-gray-600 mb-0.5 md:mb-1">Success Rate</p>
+              <p className="text-sm md:text-2xl font-bold text-gray-900">95%</p>
+            </div>
+          </div>
+        </section>
+
         {(categoriesSection || categoriesLoading || activeCategories.length > 0) && (
-          <section className="py-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+          <section className="py-3 md:py-6">
+            <div className="text-center mb-4 md:mb-8">
+              <h2 className="text-xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-3">
                 {categoriesSection?.title || 'Exam Categories'}
               </h2>
               {categoriesSection?.subtitle && (
-                <p className="text-gray-600 text-lg max-w-3xl mx-auto">{categoriesSection.subtitle}</p>
+                <p className="text-gray-600 text-sm md:text-lg max-w-3xl mx-auto">{categoriesSection.subtitle}</p>
               )}
             </div>
             {categoriesLoading ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-2 md:gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
                 {Array.from({ length: 10 }).map((_, idx) => (
-                  <div key={idx} className="h-20 rounded-2xl bg-gray-100 animate-pulse" />
+                  <div key={idx} className="h-14 sm:h-20 rounded-xl md:rounded-2xl bg-gray-100 animate-pulse" />
                 ))}
               </div>
             ) : activeCategories.length === 0 ? (
@@ -547,43 +570,41 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                 No categories available yet.
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-2 md:gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
                 {activeCategories.map((category) => (
-                  <Link
+                  <div
                     key={category.id}
-                    href={`/${category.slug}`}
-                    className="border border-gray-200/80 rounded-2xl px-2.5 sm:px-4 py-2.5 sm:py-3 bg-white hover:border-blue-500/60 hover:shadow-lg transition flex items-center gap-2 sm:gap-3 min-h-[5rem] sm:h-20"
+                    className="border border-gray-200/80 rounded-xl md:rounded-2xl px-2 sm:px-4 py-1.5 sm:py-3 bg-white flex items-center gap-1.5 sm:gap-3 min-h-[3.25rem] sm:h-20"
                   >
                     {category.logo_url ? (
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center">
+                      <div className="w-6 h-6 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={category.logo_url} alt={category.name} className="w-full h-full object-contain" />
                       </div>
                     ) : (
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                        <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 truncate sm:whitespace-normal sm:line-clamp-2">{category.name}</p>
-                      {category.description && <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-1">{category.description}</p>}
+                      <p className="font-semibold text-[11px] leading-tight sm:text-sm text-gray-900 truncate sm:whitespace-normal sm:line-clamp-2">{category.name}</p>
+                      {category.description && <p className="hidden sm:block text-[10px] sm:text-xs text-gray-500 line-clamp-1">{category.description}</p>}
                     </div>
-                    <span className="hidden lg:block text-blue-600 text-xs font-semibold whitespace-nowrap">Explore</span>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}
           </section>
         )}
 
-        <section className="text-center space-y-3">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Choose Your Plan</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Select the perfect plan for your exam preparation journey. All plans include premium features.
+        <section className="text-center space-y-1 md:space-y-3">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">Choose Your Plan</h2>
+          <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto">
+            Select the perfect plan for your exam preparation journey.
           </p>
         </section>
 
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-8 md:grid-cols-2 lg:grid-cols-3">
           {/* ── Hardcoded Free plan ── */}
           <Card className="relative border-2 border-gray-200">
             <CardHeader className="pb-4">
@@ -667,7 +688,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                       });
                       return;
                     }
-                    setSelectedPlanId(plan.id);
+                    openCheckoutForPlan(plan.id);
                   }}
                 >
                   {isPro && (
@@ -741,16 +762,16 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                       variant={isSelected ? 'default' : 'outline'}
                       disabled={isCurrentPlan}
                       size="lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isCurrentPlan) return;
+                        openCheckoutForPlan(plan.id);
+                      }}
                     >
                       {isCurrentPlan ? (
                         <>
                           <Award className="h-5 w-5 mr-2" />
                           Current Plan
-                        </>
-                      ) : isSelected ? (
-                        <>
-                          <CheckCircle2 className="h-5 w-5 mr-2" />
-                          Selected
                         </>
                       ) : (
                         'Choose Plan'
@@ -763,39 +784,70 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
           )}
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[2fr,1fr] items-start">
-          <Card className="border-2 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-white">
-              <CardTitle className="text-2xl">Complete Your Purchase</CardTitle>
-              <CardDescription className="text-base">Review your selection and apply any promo codes</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-blue-900">Secure Payment</p>
-                    <p className="text-sm text-blue-700">Your payment information is encrypted and secure</p>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4">
+        <Dialog
+          open={checkoutDialogOpen}
+          onOpenChange={(open) => {
+            if (!processingCheckout) setCheckoutDialogOpen(open);
+          }}
+        >
+          <DialogContent className="max-w-md p-0 overflow-hidden gap-0">
+            <DialogHeader className="px-6 pt-6 pb-4 bg-gradient-to-br from-blue-50 to-indigo-50 text-left">
+              <DialogTitle className="text-xl">Complete Your Purchase</DialogTitle>
+              <DialogDescription>
+                {selectedPlan ? `${selectedPlan.name} · ${selectedPlan.duration_days} days` : 'Review your plan'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* Price */}
+              <div className="flex items-end justify-between">
                 <div>
-                  <Label className="text-base font-medium">Have a promo code?</Label>
+                  {selectedPlan && hasDiscount(selectedPlan) && (
+                    <span className="text-sm text-gray-400 line-through mr-2">
+                      {formatCurrency(selectedPlan.normal_price_cents, selectedPlan.currency_code)}
+                    </span>
+                  )}
+                  <span className="text-3xl font-bold text-gray-900">
+                    {selectedPlan ? formatCurrency(displayAmount, selectedPlan.currency_code) : '—'}
+                  </span>
+                </div>
+                {selectedPlan && hasDiscount(selectedPlan) && (
+                  <Badge className="bg-green-100 text-green-700 border-green-200">
+                    Save {Math.round(((selectedPlan.normal_price_cents - (selectedPlan.sale_price_cents ?? 0)) / selectedPlan.normal_price_cents) * 100)}%
+                  </Badge>
+                )}
+              </div>
+
+              {/* Promo code (collapsible) */}
+              {!showPromoField ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPromoField(true)}
+                  className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+                >
+                  <Tag className="h-4 w-4" />
+                  Have a promo code?
+                </button>
+              ) : (
+                <div>
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Tag className="h-4 w-4" /> Promo code
+                  </Label>
                   <div className="flex gap-2 mt-2">
                     <Input
-                      placeholder="Enter promo code"
+                      placeholder="Enter code"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                       disabled={processingCheckout || promoValidationLoading}
-                      className="h-12"
+                      className="h-10"
+                      autoFocus
                     />
                     <Button
                       type="button"
                       variant="outline"
                       onClick={handleApplyPromo}
                       disabled={processingCheckout || promoValidationLoading || !promoCode.trim()}
-                      className="h-12 px-6"
+                      className="h-10 px-4"
                     >
                       {promoValidationLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
                     </Button>
@@ -810,63 +862,23 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                     <p className="text-sm text-red-600 mt-2">{promoMessage}</p>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              )}
 
-          <Card className="border-2 border-blue-200 shadow-lg sticky top-24">
-            <CardHeader className="bg-gradient-to-br from-blue-50 to-indigo-50">
-              <CardTitle className="text-2xl">Order Summary</CardTitle>
-              <CardDescription className="text-base">Review your selection before checkout</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 bg-gray-50">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Enable auto-renew</p>
-                    <p className="text-xs text-gray-500">Keep premium active automatically</p>
-                  </div>
-                  <Switch checked={autoRenew} onCheckedChange={setAutoRenew} disabled={processingCheckout} />
-                </div>
+              {/* Total */}
+              <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+                <span className="text-base font-semibold text-gray-900">Total</span>
+                <span className="text-2xl font-bold text-blue-600">
+                  {selectedPlan ? formatCurrency(displayAmount, selectedPlan.currency_code) : '—'}
+                </span>
               </div>
 
-              <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-5 space-y-3 border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Selected Plan</span>
-                  <span className="font-semibold text-gray-900">{selectedPlan?.name || 'None'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Duration</span>
-                  <span className="font-semibold text-gray-900">
-                    {selectedPlan?.duration_days ? `${selectedPlan.duration_days} days` : '—'}
-                  </span>
-                </div>
-                <div className="border-t border-gray-200 pt-3 mt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-gray-900">Total Amount</span>
-                    <span className="text-2xl font-bold text-blue-600">
-                      {selectedPlan ? formatCurrency(displayAmount, selectedPlan.currency_code) : '—'}
-                    </span>
-                  </div>
-                </div>
-                {promoStatus === 'applied' && promoMessage && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <p className="text-sm text-green-700 flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      {promoMessage}
-                    </p>
-                  </div>
-                )}
-                {promoStatus === 'invalid' && promoMessage && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-sm text-red-700">{promoMessage}</p>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Shield className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                Secure payment via Razorpay · cards, UPI &amp; net banking
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4 pt-6">
+
               <Button
-                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
                 onClick={handleCheckout}
                 disabled={processingCheckout || !selectedPlan || isCurrentPlanSelected}
               >
@@ -882,6 +894,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                   </>
                 )}
               </Button>
+
               {!authLoading && !isAuthenticated && (
                 <p className="text-sm text-gray-600 text-center">
                   You need to be logged in to subscribe.{' '}
@@ -894,9 +907,9 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                   </Link>
                 </p>
               )}
-            </CardFooter>
-          </Card>
-        </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {curriculumSection && curriculumSection.blocks && curriculumSection.blocks.length > 0 && (
           <section className="py-6">

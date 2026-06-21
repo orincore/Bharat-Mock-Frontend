@@ -330,9 +330,6 @@ export default function ProfilePage() {
                         {user?.subscription_expires_at
                           ? ` • Expires ${formatDateLabel(user.subscription_expires_at)}`
                           : ''}
-                        {user?.subscription_auto_renew !== undefined
-                          ? ` • Auto-renew ${user.subscription_auto_renew ? 'ON' : 'OFF'}`
-                          : ''}
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
