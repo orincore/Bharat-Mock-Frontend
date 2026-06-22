@@ -1089,6 +1089,34 @@ function ExamAttemptContent() {
 
   const getLiveQuestions = () => questions;
 
+  // Warm the browser's image cache for the next question while the user is still
+  // reading the current one, so clicking "Save & Next" never has to wait on the
+  // CDN for diagrams/option images — they're already downloaded by the time the
+  // question renders.
+  useEffect(() => {
+    if (showInstructions || questions.length === 0) return;
+
+    const preloadQuestionImages = (question: QuestionWithStatus | null) => {
+      if (!question) return;
+      const urls = [
+        resolveQuestionImage(question),
+        ...(question.options || []).map(resolveOptionImage),
+      ].filter(Boolean) as string[];
+      urls.forEach((src) => {
+        const img = new window.Image();
+        img.src = src;
+      });
+    };
+
+    const sectionQs = getSectionQuestions(sections[currentSectionIndex], questions);
+    if (currentQuestionIndex < sectionQs.length - 1) {
+      preloadQuestionImages(getQuestionAtPosition(currentSectionIndex, currentQuestionIndex + 1, questions));
+    } else if (currentSectionIndex < sections.length - 1) {
+      preloadQuestionImages(getQuestionAtPosition(currentSectionIndex + 1, 0, questions));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex, currentSectionIndex, sections, questions, showInstructions]);
+
   useEffect(() => {
     if (showInstructions || questions.length === 0) return;
     const activeQuestion = getQuestionAtPosition(currentSectionIndex, currentQuestionIndex, questions);
@@ -1172,7 +1200,7 @@ function ExamAttemptContent() {
 
   const supportsHindi = exam?.supports_hindi;
 
-  const handleStartExamFlow = async () => {
+  const handleStartExamFlow = () => {
     requestDomFullscreen();
 
     // Set URL flag before dismissing instructions
@@ -1182,32 +1210,14 @@ function ExamAttemptContent() {
     params.set('question', currentQuestionIndex.toString());
     router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false });
 
-    try {
-      const questionsResponse = await examService.getExamQuestions(examId, attemptId, selectedLanguage);
-      const normalized = sortQuestionsByNumber(questionsResponse.questions);
-      const enriched: QuestionWithStatus[] = normalized.map((q: any) => {
-        const hasAnswer = hasAnswerValue(q.userAnswer?.answer);
-        const isMarked = q.userAnswer?.marked_for_review || false;
-        let status: QuestionStatus = 'not-visited';
-        if (hasAnswer && isMarked) status = 'answered-marked';
-        else if (hasAnswer) status = 'answered';
-        else if (isMarked) status = 'marked';
-        return { ...q, status };
-      });
-      const sectionsData: SectionWithQuestions[] = questionsResponse.sections.map((s: any) => ({
-        ...s,
-        language: s.language || s.language_code || selectedLanguage,
-        questions: sortQuestionsByNumber(enriched.filter(q => getQuestionSectionId(q) === s.id))
-      }));
-      setAllSections(sectionsData);
-      setAllQuestions(enriched);
-      setSections(sectionsData);
-      setQuestions(enriched);
-      setCurrentSectionIndex(0);
-      setCurrentQuestionIndex(0);
-    } catch (e) {
-      // fallback — proceed with already-loaded content
-    }
+    // allSections/allQuestions were already fetched and normalized by the
+    // page-mount effect (keyed on examId/attemptId/selectedLanguage), so
+    // re-fetching here only duplicated that network round-trip and made the
+    // click feel slow. Just reuse the already-loaded data.
+    setSections(allSections);
+    setQuestions(allQuestions);
+    setCurrentSectionIndex(0);
+    setCurrentQuestionIndex(0);
     setShowInstructions(false);
   };
 
@@ -2277,15 +2287,17 @@ function ExamAttemptContent() {
                 </Button>
               </div>
 
-              {/* Next / Save & Next */}
+              {/* Next / Save & Next — never gated on isSaving: that flag tracks the
+                  PREVIOUS question's background save, which is fire-and-forget and
+                  unrelated to navigating to the question now on screen. Disabling
+                  here just made rapid next-clicks feel laggy for no correctness benefit. */}
               <Button
                 onClick={() => isLastQuestion ? handleSaveAndSubmitPrompt() : handleSaveAndNext()}
-                disabled={isSaving}
                 className="h-9 px-4 md:px-8 rounded-full bg-[#00aeef] hover:bg-[#0099d4] text-white font-bold text-[12px] md:text-[13px] transition-all active:scale-[0.98] shadow-md hover:shadow-lg disabled:opacity-50 shrink-0 flex items-center justify-center min-w-[80px]"
               >
                 <div className="flex items-center">
                   <span className="truncate">
-                    {isSaving ? 'Saving...' : isLastQuestion ? 'Submit' : selectedAnswer ? (
+                    {isLastQuestion ? 'Submit' : selectedAnswer ? (
                       <>
                         <span className="hidden md:inline">Save & Next</span>
                         <span className="md:hidden">Save & Next</span>
