@@ -18,6 +18,21 @@ const buildApiUrl = (path: string) => {
   return `/api/v1${normalizedPath}`;
 };
 
+// A test-series detail page should only ever canonicalize to itself — there's no
+// legitimate case for pointing one test series at a different one's URL. Admin-set
+// canonical_url values can go stale after a slug rename, so only honor it when it
+// actually resolves to this same page; otherwise fall back to the real self URL.
+function resolveSelfCanonical(canonical: string | undefined | null, expectedPath: string): string {
+  const selfUrl = `${SITE_URL}${expectedPath}`;
+  if (!canonical) return selfUrl;
+  try {
+    const url = new URL(canonical, SITE_URL);
+    return url.pathname.replace(/\/$/, '') === expectedPath.replace(/\/$/, '') ? canonical : selfUrl;
+  } catch {
+    return selfUrl;
+  }
+}
+
 const SIDEBAR_BANNER_IDENTIFIER = 'test_series_sidebar';
 
 function shuffleArray<T>(items: T[]): T[] {
@@ -132,7 +147,7 @@ export async function generateMetadata(
   // take priority over the raw test-series fields, which are just a fallback.
   const { seo } = await fetchPageContent(testSeries.id);
 
-  const canonicalUrl = seo?.canonical_url || `${SITE_URL}/test-series/${slug}`;
+  const canonicalUrl = resolveSelfCanonical(seo?.canonical_url, `/test-series/${slug}`);
   const title = seo?.meta_title || testSeries.title;
   const description = seo?.meta_description || testSeries.description || `Practice with ${testSeries.title} test series on Bharat Mock`;
   const ogTitle = seo?.og_title || title;
