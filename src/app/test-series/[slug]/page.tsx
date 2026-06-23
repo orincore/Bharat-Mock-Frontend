@@ -127,26 +127,40 @@ export async function generateMetadata(
   const { slug } = await params;
   const testSeries = await fetchTestSeriesBySlug(slug);
   if (!testSeries) return { title: 'Test Series Not Found' };
-  const canonicalUrl = `${SITE_URL}/test-series/${slug}`;
+
+  // SEO Settings configured in the admin editor (/admin/test-series/{id}/editor)
+  // take priority over the raw test-series fields, which are just a fallback.
+  const { seo } = await fetchPageContent(testSeries.id);
+
+  const canonicalUrl = seo?.canonical_url || `${SITE_URL}/test-series/${slug}`;
+  const title = seo?.meta_title || testSeries.title;
+  const description = seo?.meta_description || testSeries.description || `Practice with ${testSeries.title} test series on Bharat Mock`;
+  const ogTitle = seo?.og_title || title;
+  const ogDescription = seo?.og_description || description;
+  const ogImage = seo?.og_image_url || testSeries.image_url || `${SITE_URL}/assets/login_banner_image.jpg`;
+
   return {
-    title: testSeries.title,
-    description: testSeries.description || `Practice with ${testSeries.title} test series on Bharat Mock`,
+    title,
+    description,
+    keywords: seo?.meta_keywords || undefined,
+    authors: seo?.author_name ? [{ name: seo.author_name }] : undefined,
+    robots: seo?.robots_meta || undefined,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title: testSeries.title,
-      description: testSeries.description,
+      title: ogTitle,
+      description: ogDescription,
       url: canonicalUrl,
       type: 'website',
       siteName: 'BharatMock',
-      images: testSeries.image_url ? [{ url: testSeries.image_url, width: 1200, height: 630, alt: testSeries.title }] : [{ url: `${SITE_URL}/assets/login_banner_image.jpg`, width: 1200, height: 630 }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: ogTitle }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: testSeries.title,
-      description: testSeries.description,
-      images: testSeries.image_url ? [testSeries.image_url] : [`${SITE_URL}/assets/login_banner_image.jpg`],
+      title: ogTitle,
+      description: ogDescription,
+      images: [ogImage],
     },
   };
 }

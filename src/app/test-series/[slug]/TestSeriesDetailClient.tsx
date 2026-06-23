@@ -31,6 +31,7 @@ import { Exam } from '@/types';
 import { pageBannersService, PageBanner } from '@/lib/api/pageBannersService';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { PageBlockRenderer } from '@/components/PageEditor/PageBlockRenderer';
+import { useFooterVisible } from '@/app/providers';
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")
@@ -141,6 +142,11 @@ function MobileTOC({
 }
 
 export default function TestSeriesDetailClient({ initialData, slug }: { initialData: InitialData; slug: string }) {
+  // This page lives under the 2-segment /test-series/[slug] route, which the global
+  // footer heuristic in providers.tsx otherwise hides (it assumes 2 segments == an
+  // exam-detail page). Opt back in, same as the category/exam-tab pages do.
+  useFooterVisible();
+
   const [testSeries, setTestSeries] = useState<TestSeries | null>(initialData.testSeries);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
