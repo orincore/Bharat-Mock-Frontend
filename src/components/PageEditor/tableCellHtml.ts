@@ -67,8 +67,13 @@ export const sanitizeTableCellHtml = (
   // align toolbar sticks), otherwise unwrap to inline content separated by <br>.
   tmp.querySelectorAll('p, div, li, h1, h2, h3, h4, h5, h6, blockquote').forEach((block) => {
     const el = block as HTMLElement;
-    const align = stripAlign ? '' : (el.style.textAlign || el.getAttribute('align') || '').trim();
-    if (align && align !== 'left' && align !== 'start') {
+    const rawAlign = stripAlign ? '' : (el.style.textAlign || el.getAttribute('align') || '').trim();
+    // Normalize the logical values execCommand can produce ('start'/'end') to their
+    // physical equivalent. The cell's own default alignment is CENTER (not left), so
+    // an explicit "left" is a real override that must be preserved too — treating it
+    // as a no-op (as this used to) silently discarded the "Align left" toolbar button.
+    const align = rawAlign === 'start' ? 'left' : rawAlign === 'end' ? 'right' : rawAlign;
+    if (align) {
       // Reduce to a clean alignment-only <div>; margins are zeroed by TABLE_CELL_RESET.
       el.removeAttribute('class');
       el.removeAttribute('id');
