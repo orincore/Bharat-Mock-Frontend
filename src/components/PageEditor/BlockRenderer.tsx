@@ -267,6 +267,7 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
     cellLinks = {},
     cellColors = {},
     headerColors = {},
+    columnWidths = [],
     layout = 'scroll',
     verticalAlign = 'top'
   } = content;
@@ -298,6 +299,16 @@ const TableBlock: React.FC<{ content: any; settings?: any }> = ({ content }) => 
         className={`${isFixed ? 'w-full bm-table-fit' : 'min-w-full bm-table-scroll'} border-collapse text-sm`}
         style={isFixed ? { tableLayout: 'fixed' } : undefined}
       >
+        {Array.isArray(columnWidths) && columnWidths.some((w: unknown) => typeof w === 'number' && w > 0) && (
+          <colgroup>
+            {headers.map((_: string, index: number) => (
+              <col
+                key={index}
+                style={typeof columnWidths[index] === 'number' ? { width: `${columnWidths[index]}%` } : undefined}
+              />
+            ))}
+          </colgroup>
+        )}
 
         {hasHeader && headers.length > 0 && (
           <thead>

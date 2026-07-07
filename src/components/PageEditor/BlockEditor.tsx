@@ -3747,6 +3747,9 @@ const InlineTableEditor = ({
   const cellLinks = content.cellLinks || {}; // Format: { "rowIndex-colIndex": "url" }
   const cellColors = content.cellColors || {}; // Format: { "rowIndex-colIndex": { bg: "#fff", text: "#000" } }
   const headerColors = content.headerColors || {}; // Format: { "colIndex": { bg: "", text: "" } }
+  // Per-column width as a percentage of the table's width, parallel to `headers` by
+  // index. `null`/missing = auto (browser distributes remaining width by content).
+  const columnWidths: Array<number | null> = Array.isArray(content.columnWidths) ? content.columnWidths : [];
   // 'scroll' (default) = columns keep a min width and the table scrolls horizontally
   // on narrow screens. 'fixed' = table always fits the screen width; columns share
   // the width equally and cell text wraps instead of scrolling.
@@ -3760,13 +3763,26 @@ const InlineTableEditor = ({
   const addColumn = () => {
     const nextHeaders = [...headers, `Column ${headers.length + 1}`];
     const nextRows = rows.length ? rows.map((row) => [...row, '']) : [[...nextHeaders.map(() => '')]];
-    update({ headers: nextHeaders, rows: nextRows });
+    const nextColumnWidths = columnWidths.length ? [...columnWidths, null] : columnWidths;
+    update({ headers: nextHeaders, rows: nextRows, ...(nextColumnWidths.length ? { columnWidths: nextColumnWidths } : {}) });
+  };
+
+  const handleColumnWidthChange = (index: number, value: string) => {
+    const next = [...columnWidths];
+    if (value.trim() === '') {
+      next[index] = null;
+    } else {
+      const num = Math.round(Math.max(1, Math.min(100, Number(value) || 0)));
+      next[index] = num;
+    }
+    update({ columnWidths: next });
   };
 
   const removeColumn = (index: number) => {
     if (headers.length <= 1) return;
     const nextHeaders = headers.filter((_, i) => i !== index);
     const nextRows = rows.map((row) => row.filter((_, i) => i !== index));
+    const nextColumnWidths = columnWidths.length ? columnWidths.filter((_, i) => i !== index) : columnWidths;
 
     // Remove links and colors for deleted column
     const nextLinks = { ...cellLinks };
@@ -3810,7 +3826,14 @@ const InlineTableEditor = ({
         delete nextHeaderColors[key];
       }
     });
-    update({ headers: nextHeaders, rows: nextRows, cellLinks: nextLinks, cellColors: nextColors, headerColors: nextHeaderColors });
+    update({
+      headers: nextHeaders,
+      rows: nextRows,
+      cellLinks: nextLinks,
+      cellColors: nextColors,
+      headerColors: nextHeaderColors,
+      ...(nextColumnWidths.length ? { columnWidths: nextColumnWidths } : {}),
+    });
   };
 
 
@@ -3862,7 +3885,10 @@ const InlineTableEditor = ({
         return newRow;
       });
 
-      update({ headers: newHeaders, rows: newRows });
+      // Column count/order is being replaced wholesale — old per-column widths no
+      // longer line up with anything, so drop them rather than misapplying stale
+      // percentages to the newly pasted columns.
+      update({ headers: newHeaders, rows: newRows, columnWidths: [] });
       return true;
     }
     return false;
@@ -4182,6 +4208,16 @@ const InlineTableEditor = ({
           className={`${layout === 'fixed' ? 'w-full bm-table-fit' : 'min-w-full bm-table-scroll'} text-sm border-collapse`}
           style={layout === 'fixed' ? { tableLayout: 'fixed' } : undefined}
         >
+          {columnWidths.some((w) => typeof w === 'number' && w > 0) && (
+            <colgroup>
+              {headers.map((_, index) => (
+                <col
+                  key={index}
+                  style={typeof columnWidths[index] === 'number' ? { width: `${columnWidths[index]}%` } : undefined}
+                />
+              ))}
+            </colgroup>
+          )}
           {hasHeader && (
             <thead>
               <tr>
@@ -4215,6 +4251,14 @@ const InlineTableEditor = ({
                       />
                       {/* Column hover controls — stay visible while color picker is open */}
                       <div className={`absolute top-1 right-1 items-center gap-0.5 z-20 ${pinnedControls === `hcol-${index}` ? 'flex' : 'hidden group-hover/hcell:flex'}`}>
+                        <input type="number" min={1} max={100} step={1}
+                          value={typeof columnWidths[index] === 'number' ? columnWidths[index] as number : ''}
+                          onChange={(e) => handleColumnWidthChange(index, e.target.value)}
+                          onFocus={() => setPinnedControls(`hcol-${index}`)}
+                          onBlur={() => setTimeout(() => setPinnedControls(null), 150)}
+                          placeholder="Auto"
+                          title="Column width (%)"
+                          className="w-9 h-4 text-[8px] leading-none text-center rounded bg-white border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                         <input type="color" value={hBg}
                           onChange={(e) => handleHeaderColorChange(index, 'bg', e.target.value)}
                           onFocus={() => setPinnedControls(`hcol-${index}`)}

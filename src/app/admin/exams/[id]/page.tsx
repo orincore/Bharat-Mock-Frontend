@@ -408,126 +408,137 @@ export default function ExamFormPage() {
     }
   }, [formData.paper_section_id]);
 
+  // Runs async `jobs` with at most `limit` in flight at once, instead of one-at-a-time —
+  // with 100-200 questions, uploading images sequentially (one HTTP round trip at a time)
+  // was the main reason a save could take minutes when new question/option images were attached.
+  const runWithConcurrency = async <T,>(jobs: Array<() => Promise<T>>, limit = 6): Promise<T[]> => {
+    const results: T[] = new Array(jobs.length);
+    let nextIndex = 0;
+    const worker = async () => {
+      while (true) {
+        const current = nextIndex++;
+        if (current >= jobs.length) return;
+        results[current] = await jobs[current]();
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(limit, jobs.length) }, worker));
+    return results;
+  };
+
   const uploadImagesAfterSave = async (questionIdMap: any[]) => {
-    let uploadCount = 0;
     const errors: string[] = [];
 
     // Validate input
     if (!questionIdMap || !Array.isArray(questionIdMap) || questionIdMap.length === 0) {
-      //console.log('No questionIdMap provided for image upload');
       return { uploadCount: 0, errors: [] };
     }
-
-    //console.log(`Processing ${questionIdMap.length} question mappings for image upload`);
 
     // Create a mutable copy of sections to avoid state mutation issues
     const updatedSections = [...sections];
 
+    // First pass (cheap, synchronous): locate every question/option and apply new IDs.
+    // Only File-backed images need a network upload — collect those as jobs to run concurrently.
+    type UploadJob = () => Promise<{ ok: boolean; error?: string }>;
+    const uploadJobs: UploadJob[] = [];
+
     for (const mapping of questionIdMap) {
-      // Validate mapping structure
       if (!mapping || !mapping.oldId || !mapping.newId) {
         console.warn('Invalid mapping structure:', mapping);
         continue;
       }
 
-      //console.log(`Processing mapping: oldId=${mapping.oldId}, newId=${mapping.newId}`);
-
-      // Find the question in sections by old ID
-      let questionFile: File | null = null;
       let sectionIdx = -1;
       let questionIdx = -1;
-
       for (let sIdx = 0; sIdx < updatedSections.length; sIdx++) {
         const qIdx = updatedSections[sIdx].questions.findIndex(q => q.id === mapping.oldId);
         if (qIdx >= 0) {
           sectionIdx = sIdx;
           questionIdx = qIdx;
-          questionFile = updatedSections[sIdx].questions[qIdx].image as File;
-          //console.log(`Found question at section ${sIdx}, question ${qIdx}, has image file: ${!!questionFile}`);
           break;
         }
       }
 
-      // Skip if question not found
       if (sectionIdx < 0 || questionIdx < 0) {
         console.warn(`Question with oldId ${mapping.oldId} not found in sections`);
         continue;
       }
 
-      // Upload question image if it's a File object
+      const sIdx = sectionIdx;
+      const qIdx = questionIdx;
+      const questionFile = updatedSections[sIdx].questions[qIdx].image as File;
+
       if (questionFile && questionFile instanceof File) {
-        try {
-          //console.log(`Uploading question image for newId: ${mapping.newId}`);
-          const questionImageData = await adminService.uploadQuestionImage(mapping.newId, questionFile);
-          if (questionImageData?.image_url) {
-            //console.log(`Question image uploaded successfully: ${questionImageData.image_url}`);
-            updatedSections[sectionIdx].questions[questionIdx].image_url = questionImageData.image_url;
-            updatedSections[sectionIdx].questions[questionIdx].image = null;
-            updatedSections[sectionIdx].questions[questionIdx].imagePreview = questionImageData.image_url;
-            updatedSections[sectionIdx].questions[questionIdx].id = mapping.newId;
-            uploadCount++;
-          } else {
+        uploadJobs.push(async () => {
+          try {
+            const questionImageData = await adminService.uploadQuestionImage(mapping.newId, questionFile);
+            if (questionImageData?.image_url) {
+              updatedSections[sIdx].questions[qIdx].image_url = questionImageData.image_url;
+              updatedSections[sIdx].questions[qIdx].image = null;
+              updatedSections[sIdx].questions[qIdx].imagePreview = questionImageData.image_url;
+              updatedSections[sIdx].questions[qIdx].id = mapping.newId;
+              return { ok: true };
+            }
             console.error('Question image upload returned no URL');
-            errors.push(`Question image upload returned no URL`);
+            return { ok: false, error: 'Question image upload returned no URL' };
+          } catch (error: any) {
+            console.error(`Failed to upload image for question ${mapping.newId}:`, error);
+            const errorMsg = error?.response?.data?.message || error?.message || 'Upload failed';
+            return { ok: false, error: `Question image: ${errorMsg}` };
           }
-        } catch (error: any) {
-          console.error(`Failed to upload image for question ${mapping.newId}:`, error);
-          const errorMsg = error?.response?.data?.message || error?.message || 'Upload failed';
-          errors.push(`Question image: ${errorMsg}`);
-        }
+        });
       } else {
-        // Update question ID even if no image
-        updatedSections[sectionIdx].questions[questionIdx].id = mapping.newId;
+        updatedSections[sIdx].questions[qIdx].id = mapping.newId;
       }
 
-      // Upload option images
       if (mapping.options && Array.isArray(mapping.options)) {
         for (const optMapping of mapping.options) {
-          // Validate option mapping
           if (!optMapping || !optMapping.oldId || !optMapping.newId) {
             console.warn('Invalid option mapping structure:', optMapping);
             continue;
           }
 
-          const optIdx = updatedSections[sectionIdx].questions[questionIdx].options.findIndex(
+          const optIdx = updatedSections[sIdx].questions[qIdx].options.findIndex(
             o => o.id === optMapping.oldId
           );
-          
+
           if (optIdx < 0) {
             console.warn(`Option with oldId ${optMapping.oldId} not found`);
             continue;
           }
 
-          const optionFile = updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image as File;
+          const optionFile = updatedSections[sIdx].questions[qIdx].options[optIdx].image as File;
           if (optionFile && optionFile instanceof File) {
-            try {
-              //console.log(`Uploading option image for newId: ${optMapping.newId}`);
-              const optionImageData = await adminService.uploadOptionImage(optMapping.newId, optionFile);
-              if (optionImageData?.image_url) {
-                //console.log(`Option image uploaded successfully: ${optionImageData.image_url}`);
-                updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image_url = optionImageData.image_url;
-                updatedSections[sectionIdx].questions[questionIdx].options[optIdx].image = null;
-                updatedSections[sectionIdx].questions[questionIdx].options[optIdx].imagePreview = optionImageData.image_url;
-                updatedSections[sectionIdx].questions[questionIdx].options[optIdx].id = optMapping.newId;
-                uploadCount++;
-              } else {
+            uploadJobs.push(async () => {
+              try {
+                const optionImageData = await adminService.uploadOptionImage(optMapping.newId, optionFile);
+                if (optionImageData?.image_url) {
+                  updatedSections[sIdx].questions[qIdx].options[optIdx].image_url = optionImageData.image_url;
+                  updatedSections[sIdx].questions[qIdx].options[optIdx].image = null;
+                  updatedSections[sIdx].questions[qIdx].options[optIdx].imagePreview = optionImageData.image_url;
+                  updatedSections[sIdx].questions[qIdx].options[optIdx].id = optMapping.newId;
+                  return { ok: true };
+                }
                 console.error('Option image upload returned no URL');
-                errors.push(`Option image upload returned no URL`);
+                return { ok: false, error: 'Option image upload returned no URL' };
+              } catch (error: any) {
+                console.error(`Failed to upload image for option ${optMapping.newId}:`, error);
+                const errorMsg = error?.response?.data?.message || error?.message || 'Upload failed';
+                return { ok: false, error: `Option image: ${errorMsg}` };
               }
-            } catch (error: any) {
-              console.error(`Failed to upload image for option ${optMapping.newId}:`, error);
-              const errorMsg = error?.response?.data?.message || error?.message || 'Upload failed';
-              errors.push(`Option image: ${errorMsg}`);
-            }
+            });
           } else {
-            // Update option ID even if no image
-            updatedSections[sectionIdx].questions[questionIdx].options[optIdx].id = optMapping.newId;
+            updatedSections[sIdx].questions[qIdx].options[optIdx].id = optMapping.newId;
           }
         }
       }
     }
 
-    //console.log(`Image upload complete. Uploaded: ${uploadCount}, Errors: ${errors.length}`);
+    const jobResults = uploadJobs.length > 0 ? await runWithConcurrency(uploadJobs, 6) : [];
+    let uploadCount = 0;
+    for (const result of jobResults) {
+      if (result.ok) uploadCount++;
+      else if (result.error) errors.push(result.error);
+    }
 
     // Update state with all changes at once
     if (uploadCount > 0 || questionIdMap.length > 0) {
