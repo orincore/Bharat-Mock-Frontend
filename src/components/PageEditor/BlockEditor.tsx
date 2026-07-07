@@ -80,7 +80,6 @@ import {
   AlertTriangle,
   FileText,
   Sheet,
-  MoveHorizontal,
   MoveVertical,
   Search,
   Link,
@@ -4014,6 +4013,9 @@ const InlineTableEditor = ({
   // Saved selection range — restored before applying toolbar commands so they
   // work even though the toolbar lives outside the table's scroll container
   const savedRangeRef = React.useRef<Range | null>(null);
+  // Measures the table's rendered width so column-resize drags can convert a
+  // pixel delta into a percentage of the table.
+  const tableRef = React.useRef<HTMLTableElement>(null);
 
   const saveSelection = () => {
     const sel = window.getSelection();
@@ -4071,6 +4073,69 @@ const InlineTableEditor = ({
       className={`w-6 h-6 flex items-center justify-center rounded text-xs hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-colors ${cls}`}>
       {label}
     </button>
+  );
+
+  // Excel-style column resize: drag the divider on a column's right edge to set
+  // its width as a percentage of the table's rendered width. Only the dragged
+  // column's width is written; columns left untouched stay "auto" and share
+  // whatever space remains (same colgroup model as before).
+  const resizeStateRef = React.useRef<{ index: number; startX: number; startPercent: number; tableWidth: number } | null>(null);
+  const [resizingIndex, setResizingIndex] = React.useState<number | null>(null);
+  const [liveWidthPreview, setLiveWidthPreview] = React.useState<number | null>(null);
+
+  const beginColumnResize = (index: number) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const tableEl = tableRef.current;
+    if (!tableEl) return;
+    const tableWidth = tableEl.getBoundingClientRect().width;
+    if (!tableWidth) return;
+
+    // If this column has no explicit % yet, seed the drag from its current
+    // rendered width so it doesn't jump the instant you start dragging.
+    let startPercent = typeof columnWidths[index] === 'number' ? (columnWidths[index] as number) : null;
+    if (startPercent == null) {
+      const thEl = tableEl.querySelectorAll('thead th')[index] as HTMLElement | undefined;
+      startPercent = thEl ? (thEl.getBoundingClientRect().width / tableWidth) * 100 : 100 / headers.length;
+    }
+
+    resizeStateRef.current = { index, startX: e.clientX, startPercent, tableWidth };
+    setResizingIndex(index);
+    setLiveWidthPreview(Math.round(startPercent));
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const state = resizeStateRef.current;
+      if (!state) return;
+      const deltaPercent = ((moveEvent.clientX - state.startX) / state.tableWidth) * 100;
+      const next = Math.round(Math.max(4, Math.min(95, state.startPercent + deltaPercent)));
+      setLiveWidthPreview(next);
+      handleColumnWidthChange(state.index, String(next));
+    };
+    const onMouseUp = () => {
+      resizeStateRef.current = null;
+      setResizingIndex(null);
+      setLiveWidthPreview(null);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const ColumnResizeHandle = ({ index }: { index: number }) => (
+    <div
+      onMouseDown={beginColumnResize(index)}
+      onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); handleColumnWidthChange(index, ''); }}
+      title="Drag to resize column • double-click to reset to auto"
+      className="absolute top-0 -right-1 h-full w-2 cursor-col-resize z-30 flex justify-center group/resize"
+    >
+      <span className={`w-px h-full transition-colors ${resizingIndex === index ? 'bg-blue-500 w-0.5' : 'bg-transparent group-hover/resize:bg-blue-400 group-hover/resize:w-0.5'}`} />
+      {resizingIndex === index && liveWidthPreview != null && (
+        <div className="absolute -top-6 right-0 translate-x-1/2 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] font-medium rounded shadow whitespace-nowrap">
+          {liveWidthPreview}%
+        </div>
+      )}
+    </div>
   );
 
   return (
@@ -4205,6 +4270,7 @@ const InlineTableEditor = ({
       {/* ── Table ─────────────────────────────────────────────── */}
       <div className={layout === 'fixed' ? '' : 'overflow-x-auto hide-scrollbar'}>
         <table
+          ref={tableRef}
           className={`${layout === 'fixed' ? 'w-full bm-table-fit' : 'min-w-full bm-table-scroll'} text-sm border-collapse`}
           style={layout === 'fixed' ? { tableLayout: 'fixed' } : undefined}
         >
@@ -4250,15 +4316,7 @@ const InlineTableEditor = ({
                         onKeyDown={(e) => { if (e.ctrlKey || e.metaKey) { if (e.key === 'b') { e.preventDefault(); document.execCommand('bold'); } if (e.key === 'i') { e.preventDefault(); document.execCommand('italic'); } if (e.key === 'u') { e.preventDefault(); document.execCommand('underline'); } } }}
                       />
                       {/* Column hover controls — stay visible while color picker is open */}
-                      <div className={`absolute top-1 right-1 items-center gap-0.5 z-20 ${pinnedControls === `hcol-${index}` ? 'flex' : 'hidden group-hover/hcell:flex'}`}>
-                        <input type="number" min={1} max={100} step={1}
-                          value={typeof columnWidths[index] === 'number' ? columnWidths[index] as number : ''}
-                          onChange={(e) => handleColumnWidthChange(index, e.target.value)}
-                          onFocus={() => setPinnedControls(`hcol-${index}`)}
-                          onBlur={() => setTimeout(() => setPinnedControls(null), 150)}
-                          placeholder="Auto"
-                          title="Column width (%)"
-                          className="w-9 h-4 text-[8px] leading-none text-center rounded bg-white border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                      <div className={`absolute top-1 right-1 items-center gap-1 z-20 ${pinnedControls === `hcol-${index}` ? 'flex' : 'hidden group-hover/hcell:flex'}`}>
                         <input type="color" value={hBg}
                           onChange={(e) => handleHeaderColorChange(index, 'bg', e.target.value)}
                           onFocus={() => setPinnedControls(`hcol-${index}`)}
@@ -4273,6 +4331,8 @@ const InlineTableEditor = ({
                           className="w-4 h-4 flex items-center justify-center rounded-full bg-white hover:bg-red-50 text-red-400 text-[9px] border border-red-200 shadow-sm disabled:opacity-20 leading-none transition-colors"
                           title="Remove column">×</button>
                       </div>
+                      {/* Excel-style drag-to-resize divider on the column's right edge */}
+                      <ColumnResizeHandle index={index} />
                     </th>
                   );
                 })}
