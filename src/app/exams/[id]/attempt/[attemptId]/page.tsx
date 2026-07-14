@@ -1618,7 +1618,7 @@ function ExamAttemptContent() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden select-none relative bg-[#f8fafc]">
+    <div className="flex flex-col h-screen h-dvh overflow-hidden select-none relative bg-[#f8fafc]">
         {isLoading && isFastLoad && (
           <div className="fixed inset-0 z-[100] bg-white/20 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
             <div className="bg-white/90 p-4 rounded-xl shadow-lg border border-primary/20 flex items-center gap-3 animate-in fade-in zoom-in duration-300">
@@ -1952,13 +1952,14 @@ function ExamAttemptContent() {
 
                   </div>
 
-                  {/* Essential Spacer: ensures content isn't hidden behind global action bar */}
-                  <div className="h-8" aria-hidden="true" />
+                  {/* Essential Spacer: ensures content isn't hidden behind global action bar
+                      (bar is h-16 = 4rem tall, plus the iOS home-indicator safe area) */}
+                  <div className="h-[calc(4rem+env(safe-area-inset-bottom)+16px)]" aria-hidden="true" />
                 </div>
               </div>
             </div>
             {/* Desktop Right Sidebar — Unified Panel like Prepp */}
-            <div className="hidden lg:flex flex-col w-72 shrink-0 border-l border-slate-200 bg-white h-screen fixed top-0 right-0 overflow-hidden z-30" style={{ paddingTop: '56px' }}>
+            <div className="hidden lg:flex flex-col w-72 shrink-0 border-l border-slate-200 bg-white h-screen h-dvh fixed top-0 right-0 overflow-hidden z-30" style={{ paddingTop: '56px' }}>
 
 
               {/* Question Palette header */}
@@ -2142,7 +2143,7 @@ function ExamAttemptContent() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div className="flex-1 overflow-y-auto w-full pb-[env(safe-area-inset-bottom)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {paletteViewMode === 'section' ? (
                   sections.map((section, sectionIdx) => {
                     const mobileQuestions = getSectionQuestions(section, liveQuestions);
@@ -2238,7 +2239,7 @@ function ExamAttemptContent() {
 
 
           {/* Global Action Bar - prepp.in style with 4 buttons - shown on all screens */}
-          <div className="fixed bottom-0 left-0 right-0 lg:right-72 z-40 border-t border-slate-200 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+          <div className="fixed bottom-0 left-0 right-0 lg:right-72 z-40 border-t border-slate-200 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-center justify-center h-16 px-2 md:px-6 gap-1.5 md:gap-4">
               {/* Previous */}
               <Button
