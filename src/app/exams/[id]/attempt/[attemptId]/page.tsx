@@ -1257,7 +1257,7 @@ function ExamAttemptContent() {
 
   if (showInstructions) {
     return (
-      <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden">
+      <div className="flex flex-col h-dvh bg-[#f8fafc] overflow-hidden">
         {/* Header - Official Branding */}
         <header className="h-10 md:h-12 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-6 shrink-0 shadow-sm z-10">
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
@@ -1293,11 +1293,11 @@ function ExamAttemptContent() {
         </header>
 
         {/* Main Content Area - Split Layout */}
-        <main className="flex-1 overflow-hidden w-full bg-white flex flex-col">
-          <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+        <main className="flex-1 overflow-y-auto overscroll-contain w-full bg-white flex flex-col">
+          <div className="flex flex-1 flex-col lg:flex-row">
             {/* Left Content - Instructions */}
-            <div className="flex-1 p-3 md:p-4 lg:p-6 space-y-2 md:space-y-3 lg:border-r lg:border-slate-100 overflow-hidden">
-              <div className="max-w-4xl h-full flex flex-col">
+            <div className="flex-1 p-3 md:p-4 lg:p-6 space-y-2 md:space-y-3 lg:border-r lg:border-slate-100">
+              <div className="max-w-4xl flex flex-col">
                 {/* Mobile-only exam title (hidden in the header on mobile, shown here instead) */}
                 <h1 className="md:hidden font-black text-slate-800 tracking-tight text-[15px] leading-snug mb-2">Free Full Test : {exam?.title || 'SSC CGL 2025 (Tier-I)'}</h1>
                 {/* Section Table - High-Density Precision Centered Grid */}
