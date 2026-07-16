@@ -1,7 +1,9 @@
 'use client';
 
 const CACHE_PREFIX = 'bm_tx_';
-const CACHE_VERSION = 'v1';
+// v2: letter-code tokens (coding-decoding answers like "AVAUG") are now
+// protected from translation server-side — v1 entries may hold mangled text.
+const CACHE_VERSION = 'v2';
 
 function cacheKey(text: string, target: string) {
   // Simple hash: length + first 20 + last 10 chars

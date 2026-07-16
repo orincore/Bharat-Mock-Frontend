@@ -1546,8 +1546,25 @@ function ExamAttemptContent() {
       // "translations" when the API failed silently. For Hindi, require the cached
       // text to actually contain Devanagari; otherwise treat it as a miss and
       // re-translate via the Cloud API below (which then re-saves correct text).
+      // Also reject rows where a letter-code option (coding-decoding answers
+      // like "AVAUG") was mangled by an older build that let Google translate
+      // it as a word ("AVUAG" → "बहुत बढ़िया") — such options must survive
+      // translation verbatim. Re-translating re-saves clean rows via upsert.
+      const PURE_CODE = /^[A-Z][A-Z0-9]*(?:[\s\-/][A-Z0-9]+)*$/;
+      const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').trim();
+      const srcById = new Map<string, any>(sourceQuestions.map(q => [q.id, q]));
+      const dbCodesIntact = !dbData?.questions?.some((tq: any) => {
+        const src = srcById.get(tq.id);
+        if (!src) return false;
+        return (tq.options || []).some((to: any) => {
+          const srcOpt = (src.options || []).find((o: any) => o.id === to.id);
+          const orig = stripTags(srcOpt?.option_text || srcOpt?.text || '');
+          return PURE_CODE.test(orig) && stripTags(to.text_translated || '') !== orig;
+        });
+      });
       const dbHasUsableText =
         !!dbData?.questions?.length &&
+        dbCodesIntact &&
         (newLang !== 'hi' ||
           dbData.questions.some((q: any) => /[ऀ-ॿ]/.test(q.text_translated || '')));
       if (dbHasUsableText) {

@@ -17,6 +17,44 @@ function getApiKey(): string | undefined {
   return process.env.GOOGLE_CLOUD_TRANSLATION_API_KEY;
 }
 
+// ── No-translate protection ─────────────────────────────────────────────────
+// Reasoning / coding-decoding content is full of letter codes ("If MANGO is
+// written as OGNAM…", options like "AVAUG") that Google mangles when it treats
+// them as words: it invents meanings ("AVUAG" → "बहुत बढ़िया"), transliterates
+// them ("AVAUG" → "एवाग"), or swaps letters ("AVUUG" → "AWUUG"). Because we
+// request format:'html', Google honors translate="no" spans — so wrap such
+// tokens before sending and unwrap them from the response. The data-bmtx
+// marker ensures we only strip spans we added, not author-supplied ones.
+
+const CAPS_CODE = /\b[A-Z][A-Z0-9]+(?:[-/][A-Z0-9]+)*\b/g;
+const BMTX_SPAN = /<span[^>]*\bdata-bmtx\b[^>]*>([\s\S]*?)<\/span>/g;
+
+function shouldProtectCaps(text: string): boolean {
+  const plain = text.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ');
+  // Mixed-case text: all-caps tokens stand out as codes/acronyms — protect them.
+  if (/[a-z]/.test(plain)) return true;
+  // No lowercase at all: a short string is an answer code ("AVAUG", "OG NAM"),
+  // but a long all-caps sentence is just shouting — translate it normally.
+  return plain.trim().split(/\s+/).filter(Boolean).length <= 4;
+}
+
+function protectText(text: string): string {
+  if (!shouldProtectCaps(text)) return text;
+  // Transform only the segments outside HTML tags so attributes stay untouched.
+  return text
+    .split(/(<[^>]*>)/)
+    .map(part =>
+      part.startsWith('<')
+        ? part
+        : part.replace(CAPS_CODE, m => `<span translate="no" data-bmtx>${m}</span>`)
+    )
+    .join('');
+}
+
+function unprotectText(text: string): string {
+  return text.replace(BMTX_SPAN, '$1');
+}
+
 async function translateBatch(batch: string[], target: string, apiKey: string): Promise<string[]> {
   const res = await fetch(
     `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
@@ -58,14 +96,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const protectedTexts = texts.map(t => (typeof t === 'string' ? protectText(t) : t));
+
     // Split into batches of BATCH_SIZE to stay within Google API limits
     const batches: string[][] = [];
-    for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-      batches.push(texts.slice(i, i + BATCH_SIZE));
+    for (let i = 0; i < protectedTexts.length; i += BATCH_SIZE) {
+      batches.push(protectedTexts.slice(i, i + BATCH_SIZE));
     }
 
     const results = await Promise.all(batches.map(batch => translateBatch(batch, target, apiKey)));
-    const translations = results.flat();
+    const translations = results.flat().map(unprotectText);
 
     return NextResponse.json({ translations });
   } catch (e: any) {
