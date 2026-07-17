@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { compressImageForUpload } from '../utils/compressImage';
 import {
   Exam,
   User,
@@ -376,7 +377,7 @@ export const adminService = {
       }
     });
 
-    if (image) formData.append('image', image);
+    if (image) formData.append('image', await compressImageForUpload(image));
 
     const response = await apiClient.postFormData<{ success: boolean; data: any }>('/admin/questions', formData, true);
     return response.data;
@@ -391,7 +392,7 @@ export const adminService = {
       }
     });
 
-    if (image) formData.append('image', image);
+    if (image) formData.append('image', await compressImageForUpload(image));
 
     const response = await apiClient.putFormData<{ success: boolean; data: any }>(`/admin/questions/${id}`, formData, true);
     return response.data;
@@ -399,7 +400,9 @@ export const adminService = {
 
   async uploadQuestionImage(questionId: string, image: File) {
     const formData = new FormData();
-    formData.append('image', image);
+    // Resize/re-encode in the browser first — uploading full-res originals was
+    // the main reason media-heavy exams took minutes to save.
+    formData.append('image', await compressImageForUpload(image));
 
     const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/questions/${questionId}/upload-image`, formData, true);
     return response.data;
@@ -423,7 +426,7 @@ export const adminService = {
       }
     });
 
-    if (image) formData.append('image', image);
+    if (image) formData.append('image', await compressImageForUpload(image));
 
     const response = await apiClient.postFormData<{ success: boolean; data: any }>('/admin/options', formData, true);
     return response.data;
@@ -438,7 +441,7 @@ export const adminService = {
       }
     });
 
-    if (image) formData.append('image', image);
+    if (image) formData.append('image', await compressImageForUpload(image));
 
     const response = await apiClient.putFormData<{ success: boolean; data: any }>(`/admin/options/${id}`, formData, true);
     return response.data;
@@ -446,7 +449,7 @@ export const adminService = {
 
   async uploadOptionImage(optionId: string, image: File) {
     const formData = new FormData();
-    formData.append('image', image);
+    formData.append('image', await compressImageForUpload(image));
 
     const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/options/${optionId}/upload-image`, formData, true);
     return response.data;
@@ -454,7 +457,7 @@ export const adminService = {
 
   async uploadExplanationImage(image: File) {
     const formData = new FormData();
-    formData.append('image', image);
+    formData.append('image', await compressImageForUpload(image));
 
     const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/upload/explanation-image`, formData, true);
     return response.data;

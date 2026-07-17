@@ -533,7 +533,9 @@ export default function ExamFormPage() {
       }
     }
 
-    const jobResults = uploadJobs.length > 0 ? await runWithConcurrency(uploadJobs, 6) : [];
+    // Images are now compressed client-side before upload (small, network-bound
+    // requests), so a higher fan-out shortens the tail without overloading the API.
+    const jobResults = uploadJobs.length > 0 ? await runWithConcurrency(uploadJobs, 10) : [];
     let uploadCount = 0;
     for (const result of jobResults) {
       if (result.ok) uploadCount++;
