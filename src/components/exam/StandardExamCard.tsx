@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Clock, FileText, TrendingUp, Languages, ArrowRight, Lock, Download, Users, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logoUrl } from '@/lib/utils/imageUrl';
@@ -172,15 +173,15 @@ export function StandardExamCard({
           <div className="flex items-center gap-1.5 sm:gap-2">
             {logoSrc && (
               <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                {/* next/image + sizes="32px": the source logos are ~300px/20KB;
+                    this serves a ~64px (~2KB) variant instead */}
+                <Image
                   src={logoSrc}
                   alt={exam.title}
                   className="h-7 w-7 sm:h-8 sm:w-8 object-contain p-0.5"
-                  loading="lazy"
-                  decoding="async"
                   width={32}
                   height={32}
+                  sizes="32px"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               </div>

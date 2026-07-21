@@ -58,6 +58,12 @@ const nextConfig = {
 
   // optimizePackageImports is experimental in Next.js 16
   experimental: {
+    // Inline CSS into the HTML instead of render-blocking <link> stylesheets —
+    // Lighthouse measured 580ms of render-blocking CSS (35KB across 2 chunks)
+    // on slow-4G mobile. HTML grows by the CSS size, but the page is
+    // edge-cached at Cloudflare so the transfer stays cheap, and FCP/LCP no
+    // longer wait on separate stylesheet round-trips.
+    inlineCss: true,
     optimizePackageImports: [
       'lucide-react',
       '@radix-ui/react-icons',
