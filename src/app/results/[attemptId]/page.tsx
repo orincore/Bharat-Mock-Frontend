@@ -12,6 +12,8 @@ import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { examService } from '@/lib/api/examService';
+import { PassagePane } from '@/components/exam/PassagePane';
+import type { Passage } from '@/types';
 
 interface ResultData {
   id: string;
@@ -83,6 +85,8 @@ interface ReviewQuestion {
   id: string;
   sectionId: string;
   sectionName: string;
+  passageId?: string | null;
+  passage?: Passage | null;
   type: 'single' | 'multiple' | 'truefalse' | 'numerical';
   text: string;
   marks: number;
@@ -239,13 +243,20 @@ export default function ResultPage() {
     return `${secs}s`;
   };
 
-  const formatScoreValue = (value: number | null | undefined) => {
-    if (value === null || value === undefined || Number.isNaN(value)) {
+  const formatScoreValue = (value: number | string | null | undefined) => {
+    if (value === null || value === undefined) {
       return 'N/A';
     }
 
-    const hasFraction = Math.abs(value % 1) > 0.001;
-    return hasFraction ? value.toFixed(2) : value.toFixed(0);
+    // Decimal fields (score, total_marks, percentage) are serialized as strings by
+    // the backend's Prisma Decimal type, not plain numbers, despite the API types.
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (Number.isNaN(numValue)) {
+      return 'N/A';
+    }
+
+    const hasFraction = Math.abs(numValue % 1) > 0.001;
+    return hasFraction ? numValue.toFixed(2) : numValue.toFixed(0);
   };
 
   const reviewBySection = useMemo(() => {
@@ -783,8 +794,17 @@ export default function ResultPage() {
                           : 'bg-red-100 text-red-600 border-red-200'
                         : 'bg-gray-100 text-gray-600 border-gray-200';
 
+                      // Show the passage once, above the first question of its group —
+                      // consecutive questions sharing the same passageId were asked about it.
+                      const isFirstInPassageGroup = question.passage
+                        && (idx === 0 || section.questions[idx - 1].passageId !== question.passageId);
+
                       return (
-                        <div key={question.id} className="border border-border rounded-xl p-3 sm:p-4">
+                        <div key={question.id}>
+                          {isFirstInPassageGroup && question.passage && (
+                            <PassagePane passage={question.passage} variant="inline" className="mb-3" />
+                          )}
+                          <div className="border border-border rounded-xl p-3 sm:p-4">
                           <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2 sm:mb-3">
                             <div className="flex-1 min-w-0">
                               <p className="text-[11px] sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Question {idx + 1}</p>
@@ -867,6 +887,7 @@ export default function ResultPage() {
                               )}
                             </details>
                           )}
+                          </div>
                         </div>
                       );
                     })}

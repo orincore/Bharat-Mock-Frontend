@@ -11,9 +11,17 @@ export interface TranslatedSection {
   name_translated: string;
 }
 
+export interface TranslatedPassage {
+  id: string;
+  title_translated?: string | null;
+  content_translated: string;
+}
+
 export interface ExamTranslations {
   questions: TranslatedQuestion[];
   sections: TranslatedSection[];
+  /** Comprehension passages. Absent on rows saved before passage caching existed. */
+  passages?: TranslatedPassage[];
 }
 
 /**

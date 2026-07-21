@@ -12,8 +12,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/common/LoadingStates';
 import { examService } from '@/lib/api/examService';
-import { Exam, Question, Section } from '@/types';
+import { Exam, Passage, Question, Section } from '@/types';
+import { isVerbatimOnly } from '@/lib/noTranslateTokens';
+import { buildDefaultInstructions, hasCustomInstructions } from '@/lib/examInstructions';
 import { MathRenderer } from '@/components/common/MathRenderer';
+import { PassagePane } from '@/components/exam/PassagePane';
 import { getOptimizedImageUrl } from '@/lib/utils/imageUrl';
 import { useAuth } from '@/context/AuthContext';
 import { translateTexts } from '@/lib/translate';
@@ -220,6 +223,8 @@ function ExamAttemptContent() {
   // Translated question content keyed by question uid/id
   const [txCache, setTxCache] = useState<Record<string, { text: string; options: Record<string, string> }>>({});
   const [txSectionNames, setTxSectionNames] = useState<Record<string, string>>({});
+  // Translated comprehension passages keyed by passage id
+  const [txPassages, setTxPassages] = useState<Record<string, { title?: string | null; content: string }>>({});
   const [isTranslating, setIsTranslating] = useState(false);
   const autoTranslateTriggered = useRef(false);
 
@@ -389,6 +394,10 @@ function ExamAttemptContent() {
   const [showTranslateMenu, setShowTranslateMenu] = useState(false);
   const [questionTimer, setQuestionTimer] = useState(0);
   const [paletteViewMode, setPaletteViewMode] = useState<'section' | 'overall'>('section');
+  // Desktop palette visibility. null = follow the default for the current question
+  // (hidden when a comprehension passage needs the horizontal room, shown otherwise);
+  // true/false = the learner overrode it for this passage.
+  const [desktopPaletteOverride, setDesktopPaletteOverride] = useState<boolean | null>(null);
 
   // Refs to always have latest values inside intervals/callbacks without stale closures
   const selectedAnswerRef = useRef<string | string[] | null>(null);
@@ -444,6 +453,18 @@ function ExamAttemptContent() {
     if (!section) return null;
     return getSectionQuestions(section, sourceQuestions)[questionIndex] || null;
   }, [currentQuestionIndex, currentSectionIndex, getSectionQuestions, questions, sections]);
+
+  // English-language sections (reading comprehension) must never be translated —
+  // translating the passage or its questions would defeat what they test.
+  // Declared up here rather than below the loading/error early-returns because
+  // toggleGoogleTranslate (a hoisted function declaration, called from an effect)
+  // reads it; a `const` after those returns would be in the temporal dead zone on
+  // any render that bailed out early.
+  const isEnglishSection = useCallback((sectionId?: string | null): boolean => {
+    if (!sectionId) return false;
+    const section = sections.find(s => s.id === sectionId) || allSections.find(s => s.id === sectionId);
+    return Boolean(section?.name?.toLowerCase().includes('english'));
+  }, [sections, allSections]);
 
   const hasContentForLanguage = useCallback((question: QuestionWithStatus, language: string) => {
     const hasText = language === 'hi'
@@ -1137,6 +1158,23 @@ function ExamAttemptContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestionIndex, currentSectionIndex, showInstructions]);
 
+  // Drop a manual palette override when the learner moves to a different passage
+  // (or leaves passage questions entirely), so each passage starts from the
+  // sensible default. Moving between questions of the SAME passage keeps their
+  // choice — otherwise the palette would snap shut on every Next click.
+  const activePassageId = getCurrentSectionQuestions()[currentQuestionIndex]?.passage?.id ?? null;
+  useEffect(() => {
+    setDesktopPaletteOverride(null);
+  }, [activePassageId]);
+
+  // A single-section exam has nothing for the Section-wise/Overall palette toggle to
+  // differentiate, so the toggle is hidden and the palette always shows Overall.
+  useEffect(() => {
+    if (sections.length <= 1) {
+      setPaletteViewMode('overall');
+    }
+  }, [sections.length]);
+
   // Auto-translate when page loads with ?trans=hi already in URL (or questions load after lang was selected)
   useEffect(() => {
     if (!googleTranslateLang || autoTranslateTriggered.current) return;
@@ -1221,12 +1259,6 @@ function ExamAttemptContent() {
     setShowInstructions(false);
   };
 
-  const isEnglishSection = (sectionId?: string | null): boolean => {
-    if (!sectionId) return false;
-    const section = sections.find(s => s.id === sectionId) || allSections.find(s => s.id === sectionId);
-    return Boolean(section?.name?.toLowerCase().includes('english'));
-  };
-
   const getLocalizedSectionName = (section?: SectionWithQuestions) => {
     if (!section) return '';
     if (selectedLanguage === 'hi' && section.name_hi) return section.name_hi;
@@ -1253,6 +1285,26 @@ function ExamAttemptContent() {
       if (cached) return cached;
     }
     return option.option_text || option.text || '';
+  };
+
+  // Comprehension passages follow the same precedence as questions/options:
+  // author-written Hindi first, then the cached machine translation, then English.
+  // Without this a Hindi learner read a translated question above an English passage.
+  const getLocalizedPassage = (passage?: Passage | null): Passage | null => {
+    if (!passage) return null;
+
+    if (selectedLanguage === 'hi' && passage.content_hi) {
+      return { ...passage, content: passage.content_hi };
+    }
+
+    if (googleTranslateActive) {
+      const cached = txPassages[passage.id];
+      if (cached?.content) {
+        return { ...passage, title: cached.title || passage.title, content: cached.content };
+      }
+    }
+
+    return passage;
   };
 
   if (showInstructions) {
@@ -1346,32 +1398,31 @@ function ExamAttemptContent() {
                 <div className="space-y-2 text-[13.5px] md:text-[14.5px] text-slate-700 leading-tight">
                   <h2 className="text-[15px] md:text-[16px] font-bold text-slate-900 mb-2 border-b-2 border-[#00aeef] inline-block pb-0.5 uppercase tracking-wide">Read the following instructions carefully.</h2>
 
-                  <div className="space-y-1.5 md:space-y-2">
-                    <p className="flex gap-2">
-                      <span>1.)</span>
-                      <span>The test contains {sections.length} sections having {exam?.total_questions || 100} questions.</span>
-                    </p>
-                    <p className="flex gap-2">
-                      <span>2.)</span>
-                      <span>Each question has 4 options out of which only one is correct.</span>
-                    </p>
-                    <p className="flex gap-2">
-                      <span>3.)</span>
-                      <span>You have to finish the test in 60 minutes.</span>
-                    </p>
-                    <p className="flex gap-2">
-                      <span>4.)</span>
-                      <span>You will be awarded 2 marks for each correct answer and 0.5 will be deducted for each wrong answer.</span>
-                    </p>
-                    <p className="flex gap-2">
-                      <span>5.)</span>
-                      <span>There is no negative marking for the questions that you have not attempted.</span>
-                    </p>
-                    <p className="flex gap-2">
-                      <span>6.)</span>
-                      <span>You can write this test only once. Make sure that you complete the test before you submit the test and/or close the browser.</span>
-                    </p>
-                  </div>
+                  {hasCustomInstructions(exam?.instructions) ? (
+                    // Admin-authored rich text for this exam.
+                    <div
+                      className="space-y-1.5 md:space-y-2 [&_ol]:list-decimal [&_ul]:list-disc [&_ol]:pl-5 [&_ul]:pl-5 [&_li]:mb-1 [&_p]:mb-1.5 [&_a]:text-blue-600 [&_a]:underline"
+                      dangerouslySetInnerHTML={{ __html: exam!.instructions! }}
+                    />
+                  ) : (
+                    <div className="space-y-1.5 md:space-y-2">
+                      {buildDefaultInstructions({
+                        sectionCount: sections.length,
+                        totalQuestions: exam?.total_questions || 0,
+                        durationMinutes: exam?.duration || 0,
+                        // Uniform marks/negative marks are read off the paper itself
+                        // instead of the old hardcoded "60 minutes / 2 / 0.5" copy,
+                        // which was wrong for every exam that didn't match it.
+                        marksPerQuestion: sections[0]?.marksPerQuestion ?? null,
+                        negativeMarks: exam?.negative_marking ? exam?.negative_mark_value ?? null : null,
+                      }).map((line, i) => (
+                        <p key={i} className="flex gap-2">
+                          <span>{i + 1}.)</span>
+                          <span>{line}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Subfooter Actions */}
@@ -1385,10 +1436,13 @@ function ExamAttemptContent() {
                         onChange={(e) => {
                           const val = e.target.value as 'en' | 'hi';
                           handleLanguageSelect(val);
-                          // For non-native exams, also activate question translation via API
-                          if (!supportsHindi) {
-                            toggleGoogleTranslate(val);
-                          }
+                          // Always run translation, including when the exam is flagged
+                          // supports_hindi. That flag is set if ANY item has Hindi, so
+                          // gating on it left every item WITHOUT author-written Hindi
+                          // stuck in English with nothing to fill the gap. The pass
+                          // itself is field-level and skips anything already in Hindi,
+                          // so a fully-bilingual exam still makes zero API calls.
+                          toggleGoogleTranslate(val);
                         }}
                       >
                         <option value="en">English</option>
@@ -1466,9 +1520,17 @@ function ExamAttemptContent() {
   const currentQuestion = currentSectionQuestions[currentQuestionIndex];
   const counts = getQuestionCounts(liveQuestions);
   const sectionCounts = getQuestionCounts(currentSectionQuestions);
+  const hasPassage = Boolean(currentQuestion?.passage);
+  // Palette stays open by default even on passage questions now — the learner can
+  // still collapse it manually via the (now clearly visible) hide button.
+  const showDesktopPalette = desktopPaletteOverride ?? true;
   const isLastQuestion =
     currentSectionIndex === sections.length - 1 &&
     currentQuestionIndex === currentSectionQuestions.length - 1;
+  // A single-section exam has nothing to "shift" between and nothing for the
+  // Section-wise/Overall palette toggle to differentiate — both would show the same
+  // grid, so the section tabs and the toggle are just noise.
+  const hasSingleSection = sections.length <= 1;
 
   const navigatePrevious = async () => {
     // Persist the current selection to the backend before leaving the question.
@@ -1502,15 +1564,21 @@ function ExamAttemptContent() {
 
   function applyTranslationsToState(
     translatedQuestions: { id: string; text_translated: string; options: { id: string; text_translated: string }[] }[],
-    translatedSections: { id: string; name_translated: string }[]
+    translatedSections: { id: string; name_translated: string }[],
+    translatedPassages: { id: string; title_translated?: string | null; content_translated: string }[] = []
   ) {
     setTxCache(prev => {
       const next = { ...prev };
       for (const q of translatedQuestions) {
-        if (!next[q.id]) next[q.id] = { text: '', options: {} };
-        next[q.id].text = q.text_translated;
+        // Merge rather than overwrite: a question whose text came from native
+        // Hindi but whose options needed the API arrives here in two pieces.
+        const existing = next[q.id] || { text: '', options: {} };
+        next[q.id] = {
+          text: q.text_translated || existing.text,
+          options: { ...existing.options },
+        };
         for (const o of q.options) {
-          next[q.id].options[o.id] = o.text_translated;
+          if (o.text_translated) next[q.id].options[o.id] = o.text_translated;
         }
       }
       return next;
@@ -1518,6 +1586,15 @@ function ExamAttemptContent() {
     setTxSectionNames(prev => {
       const next = { ...prev };
       for (const s of translatedSections) next[s.id] = s.name_translated;
+      return next;
+    });
+    setTxPassages(prev => {
+      const next = { ...prev };
+      for (const p of translatedPassages) {
+        if (p.content_translated) {
+          next[p.id] = { title: p.title_translated, content: p.content_translated };
+        }
+      }
       return next;
     });
   }
@@ -1532,11 +1609,42 @@ function ExamAttemptContent() {
     // Prevent concurrent calls — second call while first is in-flight does nothing
     if (isTranslating) return;
 
-    // Already fully translated for this language — nothing to do
     const sourceQuestions = allQuestions.length > 0 ? allQuestions : questions;
     const sourceSections = allSections.length > 0 ? allSections : sections;
-    const needsTranslation = sourceQuestions.some(q => q.id && !txCache[q.id]);
-    if (!needsTranslation) return;
+
+    // Unique passages referenced by the questions we're about to show. Many
+    // questions share one passage, so translate each passage once.
+    const sourcePassages = new Map<string, Passage>();
+    for (const q of sourceQuestions) {
+      if (q.passage?.id && !isEnglishSection(q.section_id)) sourcePassages.set(q.passage.id, q.passage);
+    }
+
+    // Field-level gap check. The old version asked only "is this question missing
+    // from txCache?", which mis-handled partially-bilingual exams: a question with
+    // author-written text_hi but no option_text_hi counted as done, so its options
+    // stayed English forever. Each field is now considered on its own.
+    const nativeHi = newLang === 'hi';
+    const missingQuestionText = (q: QuestionWithStatus) =>
+      Boolean(q.id && q.text && !(nativeHi && q.text_hi) && !txCache[q.id]?.text && !isEnglishSection(q.section_id));
+    const missingOption = (q: QuestionWithStatus, opt: any) =>
+      Boolean(
+        opt?.id && (opt.option_text || opt.text) &&
+        !(nativeHi && opt.option_text_hi) &&
+        !txCache[q.id]?.options?.[opt.id] &&
+        !isEnglishSection(q.section_id)
+      );
+    const missingSectionName = (s: SectionWithQuestions) =>
+      Boolean(s.id && s.name && !(nativeHi && s.name_hi) && !txSectionNames[s.id]);
+    const missingPassage = (p: Passage) =>
+      Boolean(p.id && p.content && !(nativeHi && p.content_hi) && !txPassages[p.id]?.content);
+
+    const anythingMissing =
+      sourceQuestions.some(q => missingQuestionText(q) || (q.options || []).some(o => missingOption(q, o))) ||
+      sourceSections.some(missingSectionName) ||
+      [...sourcePassages.values()].some(missingPassage);
+
+    // Everything already has native Hindi or a cached translation — nothing to do.
+    if (!anythingMissing) return;
 
     setIsTranslating(true);
     try {
@@ -1546,20 +1654,24 @@ function ExamAttemptContent() {
       // "translations" when the API failed silently. For Hindi, require the cached
       // text to actually contain Devanagari; otherwise treat it as a miss and
       // re-translate via the Cloud API below (which then re-saves correct text).
-      // Also reject rows where a letter-code option (coding-decoding answers
-      // like "AVAUG") was mangled by an older build that let Google translate
-      // it as a word ("AVUAG" → "बहुत बढ़िया") — such options must survive
-      // translation verbatim. Re-translating re-saves clean rows via upsert.
-      const PURE_CODE = /^[A-Z][A-Z0-9]*(?:[\s\-/][A-Z0-9]+)*$/;
+      // Also reject rows where a symbolic token was mangled by an older build that
+      // let Google translate it as a word — coding-decoding answers ("AVUAG" → "बहुत
+      // बढ़िया"), letter series ("P Q R S" → "PQRS"), masked blanks ("_RQ_PR_S") and
+      // alphanumeric codes ("uu993") must all survive verbatim. isVerbatimOnly shares
+      // its rules with the API route, so "protected" and "must be unchanged" agree.
+      // Re-translating re-saves clean rows via upsert.
       const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').trim();
       const srcById = new Map<string, any>(sourceQuestions.map(q => [q.id, q]));
+      const mangled = (orig: string, out: string) =>
+        Boolean(orig) && isVerbatimOnly(orig) && stripTags(out) !== orig;
       const dbCodesIntact = !dbData?.questions?.some((tq: any) => {
         const src = srcById.get(tq.id);
         if (!src) return false;
+        if (mangled(stripTags(src.text || ''), tq.text_translated || '')) return true;
         return (tq.options || []).some((to: any) => {
           const srcOpt = (src.options || []).find((o: any) => o.id === to.id);
           const orig = stripTags(srcOpt?.option_text || srcOpt?.text || '');
-          return PURE_CODE.test(orig) && stripTags(to.text_translated || '') !== orig;
+          return mangled(orig, to.text_translated || '');
         });
       });
       const dbHasUsableText =
@@ -1567,36 +1679,57 @@ function ExamAttemptContent() {
         dbCodesIntact &&
         (newLang !== 'hi' ||
           dbData.questions.some((q: any) => /[ऀ-ॿ]/.test(q.text_translated || '')));
+      // Track what the DB already covers so Layer 2 only pays for the remainder.
+      // This no longer returns early on a DB hit: rows saved before passage caching
+      // existed have questions but no passages, and returning here left the reading
+      // pane in English forever. Whatever the DB is missing falls through below.
+      const dbQuestionText = new Set<string>();
+      const dbOptions = new Set<string>();
+      const dbSections = new Set<string>();
+      const dbPassages = new Set<string>();
+
       if (dbHasUsableText) {
-        applyTranslationsToState(dbData.questions, dbData.sections);
-        return;
+        applyTranslationsToState(dbData!.questions, dbData!.sections, dbData!.passages || []);
+        for (const q of dbData!.questions) {
+          if (q.text_translated) dbQuestionText.add(q.id);
+          for (const o of q.options || []) if (o.text_translated) dbOptions.add(o.id);
+        }
+        for (const s of dbData!.sections || []) if (s.name_translated) dbSections.add(s.id);
+        for (const p of dbData!.passages || []) if (p.content_translated) dbPassages.add(p.id);
       }
 
       // ── Layer 2: Google Cloud Translation API ─────────────────────────────
       type Task =
         | { kind: 'qtext'; qKey: string; value: string }
         | { kind: 'option'; qKey: string; optionId: string; value: string }
-        | { kind: 'section'; sId: string; value: string };
+        | { kind: 'section'; sId: string; value: string }
+        | { kind: 'passage'; pId: string; field: 'title' | 'content'; value: string };
 
       const tasks: Task[] = [];
-      const questionsToTranslate = sourceQuestions.filter(q =>
-        q.id && !txCache[q.id] && !(selectedLanguage === 'hi' && q.text_hi) &&
-        !isEnglishSection(q.section_id)
-      );
-      const sectionsToTranslate = sourceSections.filter(s =>
-        s.id && !txSectionNames[s.id] && !(selectedLanguage === 'hi' && s.name_hi)
-      );
 
-      for (const q of questionsToTranslate) {
-        if (q.text) tasks.push({ kind: 'qtext', qKey: q.id, value: q.text });
+      // Field-level, not question-level: a question can need only its options.
+      for (const q of sourceQuestions) {
+        if (missingQuestionText(q) && !dbQuestionText.has(q.id)) {
+          tasks.push({ kind: 'qtext', qKey: q.id, value: q.text });
+        }
         for (const opt of q.options || []) {
           const optId = opt.id;
-          const optText = opt.option_text || opt.text || '';
-          if (optId && optText) tasks.push({ kind: 'option', qKey: q.id, optionId: optId, value: optText });
+          const optText = opt.option_text || (opt as any).text || '';
+          if (optId && optText && missingOption(q, opt) && !dbOptions.has(optId)) {
+            tasks.push({ kind: 'option', qKey: q.id, optionId: optId, value: optText });
+          }
         }
       }
-      for (const s of sectionsToTranslate) {
-        if (s.name) tasks.push({ kind: 'section', sId: s.id, value: s.name });
+      for (const s of sourceSections) {
+        if (missingSectionName(s) && !dbSections.has(s.id)) {
+          tasks.push({ kind: 'section', sId: s.id, value: s.name });
+        }
+      }
+      for (const p of sourcePassages.values()) {
+        if (missingPassage(p) && !dbPassages.has(p.id)) {
+          tasks.push({ kind: 'passage', pId: p.id, field: 'content', value: p.content });
+          if (p.title) tasks.push({ kind: 'passage', pId: p.id, field: 'title', value: p.title });
+        }
       }
 
       if (!tasks.length) return;
@@ -1606,6 +1739,7 @@ function ExamAttemptContent() {
       // Build structured result
       const questionMap: Record<string, { id: string; text_translated: string; options: { id: string; text_translated: string }[] }> = {};
       const sectionResults: { id: string; name_translated: string }[] = [];
+      const passageMap: Record<string, { id: string; title_translated?: string | null; content_translated: string }> = {};
 
       tasks.forEach((task, i) => {
         if (task.kind === 'qtext') {
@@ -1616,16 +1750,27 @@ function ExamAttemptContent() {
           questionMap[task.qKey].options.push({ id: task.optionId, text_translated: translated[i] });
         } else if (task.kind === 'section') {
           sectionResults.push({ id: task.sId, name_translated: translated[i] });
+        } else if (task.kind === 'passage') {
+          if (!passageMap[task.pId]) passageMap[task.pId] = { id: task.pId, content_translated: '' };
+          if (task.field === 'content') passageMap[task.pId].content_translated = translated[i];
+          else passageMap[task.pId].title_translated = translated[i];
         }
       });
 
       const questionResults = Object.values(questionMap);
+      // A passage row without content is meaningless to persist (title-only task
+      // can't happen today, but guard so the backend never stores an empty body).
+      const passageResults = Object.values(passageMap).filter(p => p.content_translated);
 
       // Apply to UI immediately
-      applyTranslationsToState(questionResults, sectionResults);
+      applyTranslationsToState(questionResults, sectionResults, passageResults);
 
       // ── Layer 3: Save to DB (fire-and-forget) so next user gets DB hit ────
-      saveExamTranslations(examId, newLang, { questions: questionResults, sections: sectionResults });
+      saveExamTranslations(examId, newLang, {
+        questions: questionResults,
+        sections: sectionResults,
+        passages: passageResults,
+      });
 
     } catch (err) {
       console.error('[translate] Failed:', err);
@@ -1813,24 +1958,26 @@ function ExamAttemptContent() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 overflow-x-auto py-1 -mx-1 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {sections.map((section, idx) => (
-                  <button
-                    key={section.id}
-                    onClick={() => {
-                      silentSave();
-                      setCurrentSectionIndex(idx);
-                      setCurrentQuestionIndex(0);
-                    }}
-                    className={`flex-shrink-0 px-3 py-1.5 rounded-full border text-[13px] font-medium transition-colors whitespace-nowrap ${idx === currentSectionIndex
-                      ? 'border-blue-400 text-blue-500 bg-blue-50'
-                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
-                  >
-                    {getLocalizedSectionName(section)}
-                  </button>
-                ))}
-              </div>
+              {!hasSingleSection && (
+                <div className="flex items-center gap-2 overflow-x-auto py-1 -mx-1 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {sections.map((section, idx) => (
+                    <button
+                      key={section.id}
+                      onClick={() => {
+                        silentSave();
+                        setCurrentSectionIndex(idx);
+                        setCurrentQuestionIndex(0);
+                      }}
+                      className={`flex-shrink-0 px-3 py-1.5 rounded-full border text-[13px] font-medium transition-colors whitespace-nowrap ${idx === currentSectionIndex
+                        ? 'border-blue-400 text-blue-500 bg-blue-50'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                    >
+                      {getLocalizedSectionName(section)}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -1854,37 +2001,54 @@ function ExamAttemptContent() {
           </div>
 
           <div className="flex flex-row flex-1 overflow-hidden">
-            {/* Left: question content area (flex-col, account for fixed sidebar) */}
-            <div className="flex-1 flex flex-col overflow-hidden lg:mr-72">
+            {/* Left: dedicated reading pane for comprehension-passage questions (desktop only).
+                overflow-hidden, not auto: the pane scrolls internally so its title bar stays
+                pinned. Two nested scroll containers fought each other. */}
+            {currentQuestion?.passage && (
+              <div className="hidden lg:flex w-[30rem] xl:w-[34rem] shrink-0 border-r border-slate-200 overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))]">
+                <PassagePane passage={getLocalizedPassage(currentQuestion.passage)!} className="w-full border-0 rounded-none shadow-none" />
+              </div>
+            )}
+
+            {/* Middle: question content area (flex-col, account for fixed sidebar) */}
+            <div className={`flex-1 flex flex-col overflow-hidden ${showDesktopPalette ? 'lg:mr-72' : ''}`}>
 
               {/* STICKY section tabs bar — does NOT scroll */}
-              <div className="hidden md:flex items-center gap-2 overflow-x-auto shrink-0 bg-white border-b border-slate-200 px-4 py-2.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {sections.map((section, idx) => {
-                  const sectionQuestions = getSectionQuestions(section, liveQuestions);
-                  const sectionStats = getQuestionCounts(sectionQuestions);
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => {
-                        silentSave();
-                        setCurrentSectionIndex(idx);
-                        setCurrentQuestionIndex(0);
-                      }}
-                      className={`flex-shrink-0 px-4 py-2 rounded-lg border transition-all text-left ${idx === currentSectionIndex
-                        ? 'border-[#00aeef] bg-[#00aeef] text-white'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                        }`}
-                    >
-                      <p className="font-semibold text-[13px]">{getLocalizedSectionName(section)}</p>
-                      <p className="text-[11px] opacity-80">{sectionStats.answered}/{section.totalQuestions} answered</p>
-                    </button>
-                  );
-                })}
-              </div>
+              {!hasSingleSection && (
+                <div className="hidden md:flex items-center gap-2 overflow-x-auto shrink-0 bg-white border-b border-slate-200 px-4 py-2.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {sections.map((section, idx) => {
+                    const sectionQuestions = getSectionQuestions(section, liveQuestions);
+                    const sectionStats = getQuestionCounts(sectionQuestions);
+                    return (
+                      <button
+                        key={section.id}
+                        onClick={() => {
+                          silentSave();
+                          setCurrentSectionIndex(idx);
+                          setCurrentQuestionIndex(0);
+                        }}
+                        className={`flex-shrink-0 px-4 py-2 rounded-lg border transition-all text-left ${idx === currentSectionIndex
+                          ? 'border-[#00aeef] bg-[#00aeef] text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                          }`}
+                      >
+                        <p className="font-semibold text-[13px]">{getLocalizedSectionName(section)}</p>
+                        <p className="text-[11px] opacity-80">{sectionStats.answered}/{section.totalQuestions} answered</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* SCROLLABLE question + options only */}
               <div className="flex-1 overflow-y-auto">
                 <div className="px-4 md:px-6 py-4 md:py-5">
+                  {/* Passage reading pane: tablet/mobile only (desktop shows it as its own column) */}
+                  {currentQuestion?.passage && (
+                    <div className="lg:hidden mb-4">
+                      <PassagePane passage={getLocalizedPassage(currentQuestion.passage)!} variant="inline" />
+                    </div>
+                  )}
                   <div className="bg-white md:bg-card border-0 md:border border-slate-200 md:border-border rounded-none md:rounded-xl p-4 sm:p-5 md:p-6 shadow-sm min-h-[300px]">
                     {/* Question header row */}
                     <div className="mb-5">
@@ -1975,38 +2139,62 @@ function ExamAttemptContent() {
                 </div>
               </div>
             </div>
+            {/* Reveal tab — desktop only, shown while the palette is collapsed */}
+            {!showDesktopPalette && (
+              <button
+                type="button"
+                onClick={() => setDesktopPaletteOverride(true)}
+                aria-label="Show question palette"
+                className="hidden lg:flex fixed top-1/2 right-0 -translate-y-1/2 z-30 items-center gap-1.5 rounded-l-lg border border-r-0 border-slate-200 bg-white py-3 pl-2.5 pr-2 shadow-md text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4 shrink-0" />
+                <span className="text-[11px] font-bold uppercase tracking-wide [writing-mode:vertical-rl]">Palette</span>
+              </button>
+            )}
+
             {/* Desktop Right Sidebar — Unified Panel like Prepp */}
-            <div className="hidden lg:flex flex-col w-72 shrink-0 border-l border-slate-200 bg-white h-screen h-dvh fixed top-0 right-0 overflow-hidden z-30" style={{ paddingTop: '56px' }}>
+            <div className={`${showDesktopPalette ? 'hidden lg:flex' : 'hidden'} flex-col w-72 shrink-0 border-l border-slate-200 bg-white h-screen h-dvh fixed top-0 right-0 overflow-hidden z-30`} style={{ paddingTop: '56px' }}>
 
 
               {/* Question Palette header */}
-              <div className="px-4 pt-4 border-b border-slate-200 shrink-0">
+              <div className="px-4 pt-4 border-b border-slate-200 shrink-0 flex items-center justify-between gap-2">
                 <p className="text-[30px] font-bold text-slate-700">Question Palette</p>
+                <button
+                  type="button"
+                  onClick={() => setDesktopPaletteOverride(false)}
+                  aria-label="Hide question palette"
+                  title="Hide question palette"
+                  className="shrink-0 flex items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2 py-1.5 text-slate-600 hover:text-white hover:bg-[#00aeef] hover:border-[#00aeef] shadow-sm transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
 
               {/* Grid / List toggle - curved pill style */}
-              <div className="flex items-center justify-center border-b border-slate-200 shrink-0 h-14 px-4 bg-white">
-                <div className="flex w-full bg-slate-100 p-1 rounded-full h-10 border border-slate-200 shadow-inner">
-                  <button
-                    onClick={() => setPaletteViewMode('section')}
-                    className={`flex-1 h-full text-[11px] font-bold transition-all rounded-full flex items-center justify-center ${paletteViewMode === 'section'
-                      ? 'bg-[#00aeef] text-white shadow-sm ring-1 ring-[#00aeef]/10'
-                      : 'text-slate-600 hover:text-slate-900 bg-transparent'
-                      }`}
-                  >
-                    Section-wise
-                  </button>
-                  <button
-                    onClick={() => setPaletteViewMode('overall')}
-                    className={`flex-1 h-full text-[11px] font-bold transition-all rounded-full flex items-center justify-center ${paletteViewMode === 'overall'
-                      ? 'bg-[#00aeef] text-white shadow-sm ring-1 ring-[#00aeef]/10'
-                      : 'text-slate-600 hover:text-slate-900 bg-transparent'
-                      }`}
-                  >
-                    Overall
-                  </button>
+              {!hasSingleSection && (
+                <div className="flex items-center justify-center border-b border-slate-200 shrink-0 h-14 px-4 bg-white">
+                  <div className="flex w-full bg-slate-100 p-1 rounded-full h-10 border border-slate-200 shadow-inner">
+                    <button
+                      onClick={() => setPaletteViewMode('section')}
+                      className={`flex-1 h-full text-[11px] font-bold transition-all rounded-full flex items-center justify-center ${paletteViewMode === 'section'
+                        ? 'bg-[#00aeef] text-white shadow-sm ring-1 ring-[#00aeef]/10'
+                        : 'text-slate-600 hover:text-slate-900 bg-transparent'
+                        }`}
+                    >
+                      Section-wise
+                    </button>
+                    <button
+                      onClick={() => setPaletteViewMode('overall')}
+                      className={`flex-1 h-full text-[11px] font-bold transition-all rounded-full flex items-center justify-center ${paletteViewMode === 'overall'
+                        ? 'bg-[#00aeef] text-white shadow-sm ring-1 ring-[#00aeef]/10'
+                        : 'text-slate-600 hover:text-slate-900 bg-transparent'
+                        }`}
+                    >
+                      Overall
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Status legend - matching mobile palette colors */}
               <div className="px-3 py-2 border-b border-slate-200 shrink-0">
@@ -2101,7 +2289,7 @@ function ExamAttemptContent() {
 
 
                 {/* Submit Test - matching height and shadow with global action bar */}
-                <div className="px-3 border-t border-slate-200 shrink-0 h-14 flex items-center justify-center bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+                <div className="px-3 border-t border-slate-200 shrink-0 h-16 flex items-center justify-center bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
                   <Button
                     className="w-full h-9 rounded-lg bg-[#f7941d] hover:bg-[#e6891a] text-white font-bold text-sm shadow-sm"
                     onClick={() => setShowSubmitConfirm(true)}
@@ -2126,24 +2314,26 @@ function ExamAttemptContent() {
                 <h2 className="text-[17px] font-bold text-slate-900">Filters</h2>
               </div>
 
-              <div className="p-3 bg-slate-50 border-b border-slate-100">
-                <div className="flex p-1 bg-slate-200/60 rounded-xl">
-                  <button
-                    onClick={() => setPaletteViewMode('section')}
-                    className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${paletteViewMode === 'section' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'
-                      }`}
-                  >
-                    Section-wise
-                  </button>
-                  <button
-                    onClick={() => setPaletteViewMode('overall')}
-                    className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${paletteViewMode === 'overall' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'
-                      }`}
-                  >
-                    Overall
-                  </button>
+              {!hasSingleSection && (
+                <div className="p-3 bg-slate-50 border-b border-slate-100">
+                  <div className="flex p-1 bg-slate-200/60 rounded-xl">
+                    <button
+                      onClick={() => setPaletteViewMode('section')}
+                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${paletteViewMode === 'section' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'
+                        }`}
+                    >
+                      Section-wise
+                    </button>
+                    <button
+                      onClick={() => setPaletteViewMode('overall')}
+                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${paletteViewMode === 'overall' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'
+                        }`}
+                    >
+                      Overall
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between text-[13px] font-medium text-slate-500 overflow-x-auto gap-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="flex items-center gap-1.5 whitespace-nowrap">
@@ -2256,7 +2446,9 @@ function ExamAttemptContent() {
 
 
           {/* Global Action Bar - prepp.in style with 4 buttons - shown on all screens */}
-          <div className="fixed bottom-0 left-0 right-0 lg:right-72 z-40 border-t border-slate-200 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)]">
+          {/* right offset must track the palette — when it's collapsed on a passage
+              question the bar has to span the full width instead of leaving a gap. */}
+          <div className={`fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)] ${showDesktopPalette ? 'lg:right-72' : ''}`}>
             <div className="flex items-center justify-center h-16 px-2 md:px-6 gap-1.5 md:gap-4">
               {/* Previous */}
               <Button

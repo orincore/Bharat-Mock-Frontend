@@ -30,6 +30,17 @@ import {
   RefundPolicyContent
 } from '@/types';
 
+export interface AdminPassage {
+  id: string;
+  exam_id: string;
+  title?: string | null;
+  content: string;
+  content_hi?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  _count?: { questions: number };
+}
+
 interface AboutPayload extends Partial<AboutPageContent> {
   values?: AboutValue[];
   stats?: AboutStat[];
@@ -235,6 +246,7 @@ export const adminService = {
       section_order: number;
       questions: Array<{
         id: string;
+        passage_id?: string | null;
         type: string;
         text: string;
         text_hi?: string;
@@ -460,6 +472,33 @@ export const adminService = {
     formData.append('image', await compressImageForUpload(image));
 
     const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/upload/explanation-image`, formData, true);
+    return response.data;
+  },
+
+  async listPassages(examId: string) {
+    const response = await apiClient.get<{ success: boolean; data: AdminPassage[] }>(`/admin/exams/${examId}/passages`, true);
+    return response.data;
+  },
+
+  async createPassage(examId: string, payload: { title?: string; content: string; content_hi?: string }) {
+    const response = await apiClient.post<{ success: boolean; data: AdminPassage }>(`/admin/exams/${examId}/passages`, payload, true);
+    return response.data;
+  },
+
+  async updatePassage(passageId: string, payload: { title?: string; content?: string; content_hi?: string }) {
+    const response = await apiClient.put<{ success: boolean; data: AdminPassage }>(`/admin/passages/${passageId}`, payload, true);
+    return response.data;
+  },
+
+  async deletePassage(passageId: string) {
+    return apiClient.delete<{ success: boolean; message: string }>(`/admin/passages/${passageId}`, true);
+  },
+
+  async uploadPassageImage(image: File) {
+    const formData = new FormData();
+    formData.append('image', await compressImageForUpload(image));
+
+    const response = await apiClient.postFormData<{ success: boolean; data: { image_url: string }; message: string }>(`/admin/upload/passage-image`, formData, true);
     return response.data;
   },
 

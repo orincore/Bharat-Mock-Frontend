@@ -192,12 +192,14 @@ export function StandardExamCard({
             }`}>
               {exam.is_free ? 'Free' : 'Premium'}
             </span>
+            {/* Attempts count hidden temporarily — uncomment to restore.
             {showAttemptsTop && exam.attempts != null && (
               <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-orange-600 border border-orange-200/70">
                 <Users className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 {exam.attempts}
               </span>
             )}
+            */}
             {/* Live badge */}
             {derivedIsLive && (
               <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full border border-red-300/60 bg-red-500/10 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-red-600 uppercase tracking-wide">
@@ -266,6 +268,7 @@ export function StandardExamCard({
               <span className="font-medium text-[11px] sm:text-xs">{exam.total_marks} Marks</span>
             </div>
           )}
+          {/* Attempts count hidden temporarily — uncomment to restore.
           {exam.attempts != null && !hideAttempts && !showAttemptsTop && (
             <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
               <div className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-lg bg-orange-50">
@@ -274,6 +277,7 @@ export function StandardExamCard({
               <span className="font-bold text-orange-600 text-[11px] sm:text-xs">{exam.attempts} Attempts</span>
             </div>
           )}
+          */}
         </div>
 
         {/* Scheduled window — Live Tests only */}

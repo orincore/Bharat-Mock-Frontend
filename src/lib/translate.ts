@@ -1,9 +1,10 @@
 'use client';
 
 const CACHE_PREFIX = 'bm_tx_';
-// v2: letter-code tokens (coding-decoding answers like "AVAUG") are now
-// protected from translation server-side — v1 entries may hold mangled text.
-const CACHE_VERSION = 'v2';
+// v3: protection widened beyond all-caps letter codes to masked blanks
+// ("_RQ_PR_S"), letter series ("P Q R S P R") and alphanumeric codes ("uu993").
+// v1/v2 entries may hold text mangled under the narrower rules.
+const CACHE_VERSION = 'v3';
 
 function cacheKey(text: string, target: string) {
   // Simple hash: length + first 20 + last 10 chars
@@ -119,8 +120,14 @@ export async function translateTexts(
 
   translations.forEach((translated, idx) => {
     const originalIndex = uncachedIndexes[idx];
+    const original = texts[originalIndex];
     results[originalIndex] = translated;
-    writeCache(cacheKey(texts[originalIndex], target), translated);
+    // The route passes an item through unchanged when it is too large for a single
+    // Google request. Caching that would permanently pin the English original as
+    // this text's "translation", so only cache results that actually changed.
+    if (translated !== original) {
+      writeCache(cacheKey(original, target), translated);
+    }
   });
 
   return results;

@@ -28,6 +28,9 @@ class ApiClient {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
+    // Legacy key some admin pages still fall back to reading; never written anymore
+    // but must be cleared here or a stale value silently outlives every re-login.
+    localStorage.removeItem('token');
     window.dispatchEvent(new CustomEvent('auth:session-expired'));
   }
 
@@ -51,6 +54,7 @@ class ApiClient {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),
+          credentials: 'include',
         });
         const data = await response.json();
         if (!response.ok || !data?.success || !data?.data?.token) {
@@ -80,10 +84,15 @@ class ApiClient {
       const separator = url.includes('?') ? '&' : '?';
       const bustUrl = `${url}${separator}_t=${Date.now()}`;
       
-      const response = await fetch(bustUrl, { 
-        ...options, 
+      const response = await fetch(bustUrl, {
+        ...options,
         cache: 'no-store',
-        signal: controller.signal 
+        // Cross-origin (frontend and API are on different origins/subdomains) —
+        // without this, the browser drops the httpOnly session cookie the
+        // backend sets on login/register/refresh, since cross-origin requests
+        // default to omitting credentials.
+        credentials: 'include',
+        signal: controller.signal
       });
       clearTimeout(id);
       return response;

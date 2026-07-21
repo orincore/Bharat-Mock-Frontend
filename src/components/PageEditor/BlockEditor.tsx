@@ -690,7 +690,10 @@ const normalizeRichTextHtml = (html?: string | null) => {
 
     if (tagName === 'a' && el.getAttribute('href')) {
       el.setAttribute('target', '_blank');
-      el.setAttribute('rel', 'noopener noreferrer');
+      // Preserve the editor's do-follow / no-follow choice for crawlers. Keep the
+      // security rels for target="_blank"; only add nofollow when it was set.
+      const isNoFollow = /(?:^|\s)nofollow(?:\s|$)/i.test(el.getAttribute('rel') || '');
+      el.setAttribute('rel', isNoFollow ? 'nofollow noopener noreferrer' : 'noopener noreferrer');
     }
 
     if ((tagName === 'p' || tagName === 'div') && isEmptyRichTextElement(el)) {
@@ -748,6 +751,8 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   const [showMathPicker, setShowMathPicker] = useState(false);
   const [showLinkPopover, setShowLinkPopover] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
+  // Crawl directive for the link: false = do-follow (default), true = no-follow.
+  const [linkNoFollow, setLinkNoFollow] = useState(false);
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,
@@ -877,18 +882,21 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     if (sel && sel.rangeCount > 0) {
       savedRangeRef.current = sel.getRangeAt(0).cloneRange();
     }
-    // Pre-fill URL if cursor is inside an existing link
+    // Pre-fill URL + follow choice if the cursor is inside an existing link
     const anchorNode = sel?.anchorNode || null;
     let existingHref = '';
+    let existingNoFollow = false;
     let cur: Node | null = anchorNode;
     while (cur && editorRef.current && cur !== editorRef.current) {
       if ((cur as HTMLElement).tagName === 'A') {
-        existingHref = (cur as HTMLAnchorElement).href || '';
+        existingHref = (cur as HTMLAnchorElement).getAttribute('href') || (cur as HTMLAnchorElement).href || '';
+        existingNoFollow = /(?:^|\s)nofollow(?:\s|$)/i.test((cur as HTMLElement).getAttribute('rel') || '');
         break;
       }
       cur = cur.parentNode;
     }
     setLinkUrl(existingHref);
+    setLinkNoFollow(existingNoFollow);
     setShowLinkPopover(true);
     setTimeout(() => linkInputRef.current?.focus(), 50);
   };
@@ -906,9 +914,14 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     if (linkUrl.trim()) {
       const url = linkUrl.trim().startsWith('http') ? linkUrl.trim() : `https://${linkUrl.trim()}`;
       document.execCommand('createLink', false, url);
-      // Set target="_blank" on the newly created link
+      const relValue = linkNoFollow ? 'nofollow noopener noreferrer' : 'noopener noreferrer';
       const links = editorRef.current?.querySelectorAll('a');
-      links?.forEach(a => { if (!a.target) a.target = '_blank'; });
+      links?.forEach(a => {
+        if (!a.target) a.target = '_blank';
+        // Apply the crawl directive to the link(s) just created/edited (matched by
+        // the URL). normalizeRichTextHtml preserves whichever rel we set here.
+        if (a.getAttribute('href') === url) a.setAttribute('rel', relValue);
+      });
     } else {
       document.execCommand('unlink', false);
     }
@@ -1197,6 +1210,17 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
                   placeholder="https://example.com"
                   className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mb-1.5"
                 />
+                <label className="flex items-center gap-1.5 mb-1.5 cursor-pointer select-none" title="No-follow tells search engines not to pass ranking credit or crawl this link (rel=&quot;nofollow&quot;).">
+                  <input
+                    type="checkbox"
+                    checked={linkNoFollow}
+                    onChange={(e) => setLinkNoFollow(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-700">
+                    No-follow link <span className="text-gray-400">(rel=&quot;nofollow&quot;)</span>
+                  </span>
+                </label>
                 <div className="flex gap-1.5">
                   <button type="button" onClick={applyLink} className="flex-1 px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700">Apply</button>
                   {activeFormats.link && (
@@ -1631,7 +1655,7 @@ const CTX_MENU_Z = 2147483646;
 const RichTextContextMenu: React.FC = () => {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [placed, setPlaced] = useState(false); // false until measured & clamped on-screen
-  const [submenu, setSubmenu] = useState<null | 'color' | 'highlight'>(null);
+  const [submenu, setSubmenu] = useState<null | 'color' | 'highlight' | 'link'>(null);
   const savedRange = useRef<Range | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -1707,9 +1731,32 @@ const RichTextContextMenu: React.FC = () => {
     if (sel && sel.rangeCount > 0) savedRange.current = sel.getRangeAt(0).cloneRange();
   };
 
-  const addLink = () => {
-    const url = window.prompt('Link URL:', 'https://');
-    if (url && url.trim()) exec('createLink', url.trim());
+  // Create a link on the selection with an explicit crawl directive. nofollow=false
+  // → do-follow (rel="noopener noreferrer"); nofollow=true → rel="nofollow …".
+  const addLinkWithFollow = (nofollow: boolean) => {
+    const input = window.prompt('Link URL:', 'https://');
+    if (!input || !input.trim()) { closeMenu(); return; }
+    const href = input.trim().startsWith('http') ? input.trim() : `https://${input.trim()}`;
+    focusRangeEditable(savedRange.current);
+    try { document.execCommand('createLink', false, href); } catch { /* ignore */ }
+
+    const rel = nofollow ? 'nofollow noopener noreferrer' : 'noopener noreferrer';
+    // Locate the editable that owns the selection and stamp rel/target on the
+    // link(s) just created (matched by href). normalizeRichTextHtml preserves it.
+    const sel = window.getSelection();
+    const node: Node | null = sel?.anchorNode || savedRange.current?.commonAncestorContainer || null;
+    const host = (node
+      ? (node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement)
+      : null)?.closest?.('[contenteditable="true"]') as HTMLElement | null;
+    (host || document).querySelectorAll('a').forEach((a) => {
+      if (a.getAttribute('href') === href) {
+        if (!a.getAttribute('target')) a.setAttribute('target', '_blank');
+        a.setAttribute('rel', rel);
+      }
+    });
+    // Fire the block's input handler so the rel change is saved to state.
+    host?.dispatchEvent(new Event('input', { bubbles: true }));
+    closeMenu();
   };
 
   const copySelection = () => {
@@ -1826,7 +1873,23 @@ const RichTextContextMenu: React.FC = () => {
       {divider}
 
       {/* Actions */}
-      <CtxBtn title="Add link" onApply={addLink}>🔗</CtxBtn>
+      <div className="relative">
+        <CtxBtn title="Add link" onApply={() => setSubmenu((v) => (v === 'link' ? null : 'link'))}>🔗</CtxBtn>
+        {submenu === 'link' && (
+          <div
+            className={`absolute ${openUp ? 'bottom-full mb-1' : 'top-full mt-1'} ${openLeft ? 'right-0' : 'left-0'} p-1 bg-white border border-gray-200 rounded-lg shadow-xl flex flex-col gap-0.5 whitespace-nowrap`}
+            style={swatchPanelStyle}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <button type="button" className="px-2 py-1 text-xs text-left rounded hover:bg-gray-100 text-gray-700" onMouseDown={(e) => { e.preventDefault(); addLinkWithFollow(false); }}>
+              Do-follow link
+            </button>
+            <button type="button" className="px-2 py-1 text-xs text-left rounded hover:bg-gray-100 text-gray-700" onMouseDown={(e) => { e.preventDefault(); addLinkWithFollow(true); }}>
+              No-follow link <span className="text-gray-400">(nofollow)</span>
+            </button>
+          </div>
+        )}
+      </div>
       <CtxBtn title="Copy" onApply={copySelection}>⎘</CtxBtn>
       <CtxBtn title="Clear formatting" className="text-red-500" onApply={() => exec('removeFormat')}>✕</CtxBtn>
     </div>

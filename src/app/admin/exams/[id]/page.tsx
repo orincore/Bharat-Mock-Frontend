@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToastNotification } from '@/components/ui/toast-notification';
 import { InlineRichTextEditor } from '@/components/PageEditor/BlockEditor';
-import { adminService } from '@/lib/api/adminService';
+import { adminService, AdminPassage } from '@/lib/api/adminService';
 import { testSeriesService, TestSeries, TestSeriesSection, TestSeriesTopic } from '@/lib/api/testSeriesService';
 import { paperSectionsService, PaperSection, PaperTopic } from '@/lib/api/paperSectionsService';
 
@@ -46,6 +46,7 @@ interface Question {
   requires_image?: boolean;
   question_order?: number | null;
   question_number?: number | null;
+  passage_id?: string | null;
   options: Option[];
 }
 
@@ -86,6 +87,7 @@ type ApiQuestion = {
   image_url?: string | null;
   question_order?: number | null;
   question_number?: number | null;
+  passage_id?: string | null;
   options: ApiOption[];
 };
 
@@ -117,6 +119,8 @@ export default function ExamFormPage() {
   
   const [formData, setFormData] = useState({
     title: '',
+    // Empty = the attempt screen and PDF render the default instruction set.
+    instructions: '',
     duration: 180,
     total_marks: 100,
     total_questions: 50,
@@ -152,6 +156,11 @@ export default function ExamFormPage() {
   });
 
   const [sections, setSections] = useState<Section[]>([]);
+  const [passages, setPassages] = useState<AdminPassage[]>([]);
+  const [passageManagerOpen, setPassageManagerOpen] = useState(false);
+  const [editingPassageId, setEditingPassageId] = useState<string | null>(null);
+  const [passageDraft, setPassageDraft] = useState<{ title: string; content: string; content_hi: string }>({ title: '', content: '', content_hi: '' });
+  const [savingPassage, setSavingPassage] = useState(false);
   const [questionPages, setQuestionPages] = useState<Record<string, number>>({});
   const QUESTIONS_PER_PAGE = 10;
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
@@ -376,10 +385,98 @@ export default function ExamFormPage() {
     fetchPaperSections();
     if (isEditMode && examId) {
       loadExamData();
+      loadPassages();
     } else {
       loadDraftData();
     }
   }, []);
+
+  const loadPassages = async () => {
+    if (!examId) return;
+    try {
+      const data = await adminService.listPassages(examId);
+      setPassages(data || []);
+    } catch (error) {
+      console.error('Failed to load passages:', error);
+    }
+  };
+
+  const openNewPassage = () => {
+    setEditingPassageId(null);
+    setPassageDraft({ title: '', content: '', content_hi: '' });
+    setPassageManagerOpen(true);
+  };
+
+  const openEditPassage = (passage: AdminPassage) => {
+    setEditingPassageId(passage.id);
+    setPassageDraft({ title: passage.title || '', content: passage.content, content_hi: passage.content_hi || '' });
+    setPassageManagerOpen(true);
+  };
+
+  const handleSavePassage = async () => {
+    if (!examId || !passageDraft.content.trim()) return;
+    setSavingPassage(true);
+    try {
+      if (editingPassageId) {
+        await adminService.updatePassage(editingPassageId, passageDraft);
+      } else {
+        await adminService.createPassage(examId, passageDraft);
+      }
+      await loadPassages();
+      setPassageManagerOpen(false);
+    } catch (error) {
+      console.error('Failed to save passage:', error);
+    } finally {
+      setSavingPassage(false);
+    }
+  };
+
+  const handleDeletePassage = async (passageId: string) => {
+    if (!window.confirm('Delete this passage? Questions linked to it will be unlinked, not deleted.')) return;
+    try {
+      await adminService.deletePassage(passageId);
+      setSections(prev => prev.map(section => ({
+        ...section,
+        questions: section.questions.map(q => q.passage_id === passageId ? { ...q, passage_id: null } : q)
+      })));
+      await loadPassages();
+    } catch (error) {
+      console.error('Failed to delete passage:', error);
+    }
+  };
+
+  // Insert the uploaded image inline at the cursor position in the passage editor,
+  // rather than a separate attached field — a passage's images sit mid-paragraph.
+  const handlePassageImageInsert = async (file: File) => {
+    const selection = window.getSelection();
+    const savedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+    try {
+      const result = await adminService.uploadPassageImage(file);
+      const imageUrl = result?.image_url;
+      if (!imageUrl) return;
+      if (savedRange) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(savedRange);
+      }
+      // Cap the height as well as the width. A tall screenshot pasted at intrinsic
+      // size pushed the passage text far below the fold in both the editor and the
+      // exam reading pane. width/height auto keeps the aspect ratio while the two
+      // max-* constraints scale it down proportionally.
+      document.execCommand(
+        'insertHTML',
+        false,
+        `<img src="${imageUrl}" alt="" style="max-width:100%;max-height:240px;width:auto;height:auto;" />`
+      );
+    } catch (error) {
+      console.error('Failed to upload passage image:', error);
+    }
+  };
+
+  const stripHtmlPreview = (html: string, maxLen = 60) => {
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text;
+  };
 
   useEffect(() => {
     if (formData.is_test_series && formData.test_series_id) {
@@ -573,6 +670,7 @@ export default function ExamFormPage() {
         image_url: question.image_url || null,
         question_order: question.question_order ?? questionIdx + 1,
         question_number: question.question_number ?? questionIdx + 1,
+        passage_id: question.passage_id || null,
         options: question.options.map((option, optionIdx) => ({
           id: option.id,
           option_text: option.option_text,
@@ -680,6 +778,7 @@ export default function ExamFormPage() {
         }
         setFormData({
           title: examData.title || '',
+          instructions: examData.instructions || '',
           duration: examData.duration || 180,
           total_marks: examData.total_marks || 100,
           total_questions: examData.total_questions || 50,
@@ -772,6 +871,7 @@ export default function ExamFormPage() {
               imagePreview: q.image_url || undefined,
               question_order: q.question_order,
               question_number: q.question_number,
+              passage_id: q.passage_id || null,
               options: sortedOptions.map(opt => ({
                 id: opt.id,
                 option_text: opt.option_text,
@@ -2509,6 +2609,115 @@ export default function ExamFormPage() {
         />
       )}
 
+      {passageManagerOpen && (
+        // Full-screen rather than a centered dialog: passages are long-form content
+        // and the old max-w-4xl half-width column left almost no room to actually read
+        // what you were writing.
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
+            <h3 className="font-display text-lg font-bold">
+              {editingPassageId ? 'Edit Passage' : 'New Comprehension Passage'}
+            </h3>
+            <button type="button" onClick={() => setPassageManagerOpen(false)} aria-label="Close">
+              <XCircle className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </div>
+
+          <div className="flex-1 flex min-h-0">
+            {/* Picker rail — 15% of the width. Clamped so it stays usable on very
+                narrow and very wide screens alike. */}
+            <aside className="w-[15%] min-w-[190px] max-w-[320px] shrink-0 border-r border-border flex flex-col bg-muted/30">
+              <div className="px-3 py-3 border-b border-border shrink-0">
+                <Button type="button" variant="outline" size="sm" className="w-full" onClick={openNewPassage}>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  New Passage
+                </Button>
+                <p className="text-[11px] font-medium text-muted-foreground mt-2.5 uppercase tracking-wide">
+                  Existing ({passages.length})
+                </p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                {passages.length === 0 ? (
+                  <p className="text-xs text-muted-foreground px-1 py-2">No passages yet for this exam.</p>
+                ) : (
+                  passages.map(p => (
+                    // The whole card selects the passage; delete stays a separate
+                    // control so it can't be hit while browsing.
+                    <div
+                      key={p.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openEditPassage(p)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditPassage(p); } }}
+                      className={`group w-full text-left border rounded-lg p-2.5 cursor-pointer transition-colors ${
+                        editingPassageId === p.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border bg-background hover:border-primary/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-1.5">
+                        <p className="font-medium text-xs truncate min-w-0">{p.title || 'Untitled Passage'}</p>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeletePassage(p.id); }}
+                          aria-label="Delete passage"
+                          className="shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1">{stripHtmlPreview(p.content, 80)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1.5">
+                        {p._count?.questions ?? 0} question{(p._count?.questions ?? 0) === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </aside>
+
+            {/* Editor — the remaining 85% */}
+            <main className="flex-1 flex flex-col min-w-0">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Title (optional)</label>
+                  <Input
+                    value={passageDraft.title}
+                    onChange={(e) => setPassageDraft(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="e.g. Passage 1 — Climate Change"
+                  />
+                </div>
+                <div>
+                  <InlineRichTextEditor
+                    label="Passage Content (English) *"
+                    value={passageDraft.content}
+                    onChange={(content) => setPassageDraft(prev => ({ ...prev, content }))}
+                    onImagePaste={handlePassageImageInsert}
+                    rows={24}
+                    // Also constrains images in passages saved before the inline
+                    // max-height above existed.
+                    className="[&_img]:max-h-[240px] [&_img]:max-w-full [&_img]:w-auto [&_img]:h-auto"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Paste images (Ctrl/⌘+V) to embed them inline, mid-paragraph.</p>
+                </div>
+              </div>
+
+              {/* Sticky action bar so Save stays reachable on a long passage */}
+              <div className="flex items-center gap-2 px-6 py-3 border-t border-border shrink-0 bg-background">
+                <Button type="button" onClick={handleSavePassage} disabled={savingPassage || !passageDraft.content.trim()}>
+                  {savingPassage ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  {editingPassageId ? 'Save Changes' : 'Create Passage'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setPassageManagerOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </main>
+          </div>
+        </div>
+      )}
+
       {/* Fixed Right Side Panel */}
       <div className="hidden lg:block fixed top-36 right-6 z-40 pointer-events-none">
         <div className="relative">
@@ -2719,6 +2928,21 @@ export default function ExamFormPage() {
                   <Loader2 className="h-3 w-3 animate-spin" /> Preparing draft...
                 </p>
               )}
+            </div>
+
+            <div className="md:col-span-2">
+              <InlineRichTextEditor
+                label="Exam Instructions (optional)"
+                value={formData.instructions}
+                onChange={(instructions) => setFormData(prev => ({ ...prev, instructions }))}
+                rows={8}
+                placeholder="Leave blank to use the default instructions."
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Shown on the exam attempt screen and printed on the generated PDF. Leave empty to
+                use the default instructions, which are generated from this exam&apos;s question
+                count, duration and marking scheme.
+              </p>
             </div>
 
             <div className="md:col-span-2 grid gap-4 lg:grid-cols-2">
@@ -3742,10 +3966,16 @@ export default function ExamFormPage() {
                 </select>
               </div>
             </div>
-            <Button type="button" onClick={addSection} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Section
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" onClick={openNewPassage} variant="outline" disabled={!examId} title={!examId ? 'Save the exam first to add passages' : undefined}>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Manage Passages{passages.length > 0 ? ` (${passages.length})` : ''}
+              </Button>
+              <Button type="button" onClick={addSection} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Section
+              </Button>
+            </div>
           </div>
 
           {sectionsForDisplay.length === 0 ? (
@@ -4022,6 +4252,33 @@ export default function ExamFormPage() {
                                       />
                                     </div>
                                   </div>
+
+                                  {passages.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-sm font-medium">Linked Passage (optional)</label>
+                                        <button
+                                          type="button"
+                                          onClick={() => setPassageManagerOpen(true)}
+                                          className="text-xs text-primary hover:underline"
+                                        >
+                                          Manage Passages
+                                        </button>
+                                      </div>
+                                      <select
+                                        value={question.passage_id || ''}
+                                        onChange={(e) => updateQuestion(section.id, question.id, 'passage_id', e.target.value || null)}
+                                        className="w-full px-3 py-2 border border-border rounded-lg text-sm"
+                                      >
+                                        <option value="">— No Passage —</option>
+                                        {passages.map(p => (
+                                          <option key={p.id} value={p.id}>
+                                            {(p.title || 'Untitled Passage')} — {stripHtmlPreview(p.content, 40)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
 
                                   <div>
                                     <InlineRichTextEditor

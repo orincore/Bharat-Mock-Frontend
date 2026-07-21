@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -70,14 +70,17 @@ export default function AdminBlogsPage() {
   const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const [quickEditData, setQuickEditData] = useState<{ title: string; category: string; status: string; is_featured: boolean }>({ title: '', category: '', status: 'draft', is_featured: false });
   const [quickEditSaving, setQuickEditSaving] = useState(false);
+  const [quickEditNewCategory, setQuickEditNewCategory] = useState(false);
 
-  // Row action dropdown
+  // Row action dropdown. Uses a data-attribute lookup instead of a single ref
+  // because the trigger/menu markup is rendered twice (mobile card + desktop
+  // row) and only one copy is visible at a time depending on viewport width.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null);
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-row-menu]')) setOpenMenuId(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -256,26 +259,35 @@ export default function AdminBlogsPage() {
 
   const openQuickEdit = (blog: Blog) => {
     setQuickEditId(blog.id);
+    const currentCategory = blog.category || '';
     setQuickEditData({
       title: blog.title,
-      category: blog.category || '',
+      category: currentCategory,
       status: getBlogStatus(blog),
       is_featured: blog.is_featured,
     });
+    // If the post's current category isn't in the known list (e.g. it was
+    // typed in before this list existed), default straight to the "new
+    // category" input so its value isn't silently dropped by the <select>.
+    setQuickEditNewCategory(currentCategory !== '' && !categories.includes(currentCategory));
     setOpenMenuId(null);
   };
 
   const saveQuickEdit = async () => {
     if (!quickEditId) return;
+    const category = quickEditData.category.trim();
     setQuickEditSaving(true);
     try {
       await blogAdminService.updateBlog(quickEditId, {
         title: quickEditData.title,
-        category: quickEditData.category,
+        category,
         status: quickEditData.status as any,
         is_published: quickEditData.status === 'published',
         is_featured: quickEditData.is_featured,
       });
+      if (category && !categories.includes(category)) {
+        setCategories((prev) => [...prev, category].sort());
+      }
       toast({ title: 'Updated' });
       setQuickEditId(null);
       await fetchBlogs();
@@ -339,18 +351,18 @@ export default function AdminBlogsPage() {
   };
 
   return (
-    <div className="space-y-8 min-w-0">
-      <header className="bg-white border border-border rounded-3xl px-6 py-6 shadow-sm">
+    <div className="space-y-6 min-w-0 max-w-full">
+      <header className="bg-white border border-border rounded-3xl px-4 py-4 sm:px-6 sm:py-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <Breadcrumbs 
+            <Breadcrumbs
               items={[
                 AdminBreadcrumb(),
                 { label: 'Blogs' }
               ]}
               className="mb-2"
             />
-            <h1 className="text-3xl font-semibold text-foreground mt-2">Blogs</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mt-2">Blogs</h1>
             <p className="text-muted-foreground">WordPress-style workflow for drafting, editing, and publishing your posts.</p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -366,7 +378,7 @@ export default function AdminBlogsPage() {
       </header>
 
       <section className="space-y-4">
-        <div className="bg-white border border-border rounded-3xl px-6 py-4 shadow-sm">
+        <div className="bg-white border border-border rounded-3xl px-4 py-4 sm:px-6 shadow-sm">
           <div className="flex flex-wrap items-center gap-4 justify-between border-b border-border/70 pb-4">
             <div className="flex flex-wrap gap-3 text-sm font-medium text-muted-foreground">
               {STATUS_TABS.map((tab) => (
@@ -452,227 +464,282 @@ export default function AdminBlogsPage() {
           </div>
         </div>
 
-        <div className="bg-white border border-border rounded-3xl shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-muted-foreground">
+        <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 sm:px-6 sm:py-4 sm:flex-row sm:items-center sm:justify-between">
+            <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(input) => {
+                  if (input) input.indeterminate = someSelected;
+                }}
+                onChange={(event) => toggleSelectAll(event.target.checked)}
+                className="size-4 shrink-0 rounded border-border text-primary focus:ring-primary"
+              />
               {selectedIds.length > 0 ? `${selectedIds.length} post(s) selected` : `${displayedBlogs.length} post(s)`}
-            </div>
+            </label>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
-              <thead className="bg-muted/40">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <label className="inline-flex items-center gap-2 text-sm">
+          {/* Column header — desktop only. A CSS grid (not an HTML table) so
+              every column has a hard pixel track that content can never spill
+              out of; text-heavy cells just truncate inside their own track. */}
+          <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_110px_140px_120px_44px] lg:grid-cols-[minmax(0,1fr)_110px_140px_150px_120px_44px] gap-x-4 items-center px-4 py-2.5 bg-muted/40 border-b border-border text-xs font-semibold text-muted-foreground uppercase">
+            <span>Title</span>
+            <span>Status</span>
+            <span>Category</span>
+            <span className="hidden lg:block">Tags</span>
+            <span>Date</span>
+            <span />
+          </div>
+
+          {loading ? (
+            <div className="px-6 py-12 text-center text-muted-foreground">
+              <Loader2 className="w-5 h-5 mr-2 inline-block animate-spin" /> Loading posts...
+            </div>
+          ) : displayedBlogs.length === 0 ? (
+            <div className="px-6 py-12 text-center text-muted-foreground">
+              No posts match your filters.
+            </div>
+          ) : (
+            displayedBlogs.map((blog) => {
+              const status = getBlogStatus(blog);
+              const isQuickEditing = quickEditId === blog.id;
+
+              const statusBadge = (
+                <Badge
+                  variant={status === "published" ? "default" : status === "pending" ? "secondary" : "outline"}
+                  className="capitalize"
+                >
+                  {status}
+                </Badge>
+              );
+
+              const titleBlock = (
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link
+                      href={`/admin/blogs/editor/${blog.id}`}
+                      className="font-semibold text-foreground hover:text-primary line-clamp-1 break-words"
+                    >
+                      {blog.title}
+                    </Link>
+                    {blog.is_featured && <Badge className="bg-amber-100 text-amber-700 shrink-0">Featured</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 break-words">
+                    {blog.excerpt || "No excerpt provided"}
+                  </p>
+                  <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-3">
+                    <button type="button" className="hover:text-primary"
+                      onClick={() => router.push(`/admin/blogs/editor/${blog.id}`)}>
+                      Edit
+                    </button>
+                    <span aria-hidden="true">|</span>
+                    <button type="button" className="hover:text-primary"
+                      onClick={() => openQuickEdit(blog)}>
+                      Quick Edit
+                    </button>
+                    <span aria-hidden="true">|</span>
+                    <button type="button" className="hover:text-destructive text-destructive/70"
+                      onClick={() => handleDelete(blog.id)}>
+                      Trash
+                    </button>
+                    <span aria-hidden="true">|</span>
+                    <Link href={`/blogs/${blog.slug}`} target="_blank" className="hover:text-primary">
+                      View
+                    </Link>
+                  </div>
+                </div>
+              );
+
+              const tagsBlock = blog.tags && blog.tags.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {blog.tags.slice(0, 2).map((tag: string) => (
+                    <span key={tag} className="inline-block px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs truncate max-w-[80px]">{tag}</span>
+                  ))}
+                  {blog.tags.length > 2 && (
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">+{blog.tags.length - 2}</span>
+                  )}
+                </div>
+              ) : <span className="text-muted-foreground text-sm">—</span>;
+
+              const rowMenu = (
+                <div data-row-menu className="relative inline-block">
+                  <Button variant="ghost" size="icon"
+                    onClick={() => setOpenMenuId(openMenuId === blog.id ? null : blog.id)}>
+                    <MoreHorizontal className="h-5 w-5" />
+                  </Button>
+                  {openMenuId === blog.id && (
+                    <div className="absolute right-0 top-10 z-50 w-44 bg-white border border-border rounded-xl shadow-lg py-1 text-sm">
+                      <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
+                        onClick={() => { router.push(`/admin/blogs/editor/${blog.id}`); setOpenMenuId(null); }}>
+                        <Edit2 className="h-3.5 w-3.5" /> Edit
+                      </button>
+                      <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
+                        onClick={() => openQuickEdit(blog)}>
+                        <PenSquare className="h-3.5 w-3.5" /> Quick Edit
+                      </button>
+                      <Link href={`/blogs/${blog.slug}`} target="_blank"
+                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
+                        onClick={() => setOpenMenuId(null)}>
+                        <ExternalLink className="h-3.5 w-3.5" /> View
+                      </Link>
+                      <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
+                        onClick={() => handleTogglePublish(blog)}>
+                        {status === 'published'
+                          ? <><EyeOff className="h-3.5 w-3.5" /> Unpublish</>
+                          : <><Eye className="h-3.5 w-3.5" /> Publish</>}
+                      </button>
+                      <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
+                        onClick={() => handleToggleFeatured(blog)}>
+                        {blog.is_featured
+                          ? <><StarOff className="h-3.5 w-3.5" /> Unfeature</>
+                          : <><Star className="h-3.5 w-3.5" /> Feature</>}
+                      </button>
+                      <div className="border-t border-border my-1" />
+                      <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-destructive/10 text-destructive transition"
+                        onClick={() => handleDelete(blog.id)}>
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+
+              const quickEditForm = isQuickEditing && (
+                <div className="border-b border-border bg-blue-50/60 border-l-4 border-l-primary px-4 py-3">
+                  <div className="flex flex-wrap items-end gap-4">
+                    <div className="flex-1 min-w-[200px] space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground uppercase">Title</label>
+                      <Input value={quickEditData.title}
+                        onChange={e => setQuickEditData(p => ({ ...p, title: e.target.value }))} />
+                    </div>
+                    <div className="w-48 space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground uppercase">Category</label>
+                      {quickEditNewCategory ? (
+                        <div className="space-y-1">
+                          <Input
+                            autoFocus
+                            placeholder="New category name"
+                            value={quickEditData.category}
+                            onChange={e => setQuickEditData(p => ({ ...p, category: e.target.value }))}
+                          />
+                          {categories.length > 0 && (
+                            <button
+                              type="button"
+                              className="text-xs text-primary hover:underline"
+                              onClick={() => setQuickEditNewCategory(false)}
+                            >
+                              Choose existing category
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <select
+                          value={quickEditData.category}
+                          onChange={e => {
+                            if (e.target.value === '__new__') {
+                              setQuickEditNewCategory(true);
+                              setQuickEditData(p => ({ ...p, category: '' }));
+                            } else {
+                              setQuickEditData(p => ({ ...p, category: e.target.value }));
+                            }
+                          }}
+                          className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm"
+                        >
+                          <option value="">Uncategorized</option>
+                          {categories.map((category) => (
+                            <option key={category} value={category}>{category}</option>
+                          ))}
+                          <option value="__new__">+ Create new category…</option>
+                        </select>
+                      )}
+                    </div>
+                    <div className="w-36 space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground uppercase">Status</label>
+                      <select value={quickEditData.status}
+                        onChange={e => setQuickEditData(p => ({ ...p, status: e.target.value }))}
+                        className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm">
+                        <option value="draft">Draft</option>
+                        <option value="pending">Pending Review</option>
+                        <option value="published">Published</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 pb-1">
+                      <input type="checkbox" id={`feat-${blog.id}`} checked={quickEditData.is_featured}
+                        onChange={e => setQuickEditData(p => ({ ...p, is_featured: e.target.checked }))}
+                        className="size-4 rounded border-border text-primary" />
+                      <label htmlFor={`feat-${blog.id}`} className="text-sm">Featured</label>
+                    </div>
+                    <div className="flex gap-2 pb-1">
+                      <Button size="sm" onClick={saveQuickEdit} disabled={quickEditSaving}>
+                        {quickEditSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                        Update
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setQuickEditId(null)}>
+                        <X className="h-3.5 w-3.5" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+
+              return (
+                <React.Fragment key={blog.id}>
+                  {/* Mobile card — below md there's no room for a multi-column
+                      grid, so every field is stacked instead of hidden. */}
+                  <div className={`md:hidden border-b border-border px-4 py-3 ${isQuickEditing ? 'bg-muted/20' : ''}`}>
+                    <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
-                        checked={allSelected}
-                        ref={(input) => {
-                          if (input) input.indeterminate = someSelected;
-                        }}
-                        onChange={(event) => toggleSelectAll(event.target.checked)}
-                        className="size-4 rounded border-border text-primary focus:ring-primary"
+                        checked={selectedIds.includes(blog.id)}
+                        onChange={() => toggleSelectRow(blog.id)}
+                        className="mt-1 size-4 shrink-0 rounded border-border text-primary focus:ring-primary"
                       />
-                      Title
-                    </label>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Categories</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell w-40">
-                    Tags
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                      <Loader2 className="w-5 h-5 mr-2 inline-block animate-spin" /> Loading posts...
-                    </td>
-                  </tr>
-                ) : displayedBlogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                      No posts match your filters.
-                    </td>
-                  </tr>
-                ) : (
-                  displayedBlogs.map((blog) => {
-                    const status = getBlogStatus(blog);
-                    const isQuickEditing = quickEditId === blog.id;
-                    return (
-                      <React.Fragment key={blog.id}>
-                        <tr className={`hover:bg-muted/30 ${isQuickEditing ? 'bg-muted/20' : ''}`}>
-                          <td className="px-6 py-4 align-top">
-                            <div className="flex items-start gap-3">
-                              <input
-                                type="checkbox"
-                                checked={selectedIds.includes(blog.id)}
-                                onChange={() => toggleSelectRow(blog.id)}
-                                className="mt-1 size-4 rounded border-border text-primary focus:ring-primary"
-                              />
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <Link
-                                    href={`/admin/blogs/editor/${blog.id}`}
-                                    className="font-semibold text-foreground hover:text-primary"
-                                  >
-                                    {blog.title}
-                                  </Link>
-                                  {blog.is_featured && <Badge className="bg-amber-100 text-amber-700">Featured</Badge>}
-                                </div>
-                                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                                  {blog.excerpt || "No excerpt provided"}
-                                </p>
-                                <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-3">
-                                  <button type="button" className="hover:text-primary"
-                                    onClick={() => router.push(`/admin/blogs/editor/${blog.id}`)}>
-                                    Edit
-                                  </button>
-                                  <span aria-hidden="true">|</span>
-                                  <button type="button" className="hover:text-primary"
-                                    onClick={() => openQuickEdit(blog)}>
-                                    Quick Edit
-                                  </button>
-                                  <span aria-hidden="true">|</span>
-                                  <button type="button" className="hover:text-destructive text-destructive/70"
-                                    onClick={() => handleDelete(blog.id)}>
-                                    Trash
-                                  </button>
-                                  <span aria-hidden="true">|</span>
-                                  <Link href={`/blogs/${blog.slug}`} target="_blank" className="hover:text-primary">
-                                    View
-                                  </Link>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 align-top">
-                            <Badge
-                              variant={status === "published" ? "default" : status === "pending" ? "secondary" : "outline"}
-                              className="capitalize"
-                            >
-                              {status}
-                            </Badge>
-                          </td>
-                          <td className="px-6 py-4 align-top text-sm text-muted-foreground">
-                            {blog.category || "Uncategorized"}
-                          </td>
-                          <td className="px-4 py-4 align-top hidden lg:table-cell w-40">
-                            {blog.tags && blog.tags.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {blog.tags.slice(0, 2).map((tag: string) => (
-                                  <span key={tag} className="inline-block px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs truncate max-w-[80px]">{tag}</span>
-                                ))}
-                                {blog.tags.length > 2 && (
-                                  <span className="inline-block px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">+{blog.tags.length - 2}</span>
-                                )}
-                              </div>
-                            ) : <span className="text-muted-foreground text-sm">—</span>}
-                          </td>
-                          <td className="px-6 py-4 align-top text-sm text-muted-foreground whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                              {formatDate(blog)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 text-right relative">
-                            <div ref={openMenuId === blog.id ? menuRef : undefined} className="inline-block">
-                              <Button variant="ghost" size="icon"
-                                onClick={() => setOpenMenuId(openMenuId === blog.id ? null : blog.id)}>
-                                <MoreHorizontal className="h-5 w-5" />
-                              </Button>
-                              {openMenuId === blog.id && (
-                                <div className="absolute right-4 top-12 z-50 w-44 bg-white border border-border rounded-xl shadow-lg py-1 text-sm">
-                                  <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
-                                    onClick={() => { router.push(`/admin/blogs/editor/${blog.id}`); setOpenMenuId(null); }}>
-                                    <Edit2 className="h-3.5 w-3.5" /> Edit
-                                  </button>
-                                  <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
-                                    onClick={() => openQuickEdit(blog)}>
-                                    <PenSquare className="h-3.5 w-3.5" /> Quick Edit
-                                  </button>
-                                  <Link href={`/blogs/${blog.slug}`} target="_blank"
-                                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
-                                    onClick={() => setOpenMenuId(null)}>
-                                    <ExternalLink className="h-3.5 w-3.5" /> View
-                                  </Link>
-                                  <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
-                                    onClick={() => handleTogglePublish(blog)}>
-                                    {status === 'published'
-                                      ? <><EyeOff className="h-3.5 w-3.5" /> Unpublish</>
-                                      : <><Eye className="h-3.5 w-3.5" /> Publish</>}
-                                  </button>
-                                  <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition"
-                                    onClick={() => handleToggleFeatured(blog)}>
-                                    {blog.is_featured
-                                      ? <><StarOff className="h-3.5 w-3.5" /> Unfeature</>
-                                      : <><Star className="h-3.5 w-3.5" /> Feature</>}
-                                  </button>
-                                  <div className="border-t border-border my-1" />
-                                  <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-destructive/10 text-destructive transition"
-                                    onClick={() => handleDelete(blog.id)}>
-                                    <Trash2 className="h-3.5 w-3.5" /> Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                        {/* Quick Edit inline row */}
-                        {isQuickEditing && (
-                          <tr className="bg-blue-50/60 border-l-4 border-primary">
-                            <td colSpan={6} className="px-6 py-4">
-                              <div className="flex flex-wrap items-end gap-4">
-                                <div className="flex-1 min-w-[200px] space-y-1">
-                                  <label className="text-xs font-semibold text-muted-foreground uppercase">Title</label>
-                                  <Input value={quickEditData.title}
-                                    onChange={e => setQuickEditData(p => ({ ...p, title: e.target.value }))} />
-                                </div>
-                                <div className="w-36 space-y-1">
-                                  <label className="text-xs font-semibold text-muted-foreground uppercase">Category</label>
-                                  <Input value={quickEditData.category}
-                                    onChange={e => setQuickEditData(p => ({ ...p, category: e.target.value }))} />
-                                </div>
-                                <div className="w-36 space-y-1">
-                                  <label className="text-xs font-semibold text-muted-foreground uppercase">Status</label>
-                                  <select value={quickEditData.status}
-                                    onChange={e => setQuickEditData(p => ({ ...p, status: e.target.value }))}
-                                    className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm">
-                                    <option value="draft">Draft</option>
-                                    <option value="pending">Pending Review</option>
-                                    <option value="published">Published</option>
-                                  </select>
-                                </div>
-                                <div className="flex items-center gap-2 pb-1">
-                                  <input type="checkbox" id={`feat-${blog.id}`} checked={quickEditData.is_featured}
-                                    onChange={e => setQuickEditData(p => ({ ...p, is_featured: e.target.checked }))}
-                                    className="size-4 rounded border-border text-primary" />
-                                  <label htmlFor={`feat-${blog.id}`} className="text-sm">Featured</label>
-                                </div>
-                                <div className="flex gap-2 pb-1">
-                                  <Button size="sm" onClick={saveQuickEdit} disabled={quickEditSaving}>
-                                    {quickEditSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                                    Update
-                                  </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => setQuickEditId(null)}>
-                                    <X className="h-3.5 w-3.5" /> Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          {titleBlock}
+                          {rowMenu}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap items-center gap-2">
+                          {statusBadge}
+                          <span>{blog.category || "Uncategorized"}</span>
+                          <span className="flex items-center gap-1">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {formatDate(blog)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop row — CSS grid, same column tracks as the header above. */}
+                  <div className={`hidden md:grid md:grid-cols-[minmax(0,1fr)_110px_140px_120px_44px] lg:grid-cols-[minmax(0,1fr)_110px_140px_150px_120px_44px] gap-x-4 items-center px-4 py-3 border-b border-border hover:bg-muted/30 ${isQuickEditing ? 'bg-muted/20' : ''}`}>
+                    <div className="min-w-0 flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(blog.id)}
+                        onChange={() => toggleSelectRow(blog.id)}
+                        className="mt-1 size-4 shrink-0 rounded border-border text-primary focus:ring-primary"
+                      />
+                      {titleBlock}
+                    </div>
+                    <div className="min-w-0">{statusBadge}</div>
+                    <div className="min-w-0 truncate text-sm text-muted-foreground" title={blog.category || "Uncategorized"}>
+                      {blog.category || "Uncategorized"}
+                    </div>
+                    <div className="hidden lg:block min-w-0">{tagsBlock}</div>
+                    <div className="min-w-0 text-sm text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                      {formatDate(blog)}
+                    </div>
+                    <div className="min-w-0 text-right">{rowMenu}</div>
+                  </div>
+
+                  {quickEditForm}
+                </React.Fragment>
+              );
+            })
+          )}
         </div>
       </section>
     </div>

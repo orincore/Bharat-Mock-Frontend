@@ -4,9 +4,11 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Search, FileDown, Eye, ChevronLeft, X, Upload, ImageIcon } from 'lucide-react';
 import { adminService } from '@/lib/api/adminService';
 import { type PdfOptions } from '@/lib/utils/pdfGenerator';
-import { buildPreviewHtml, generatePdfFromPreview } from '@/lib/utils/examPdfHtml';
+import { buildPreviewHtml } from '@/lib/utils/examPdfHtml';
+import { generateExamPdfAdmin } from '@/lib/api/examPdfService';
 import { Exam } from '@/types';
 import { Breadcrumbs, AdminBreadcrumb } from '@/components/ui/breadcrumbs';
+import { toast } from 'sonner';
 
 const DEFAULT_OPTIONS: PdfOptions = {
   showAnswers: true,
@@ -119,14 +121,37 @@ export default function PdfGeneratorPage() {
 
   const handleGenerate = useCallback(async () => {
     if (!examData) return;
+    const examId = examData.exam?.id;
+    if (!examId) {
+      toast.error('Missing exam id — reselect the exam and try again.');
+      return;
+    }
     setIsGenerating(true);
     try {
-      // The PDF is rendered FROM the preview HTML (one source of truth), so the
-      // downloaded file matches the Live Preview exactly — layout, format,
-      // fonts, images and question count.
-      await generatePdfFromPreview(buildPreviewHtml(examData, options), examData.exam?.title || 'exam');
+      // Rendered server-side with headless Chromium: true vector text, fast even
+      // for 200-question papers, and no browser freeze. The live preview above is
+      // an approximation of this output. Banners are sent as data URLs.
+      const title = examData.exam?.title || 'exam';
+      await generateExamPdfAdmin(
+        examId,
+        {
+          showAnswers: options.showAnswers,
+          showExplanations: options.showExplanations,
+          language: options.language,
+          showWatermark: options.showWatermark,
+          showCoverPage: options.showCoverPage,
+          headerText: options.headerText,
+          footerText: options.footerText,
+          coverBanner: options.coverBanner,
+          footerBanner: options.footerBanner,
+          backCoverBanner: options.backCoverBanner,
+        },
+        `${title.replace(/[\\/:*?"<>|]+/g, '').trim() || 'exam'}.pdf`
+      );
+      toast.success('PDF downloaded successfully!');
     } catch (e) {
       console.error('PDF generation failed', e);
+      toast.error(e instanceof Error ? `PDF generation failed: ${e.message}` : 'PDF generation failed.');
     } finally {
       setIsGenerating(false);
     }

@@ -35,23 +35,27 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 
 async function fetchInitialData() {
   try {
-    const [examsRes, categoriesRes, subcategoriesRes, difficultiesRes, sectionsRes, topicsRes] = await Promise.all([
+    const [examsRes, categoriesRes, subcategoriesRes, sectionsRes, topicsRes] = await Promise.all([
       fetch(`${API_BASE}/exams?exam_type=past_paper&page=1&limit=30`, { cache: 'no-store' }),
       fetch(`${API_BASE}/taxonomy/categories`, { cache: 'no-store' }),
       fetch(`${API_BASE}/taxonomy/subcategories`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/taxonomy/difficulties`, { cache: 'no-store' }),
       fetch(`${API_BASE}/paper-sections`, { cache: 'no-store' }),
       fetch(`${API_BASE}/paper-sections/topics`, { cache: 'no-store' }),
     ]);
 
-    const [examsData, categoriesData, subcategoriesData, difficultiesData, sectionsData, topicsData] = await Promise.all([
+    const [examsData, categoriesData, subcategoriesData, sectionsData, topicsData] = await Promise.all([
       examsRes.ok ? examsRes.json() : { data: [], total: 0, totalPages: 0 },
       categoriesRes.ok ? categoriesRes.json() : { data: [] },
       subcategoriesRes.ok ? subcategoriesRes.json() : { data: [] },
-      difficultiesRes.ok ? difficultiesRes.json() : undefined,
       sectionsRes.ok ? sectionsRes.json() : undefined,
       topicsRes.ok ? topicsRes.json() : undefined,
     ]);
+
+    // The exams endpoint returns a "difficulties" facet scoped to the current query
+    // (here: the unfiltered past_paper listing) — no more separate global
+    // /taxonomy/difficulties call, which used to return every difficulty on the
+    // platform regardless of category/subcategory.
+    const difficultiesData = Array.isArray(examsData?.difficulties) ? examsData.difficulties : undefined;
 
     const rawExams: Exam[] = Array.isArray(examsData?.data) ? examsData.data : [];
     const exams = [...rawExams].sort(

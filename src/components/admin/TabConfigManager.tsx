@@ -30,6 +30,22 @@ interface TabConfigManagerProps {
   onConfigChange?: () => void;
 }
 
+// Mirrors the backend's slugify() (Bharat-Mock-Backend/src/utils/slugify.js) so the
+// key preview shown to the admin matches what actually gets stored. Strips every
+// character outside a-z0-9 (not just whitespace) so things like "&", punctuation,
+// or emoji collapse into hyphens instead of surviving into the URL.
+const slugify = (value: string) => {
+  const base = value
+    .toString()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return base || 'tab';
+};
+
 const TAB_TYPE_OPTIONS = [
   { value: 'overview', label: 'Overview', description: 'Main overview content' },
   { value: 'mock-tests', label: 'Mock Tests', description: 'Mock test listing' },
@@ -187,7 +203,7 @@ export default function TabConfigManager({ subcategoryId, apiBase, authToken, on
         body: JSON.stringify({
           tab_type: formData.tab_type,
           tab_label: formData.tab_label,
-          tab_key: formData.tab_key || formData.tab_label.toLowerCase().replace(/\s+/g, '-'),
+          tab_key: slugify(formData.tab_key || formData.tab_label),
           custom_tab_id: formData.tab_type === 'custom' ? formData.custom_tab_id : null
         })
       });
@@ -349,6 +365,11 @@ export default function TabConfigManager({ subcategoryId, apiBase, authToken, on
                 placeholder="Auto-generated from label if empty"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              {formData.tab_label && (
+                <p className="text-xs text-gray-500 mt-1">
+                  URL: /{slugify(formData.tab_key || formData.tab_label)}
+                </p>
+              )}
             </div>
 
             {formData.tab_type === 'custom' && (

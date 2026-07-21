@@ -221,20 +221,20 @@ export default function AdminExamsPage() {
   };
 
   return (
-    <div className="min-w-0">
-      <div className="flex items-center justify-between mb-8">
+    <div className="min-w-0 max-w-full">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
-          <Breadcrumbs 
+          <Breadcrumbs
             items={[
               AdminBreadcrumb(),
               { label: 'Exams' }
             ]}
-            className="mb-3"
+            className="mb-2"
           />
-          <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-1">
             Manage Exams
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Create, edit, and manage all exams
           </p>
         </div>
@@ -246,10 +246,10 @@ export default function AdminExamsPage() {
         </Link>
       </div>
 
-      <div className="bg-card rounded-xl border border-border p-6 mb-6 space-y-5">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+      <div className="bg-card rounded-xl border border-border p-4 sm:p-5 mb-5 space-y-4">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search exams by title..."
@@ -267,7 +267,7 @@ export default function AdminExamsPage() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
             <Select
               value={filters.category || CLEAR_OPTION}
               onValueChange={(value) => handleFilterChange('category', value)}
@@ -334,7 +334,7 @@ export default function AdminExamsPage() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
             <Select
               value={filters.status || CLEAR_OPTION}
               onValueChange={(value) => handleFilterChange('status', value)}
@@ -394,7 +394,7 @@ export default function AdminExamsPage() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -464,13 +464,11 @@ export default function AdminExamsPage() {
           </div>
           <div className="divide-y divide-border">
             {Array.from({ length: 5 }).map((_, idx) => (
-              <div key={idx} className="px-6 py-4 grid grid-cols-7 gap-4">
-                <Skeleton className="h-4 w-full col-span-2" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-8 w-20 justify-self-end" />
+              <div key={idx} className="px-6 py-4 flex items-center gap-4">
+                <Skeleton className="h-4 flex-1" />
+                <Skeleton className="h-4 w-24 hidden sm:block" />
+                <Skeleton className="h-4 w-24 hidden sm:block" />
+                <Skeleton className="h-8 w-20" />
               </div>
             ))}
           </div>
@@ -484,125 +482,149 @@ export default function AdminExamsPage() {
         </div>
       ) : (
         <>
-          <div className="bg-card rounded-xl border border-border overflow-x-auto">
-            <table className="w-full min-w-[640px]">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Title</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Category</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Status</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Exam Type</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Published</th>
-                  <th className="px-4 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {exams.map((exam) => {
-                  const isDeleting = deletingExamId === exam.id;
-                  const isVanishing = vanishingExamId === exam.id;
-                  return (
-                    <tr
-                      key={exam.id}
-                      className={`transition-all duration-500 ease-out ${
-                        isDeleting ? 'bg-primary/5 opacity-70 blur-[0.5px] shadow-inner' : ''
-                      } ${isVanishing ? 'opacity-0 scale-95 -translate-x-4 pointer-events-none' : 'hover:bg-muted/50'}`}
-                    >
-                      <td className="px-4 py-4">
-                        <div className="space-y-1">
-                          <p className="font-medium text-foreground">{exam.title}</p>
-                          {exam.exam_uid && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-mono text-muted-foreground/70">{exam.exam_uid}</span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  navigator.clipboard.writeText(exam.exam_uid!);
-                                  setCopiedId(exam.id);
-                                  setTimeout(() => setCopiedId(null), 2000);
-                                }}
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                                title="Copy exam UID"
-                              >
-                                {copiedId === exam.id ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                              </button>
-                            </div>
-                          )}
-                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5" />
-                              {exam.duration} mins
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <BookOpen className="h-3.5 w-3.5" />
-                              {exam.total_questions} Qs / {exam.total_marks} Marks
-                            </span>
-                            <span>{formatExamSummary(exam)}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded capitalize">
-                          {exam.category}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`px-2 py-1 text-xs font-medium rounded capitalize ${
-                          exam.status === 'ongoing' ? 'bg-success/10 text-success' :
-                          exam.status === 'upcoming' ? 'bg-warning/10 text-warning' :
-                          'bg-muted text-muted-foreground'
-                        }`}>
-                          {exam.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="px-2 py-1 bg-foreground/5 text-foreground text-xs font-medium rounded capitalize">
-                          {exam.exam_type?.replace('_', ' ') || '—'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        {exam.is_published ? (
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4 text-success" />
-                            <span className="text-xs font-medium text-success">Published</span>
-                          </div>
+          {/* CSS grid instead of an HTML table — every column gets a hard pixel
+              track so long titles/badges/buttons can never spill into the next
+              column, and rows collapse to a stacked card below md. */}
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_110px_120px_170px] lg:grid-cols-[minmax(0,1fr)_130px_110px_130px_120px_170px] gap-x-4 items-center px-4 py-3 bg-muted/50 border-b border-border text-sm font-semibold text-foreground">
+              <span>Title</span>
+              <span className="hidden lg:block">Category</span>
+              <span>Status</span>
+              <span className="hidden lg:block">Exam Type</span>
+              <span>Published</span>
+              <span className="text-right">Actions</span>
+            </div>
+
+            <div className="divide-y divide-border">
+              {exams.map((exam) => {
+                const isDeleting = deletingExamId === exam.id;
+                const isVanishing = vanishingExamId === exam.id;
+                const rowTransition = `transition-all duration-500 ease-out ${
+                  isDeleting ? 'bg-primary/5 opacity-70 blur-[0.5px] shadow-inner' : ''
+                } ${isVanishing ? 'opacity-0 scale-95 -translate-x-4 pointer-events-none' : 'hover:bg-muted/50'}`;
+
+                const titleBlock = (
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-medium text-foreground line-clamp-1 break-words">{exam.title}</p>
+                    {exam.exam_uid && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-mono text-muted-foreground/70 truncate">{exam.exam_uid}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigator.clipboard.writeText(exam.exam_uid!);
+                            setCopiedId(exam.id);
+                            setTimeout(() => setCopiedId(null), 2000);
+                          }}
+                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                          title="Copy exam UID"
+                        >
+                          {copiedId === exam.id ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />
+                        {exam.duration} mins
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        {exam.total_questions} Qs / {exam.total_marks} Marks
+                      </span>
+                      <span>{formatExamSummary(exam)}</span>
+                    </div>
+                  </div>
+                );
+
+                const categoryBadge = (
+                  <span className="inline-block max-w-full truncate px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded capitalize">
+                    {exam.category}
+                  </span>
+                );
+
+                const statusBadge = (
+                  <span className={`inline-block max-w-full truncate px-2 py-1 text-xs font-medium rounded capitalize ${
+                    exam.status === 'ongoing' ? 'bg-success/10 text-success' :
+                    exam.status === 'upcoming' ? 'bg-warning/10 text-warning' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {exam.status}
+                  </span>
+                );
+
+                const examTypeBadge = (
+                  <span className="inline-block max-w-full truncate px-2 py-1 bg-foreground/5 text-foreground text-xs font-medium rounded capitalize">
+                    {exam.exam_type?.replace('_', ' ') || '—'}
+                  </span>
+                );
+
+                const publishedBadge = exam.is_published ? (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Eye className="h-4 w-4 text-success shrink-0" />
+                    <span className="text-xs font-medium text-success truncate">Published</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="h-4 w-4 text-orange-500 shrink-0" />
+                    <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-xs font-semibold rounded-full truncate">Draft</span>
+                  </div>
+                );
+
+                const actions = (
+                  <div className="flex items-center gap-2">
+                    <Link href={`/admin/exams/${exam.id}`}>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    </Link>
+                    {canDelete && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-destructive border-destructive/50"
+                        onClick={() => handleDelete(exam)}
+                        disabled={deletingExamId === exam.id}
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-orange-500" />
-                            <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-xs font-semibold rounded-full">Draft</span>
-                          </div>
+                          <Trash2 className="h-4 w-4" />
                         )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
-                          <Link href={`/admin/exams/${exam.id}`}>
-                            <Button variant="outline" size="sm" className="gap-1">
-                              <Edit className="h-4 w-4" />
-                              Edit
-                            </Button>
-                          </Link>
-                          {canDelete && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-destructive border-destructive/50"
-                              onClick={() => handleDelete(exam)}
-                              disabled={deletingExamId === exam.id}
-                            >
-                              {isDeleting ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </Button>
+                    )}
+                  </div>
+                );
+
+                return (
+                  <div key={exam.id} className={rowTransition}>
+                    {/* Mobile card */}
+                    <div className="md:hidden px-4 py-3 space-y-2.5">
+                      {titleBlock}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {categoryBadge}
+                        {statusBadge}
+                        {examTypeBadge}
+                        {publishedBadge}
+                      </div>
+                      {actions}
+                    </div>
+
+                    {/* Desktop row — same column tracks as the header above. */}
+                    <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_110px_120px_170px] lg:grid-cols-[minmax(0,1fr)_130px_110px_130px_120px_170px] gap-x-4 items-center px-4 py-3">
+                      {titleBlock}
+                      <div className="hidden lg:block min-w-0">{categoryBadge}</div>
+                      <div className="min-w-0">{statusBadge}</div>
+                      <div className="hidden lg:block min-w-0">{examTypeBadge}</div>
+                      <div className="min-w-0">{publishedBadge}</div>
+                      <div className="min-w-0 flex justify-end">{actions}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {totalPages > 1 && (

@@ -239,12 +239,14 @@ export function ExamCard({ exam, variant = 'default', size = 'default', hideCate
             <TrendingUp className={`h-3.5 w-3.5 ${accentColor}`} />
             <span>{exam.total_marks} Marks</span>
           </div>
+          {/* Attempts count hidden temporarily — uncomment to restore.
           {exam.attempts !== undefined && !isCompact && (
             <div className="flex items-center gap-2">
               <Users className={`h-4 w-4 ${accentColor}`} />
               <span>{exam.attempts.toLocaleString()} attempts</span>
             </div>
           )}
+          */}
         </div>
 
         {countdown && exam.status === 'upcoming' && !isCompact && (

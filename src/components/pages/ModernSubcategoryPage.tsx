@@ -6,8 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { PageBlockRenderer } from "@/components/PageEditor/PageBlockRenderer";
 import { isBlockEmpty } from "@/lib/utils/blockContent";
-import { examPdfService } from "@/lib/api/examPdfService";
-import { downloadExamPdf } from "@/lib/utils/examPdfHtml";
+import { downloadExamPdfFile } from "@/lib/api/examPdfService";
 import { getCleanContentLabel, humanizeSectionKey } from "@/lib/utils";
 import { toast } from "sonner";
 import { Download, Lock, Filter, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
@@ -479,10 +478,9 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
   const handleDownloadExamPDF = async (examId: string) => {
     try {
       setDownloadingExamId(examId);
-      toast.loading('Preparing exam PDF...', { id: `pdf-${examId}` });
-      const examData = await examPdfService.getExamForPDF(examId);
       toast.loading('Generating PDF document...', { id: `pdf-${examId}` });
-      await downloadExamPdf(examData);
+      // Rendered server-side (headless Chromium) and streamed back as a file.
+      await downloadExamPdfFile(examId);
       toast.success('PDF downloaded successfully!', { id: `pdf-${examId}` });
     } catch (err) {
       console.error('[ModernSubcategory] exam PDF generation failed', err);
@@ -827,7 +825,10 @@ export default function ModernSubcategoryPage({ categorySlug, subcategorySlug, c
       const matchesYear = selectedYears.length === 0 || (year && selectedYears.includes(year));
       const matchesTier = selectedTiers.length === 0 || (tierLabel && selectedTiers.includes(tierLabel));
       return matchesYear && matchesTier;
-    });
+    // Show the most recently added mock tests first — invert the source order.
+    // .filter() already returns a fresh array, so reversing it won't mutate
+    // extendedMockTests (which other memos derive from).
+    }).reverse();
   }, [extendedMockTests, selectedYears, selectedTiers]);
 
   const filteredPreviousPapers = useMemo(() => {

@@ -9,8 +9,8 @@ import { StandardExamCard } from '@/components/exam/StandardExamCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/common/LoadingStates';
 import { Breadcrumbs, HomeBreadcrumb } from '@/components/ui/breadcrumbs';
-import { examService } from '@/lib/api/examService';
-import { taxonomyService, Difficulty, Category, Subcategory } from '@/lib/api/taxonomyService';
+import { examService, DifficultyFacetOption } from '@/lib/api/examService';
+import { Category, Subcategory } from '@/lib/api/taxonomyService';
 import { paperSectionsService, PaperSection, PaperTopic } from '@/lib/api/paperSectionsService';
 import { Exam } from '@/types';
 import { PageSeoSections } from '@/components/sections/PageSeoSections';
@@ -50,7 +50,11 @@ interface InitialData {
 }
 
 interface SSRData {
-  initialDifficulties?: Difficulty[];
+  // Scoped to the initial (unfiltered) exams query — the same "difficulties" facet
+  // fetchExams() re-derives on every subsequent call, so the options list always
+  // reflects only the currently selected category/subcategory (and other active
+  // filters), not every difficulty level on the whole platform.
+  initialDifficulties?: DifficultyFacetOption[];
   initialSections?: PaperSection[];
   initialTopics?: PaperTopic[];
 }
@@ -64,10 +68,9 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialData.subcategories);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
-  const [difficultyOptions, setDifficultyOptions] = useState<Difficulty[]>(initialDifficulties ?? []);
+  const [difficultyOptions, setDifficultyOptions] = useState<DifficultyFacetOption[]>(initialDifficulties ?? []);
   const [selectedDifficultyId, setSelectedDifficultyId] = useState<string>('');
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [difficultiesLoading, setDifficultiesLoading] = useState(initialDifficulties === undefined);
   const [isLoading, setIsLoading] = useState(false);
   const isInitialMount = useRef(true);
   const [error, setError] = useState('');
@@ -116,8 +119,12 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
   };
 
   useEffect(() => {
-    if (initialDifficulties === undefined) fetchDifficulties();
+    // If SSR didn't provide an initial difficulties facet (e.g. the SSR fetch failed),
+    // bootstrap it client-side via the same scoped exams facet fetchExams() uses below —
+    // there's no more separate global difficulties endpoint call.
+    if (initialDifficulties === undefined) fetchExams();
     if (initialSections === undefined) fetchPaperSections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDifficulties, initialSections]);
 
   useEffect(() => {
@@ -207,18 +214,6 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
     }
   };
 
-  const fetchDifficulties = async () => {
-    setDifficultiesLoading(true);
-    try {
-      const response = await taxonomyService.getDifficulties();
-      setDifficultyOptions(response);
-    } catch (err) {
-      console.error('Failed to fetch difficulties:', err);
-    } finally {
-      setDifficultiesLoading(false);
-    }
-  };
-
   const fetchExams = async () => {
     const requestId = ++activeRequestRef.current;
     setIsLoading(true);
@@ -259,6 +254,21 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
 
       setYearOptions(backendYearOptions);
       setExams(sortedExams);
+
+      // Difficulty options are scoped to whatever category/subcategory/etc filters are
+      // currently active (the backend excludes only the difficulty filter itself from
+      // this facet, same as the years facet above) — so switching category narrows this
+      // list down to just that category's real difficulty levels instead of every
+      // difficulty on the platform.
+      if (response.difficulties) {
+        setDifficultyOptions(response.difficulties);
+        // If the currently selected difficulty is no longer a valid option under the
+        // new scope, clear it rather than leaving an invisible filter silently applied.
+        if (selectedDifficultyId && !response.difficulties.some((d) => d.id === selectedDifficultyId)) {
+          setSelectedDifficultyId('');
+          setFilters((prev) => ({ ...prev, difficulty: '' }));
+        }
+      }
 
       setPagination((prev) => ({
         ...prev,
@@ -398,7 +408,7 @@ export default function PreviousYearPapersClient({ initialData, initialDifficult
     return topics;
   }, [activeSectionId, paperTopics]);
 
-  const isFilterDataLoading = categoriesLoading || difficultiesLoading || subcategoriesLoading;
+  const isFilterDataLoading = categoriesLoading || subcategoriesLoading;
   const hasCustomFilters = Boolean(
     filters.search ||
     selectedCategoryId ||

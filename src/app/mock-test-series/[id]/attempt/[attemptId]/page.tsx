@@ -11,6 +11,7 @@ import { LoadingPage } from '@/components/common/LoadingStates';
 import { examService } from '@/lib/api/examService';
 import { Exam, Question, Section } from '@/types';
 import { MathRenderer } from '@/components/common/MathRenderer';
+import { PassagePane } from '@/components/exam/PassagePane';
 
 type QuestionStatus = 'not-visited' | 'not-answered' | 'answered' | 'marked' | 'answered-marked';
 
@@ -839,7 +840,12 @@ function ExamAttemptContent() {
       </div>
 
       <div className="container-main py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`grid grid-cols-1 gap-6 ${currentQuestion?.passage ? 'lg:grid-cols-5' : 'lg:grid-cols-3'}`}>
+          {currentQuestion?.passage && (
+            <div className="lg:col-span-2 lg:order-first lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)]">
+              <PassagePane passage={currentQuestion.passage} />
+            </div>
+          )}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-card border border-border rounded-xl p-4 mb-4">
               <div className="flex items-center gap-2 overflow-x-auto pb-2">

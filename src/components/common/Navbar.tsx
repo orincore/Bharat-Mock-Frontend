@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from '@/components/common/Image';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { GraduationCap, Menu, X, User, LogOut, FileText, ChevronDown, Languages, Crown, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -28,6 +28,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// useLayoutEffect runs synchronously after the DOM commits but BEFORE the browser
+// paints — unlike useEffect, which runs after paint. Flipping hasMounted here means
+// the hydration-safe skeleton (needed so the server/client first render matches) is
+// swapped for the real cached-from-localStorage header in the same paint the
+// skeleton would have appeared in, so it's never actually visible. Aliased to
+// useEffect during SSR since useLayoutEffect warns/no-ops there.
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 type NavigationItem = {
   label: string;
@@ -138,7 +146,7 @@ export function Navbar() {
   const { categories, subcategories } = useAppData();
   const [hasMounted, setHasMounted] = useState(false);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     setHasMounted(true);
   }, []);
 
@@ -350,7 +358,7 @@ export function Navbar() {
           {/* Language Selector & Auth Section */}
           <div className="hidden md:flex items-center gap-1.5 lg:gap-2 flex-shrink-0 justify-end">
             <LanguageSelector />
-            {!hasMounted || isLoading ? (
+            {!hasMounted || (isLoading && !isAuthenticated) ? (
               <div className="flex items-center gap-3">
                 <div className="h-9 w-24 rounded-lg bg-muted animate-pulse" />
                 <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
@@ -561,7 +569,7 @@ export function Navbar() {
             </div>
             
             <div className="pt-4 border-t border-border space-y-2">
-              {!hasMounted || isLoading ? (
+              {!hasMounted || (isLoading && !isAuthenticated) ? (
                 <div className="space-y-2">
                   <div className="h-10 w-full rounded-lg bg-muted animate-pulse" />
                   <div className="h-10 w-full rounded-lg bg-muted animate-pulse" />

@@ -544,24 +544,29 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
           />
 
           <div className="flex flex-col gap-4 items-start">
-            <div className="w-full bg-white rounded-2xl border border-blue-100 shadow-sm p-5">
-              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-start">
+            <div className="w-full bg-white rounded-2xl border border-blue-100 shadow-sm p-4 sm:p-5">
+              {/* Identity row: logo + title only, so the row's height is driven by
+                  the title, not by a taller column of stats stacked next to a small
+                  logo — that mismatch was leaving a dead gap under the logo on
+                  mobile. Everything else (description, stats, meta) is a full-width
+                  block below, same on every breakpoint. */}
+              <div className="flex flex-row gap-3 sm:gap-4 items-center">
                 <div className="shrink-0">
                   {testSeries.category?.logo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={testSeries.category.logo_url}
                       alt={testSeries.category.name}
-                      className="h-20 w-20 rounded-full border border-blue-100 object-cover"
+                      className="h-14 w-14 sm:h-20 sm:w-20 rounded-full border border-blue-100 object-cover"
                     />
                   ) : (
-                    <div className="h-20 w-20 rounded-full border border-blue-100 bg-blue-50 flex items-center justify-center text-2xl font-bold text-blue-700">
+                    <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full border border-blue-100 bg-blue-50 flex items-center justify-center text-lg sm:text-2xl font-bold text-blue-700">
                       {(testSeries.category?.name || testSeries.title).slice(0, 1)}
                     </div>
                   )}
                 </div>
-                <div className="flex-1 w-full min-w-0">
-                  <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-blue-600 uppercase tracking-wide">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm font-semibold text-blue-600 uppercase tracking-wide">
                     {testSeries.category?.name && <span>{testSeries.category.name}</span>}
                     {testSeries.difficulty?.name && (
                       <span className="inline-flex items-center gap-1 text-slate-500">
@@ -570,50 +575,51 @@ export default function TestSeriesDetailClient({ initialData, slug }: { initialD
                       </span>
                     )}
                   </div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mt-1 break-words">
+                  <h1 className="text-lg sm:text-3xl md:text-4xl font-bold text-slate-900 mt-1 break-words leading-snug sm:leading-tight">
                     {testSeries.title}
                   </h1>
-                  {testSeries.description && (
-                    <p className="text-slate-600 mt-3 max-w-3xl">{testSeries.description}</p>
-                  )}
+                </div>
+              </div>
 
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {heroStats.map((stat) => (
-                      <div
-                        key={stat.label}
-                        className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm"
-                      >
-                        <span className="flex items-center gap-1 text-blue-600">
-                          <span className="h-3.5 w-3.5 text-blue-500">{stat.icon}</span>
-                          {stat.label}
-                        </span>
-                        <span className="text-slate-900 text-sm">{stat.value}</span>
-                      </div>
-                    ))}
-                  </div>
+              {testSeries.description && (
+                <p className="text-sm sm:text-base text-slate-600 mt-4 max-w-3xl">{testSeries.description}</p>
+              )}
 
-                  <div className="flex flex-wrap gap-4 text-sm text-slate-600 mt-5">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="h-4 w-4 text-green-600" />
-                      <span>{sectionFilters.length} Sections</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Layers className="h-4 w-4 text-indigo-600" />
-                      <span>{Array.from(sectionTopicFilters.values()).reduce((sum, topics) => sum + topics.length, 0)} Topics</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <History className="h-4 w-4 text-amber-600" />
-                      <span>
-                        {testSeries.updated_at
-                          ? `Last updated ${new Date(testSeries.updated_at).toLocaleDateString('en-US', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          })}`
-                          : 'Updated recently'}
-                      </span>
-                    </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {heroStats.map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm"
+                  >
+                    <span className="flex items-center gap-1 text-blue-600">
+                      <span className="h-3.5 w-3.5 text-blue-500">{stat.icon}</span>
+                      {stat.label}
+                    </span>
+                    <span className="text-slate-900 text-sm">{stat.value}</span>
                   </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs sm:text-sm text-slate-600 mt-4 sm:mt-5">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-green-600" />
+                  <span>{sectionFilters.length} Sections</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-indigo-600" />
+                  <span>{Array.from(sectionTopicFilters.values()).reduce((sum, topics) => sum + topics.length, 0)} Topics</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-amber-600" />
+                  <span>
+                    {testSeries.updated_at
+                      ? `Last updated ${new Date(testSeries.updated_at).toLocaleDateString('en-US', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}`
+                      : 'Updated recently'}
+                  </span>
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from '@/components/common/Image';
-import { Mail, Phone } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
   FaTelegram,
@@ -17,12 +17,12 @@ const CONTACT = {
   phone: '+91 8806727785',
 };
 
-const SOCIAL_LINKS = [
+export const SOCIAL_LINKS = [
   { label: 'Telegram',  href: 'https://t.me/s/Bharatmock',          Icon: FaTelegram },
   { label: 'Instagram', href: 'https://instagram.com/bharatmock',   Icon: FaInstagram },
   { label: 'Facebook',  href: 'https://facebook.com/bharatmock',    Icon: FaFacebook },
   { label: 'YouTube',   href: 'https://www.youtube.com/@bharatmock', Icon: FaYoutube },
-  { label: 'WhatsApp',  href: 'https://wa.me/918806727785',         Icon: FaWhatsapp },
+  { label: 'WhatsApp',  href: 'https://www.whatsapp.com/channel/0029Vb88vyRA2pLCbd6hvi1v', Icon: FaWhatsapp },
 ];
 
 export function Footer() {
@@ -91,11 +91,13 @@ export function Footer() {
                 <span>{CONTACT.email}</span>
               </a>
               <a
-                href={`tel:${CONTACT.phone.replace(/\s+/g, '')}`}
+                href={`https://wa.me/${CONTACT.phone.replace(/[^0-9]/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-2 text-background/70 hover:text-primary transition-colors"
-                title="Call Helpline"
+                title="Chat on WhatsApp"
               >
-                <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                <FaWhatsapp className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>{CONTACT.phone}</span>
               </a>
             </div>

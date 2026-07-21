@@ -128,6 +128,9 @@ export const authService = {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('auth_user');
+    // Legacy key some admin pages still fall back to reading; never written anymore
+    // but must be cleared here or a stale value silently outlives every re-login.
+    localStorage.removeItem('token');
     apiClient.clearAuthCache();
   }
 };

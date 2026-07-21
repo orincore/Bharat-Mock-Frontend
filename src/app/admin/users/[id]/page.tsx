@@ -621,7 +621,7 @@ export default function AdminUserDetailsPage() {
                 <p className="font-semibold">
                   {user.subscription_expires_at
                     ? new Date(user.subscription_expires_at).toLocaleDateString(undefined, { dateStyle: 'medium' })
-                    : '—'}
+                    : user.is_premium ? 'No expiry (lifetime grant)' : '—'}
                 </p>
               </div>
               <div>

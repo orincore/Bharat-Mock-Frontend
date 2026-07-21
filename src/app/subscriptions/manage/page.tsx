@@ -63,7 +63,11 @@ export default function ManageSubscriptionPage() {
   const isCancelled = subscription?.status === 'canceled';
   const hasActiveSubscription = Boolean(user?.is_premium && user?.subscription_plan);
   const planName = subscription?.plan?.name || user?.subscription_plan?.name || 'No active plan';
-  const expiresAt = subscription?.expires_at ? formatDate(subscription.expires_at) : (user?.subscription_expires_at ? formatDate(user.subscription_expires_at) : '—');
+  // A premium grant with no expiry (e.g. a complimentary/lifetime access grant made
+  // from the admin panel) has no date to show — say so explicitly rather than a bare
+  // "—", which reads as broken rather than intentional.
+  const rawExpiry = subscription?.expires_at || user?.subscription_expires_at || null;
+  const expiresAt = rawExpiry ? formatDate(rawExpiry) : (hasActiveSubscription ? 'No expiry' : '—');
 
   const handleCancelSubscription = async () => {
     if (!hasActiveSubscription) {

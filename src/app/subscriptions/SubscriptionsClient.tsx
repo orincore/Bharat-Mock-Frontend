@@ -151,6 +151,10 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
   );
   const currentPlanId = user?.subscription_plan_id ?? null;
   const isCurrentPlanSelected = Boolean(currentPlanId && selectedPlanId === currentPlanId);
+  const currentPlan = useMemo(
+    () => (currentPlanId ? plans.find((plan) => plan.id === currentPlanId) ?? null : null),
+    [plans, currentPlanId]
+  );
 
   useEffect(() => {
     // Update selected plan when user's current plan is known (after auth loads)
@@ -236,6 +240,15 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
       return;
     }
 
+    if (selectedPlan && isDowngrade(selectedPlan)) {
+      toast({
+        title: 'Downgrade not allowed',
+        description: `You already have an active ${currentPlan?.name ?? 'higher'} plan. Downgrading to a lower-value plan isn't allowed until it expires.`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
     if (!isAuthenticated) {
       const returnTo = typeof window !== 'undefined'
         ? window.location.pathname + window.location.search
@@ -284,7 +297,7 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
               title: 'Subscription activated',
               description: 'Enjoy your premium access!'
             });
-            router.push('/profile');
+            router.push('/thank-you');
           } catch (confirmError: any) {
             console.error('Confirm payment failed', confirmError);
             toast({
@@ -352,6 +365,17 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
     return plan.sale_price_cents !== null &&
       plan.sale_price_cents !== undefined &&
       plan.sale_price_cents < plan.normal_price_cents;
+  };
+
+  // A user with an active higher-value plan shouldn't be able to buy a cheaper one —
+  // the backend rejects this too (resolvePlanAndPromo), this just avoids a wasted trip.
+  const isDowngrade = (plan: SubscriptionPlan) => {
+    return Boolean(
+      user?.is_premium &&
+      currentPlan &&
+      currentPlan.id !== plan.id &&
+      getEffectivePrice(currentPlan) > getEffectivePrice(plan)
+    );
   };
 
   const getStaticFeaturesForPlan = (plan: SubscriptionPlan): string[] => {
@@ -697,18 +721,27 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
             plans.map((plan) => {
               const isSelected = plan.id === selectedPlanId;
               const isCurrentPlan = plan.id === currentPlanId && Boolean(user?.is_premium);
+              const isPlanDowngrade = isDowngrade(plan);
               const isPro = plan.slug?.toLowerCase().includes('pro');
               return (
                 <Card
                   key={plan.id}
                   className={`relative border-2 transition-all hover:shadow-xl ${isSelected ? 'border-blue-500 shadow-xl shadow-blue-500/20 scale-105' : 'border-gray-200'
-                    } ${isCurrentPlan ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${isPro ? 'ring-2 ring-blue-400 ring-offset-2' : ''
+                    } ${(isCurrentPlan || isPlanDowngrade) ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${isPro ? 'ring-2 ring-blue-400 ring-offset-2' : ''
                     }`}
                   onClick={() => {
                     if (isCurrentPlan) {
                       toast({
                         title: 'Plan already active',
                         description: 'Select a different plan to upgrade your subscription.',
+                        variant: 'destructive'
+                      });
+                      return;
+                    }
+                    if (isPlanDowngrade) {
+                      toast({
+                        title: 'Downgrade not allowed',
+                        description: `You already have an active ${currentPlan?.name ?? 'higher'} plan. Downgrading to a lower-value plan isn't allowed until it expires.`,
                         variant: 'destructive'
                       });
                       return;
@@ -785,11 +818,11 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                         : ''
                         }`}
                       variant={isSelected ? 'default' : 'outline'}
-                      disabled={isCurrentPlan}
+                      disabled={isCurrentPlan || isPlanDowngrade}
                       size="lg"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isCurrentPlan) return;
+                        if (isCurrentPlan || isPlanDowngrade) return;
                         openCheckoutForPlan(plan.id);
                       }}
                     >
@@ -798,6 +831,8 @@ export default function SubscriptionsClient({ initialPlans, initialContent, init
                           <Award className="h-5 w-5 mr-2" />
                           Current Plan
                         </>
+                      ) : isPlanDowngrade ? (
+                        'Downgrade Locked'
                       ) : (
                         'Choose Plan'
                       )}

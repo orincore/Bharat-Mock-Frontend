@@ -2,6 +2,8 @@
 export interface Exam {
   id: string;
   title: string;
+  /** Admin-authored rich-text candidate instructions; null/empty = use defaults. */
+  instructions?: string | null;
   duration: number;
   total_marks: number;
   totalMarks?: number;
@@ -343,12 +345,21 @@ export interface Section {
 // Question Types
 export type QuestionType = 'single' | 'multiple' | 'truefalse' | 'numerical';
 
+export interface Passage {
+  id: string;
+  title?: string | null;
+  content: string;
+  content_hi?: string | null;
+}
+
 export interface Question {
   id: string;
   exam_id?: string;
   examId?: string;
   section_id?: string;
   sectionId?: string;
+  passage_id?: string | null;
+  passage?: Passage | null;
   type: QuestionType;
   text: string;
   text_hi?: string;

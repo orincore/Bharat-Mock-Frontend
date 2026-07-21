@@ -1,10 +1,21 @@
 import { apiClient } from './client';
 import { Exam, Question, FilterOptions, PaginatedResponse, ExamHistoryEntry } from '@/types';
 
+// Minimal shape returned by the exams-listing "difficulties" facet — scoped to
+// whatever category/subcategory/exam_type/etc filters are currently active, unlike
+// taxonomyService's getDifficulties() which returns every difficulty on the platform.
+export interface DifficultyFacetOption {
+  id: string;
+  name: string;
+  slug: string;
+  level_order: number | null;
+}
+
 interface ExamResponse {
   success: boolean;
   data: Exam[];
   years?: number[];
+  difficulties?: DifficultyFacetOption[];
   pagination: {
     page: number;
     limit: number;
@@ -65,7 +76,7 @@ interface QuestionsResponse {
   };
 }
 
-type ExamListResult = PaginatedResponse<Exam> & { years?: number[] };
+type ExamListResult = PaginatedResponse<Exam> & { years?: number[]; difficulties?: DifficultyFacetOption[] };
 
 export const examService = {
   async getExams(options?: FilterOptions): Promise<ExamListResult> {
@@ -93,6 +104,7 @@ export const examService = {
     return {
       data: response.data,
       years: response.years,
+      difficulties: response.difficulties,
       total: response.pagination.total,
       page: response.pagination.page,
       limit: response.pagination.limit,

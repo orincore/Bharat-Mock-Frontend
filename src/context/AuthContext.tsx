@@ -75,45 +75,66 @@ export function AuthProvider({ children, onAuthChange }: AuthProviderProps) {
     } catch { /* ignore */ }
   }, []);
 
-  // On mount: verify token is still valid by fetching fresh profile
+  // On mount: verify auth state. Tries the same-origin /api/session route first —
+  // it reads the httpOnly session cookie set by the backend on login/register/
+  // refresh, with no CORS preflight (unlike calling the cross-origin API directly),
+  // so it resolves faster. Falls back to the existing Bearer-token verification
+  // against localStorage when there's no session cookie (first load before one was
+  // ever set, or cookies blocked) — same behavior as before this fast path existed.
   useEffect(() => {
     if (initDone.current) return;
     initDone.current = true;
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const verifyViaLocalToken = () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
-    if (!token) {
-      // No token — ensure state is clean
-      setUser(null);
-      persistUser(null);
-      setIsLoading(false);
-      return;
-    }
+      if (!token) {
+        // No token — ensure state is clean
+        setUser(null);
+        persistUser(null);
+        setIsLoading(false);
+        return;
+      }
 
-    // Token exists — fetch fresh profile to validate it
-    authService.getProfile()
-      .then(userData => {
-        const normalized = normalizeUser(userData);
-        setUser(normalized);
-        persistUser(normalized);
-      })
-      .catch((err: any) => {
-        const msg = err?.message || '';
-        if (msg.includes('410')) {
-          // Account soft-deleted — clear session and show deleted screen
-          authService.logout();
-          apiClient.clearAuthCache();
-          setUser(null);
-          setIsDeleted(true);
-        } else if (msg.includes('401') || msg.includes('403')) {
-          // Token invalid/expired — clear everything and show logged-out state
-          authService.logout();
-          apiClient.clearAuthCache();
-          setUser(null);
+      // Token exists — fetch fresh profile to validate it
+      authService.getProfile()
+        .then(userData => {
+          const normalized = normalizeUser(userData);
+          setUser(normalized);
+          persistUser(normalized);
+        })
+        .catch((err: any) => {
+          const msg = err?.message || '';
+          if (msg.includes('410')) {
+            // Account soft-deleted — clear session and show deleted screen
+            authService.logout();
+            apiClient.clearAuthCache();
+            setUser(null);
+            setIsDeleted(true);
+          } else if (msg.includes('401') || msg.includes('403')) {
+            // Token invalid/expired — clear everything and show logged-out state
+            authService.logout();
+            apiClient.clearAuthCache();
+            setUser(null);
+          }
+          // For network errors, keep the cached user so the app still works offline
+        })
+        .finally(() => setIsLoading(false));
+    };
+
+    fetch('/api/session', { credentials: 'include', cache: 'no-store' })
+      .then(res => (res.ok ? res.json() : null))
+      .then(json => {
+        if (json?.success && json?.data) {
+          const normalized = normalizeUser(json.data);
+          setUser(normalized);
+          persistUser(normalized);
+          setIsLoading(false);
+          return;
         }
-        // For network errors, keep the cached user so the app still works offline
+        verifyViaLocalToken();
       })
-      .finally(() => setIsLoading(false));
+      .catch(verifyViaLocalToken);
   }, []);
 
   // Force logout when apiClient clears tokens (refresh token expired)
