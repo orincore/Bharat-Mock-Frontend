@@ -9,16 +9,21 @@ import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { ServiceWorkerRegistration } from "@/components/common/ServiceWorkerRegistration";
 import { WebVitals } from "@/components/common/WebVitals";
 
+// display: "optional" (not "swap"): swap repainted the hero text mid-load when
+// the webfont arrived, causing an intermittent ~0.12 CLS on slow mobile
+// connections. With "optional" the browser gives the font a ~100ms window and
+// otherwise keeps next/font's metrics-adjusted fallback for the entire page
+// view — zero layout shift. Repeat visits render the brand font from cache.
 const inter = Inter({
   subsets: ["latin"],
-  display: "swap",
+  display: "optional",
   variable: "--font-inter",
   preload: true,
 });
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  display: "swap",
+  display: "optional",
   variable: "--font-display",
   preload: true,
 });
