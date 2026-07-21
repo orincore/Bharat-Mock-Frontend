@@ -18,7 +18,7 @@ const prodCSP = [
   "font-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com",
   // *.clarity.ms + c.bing.com → Clarity beacons; *.google-analytics.com + analytics.google.com + www.google.com → GA4 collectors (gtag sends /g/collect to all three); translate hosts → widget;
   // cloudflareinsights.com → the beacon's own report call; www.facebook.com → Meta Pixel's /tr tracking call
-  "connect-src 'self' https://api.bharatmock.com https://media.bharatmock.com https://*.razorpay.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://translate.google.com https://www.gstatic.com https://*.clarity.ms https://c.bing.com https://cloudflareinsights.com https://www.facebook.com",
+  "connect-src 'self' https://api.bharatmock.com https://media.bharatmock.com https://*.razorpay.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://translate.google.com https://www.gstatic.com https://*.clarity.ms https://c.bing.com https://cloudflareinsights.com https://www.facebook.com https://stats.g.doubleclick.net",
   // translate.google.com → Google Translate iframe; *.razorpay.com → checkout frames api.razorpay.com for 3DS/payment flows
   "frame-src 'self' https://www.google.com https://maps.google.com https://*.razorpay.com https://translate.google.com",
   "object-src 'none'",

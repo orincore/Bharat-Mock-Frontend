@@ -470,6 +470,8 @@ export function Navbar() {
             <button
               className="p-2 rounded-lg hover:bg-muted transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={isMobileMenuOpen}
               suppressHydrationWarning
             >
               {isMobileMenuOpen ? (

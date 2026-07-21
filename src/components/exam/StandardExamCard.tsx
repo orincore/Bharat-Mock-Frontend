@@ -212,16 +212,17 @@ export function StandardExamCard({
             )}
           </div>
           {exam.category && (
-            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] sm:text-[11px] font-medium truncate max-w-[100px] sm:max-w-[130px]">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-medium truncate max-w-[100px] sm:max-w-[130px]">
               {exam.category}
             </span>
           )}
         </div>
 
         {/* Title */}
-        <h5 className="font-semibold text-sm sm:text-[15px] leading-snug text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors mb-2 sm:mb-3 min-h-[2.2rem] sm:min-h-[2.5rem]">
+        {/* h3, not h5 — cards sit directly under a section h2, so h5 skips levels */}
+        <h3 className="font-semibold text-sm sm:text-[15px] leading-snug text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors mb-2 sm:mb-3 min-h-[2.2rem] sm:min-h-[2.5rem]">
           {exam.title}
-        </h5>
+        </h3>
 
         {/* Difficulty + Status + Language pills */}
         <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
@@ -316,7 +317,8 @@ export function StandardExamCard({
               {ctaButton}
             </div>
           ) : (
-            <Link href={examUrl} className="inline-flex w-full">
+            // aria-label disambiguates the repeated "Attempt Now" links (identical-link-purpose audit)
+            <Link href={examUrl} className="inline-flex w-full" aria-label={`${defaultCta}: ${exam.title}`}>
               {ctaButton}
             </Link>
           )}

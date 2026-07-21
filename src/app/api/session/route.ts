@@ -20,7 +20,11 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
-    return NextResponse.json({ success: false, message: 'No session' }, { status: 401 });
+    // 200, not 401: an anonymous visitor is the normal case, not an error —
+    // a 401 here made every logged-out page load emit a browser console error
+    // (flagged by Lighthouse Best Practices). AuthContext checks
+    // `json.success && json.data`, so a success:false body behaves identically.
+    return NextResponse.json({ success: false, authenticated: false, message: 'No session' });
   }
 
   try {
@@ -30,7 +34,10 @@ export async function GET(request: NextRequest) {
     });
 
     const body = await upstream.json().catch(() => null);
-    return NextResponse.json(body ?? { success: false, message: 'Invalid response' }, { status: upstream.status });
+    // Map upstream 401 (expired/invalid cookie) to 200 as well — same
+    // console-error rationale as the no-token case above.
+    const status = upstream.status === 401 ? 200 : upstream.status;
+    return NextResponse.json(body ?? { success: false, message: 'Invalid response' }, { status });
   } catch {
     return NextResponse.json({ success: false, message: 'Session check failed' }, { status: 502 });
   }

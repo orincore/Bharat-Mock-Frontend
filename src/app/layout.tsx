@@ -67,20 +67,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         {/* Google AdSense account verification */}
         <meta name="google-adsense-account" content="ca-pub-3614937645740807" />
-        {/* Google Tag Manager */}
+        {/* Google Tag Manager — lazyOnload (not afterInteractive): GTM pulls in
+            GA4 + Clarity + Meta Pixel (~300KB, ~600ms of main-thread work),
+            which on slow mobile connections competed with hydration and pushed
+            the Lighthouse LCP render-delay into the double digits. lazyOnload
+            defers the whole tag stack until after the page is fully loaded —
+            analytics still fires, just a moment later. */}
         <Script
           id="gtm-script"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-PSWFF7GC');`,
           }}
         />
-        {/* Preconnect to critical third-party origins */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Preconnect ONLY to origins on the critical path (Lighthouse flags >4
+            as counterproductive — each costs a socket during startup). Fonts are
+            self-hosted via next/font (no runtime googleapis/gstatic requests);
+            the rest are demoted to cheap dns-prefetch hints. */}
         <link rel="preconnect" href="https://media.bharatmock.com" />
         <link rel="preconnect" href="https://api.bharatmock.com" />
-        <link rel="preconnect" href="https://pub-bharatmock.r2.dev" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://pub-bharatmock.r2.dev" />
         <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
       </head>
       <body className={inter.className} suppressHydrationWarning>

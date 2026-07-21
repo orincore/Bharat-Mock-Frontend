@@ -46,7 +46,7 @@ function GetStartedButton() {
     <Link href={href}>
       <Button
         size="xl"
-        className="bg-white text-primary hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-0.5"
+        className="bg-white text-cyan-700 hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-0.5"
       >
         Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
       </Button>
@@ -474,9 +474,11 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
                           <div className="text-3xl">{examIcons[idx]}</div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                          {/* span, not a heading — card labels aren't document structure
+                              (an h3 here follows the h1 directly, breaking heading order) */}
+                          <span className="block text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
                             {examLabels}
-                          </h3>
+                          </span>
                           {examDates && (
                             <p className="text-xs text-gray-500 mt-1">{examDates}</p>
                           )}
@@ -589,7 +591,7 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
                       className={`px-5 py-2 rounded-full text-sm font-semibold transition border flex-shrink-0 ${
                         selectedCategoryId === category.id
                           ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                          : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
+                          : 'bg-muted text-slate-700 border-transparent hover:bg-muted/80'
                       }`}
                     >
                       {category.name}
@@ -620,9 +622,11 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
                             className="border border-border rounded-2xl px-3 py-2 bg-card hover:border-primary/60 transition flex items-center gap-2 h-16"
                           >
                             {sub.logo_url ? (
+                              // alt="" — decorative: the subcategory name is the adjacent
+                              // text, so a name alt would be read twice by screen readers
                               <img
                                 src={sub.logo_url}
-                                alt={sub.name}
+                                alt=""
                                 width={32}
                                 height={32}
                                 className="w-8 h-8 object-contain"
@@ -630,7 +634,7 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
                             ) : selectedCategory.logo_url ? (
                               <img
                                 src={selectedCategory.logo_url}
-                                alt={selectedCategory.name}
+                                alt=""
                                 width={32}
                                 height={32}
                                 className="w-8 h-8 object-contain"
@@ -705,12 +709,12 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
           <div className="container-home space-y-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/80">Community Pulse</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-700">Community Pulse</p>
                 <h2 className="font-display text-3xl font-bold text-slate-900 mt-2">Most Attempted Exams</h2>
                 <p className="text-muted-foreground mt-2">Find the most popular exams in India and get all the practice tests you need to clear them.</p>
               </div>
               <Link href="/mock-test-series" className="inline-flex">
-                <Button variant="secondary" className="gap-2">
+                <Button variant="secondary" className="gap-2 bg-slate-100 text-slate-800 hover:bg-slate-200">
                   Browse all exams
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -774,7 +778,8 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
               </div>
 
               <Link href="/mock-test-series" className="inline-flex">
-                <Button size="sm" className="rounded-full px-6 shadow-xl">
+                {/* bg-cyan-700: brand --primary is 2.4:1 vs white text (fails WCAG AA) */}
+                <Button size="sm" className="rounded-full px-6 shadow-xl bg-cyan-700 hover:bg-cyan-800">
                   Get Free Mock
                 </Button>
               </Link>
@@ -788,11 +793,11 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
         <div className="container-home">
           <div className="rounded-3xl border border-slate-200 bg-white/90 shadow-sm px-6 py-10 sm:px-10">
             <div className="flex flex-col gap-4 text-center max-w-3xl mx-auto">
-              <span className="inline-flex items-center justify-center gap-2 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-primary/80">
+              <span className="inline-flex items-center justify-center gap-2 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-700">
                 <Shield className="h-4 w-4" /> TRUSTED BY TOP PERFORMERS
               </span>
               <h2 className="font-display text-3xl md:text-4xl font-bold text-slate-900">
-                Why students choose <span className="text-primary">BharatMock</span>
+                Why students choose <span className="text-cyan-700">BharatMock</span>
               </h2>
               <p className="text-slate-600">
                 Smart tools, clear insights, and everything built for proper online exam preparation.
@@ -878,7 +883,7 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
             <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] items-center p-6 sm:p-10 lg:p-14 relative z-10">
               <div className="space-y-8">
                 <div className="space-y-3">
-                  <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/80">
+                  <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.4em] text-cyan-700">
                     <Sparkles className="h-4 w-4" /> BUILT FOR SERIOUS ASPIRANTS
                   </p>
                   <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 leading-tight">
@@ -920,7 +925,7 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Link href="/subscriptions">
-                    <Button size="lg" className="gap-2 rounded-full px-8 shadow-lg">
+                    <Button size="lg" className="gap-2 rounded-full px-8 shadow-lg bg-cyan-700 hover:bg-cyan-800">
                       Explore BharatMock Pass
                       <ArrowRight className="h-5 w-5" />
                     </Button>
@@ -947,11 +952,11 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
                     />
                     <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-600">
                       <div className="rounded-2xl border border-slate-100 bg-white p-3 text-center">
-                        <p className="text-lg font-semibold text-primary">24</p>
+                        <p className="text-lg font-semibold text-cyan-700">24</p>
                         <p>Mock sets unlocked</p>
                       </div>
                       <div className="rounded-2xl border border-slate-100 bg-white p-3 text-center">
-                        <p className="text-lg font-semibold text-emerald-600">92%</p>
+                        <p className="text-lg font-semibold text-emerald-700">92%</p>
                         <p>Accuracy streak</p>
                       </div>
                       <div className="col-span-2 rounded-2xl border border-dashed border-slate-200 p-4 text-center">
