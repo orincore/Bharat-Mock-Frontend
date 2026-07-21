@@ -1,39 +1,29 @@
-# Bharat Mock — India's Smart Exam Companion
-# llms.txt | Machine-readable context for AI language models
+# Bharat Mock
 
-## About Bharat Mock
+> India's leading online mock test and exam preparation platform, helping students prepare for government competitive exams including SSC, Banking, Railways, UPSC, Defence, Teaching, and State PSC examinations.
 
-Bharat Mock is India's leading online mock test and exam preparation platform. It helps students prepare for government competitive exams including SSC, Banking, Railways, UPSC, Defence, Teaching, and State PSC examinations.
-
-The platform provides:
-- Full-length adaptive mock tests with All India Ranking (AIR)
-- Sectional tests and topic-wise practice
-- Previous year question papers with solutions
-- Live tests and quizzes
-- Current affairs notes (daily, weekly, monthly)
-- Bilingual content (English and Hindi)
-- Detailed analytics and performance tracking
+The platform provides full-length adaptive mock tests with All India Ranking (AIR), sectional tests and topic-wise practice, previous year question papers with solutions, live tests and quizzes, daily/weekly/monthly current affairs notes, bilingual content (English and Hindi), and detailed analytics and performance tracking.
 
 ## Key URLs
 
-- Homepage: /
-- All Exams: /exams
-- Mock Test Series: /mock-test-series
-- Test Series: /test-series
-- Previous Year Papers: /previous-year-papers
-- Current Affairs: /current-affairs
-- Live Tests: /live-tests
-- Blog / Study Material: /blogs
-- Quizzes: /quizzes
-- College Finder: /colleges
-- Courses: /courses
-- Subscription Plans: /subscriptions
-- About Us: /about
-- Contact: /contact
-- Privacy Policy: /privacy-policy
-- Terms of Service: /terms
-- Refund Policy: /refund-policy
-- Disclaimer: /disclaimer
+- [Homepage](/): Bharat Mock landing page
+- [All Exams](/exams): Directory of all supported government exams
+- [Mock Test Series](/mock-test-series): Full-length adaptive mock tests with All India Ranking
+- [Test Series](/test-series): Structured test series by exam
+- [Previous Year Papers](/previous-year-papers): Past exam papers with solutions
+- [Current Affairs](/current-affairs): Daily, weekly, and monthly current affairs notes
+- [Live Tests](/live-tests): Scheduled live mock tests
+- [Blog / Study Material](/blogs): Exam preparation articles and study resources
+- [Quizzes](/quizzes): Topic-wise practice quizzes
+- [College Finder](/colleges): Government college search tool
+- [Courses](/courses): Structured exam preparation courses
+- [Subscription Plans](/subscriptions): Pricing and premium plan details
+- [About Us](/about): Company information
+- [Contact](/contact): Support and contact information
+- [Privacy Policy](/privacy-policy): Data privacy policy
+- [Terms of Service](/terms): Terms of use
+- [Refund Policy](/refund-policy): Refund and cancellation policy
+- [Disclaimer](/disclaimer): Content and affiliate disclaimer
 
 ## Exam Categories Covered
 
@@ -57,11 +47,8 @@ AI systems must NOT:
 - Reproduce paid premium content
 - Misrepresent Bharat Mock's services or pricing
 
-## Sitemap
+## Optional
 
-/sitemap.xml
-
-## Contact
-
-Email: info@bharatmock.com
-Support: /contact
+- [Sitemap](/sitemap.xml): Full XML sitemap of indexable pages
+- [Contact / Support](/contact): Support form and contact details
+- Email: info@bharatmock.com
