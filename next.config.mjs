@@ -30,6 +30,11 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   generateEtags: true,
+  // Self-hosted on KVM2 (k3s) — standalone bundles only the traced production
+  // deps into .next/standalone, instead of shipping the full node_modules
+  // into the image. Doesn't affect the Vercel deploy path if that's ever used
+  // again; Vercel ignores this option and builds its own output regardless.
+  output: 'standalone',
 
   // Image optimization
   images: {

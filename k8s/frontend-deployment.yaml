@@ -1,0 +1,63 @@
+# Resource budget (KVM2 = 2 vCPU / 8GB total, shared with the backend, Redis,
+# and k3s + Traefik + metrics-server — see Bharat-Mock-Backend/k8s/README.md
+# for the full arithmetic): requests 150m CPU / 200Mi mem, limits 400m / 450Mi,
+# up to 3 replicas via frontend-hpa.yaml. NEXT_PUBLIC_* vars are already baked
+# into this image at build time (Dockerfile ARG, set via CI build-args) — they
+# are NOT re-declared here as env vars, since Next.js inlines them at compile
+# time and a runtime env var here would have no effect on already-built pages.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: bharatmock
+  labels:
+    app: frontend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: frontend
+          image: ghcr.io/OWNER/bharat-mock-frontend:latest # replaced by CI on every deploy
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: frontend-secret # GOOGLE_CLOUD_TRANSLATION_API_KEY only — a true runtime secret, never baked into the image
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "200Mi"
+            limits:
+              cpu: "400m"
+              memory: "450Mi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3

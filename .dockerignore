@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+coverage
+.vscode
+.idea
+.DS_Store
+k8s
+.github
+README.md
+tsconfig.tsbuildinfo
+*.md
