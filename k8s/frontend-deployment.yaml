@@ -32,7 +32,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: frontend
-          image: ghcr.io/OWNER/bharat-mock-frontend:latest # replaced by CI on every deploy
+          image: ghcr.io/orincore/bharat-mock-frontend:latest # replaced by CI on every deploy
           ports:
             - containerPort: 3000
           envFrom:
