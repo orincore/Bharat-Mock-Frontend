@@ -43,13 +43,21 @@ function isCacheableAnonymousPage(req: NextRequest): boolean {
 
 function applyEdgeCacheHeaders(res: NextResponse) {
   // public + s-maxage → Cloudflare's shared edge caches for an hour; max-age=0 →
-  // browsers still revalidate (so a user who logs in never sees a stale
+  // browsers ALWAYS revalidate (so a user who logs in never sees a stale
   // anonymous page from their own cache). The backend purge hook clears the
-  // edge instantly on admin edits. Vary is normalized to Accept-Encoding
-  // because Cloudflare refuses to cache responses whose Vary lists anything
-  // else (Next emits `Vary: rsc, next-router-...`).
-  res.headers.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
-  res.headers.set('Vary', 'Accept-Encoding');
+  // edge instantly on admin edits.
+  //
+  // Deliberately NO stale-while-revalidate: Cloudflare ignores the directive
+  // (its serve-stale is a zone setting), so it would only affect browsers —
+  // and since Traefik normalizes Vary to Accept-Encoding for Cloudflare's
+  // benefit (see k8s/cluster/ingress.yaml in the backend repo), a browser
+  // honoring SWR could serve cached page HTML for an RSC fetch of the same
+  // URL. max-age=0 with no SWR forces browser revalidation every time, which
+  // makes the Vary normalization safe.
+  //
+  // Note: Next.js MERGES (not replaces) middleware Vary with its own RSC vary
+  // values, so the actual Vary fix lives at the Traefik ingress, not here.
+  res.headers.set('Cache-Control', 'public, max-age=0, s-maxage=3600');
 }
 
 export function middleware(req: NextRequest) {
