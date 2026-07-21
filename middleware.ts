@@ -5,6 +5,16 @@ const LOCALE_COOKIE = 'NEXT_LOCALE';
 const LOCALE_HEADER = 'x-next-locale';
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
 
+// Prefixes that must NEVER be edge-cached for anonymous visitors: APIs, build
+// assets, and every user-specific / auth flow. Kept in sync with the Cloudflare
+// Cache Rule expression so the origin and the edge never disagree.
+const NO_CACHE_PREFIXES = [
+  '/api/', '/_next/', '/assets/', '/icons/', '/images/',
+  '/admin', '/profile', '/auth', '/login', '/register', '/results',
+  '/onboarding', '/forgot-password', '/reset-password', '/subscriptions',
+  '/thank-you',
+];
+
 function getLocaleFromPath(pathname: string): string | null {
   for (const locale of SUPPORTED_LOCALES) {
     if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
@@ -12,6 +22,34 @@ function getLocaleFromPath(pathname: string): string | null {
     }
   }
   return null;
+}
+
+// Whether this response may be edge-cached by Cloudflare for anonymous visitors.
+// Every content page is `force-dynamic`, so Next.js stamps each response with
+// `Cache-Control: private, no-cache, no-store` — which makes Cloudflare bypass
+// the cache. For anonymous, non-personalized page loads we override that with a
+// public s-maxage below so the rendered SSR HTML can be edge-cached (~20ms
+// instead of a 250-650ms origin render). Logged-in users (bm_session cookie)
+// and RSC/prefetch navigations are never cached.
+function isCacheableAnonymousPage(req: NextRequest): boolean {
+  if (req.method !== 'GET') return false;
+  const { pathname } = req.nextUrl;
+  if (NO_CACHE_PREFIXES.some((p) => pathname.startsWith(p))) return false;
+  if (req.cookies.get('bm_session')) return false;               // logged-in → personalized SSR
+  if (req.headers.get('rsc') === '1') return false;              // Next RSC payload, not HTML
+  if (req.headers.get('next-router-prefetch') === '1') return false;
+  return true;
+}
+
+function applyEdgeCacheHeaders(res: NextResponse) {
+  // public + s-maxage → Cloudflare's shared edge caches for an hour; max-age=0 →
+  // browsers still revalidate (so a user who logs in never sees a stale
+  // anonymous page from their own cache). The backend purge hook clears the
+  // edge instantly on admin edits. Vary is normalized to Accept-Encoding
+  // because Cloudflare refuses to cache responses whose Vary lists anything
+  // else (Next emits `Vary: rsc, next-router-...`).
+  res.headers.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+  res.headers.set('Vary', 'Accept-Encoding');
 }
 
 export function middleware(req: NextRequest) {
@@ -36,7 +74,10 @@ export function middleware(req: NextRequest) {
     requestHeaders.set(LOCALE_HEADER, localeFromPath);
 
     const response = NextResponse.next({ request: { headers: requestHeaders } });
-    // Also persist as cookie so LanguageSelector stays in sync
+    // Also persist as cookie so LanguageSelector stays in sync. NOTE: this
+    // Set-Cookie makes the response un-cacheable at Cloudflare (by design — CF
+    // won't cache Set-Cookie responses), so /hi|/en pages aren't edge-cached
+    // via this path. English (root) pages are the primary caching win.
     response.cookies.set(LOCALE_COOKIE, localeFromPath, {
       path: '/',
       maxAge: COOKIE_MAX_AGE,
@@ -45,7 +86,9 @@ export function middleware(req: NextRequest) {
     return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (isCacheableAnonymousPage(req)) applyEdgeCacheHeaders(response);
+  return response;
 }
 
 export const config = {
