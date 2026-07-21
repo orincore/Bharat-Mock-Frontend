@@ -149,119 +149,145 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         <>
-          <div className="bg-card rounded-xl border border-border overflow-hidden overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">User</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Email</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Phone</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Role</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Status</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Joined</th>
-                  <th className="px-4 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          {user.avatar_url ? (
-                            <AvatarImage src={user.avatar_url} alt={user.name || 'User avatar'} />
-                          ) : null}
-                          <AvatarFallback className="font-semibold">
-                            {user.name?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-foreground">{user.name}</p>
-                          {user.is_verified && (
-                            <span className="text-xs text-success flex items-center gap-1">
-                              <CheckCircle className="h-3 w-3" />
-                              Verified
-                            </span>
-                          )}
-                        </div>
+          {/* Responsive grid "table" — same pattern as /admin/exams and
+              /admin/blogs: md+ shows a CSS-grid header + rows sharing the same
+              column tracks; below md each row collapses to a card. No
+              horizontal scrolling. */}
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_120px_110px_190px] lg:grid-cols-[minmax(0,1fr)_130px_120px_110px_110px_190px] gap-x-4 items-center px-4 py-3 bg-muted/50 border-b border-border text-sm font-semibold text-foreground">
+              <span>User</span>
+              <span className="hidden lg:block">Phone</span>
+              <span>Role</span>
+              <span>Status</span>
+              <span className="hidden lg:block">Joined</span>
+              <span className="text-right">Actions</span>
+            </div>
+
+            <div className="divide-y divide-border">
+              {users.map((user) => {
+                const userBlock = (
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 shrink-0">
+                      {user.avatar_url ? (
+                        <AvatarImage src={user.avatar_url} alt={user.name || 'User avatar'} />
+                      ) : null}
+                      <AvatarFallback className="font-semibold">
+                        {user.name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="font-medium text-foreground truncate">{user.name}</p>
+                        {user.is_verified && (
+                          <CheckCircle className="h-3.5 w-3.5 shrink-0 text-success" aria-label="Verified" />
+                        )}
                       </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">
-                      {user.email}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">
-                      {user.phone || '-'}
-                    </td>
-                    <td className="px-4 py-4">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value as RoleValue)}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border ${
-                          user.role === 'admin'
-                            ? 'bg-secondary/10 text-secondary border-secondary/20'
-                            : user.role === 'editor'
-                            ? 'bg-blue-50 text-blue-600 border-blue-100'
-                            : user.role === 'author'
-                            ? 'bg-amber-50 text-amber-600 border-amber-100'
-                            : 'bg-primary/10 text-primary border-primary/20'
-                        }`}
-                      >
-                        {ROLE_OPTIONS.map((role) => (
-                          <option key={role.value} value={role.value}>{role.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        user.is_blocked 
-                          ? 'bg-destructive/10 text-destructive' 
-                          : 'bg-success/10 text-success'
-                      }`}>
-                        {user.is_blocked ? 'Blocked' : 'Active'}
-                      </span>
-                      {user.is_blocked && user.block_reason && (
-                        <p className="mt-1 text-xs text-destructive">Reason: {user.block_reason}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                  </div>
+                );
+
+                const phone = (
+                  <span className="text-sm text-muted-foreground truncate">{user.phone || '-'}</span>
+                );
+
+                const roleSelect = (
+                  <select
+                    value={user.role}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value as RoleValue)}
+                    className={`max-w-full px-3 py-1 rounded-lg text-xs font-medium border ${
+                      user.role === 'admin'
+                        ? 'bg-secondary/10 text-secondary border-secondary/20'
+                        : user.role === 'editor'
+                        ? 'bg-blue-50 text-blue-600 border-blue-100'
+                        : user.role === 'author'
+                        ? 'bg-amber-50 text-amber-600 border-amber-100'
+                        : 'bg-primary/10 text-primary border-primary/20'
+                    }`}
+                  >
+                    {ROLE_OPTIONS.map((role) => (
+                      <option key={role.value} value={role.value}>{role.label}</option>
+                    ))}
+                  </select>
+                );
+
+                const statusBadge = (
+                  <div className="min-w-0">
+                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                      user.is_blocked
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-success/10 text-success'
+                    }`}>
+                      {user.is_blocked ? 'Blocked' : 'Active'}
+                    </span>
+                    {user.is_blocked && user.block_reason && (
+                      <p className="mt-1 text-xs text-destructive line-clamp-2">Reason: {user.block_reason}</p>
+                    )}
+                  </div>
+                );
+
+                const joined = (
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </span>
+                );
+
+                const actions = (
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/admin/users/${user.id}`} className="flex items-center gap-1">
+                        <Eye className="h-4 w-4" />
+                        View
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleBlock(user)}
+                      className={user.is_blocked ? 'text-success hover:text-success' : 'text-destructive hover:text-destructive'}
+                    >
+                      {user.is_blocked ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Unblock
+                        </>
+                      ) : (
+                        <>
+                          <Ban className="h-4 w-4 mr-1" />
+                          Block
+                        </>
                       )}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          asChild
-                        >
-                          <Link href={`/admin/users/${user.id}`} className="flex items-center gap-1">
-                            <Eye className="h-4 w-4" />
-                            View
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleBlock(user)}
-                          className={user.is_blocked ? 'text-success hover:text-success' : 'text-destructive hover:text-destructive'}
-                        >
-                          {user.is_blocked ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Unblock
-                            </>
-                          ) : (
-                            <>
-                              <Ban className="h-4 w-4 mr-1" />
-                              Block
-                            </>
-                          )}
-                        </Button>
+                    </Button>
+                  </div>
+                );
+
+                return (
+                  <div key={user.id} className="hover:bg-muted/50 transition-colors">
+                    {/* Mobile card */}
+                    <div className="md:hidden px-4 py-3 space-y-2.5">
+                      {userBlock}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {roleSelect}
+                        {statusBadge}
+                        <span className="text-xs text-muted-foreground">Joined {new Date(user.created_at).toLocaleDateString()}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      {user.phone && <p className="text-xs text-muted-foreground">Phone: {user.phone}</p>}
+                      {actions}
+                    </div>
+
+                    {/* Desktop row — same column tracks as the header above. */}
+                    <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_120px_110px_190px] lg:grid-cols-[minmax(0,1fr)_130px_120px_110px_110px_190px] gap-x-4 items-center px-4 py-3">
+                      {userBlock}
+                      <div className="hidden lg:block min-w-0">{phone}</div>
+                      <div className="min-w-0">{roleSelect}</div>
+                      {statusBadge}
+                      <div className="hidden lg:block min-w-0">{joined}</div>
+                      <div className="min-w-0 flex justify-end">{actions}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {totalPages > 1 && (
