@@ -590,7 +590,7 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
                       onClick={() => setSelectedCategoryId(category.id)}
                       className={`px-5 py-2 rounded-full text-sm font-semibold transition border flex-shrink-0 ${
                         selectedCategoryId === category.id
-                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                          ? 'bg-cyan-700 text-white border-cyan-700 shadow-sm'
                           : 'bg-muted text-slate-700 border-transparent hover:bg-muted/80'
                       }`}
                     >
@@ -829,7 +829,7 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3 sm:px-6 sm:py-4 overflow-hidden">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Featured On</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-600">Featured On</p>
                 <h3 className="font-display text-lg font-semibold text-slate-800">Trusted by India’s leading media and hiring partners</h3>
               </div>
             </div>
