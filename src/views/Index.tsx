@@ -118,17 +118,27 @@ export default function Index({ initialHero, initialData, initialMostAttemptedEx
     // with a responsive srcset, so a phone downloads a ~750px variant instead
     // of the full-size original — the raw <img> shipped the original file
     // (126KB+) to every device.
+    //
+    // Fixed-aspect container + fill/object-contain (NOT width/height attrs):
+    // the API doesn't expose the uploaded image's dimensions, and hardcoded
+    // attrs with the wrong ratio made the browser reserve a too-tall box that
+    // SHRANK when the image loaded — a reproducible 0.072 CLS as the hero
+    // text below jumped up. The container reserves its box up front and never
+    // resizes; if an admin uploads a different ratio it letterboxes inside
+    // (object-contain) instead of shifting the page. aspect-[1536/633]
+    // matches the current CMS hero asset.
     return (
-      <Image
-        src={asset.url}
-        alt={asset.alt_text || heroTitle}
-        className={`${className} ${options.disableShadow ? '' : 'shadow-[0_25px_80px_-40px_rgba(15,23,42,0.9)]'}`.trim()}
-        width={665}
-        height={443}
-        priority
-        fetchPriority="high"
-        sizes="(min-width: 1024px) 512px, 100vw"
-      />
+      <div className={`relative w-full aspect-[1536/633] ${options.disableShadow ? '' : 'shadow-[0_25px_80px_-40px_rgba(15,23,42,0.9)]'}`.trim()}>
+        <Image
+          src={asset.url}
+          alt={asset.alt_text || heroTitle}
+          fill
+          priority
+          fetchPriority="high"
+          sizes="(min-width: 1024px) 512px, 100vw"
+          className="object-contain"
+        />
+      </div>
     );
   };
 
