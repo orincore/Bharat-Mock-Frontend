@@ -5,6 +5,7 @@ import ServerExamDetail from './ServerExamDetail';
 import DynamicPageClient from './DynamicPageClient';
 import FooterVisible from './FooterVisible';
 import { DynamicJsonLd } from '@/components/seo/JsonLd';
+import { internalApiHeaders } from '@/lib/server/internalApiHeaders';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,6 +22,14 @@ const STATIC_PREFIXES = new Set([
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
+// Server-side API fetch that identifies itself to the backend as a trusted
+// internal call, so SSR page-data requests are exempt from the per-IP rate
+// limiter and never 429 -> notFound() -> 404 under load. See internalApiHeaders.
+const apiFetch = (url: string, init?: RequestInit) =>
+  fetch(url, {
+    ...init,
+    headers: internalApiHeaders(init?.headers as Record<string, string> | undefined),
+  });
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://bharatmock.com').replace(/\/$/, '');
 
 // The slug type resolved by the server — tells the client what component to render
@@ -89,7 +98,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
     //    This ensures /ssc-cgl-exam/full-test-03-... is detected as exam, not subcategory tab.
     if (slugArray.length === 2 && second) {
       try {
-        const examRes = await fetch(buildApiUrl(`/exams/path/${first.toLowerCase()}/${second.toLowerCase()}`), {
+        const examRes = await apiFetch(buildApiUrl(`/exams/path/${first.toLowerCase()}/${second.toLowerCase()}`), {
           cache: 'no-store',
           signal: controller.signal,
         });
@@ -112,7 +121,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
     }
 
     // 1. Try subcategory first
-    const subRes = await fetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`), {
+    const subRes = await apiFetch(buildApiUrl(`/taxonomy/subcategory/${first.toLowerCase()}`), {
       cache: 'no-store',
       signal: controller.signal
     });
@@ -123,7 +132,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
         let seo: SlugSeoResult | null = null;
         let pageContentData: any = null;
         try {
-          const contentRes = await fetch(buildApiUrl(`/page-content/${subcategoryId}`), {
+          const contentRes = await apiFetch(buildApiUrl(`/page-content/${subcategoryId}`), {
             cache: 'no-store',
             signal: controller.signal
           });
@@ -156,7 +165,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
     }
 
     // 2. Try combined-subcategory (slug that merges category+subcategory)
-    const combinedRes = await fetch(buildApiUrl(`/taxonomy/resolve/${first.toLowerCase()}`), {
+    const combinedRes = await apiFetch(buildApiUrl(`/taxonomy/resolve/${first.toLowerCase()}`), {
       cache: 'no-store',
       signal: controller.signal
     });
@@ -166,7 +175,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
         const combinedSubcategoryId = combinedData.data.id;
         let pageContentData: any = null;
         try {
-          const contentRes = await fetch(buildApiUrl(`/page-content/${combinedSubcategoryId}`), {
+          const contentRes = await apiFetch(buildApiUrl(`/page-content/${combinedSubcategoryId}`), {
             cache: 'no-store',
             signal: controller.signal
           });
@@ -186,7 +195,7 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
     }
 
     // 3. Try category
-    const catRes = await fetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`), {
+    const catRes = await apiFetch(buildApiUrl(`/taxonomy/category/${first.toLowerCase()}`), {
       cache: 'no-store',
       signal: controller.signal
     });
@@ -199,11 +208,11 @@ async function fetchSeoForSlug(slugArray: string[]): Promise<SlugResolution> {
         let subcategories: any[] = [];
         try {
           const [contentRes, subRes] = await Promise.all([
-            fetch(buildApiUrl(`/category-page-content/${categoryId}`), {
+            apiFetch(buildApiUrl(`/category-page-content/${categoryId}`), {
               cache: 'no-store',
               signal: controller.signal
             }),
-            fetch(buildApiUrl(`/taxonomy/subcategories?category_id=${categoryId}`), {
+            apiFetch(buildApiUrl(`/taxonomy/subcategories?category_id=${categoryId}`), {
               cache: 'no-store',
               signal: controller.signal
             }),

@@ -7,9 +7,17 @@ import TabNavigation from './TabNavigation';
 import MobileTOC from './MobileTOC';
 import { isBlockEmpty } from '@/lib/utils/blockContent';
 import { humanizeSectionKey } from '@/lib/utils';
+import { internalApiHeaders } from '@/lib/server/internalApiHeaders';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
+// Trusted server-to-server fetch — exempt from the backend per-IP rate limiter
+// so SSR page data never 429s -> notFound() -> 404 under load.
+const apiFetch = (url: string, init?: RequestInit) =>
+  fetch(url, {
+    ...init,
+    headers: internalApiHeaders(init?.headers as Record<string, string> | undefined),
+  });
 
 interface Block {
   id: string;
@@ -200,7 +208,7 @@ async function fetchTabContent(
       ? buildApiUrl(`/page-content/${entityId}`)
       : buildApiUrl(`/category-page-content/${entityId}`);
     
-    const res = await fetch(endpoint, { cache: 'no-store' });
+    const res = await apiFetch(endpoint, { cache: 'no-store' });
     if (!res.ok) return { sections: [], orphanBlocks: [] };
     
     const data: PageContentResponse = await res.json();
@@ -235,7 +243,7 @@ async function fetchTabContent(
 // Fetch subcategories for a category
 async function fetchSubcategories(categoryId: string): Promise<SubcategoryItem[]> {
   try {
-    const res = await fetch(buildApiUrl(`/taxonomy/subcategories?category_id=${categoryId}`), { cache: 'no-store' });
+    const res = await apiFetch(buildApiUrl(`/taxonomy/subcategories?category_id=${categoryId}`), { cache: 'no-store' });
     if (!res.ok) return [];
     const data = await res.json();
     return data.data || [];
