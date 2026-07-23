@@ -44,15 +44,52 @@ interface Section {
   settings?: Record<string, any>;
 }
 
+// Columns the server owns and rewrites on every save (updated_by is stamped from
+// the auth token, the timestamps default to now()). They say nothing about whether
+// the *editor* has pending changes, so comparing them would report a page that was
+// just saved as still dirty.
+const SERVER_MANAGED_KEYS = new Set(['created_at', 'updated_at', 'created_by', 'updated_by']);
+
+// Key order in a JSON.stringify is insertion order, and the objects being compared
+// come from two different places (local React state vs. a fresh API response), so
+// the keys are sorted here to make the encoding depend only on the values.
+const stableEncode = (record: Record<string, any>) => {
+  const out: Record<string, any> = {};
+  Object.keys(record)
+    .filter((key) => key !== 'blocks' && !SERVER_MANAGED_KEYS.has(key))
+    .sort()
+    .forEach((key) => { out[key] = record[key]; });
+  return out;
+};
+
+// Which tab a section lives on — display_order is numbered per tab (see
+// updateSectionsForActiveTab), so it is only meaningful when scoped to one.
+const sectionTabKey = (section: Section) => {
+  if (section.is_sidebar) return `sidebar:${section.sidebar_tab_id ?? ''}`;
+  const specialTab = section.settings?.special_tab_type;
+  if (specialTab) return `special:${specialTab}`;
+  if (section.custom_tab_id) return `custom:${section.custom_tab_id}`;
+  return 'overview';
+};
+
 const serializeSections = (subset: Section[]) => JSON.stringify(
-  subset
+  [...subset]
+    // A page with N tabs has N sections numbered 0, N numbered 1, ... so sorting on
+    // display_order alone leaves large groups of ties. Array.sort is stable, so those
+    // ties resolve to whatever order each array happened to arrive in — which differs
+    // between local state and the API response and made every comparison report a
+    // difference. Scoping by tab (then id) makes the ordering total and deterministic.
+    .sort((a, b) => (
+      sectionTabKey(a).localeCompare(sectionTabKey(b))
+      || (a.display_order ?? 0) - (b.display_order ?? 0)
+      || String(a.id ?? '').localeCompare(String(b.id ?? ''))
+    ))
     .map((section) => ({
-      ...section,
-      blocks: (section.blocks || []).map((block) => ({
-        ...block
-      }))
+      ...stableEncode(section),
+      // Block order is the user's ordering — never re-sorted here, or a drag-to-reorder
+      // would compare equal and the Save button would stay disabled.
+      blocks: (section.blocks || []).map((block) => stableEncode(block))
     }))
-    .sort((a, b) => a.display_order - b.display_order)
 );
 
 interface CustomTab {
@@ -783,8 +820,15 @@ export default function AdminSubcategoryEditorPage() {
 
 
 
+      // loadPageContent() sets `sections` and `originalSections` to the same freshly
+      // fetched array, which IS the correct post-save baseline. Do not re-seed the
+      // baseline from `updatedSections` here: that is the pre-save local array, and it
+      // differs from what the server stored (blocks are renumbered into the payload
+      // above, new sections/blocks trade their temp- ids for real uuids, section_key is
+      // derived from the title server-side, and updated_by is stamped). Any one of
+      // those left hasUnsavedChanges permanently true, so the "Unsaved" badge never
+      // cleared no matter how many times Save Changes was pressed.
       await loadPageContent();
-      setOriginalSections(updatedSections);
     } catch (error) {
       console.error('Error saving page content:', error);
       toast({
